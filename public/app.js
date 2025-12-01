@@ -98,13 +98,13 @@ function applyFilters() {
             if (!activeFilters.type.includes(productType)) return false;
         }
         
-        // Фильтр по цвету
+        // Фильтр по цвету (только один выбор)
         if (activeFilters.color.length > 0) {
-            const productColor = product.color || '';
+            const productColor = product.color || [];
             if (!activeFilters.color.some(c => productColor.includes(c))) return false;
         }
         
-        // Фильтр по характеристикам
+        // Фильтр по характеристикам (только один выбор)
         if (activeFilters.feature.length > 0) {
             const productFeatures = product.features || [];
             if (!activeFilters.feature.some(f => productFeatures.includes(f))) return false;
@@ -146,20 +146,19 @@ filterButtons.forEach(btn => {
                 btn.classList.add('active');
             }
         } else {
-            // Для остальных категорий - множественный выбор
+            // Для маленьких фильтров (color, feature) - только один выбор
             if (btn.classList.contains('active')) {
                 // Отмена фильтра
                 btn.classList.remove('active');
-                const index = activeFilters[category].indexOf(filter);
-                if (index > -1) {
-                    activeFilters[category].splice(index, 1);
-                }
+                activeFilters[category] = [];
             } else {
-                // Активация фильтра
+                // Снимаем все активные фильтры этой категории
+                document.querySelectorAll(`.filter-btn[data-category="${category}"]`).forEach(b => {
+                    b.classList.remove('active');
+                });
+                // Активация нового фильтра
                 btn.classList.add('active');
-                if (!activeFilters[category].includes(filter)) {
-                    activeFilters[category].push(filter);
-                }
+                activeFilters[category] = [filter];
             }
         }
         
@@ -304,8 +303,31 @@ function changeQuantity(productId, delta) {
     }
 }
 
+// Сохранение корзины в localStorage
+function saveCart() {
+    localStorage.setItem('cart', JSON.stringify(cart));
+}
+
+// Загрузка корзины из localStorage
+function loadCart() {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+        try {
+            cart = JSON.parse(savedCart);
+            updateCartUI();
+            updateGoToCartButton();
+        } catch (e) {
+            console.error('Ошибка загрузки корзины:', e);
+            cart = [];
+        }
+    }
+}
+
 // Обновление UI корзины
 function updateCartUI() {
+    // Сохранение корзины
+    saveCart();
+    
     // Обновление счетчика в навигации
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     navCartCount.textContent = totalItems;
@@ -641,6 +663,7 @@ orderForm.addEventListener('submit', async (e) => {
             
             // Очистка корзины
             cart = [];
+            saveCart(); // Сохраняем пустую корзину
             updateCartUI();
             orderForm.reset();
             
@@ -730,11 +753,13 @@ orderHistoryBtn.addEventListener('click', () => {
 });
 
 supportBtn.addEventListener('click', () => {
-    supportModal.style.display = 'flex';
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        closeSupportModal.click();
-    });
+    // Сворачиваем мини-апп и открываем команду /support в боте
+    tg.close();
+    // Отправляем команду в бота (если возможно)
+    if (tg.initDataUnsafe?.user) {
+        // Пытаемся открыть бота с командой
+        window.open(`https://t.me/FlowboxBot?start=support`, '_blank');
+    }
 });
 
 // Закрытие модальных окон
@@ -1122,6 +1147,7 @@ profileEditForm.addEventListener('submit', (e) => {
 
 // Инициализация при загрузке
 loadProducts();
+loadCart(); // Загружаем корзину из localStorage
 loadProfile();
 loadSavedAddresses();
 loadActiveOrders();

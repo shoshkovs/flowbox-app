@@ -104,15 +104,6 @@
                             </div>
                         </div>
                         
-                        <!-- Итого -->
-                        <div class="cart-final-total">
-                            <div class="final-total-row">
-                                <span>Итого:</span>
-                                <span class="final-total-amount" id="finalTotalAmount">0</span> ₽
-                            </div>
-                            <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
-                        </div>
-                        
                         <!-- Бонусы -->
                         <div class="cart-bonuses">
                             <div class="bonus-toggle-row">
@@ -124,10 +115,16 @@
                             </div>
                         </div>
                         
-                        <!-- Сервисный сбор -->
-                        <div class="cart-service-fee">
-                            <span>Сервисный сбор</span>
-                            <span class="service-fee-amount">450 ₽</span>
+                        <!-- Итого -->
+                        <div class="cart-final-total">
+                            <div class="final-total-service-fee">
+                                <span class="service-fee-text">Сервисный сбор</span>
+                            </div>
+                            <div class="final-total-row">
+                                <span>Итого:</span>
+                                <span class="final-total-amount" id="finalTotalAmount">0</span> ₽
+                            </div>
+                            <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
                         </div>
                         
                         <!-- Бонусная информация -->
@@ -157,7 +154,7 @@
                         <div class="profile-name-wrapper">
                             <h2 id="profileName">Пользователь</h2>
                             <button class="profile-edit-icon-btn" id="editProfileBtn" title="Редактировать">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
@@ -197,12 +194,10 @@
                     </div>
                     
                     <!-- Бонусы -->
-                    <div class="profile-section">
-                        <div class="bonuses-text-info">
-                            <span class="bonuses-text-label">Бонусы:</span>
-                            <span class="bonuses-text-amount" id="profileBonusesAmount">500</span>
-                        </div>
-                        <div class="bonuses-text-description">
+                    <div class="profile-section bonuses-section">
+                        <div class="bonuses-title">Бонусные баллы</div>
+                        <div class="bonuses-amount-large" id="profileBonusesAmount">500</div>
+                        <div class="bonuses-description-text">
                             Баллы начисляются в размере 1% с каждой покупки. 1 балл = 1 рубль
                         </div>
                     </div>
