@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: flowbox-app
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBAPP_URL
+        fromService:
+          type: web
+          name: flowbox-app
+          property: host
+      - key: PORT
+        value: 3000
+

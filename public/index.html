@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FlowBox - Магазин цветов</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <h1>🌸 FlowBox</h1>
+            <div class="cart-icon" id="cartIcon">
+                🛒 <span class="cart-count" id="cartCount">0</span>
+            </div>
+        </header>
+
+        <!-- Каталог товаров -->
+        <main class="main-content" id="mainContent">
+            <div class="products-container" id="productsContainer">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </main>
+
+        <!-- Корзина -->
+        <div class="cart-overlay" id="cartOverlay">
+            <div class="cart-panel">
+                <div class="cart-header">
+                    <h2>Корзина</h2>
+                    <button class="close-btn" id="closeCart">✕</button>
+                </div>
+                <div class="cart-items" id="cartItems">
+                    <p class="empty-cart">Корзина пуста</p>
+                </div>
+                <div class="cart-footer">
+                    <div class="cart-total">
+                        Итого: <span id="cartTotal">0</span> ₽
+                    </div>
+                    <button class="checkout-btn" id="checkoutBtn" disabled>Оформить заказ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Форма заказа -->
+        <div class="order-overlay" id="orderOverlay">
+            <div class="order-panel">
+                <div class="order-header">
+                    <h2>Оформление заказа</h2>
+                    <button class="close-btn" id="closeOrder">✕</button>
+                </div>
+                <form class="order-form" id="orderForm">
+                    <div class="form-group">
+                        <label>Ваше имя</label>
+                        <input type="text" id="customerName" required placeholder="Иван Иванов">
+                    </div>
+                    <div class="form-group">
+                        <label>Телефон</label>
+                        <input type="tel" id="customerPhone" required placeholder="+7 (999) 123-45-67">
+                    </div>
+                    <div class="form-group">
+                        <label>Адрес доставки</label>
+                        <textarea id="customerAddress" required placeholder="Город, улица, дом, квартира"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Комментарий (необязательно)</label>
+                        <textarea id="orderComment" placeholder="Особые пожелания к заказу"></textarea>
+                    </div>
+                    <div class="order-summary">
+                        <div class="summary-item">
+                            <span>Товаров:</span>
+                            <span id="summaryItems">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Сумма:</span>
+                            <span id="summaryTotal">0</span> ₽
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-order-btn">Подтвердить заказ</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Успешное оформление -->
+        <div class="success-overlay" id="successOverlay">
+            <div class="success-panel">
+                <div class="success-icon">✅</div>
+                <h2>Заказ оформлен!</h2>
+                <p>Мы свяжемся с вами в ближайшее время</p>
+                <button class="back-to-shop-btn" id="backToShop">Вернуться в магазин</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
