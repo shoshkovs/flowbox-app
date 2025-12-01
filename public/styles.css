@@ -703,8 +703,11 @@ body {
 }
 
 .nav-icon {
-    font-size: 24px;
+    width: 24px;
+    height: 24px;
     margin-bottom: 4px;
+    stroke: currentColor;
+    transition: all 0.3s;
 }
 
 .nav-label {
@@ -1120,7 +1123,8 @@ body {
     }
     
     .nav-icon {
-        font-size: 22px;
+        width: 22px;
+        height: 22px;
     }
 }
 
