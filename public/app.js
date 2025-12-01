@@ -392,7 +392,9 @@ function calculateFinalTotal() {
     
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
     
-    finalTotalAmount.textContent = total;
+    if (finalTotalAmount) {
+        finalTotalAmount.innerHTML = `${total} <span class="ruble-sign">₽</span>`;
+    }
     
     // Расчет бонусов
     const bonusToEarn = bonusUsed > 0 ? 0 : Math.floor(flowersTotal * 0.01);
