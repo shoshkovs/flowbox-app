@@ -558,6 +558,131 @@ function loadProfile() {
     }
 }
 
+// Модальные окна профиля
+const addressModal = document.getElementById('addressModal');
+const addressForm = document.getElementById('addressForm');
+const addressCity = document.getElementById('addressCity');
+const addressError = document.getElementById('addressError');
+const closeAddressModal = document.getElementById('closeAddressModal');
+const addressesBtn = document.getElementById('addressesBtn');
+
+const orderHistoryModal = document.getElementById('orderHistoryModal');
+const orderHistoryList = document.getElementById('orderHistoryList');
+const closeOrderHistoryModal = document.getElementById('closeOrderHistoryModal');
+const orderHistoryBtn = document.getElementById('orderHistoryBtn');
+
+const supportModal = document.getElementById('supportModal');
+const closeSupportModal = document.getElementById('closeSupportModal');
+const supportBtn = document.getElementById('supportBtn');
+
+const bonusesModal = document.getElementById('bonusesModal');
+const modalBonusesAmount = document.getElementById('modalBonusesAmount');
+const closeBonusesModal = document.getElementById('closeBonusesModal');
+const bonusesBtn = document.getElementById('bonusesBtn');
+
+// Открытие модальных окон
+addressesBtn.addEventListener('click', () => {
+    addressModal.style.display = 'flex';
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        closeAddressModal.click();
+    });
+});
+
+orderHistoryBtn.addEventListener('click', () => {
+    orderHistoryModal.style.display = 'flex';
+    loadOrderHistory();
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        closeOrderHistoryModal.click();
+    });
+});
+
+supportBtn.addEventListener('click', () => {
+    supportModal.style.display = 'flex';
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        closeSupportModal.click();
+    });
+});
+
+bonusesBtn.addEventListener('click', () => {
+    bonusesModal.style.display = 'flex';
+    modalBonusesAmount.textContent = accumulatedBonuses;
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        closeBonusesModal.click();
+    });
+});
+
+// Закрытие модальных окон
+closeAddressModal.addEventListener('click', () => {
+    addressModal.style.display = 'none';
+    tg.BackButton.hide();
+});
+
+closeOrderHistoryModal.addEventListener('click', () => {
+    orderHistoryModal.style.display = 'none';
+    tg.BackButton.hide();
+});
+
+closeSupportModal.addEventListener('click', () => {
+    supportModal.style.display = 'none';
+    tg.BackButton.hide();
+});
+
+closeBonusesModal.addEventListener('click', () => {
+    bonusesModal.style.display = 'none';
+    tg.BackButton.hide();
+});
+
+// Обработка формы адреса
+addressForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const city = addressCity.value.trim();
+    
+    if (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
+        addressError.style.display = 'block';
+        return;
+    }
+    
+    addressError.style.display = 'none';
+    
+    // Сохранение адреса (здесь можно добавить отправку на сервер)
+    const address = {
+        city: addressCity.value,
+        street: document.getElementById('addressStreet').value,
+        entrance: document.getElementById('addressEntrance').value,
+        floor: document.getElementById('addressFloor').value,
+        apartment: document.getElementById('addressApartment').value
+    };
+    
+    console.log('Адрес сохранен:', address);
+    alert('Адрес успешно сохранен!');
+    addressForm.reset();
+    closeAddressModal.click();
+});
+
+// Загрузка истории заказов
+function loadOrderHistory() {
+    // Здесь можно загрузить с сервера
+    const orders = []; // Заглушка
+    
+    if (orders.length === 0) {
+        orderHistoryList.innerHTML = '<p class="no-orders">Заказов пока нет</p>';
+    } else {
+        orderHistoryList.innerHTML = orders.map(order => `
+            <div class="order-history-item">
+                <h4>Заказ #${order.id}</h4>
+                <p>Дата: ${order.date}</p>
+                <p>Сумма: ${order.total} ₽</p>
+                <span class="order-status ${order.status}">${order.status === 'completed' ? 'Завершен' : 'Ожидает оплаты'}</span>
+                ${order.status === 'pending' ? '<button class="pay-btn">Оплатить</button>' : ''}
+            </div>
+        `).join('');
+    }
+}
+
 // Инициализация при загрузке
 loadProducts();
 loadProfile();

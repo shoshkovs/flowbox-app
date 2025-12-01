@@ -81,29 +81,36 @@
                     <div class="cart-with-items" id="cartWithItems" style="display: none;">
                         <div class="cart-items-list" id="cartItemsList"></div>
                         
-                        <!-- Сервисный сбор -->
-                        <div class="cart-service-fee">
-                            <span>Сервисный сбор</span>
-                            <span class="service-fee-amount">450 ₽</span>
-                        </div>
-                        
                         <!-- Доставка -->
                         <div class="cart-delivery">
-                            <div class="delivery-title">Доставка</div>
+                            <div class="delivery-title">Доставка по Санкт-Петербургу</div>
                             <div class="delivery-options-grid">
                                 <button class="delivery-option" data-delivery="spb-kad" data-price="500">
-                                    Санкт-Петербург в пределах КАД и ниже 500р
+                                    <div class="delivery-option-text">В пределах КАД</div>
+                                    <div class="delivery-option-price">500 ₽</div>
                                 </button>
                                 <button class="delivery-option" data-delivery="10km" data-price="900">
-                                    До 10 км от КАД 900₽
+                                    <div class="delivery-option-text">До 10 км от КАД</div>
+                                    <div class="delivery-option-price">900 ₽</div>
                                 </button>
                                 <button class="delivery-option" data-delivery="20km" data-price="1300">
-                                    До 20 км от КАД 1300₽
+                                    <div class="delivery-option-text">До 20 км от КАД</div>
+                                    <div class="delivery-option-price">1300 ₽</div>
                                 </button>
                                 <button class="delivery-option active" data-delivery="pickup" data-price="0">
-                                    Самовывоз 0₽
+                                    <div class="delivery-option-text">Самовывоз</div>
+                                    <div class="delivery-option-price">0 ₽</div>
                                 </button>
                             </div>
+                        </div>
+                        
+                        <!-- Итого -->
+                        <div class="cart-final-total">
+                            <div class="final-total-row">
+                                <span>Итого:</span>
+                                <span class="final-total-amount" id="finalTotalAmount">0</span> ₽
+                            </div>
+                            <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
                         </div>
                         
                         <!-- Бонусы -->
@@ -117,26 +124,23 @@
                             </div>
                         </div>
                         
-                        <!-- Итого -->
-                        <div class="cart-final-total">
-                            <div class="final-total-row">
-                                <span>Итого:</span>
-                                <span class="final-total-amount" id="finalTotalAmount">0</span> ₽
+                        <!-- Сервисный сбор -->
+                        <div class="cart-service-fee">
+                            <span>Сервисный сбор</span>
+                            <span class="service-fee-amount">450 ₽</span>
+                        </div>
+                        
+                        <!-- Бонусная информация -->
+                        <div class="bonus-info">
+                            <div class="bonus-info-row">
+                                <span>Накоплено бонусов:</span>
+                                <span id="accumulatedBonuses">500</span>
                             </div>
-                            <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
-                            
-                            <!-- Бонусная информация -->
-                            <div class="bonus-info">
-                                <div class="bonus-info-row">
-                                    <span>Накоплено бонусов:</span>
-                                    <span id="accumulatedBonuses">500</span>
-                                </div>
-                                <div class="bonus-info-row">
-                                    <span>Будет начислено за текущий заказ:</span>
-                                    <span id="bonusToEarn">0</span>
-                                </div>
-                                <div class="bonus-info-note">1 балл = 1 рубль. Начисляется только если не списываете бонусы в этом заказе.</div>
+                            <div class="bonus-info-row">
+                                <span>Будет начислено за текущий заказ:</span>
+                                <span id="bonusToEarn">0</span>
                             </div>
+                            <div class="bonus-info-note">1 балл = 1 рубль</div>
                         </div>
                     </div>
                 </div>
@@ -155,19 +159,119 @@
                     
                     <!-- Активные заказы -->
                     <div class="profile-section">
-                        <h3 class="section-title">Активный заказ</h3>
+                        <h3 class="section-title">Активные заказы</h3>
                         <div class="active-orders" id="activeOrders">
                             <p class="no-orders">У вас нет активных заказов</p>
                         </div>
                     </div>
                     
-                    <!-- Адреса доставки -->
-                    <div class="profile-section">
-                        <h3 class="section-title">Адреса доставки</h3>
-                        <div class="delivery-addresses" id="deliveryAddresses">
-                            <p class="no-addresses">Адреса не добавлены</p>
+                    <!-- Кнопки меню -->
+                    <div class="profile-menu-buttons">
+                        <button class="profile-menu-btn" id="addressesBtn">
+                            <span class="menu-btn-icon">📍</span>
+                            <span class="menu-btn-text">Адреса доставки</span>
+                            <span class="menu-btn-arrow">›</span>
+                        </button>
+                        <button class="profile-menu-btn" id="orderHistoryBtn">
+                            <span class="menu-btn-icon">📦</span>
+                            <span class="menu-btn-text">История заказов</span>
+                            <span class="menu-btn-arrow">›</span>
+                        </button>
+                        <button class="profile-menu-btn" id="supportBtn">
+                            <span class="menu-btn-icon">💬</span>
+                            <span class="menu-btn-text">Поддержка</span>
+                            <span class="menu-btn-arrow">›</span>
+                        </button>
+                        <button class="profile-menu-btn" id="bonusesBtn">
+                            <span class="menu-btn-icon">🎁</span>
+                            <span class="menu-btn-text">Бонусы</span>
+                            <span class="menu-btn-arrow">›</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Модальное окно адреса -->
+            <div class="modal-overlay" id="addressModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Добавить адрес</h3>
+                        <button class="modal-close" id="closeAddressModal">✕</button>
+                    </div>
+                    <form class="address-form" id="addressForm">
+                        <div class="form-group">
+                            <label>Город</label>
+                            <input type="text" id="addressCity" required placeholder="Санкт-Петербург" list="cities">
+                            <datalist id="cities">
+                                <option value="Санкт-Петербург">
+                            </datalist>
                         </div>
-                        <button class="add-address-btn">+ Добавить адрес</button>
+                        <div class="form-group">
+                            <label>Улица, дом</label>
+                            <input type="text" id="addressStreet" required placeholder="Невский проспект, д. 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Парадная</label>
+                            <input type="text" id="addressEntrance" placeholder="Парадная">
+                        </div>
+                        <div class="form-group">
+                            <label>Этаж</label>
+                            <input type="number" id="addressFloor" placeholder="Этаж">
+                        </div>
+                        <div class="form-group">
+                            <label>Квартира</label>
+                            <input type="text" id="addressApartment" placeholder="Квартира">
+                        </div>
+                        <div class="address-error" id="addressError" style="display: none;">
+                            Извините, мы пока не доставляем в этот город
+                        </div>
+                        <button type="submit" class="submit-address-btn">Сохранить адрес</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Модальное окно истории заказов -->
+            <div class="modal-overlay" id="orderHistoryModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>История заказов</h3>
+                        <button class="modal-close" id="closeOrderHistoryModal">✕</button>
+                    </div>
+                    <div class="order-history-list" id="orderHistoryList">
+                        <p class="no-orders">Заказов пока нет</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Модальное окно поддержки -->
+            <div class="modal-overlay" id="supportModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Поддержка</h3>
+                        <button class="modal-close" id="closeSupportModal">✕</button>
+                    </div>
+                    <div class="support-content">
+                        <p>Перейдите в бота и выберите команду <strong>/support</strong></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Модальное окно бонусов -->
+            <div class="modal-overlay" id="bonusesModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Бонусы</h3>
+                        <button class="modal-close" id="closeBonusesModal">✕</button>
+                    </div>
+                    <div class="bonuses-content">
+                        <div class="bonuses-amount">
+                            <span class="bonuses-label">На вашем счету:</span>
+                            <span class="bonuses-value" id="modalBonusesAmount">500</span> баллов
+                        </div>
+                        <div class="bonuses-description">
+                            <p>Баллы начисляются в размере 1% с каждой покупки</p>
+                            <p>1 балл = 1 рубль</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -185,20 +289,51 @@
                             <h3>О нас</h3>
                             <p>FlowBox - это современный сервис для заказа цветов с быстрой доставкой. Мы предлагаем свежие букеты на любой вкус и случай.</p>
                         </div>
+                        
+                        <div class="about-section">
+                            <h3>Наши преимущества</h3>
+                            <p>Сервисный сбор включает в себя:</p>
+                            <ul class="advantages-list">
+                                <li>Сборка букета</li>
+                                <li>Упаковка</li>
+                                <li>Налоги</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h3>Доставка</h3>
+                            <div class="faq-item">
+                                <p class="faq-question">Как осуществляется доставка?</p>
+                                <p class="faq-answer">Доставка осуществляется курьером в день заказа или на следующий день. Вы можете выбрать удобное время доставки.</p>
+                            </div>
+                            <div class="faq-item">
+                                <p class="faq-question">В какие районы осуществляется доставка?</p>
+                                <p class="faq-answer">Мы доставляем по Санкт-Петербургу в пределах КАД, до 10 км и до 20 км от КАД. Также доступен самовывоз.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h3>Возврат</h3>
+                            <div class="faq-item">
+                                <p class="faq-question">Можно ли вернуть заказ?</p>
+                                <p class="faq-answer">Если цветы не соответствуют описанию или имеют дефекты, мы вернем деньги или заменим букет. Свяжитесь с нами в течение 24 часов после получения заказа.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h3>Уход за цветами</h3>
+                            <div class="faq-item">
+                                <p class="faq-question">Как ухаживать за цветами?</p>
+                                <p class="faq-answer">Обрежьте стебли под углом, поставьте в чистую воду, меняйте воду каждые 2-3 дня. Храните букет в прохладном месте, избегайте прямых солнечных лучей.</p>
+                            </div>
+                        </div>
+                        
                         <div class="about-section">
                             <h3>Контакты</h3>
                             <p>📞 Телефон: +7 (999) 123-45-67</p>
                             <p>📧 Email: info@flowbox.ru</p>
-                            <p>📍 Адрес: г. Москва, ул. Примерная, д. 1</p>
-                        </div>
-                        <div class="about-section">
-                            <h3>Режим работы</h3>
-                            <p>Пн-Вс: 9:00 - 21:00</p>
-                            <p>Доставка: круглосуточно</p>
-                        </div>
-                        <div class="about-section">
-                            <h3>Версия</h3>
-                            <p>1.0.0</p>
+                            <p>📍 Адрес: г. Санкт-Петербург</p>
+                            <p>🕐 Режим работы: Пн-Вс: 9:00 - 21:00</p>
                         </div>
                     </div>
                 </div>

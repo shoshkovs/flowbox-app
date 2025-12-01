@@ -691,7 +691,7 @@ body {
 }
 
 .nav-item.active {
-    color: var(--primary-color);
+    color: #333;
 }
 
 .nav-icon {
@@ -856,14 +856,30 @@ body {
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
-    min-height: 60px;
+    min-height: 70px;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.delivery-option-text {
+    font-weight: 500;
+}
+
+.delivery-option-price {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
 }
 
 .delivery-option.active {
     border-color: var(--primary-color);
     background: var(--primary-color);
+    color: white;
+}
+
+.delivery-option.active .delivery-option-price {
     color: white;
 }
 
@@ -1048,16 +1064,244 @@ body {
     padding: 20px;
 }
 
-.add-address-btn {
+.profile-menu-buttons {
+    padding: 0 20px;
+}
+
+.profile-menu-btn {
     width: 100%;
-    padding: 12px;
-    border: 1px dashed var(--primary-color);
     background: white;
-    color: var(--primary-color);
+    padding: 16px;
+    margin-bottom: 12px;
     border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.2s;
+    border: none;
+    text-align: left;
+}
+
+.profile-menu-btn:active {
+    transform: scale(0.98);
+}
+
+.menu-btn-icon {
+    font-size: 24px;
+}
+
+.menu-btn-text {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.menu-btn-arrow {
+    color: #999;
+    font-size: 20px;
+}
+
+/* Модальные окна */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.address-form {
+    padding: 20px;
+}
+
+.address-error {
+    background: #fee;
+    color: #c33;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
     font-size: 14px;
+}
+
+.submit-address-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
     font-weight: 600;
     cursor: pointer;
+    margin-top: 16px;
+}
+
+.support-content, .bonuses-content {
+    padding: 20px;
+}
+
+.bonuses-amount {
+    text-align: center;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.bonuses-label {
+    display: block;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.bonuses-value {
+    display: block;
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.bonuses-description {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.bonuses-description p {
+    margin-bottom: 8px;
+}
+
+.order-history-list {
+    padding: 20px;
+}
+
+.order-history-item {
+    background: #f9f9f9;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.order-history-item h4 {
+    margin-bottom: 8px;
+}
+
+.order-history-item .order-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.order-status.completed {
+    background: #4caf50;
+    color: white;
+}
+
+.order-status.pending {
+    background: #ff9800;
+    color: white;
+}
+
+.pay-btn {
+    margin-top: 12px;
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* О проекте */
+.advantages-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+}
+
+.advantages-list li {
+    padding: 8px 0;
+    padding-left: 24px;
+    position: relative;
+}
+
+.advantages-list li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.faq-item {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.faq-item:last-child {
+    border-bottom: none;
+}
+
+.faq-question {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.faq-answer {
+    color: #666;
+    line-height: 1.6;
+    font-size: 14px;
 }
 
 .profile-menu {
