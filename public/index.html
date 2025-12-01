@@ -207,7 +207,8 @@
         <!-- Нижняя навигация -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-tab="menuTab">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <img src="icons/menu.png" alt="Меню" class="nav-icon" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <svg class="nav-icon-fallback" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
                     <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -215,7 +216,8 @@
                 <span class="nav-label">Меню</span>
             </button>
             <button class="nav-item" data-tab="cartTab">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <img src="icons/cart.png" alt="Корзина" class="nav-icon" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <svg class="nav-icon-fallback" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="9" cy="21" r="1"></circle>
                     <circle cx="20" cy="21" r="1"></circle>
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
@@ -224,14 +226,16 @@
                 <span class="nav-badge" id="navCartCount">0</span>
             </button>
             <button class="nav-item" data-tab="profileTab">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <img src="icons/profile.png" alt="Профиль" class="nav-icon" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <svg class="nav-icon-fallback" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                 </svg>
                 <span class="nav-label">Профиль</span>
             </button>
             <button class="nav-item" data-tab="aboutTab">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <img src="icons/about.png" alt="О проекте" class="nav-icon" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <svg class="nav-icon-fallback" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="16" x2="12" y2="12"></line>
                     <line x1="12" y1="8" x2="12.01" y2="8"></line>

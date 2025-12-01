@@ -706,8 +706,24 @@ body {
     width: 24px;
     height: 24px;
     margin-bottom: 4px;
+    transition: all 0.3s;
+    object-fit: contain;
+}
+
+.nav-icon-fallback {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 4px;
     stroke: currentColor;
     transition: all 0.3s;
+}
+
+.nav-item:not(.active) .nav-icon {
+    opacity: 0.6;
+}
+
+.nav-item.active .nav-icon {
+    opacity: 1;
 }
 
 .nav-label {
