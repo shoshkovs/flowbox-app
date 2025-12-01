@@ -107,7 +107,10 @@
                         <!-- Бонусы -->
                         <div class="cart-bonuses">
                             <div class="bonus-toggle-row">
-                                <span class="bonus-label">Списать бонусные баллы</span>
+                                <div class="bonus-label-wrapper">
+                                    <span class="bonus-label">Списать бонусные баллы</span>
+                                    <span class="bonus-balance">у вас: <span id="accumulatedBonuses">500</span> flow-баксов</span>
+                                </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="bonusToggle">
                                     <span class="toggle-slider"></span>
@@ -125,20 +128,11 @@
                                 <span>Итого:</span>
                                 <span class="final-total-amount" id="finalTotalAmount">0 <span class="ruble-sign">₽</span></span>
                             </div>
+                            <div class="bonus-earn-row">
+                                <span>Начислится flow-баксов:</span>
+                                <span class="bonus-earn-amount" id="bonusToEarn">+0</span>
+                            </div>
                             <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
-                        </div>
-                        
-                        <!-- Бонусная информация -->
-                        <div class="bonus-info">
-                            <div class="bonus-info-row">
-                                <span>Накоплено бонусов:</span>
-                                <span id="accumulatedBonuses">500</span>
-                            </div>
-                            <div class="bonus-info-row">
-                                <span>Будет начислено за текущий заказ:</span>
-                                <span id="bonusToEarn">0</span>
-                            </div>
-                            <div class="bonus-info-note">1 балл = 1 рубль</div>
                         </div>
                     </div>
                 </div>

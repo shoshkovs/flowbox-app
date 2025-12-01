@@ -398,7 +398,10 @@ function calculateFinalTotal() {
     
     // Расчет бонусов
     const bonusToEarn = bonusUsed > 0 ? 0 : Math.floor(flowersTotal * 0.01);
-    document.getElementById('bonusToEarn').textContent = bonusToEarn;
+    const bonusToEarnElement = document.getElementById('bonusToEarn');
+    if (bonusToEarnElement) {
+        bonusToEarnElement.textContent = `+${bonusToEarn}`;
+    }
 }
 
 // Обработка доставки (используем делегирование событий для динамически созданных элементов)
