@@ -1509,6 +1509,11 @@ h1, h2, h3, .font-bold {
     padding: 16px 20px;
     border-top: 1px solid #eee;
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+}
+
+.profile-page {
+    padding-bottom: 120px;
 }
 
 .bonuses-footer-info {
