@@ -165,13 +165,21 @@
                         </div>
                     </div>
                     
-                    <!-- Кнопки меню -->
-                    <div class="profile-menu-buttons">
+                    <!-- Адреса доставки -->
+                    <div class="profile-section">
+                        <h3 class="section-title">Адреса доставки</h3>
+                        <div class="delivery-addresses-list" id="deliveryAddressesList">
+                            <p class="no-addresses">Адреса не добавлены</p>
+                        </div>
                         <button class="profile-menu-btn" id="addressesBtn">
-                            <span class="menu-btn-icon">📍</span>
-                            <span class="menu-btn-text">Адреса доставки</span>
+                            <span class="menu-btn-icon">➕</span>
+                            <span class="menu-btn-text">Добавить новый адрес</span>
                             <span class="menu-btn-arrow">›</span>
                         </button>
+                    </div>
+                    
+                    <!-- Кнопки меню -->
+                    <div class="profile-menu-buttons">
                         <button class="profile-menu-btn" id="orderHistoryBtn">
                             <span class="menu-btn-icon">📦</span>
                             <span class="menu-btn-text">История заказов</span>
@@ -200,6 +208,10 @@
                     </div>
                     <form class="address-form" id="addressForm">
                         <div class="form-group">
+                            <label>Наименование адреса</label>
+                            <input type="text" id="addressName" required placeholder="Мой дом">
+                        </div>
+                        <div class="form-group">
                             <label>Город</label>
                             <input type="text" id="addressCity" required placeholder="Санкт-Петербург" list="cities">
                             <datalist id="cities">
@@ -215,12 +227,20 @@
                             <input type="text" id="addressEntrance" placeholder="Парадная">
                         </div>
                         <div class="form-group">
-                            <label>Этаж</label>
-                            <input type="number" id="addressFloor" placeholder="Этаж">
+                            <label>Квартира/офис</label>
+                            <input type="text" id="addressApartment" placeholder="Квартира/офис">
                         </div>
                         <div class="form-group">
-                            <label>Квартира</label>
-                            <input type="text" id="addressApartment" placeholder="Квартира">
+                            <label>Этаж</label>
+                            <input type="text" id="addressFloor" placeholder="Этаж" inputmode="numeric" pattern="[0-9]*">
+                        </div>
+                        <div class="form-group">
+                            <label>Домофон</label>
+                            <input type="text" id="addressIntercom" placeholder="Домофон">
+                        </div>
+                        <div class="form-group">
+                            <label>Комментарий <span class="optional-label">(Необязательно: уточнение к адресу)</span></label>
+                            <textarea id="addressComment" placeholder="Уточнение к адресу"></textarea>
                         </div>
                         <div class="address-error" id="addressError" style="display: none;">
                             Извините, мы пока не доставляем в этот город
@@ -397,12 +417,58 @@
                         <label>Телефон</label>
                         <input type="tel" id="customerPhone" required placeholder="+7 (999) 123-45-67">
                     </div>
-                    <div class="form-group">
-                        <label>Адрес доставки</label>
-                        <textarea id="customerAddress" required placeholder="Город, улица, дом, квартира"></textarea>
+                    
+                    <!-- Сохраненные адреса -->
+                    <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
+                        <label>Выберите адрес доставки</label>
+                        <div class="saved-addresses-list" id="savedAddressesList"></div>
+                        <button type="button" class="use-new-address-btn" id="useNewAddressBtn">Использовать новый адрес</button>
                     </div>
+                    
+                    <!-- Форма нового адреса -->
+                    <div class="new-address-form" id="newAddressForm">
+                        <div class="form-group">
+                            <label>Наименование адреса</label>
+                            <input type="text" id="orderAddressName" placeholder="Мой дом">
+                        </div>
+                        <div class="form-group">
+                            <label>Город</label>
+                            <input type="text" id="orderAddressCity" required placeholder="Санкт-Петербург" list="orderCities">
+                            <datalist id="orderCities">
+                                <option value="Санкт-Петербург">
+                            </datalist>
+                        </div>
+                        <div class="form-group">
+                            <label>Улица, дом</label>
+                            <input type="text" id="orderAddressStreet" required placeholder="Невский проспект, д. 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Парадная</label>
+                            <input type="text" id="orderAddressEntrance" placeholder="Парадная">
+                        </div>
+                        <div class="form-group">
+                            <label>Квартира/офис</label>
+                            <input type="text" id="orderAddressApartment" placeholder="Квартира/офис">
+                        </div>
+                        <div class="form-group">
+                            <label>Этаж</label>
+                            <input type="text" id="orderAddressFloor" placeholder="Этаж" inputmode="numeric" pattern="[0-9]*">
+                        </div>
+                        <div class="form-group">
+                            <label>Домофон</label>
+                            <input type="text" id="orderAddressIntercom" placeholder="Домофон">
+                        </div>
+                        <div class="form-group">
+                            <label>Комментарий <span class="optional-label">(Необязательно: уточнение к адресу)</span></label>
+                            <textarea id="orderAddressComment" placeholder="Уточнение к адресу"></textarea>
+                        </div>
+                        <div class="address-error" id="orderAddressError" style="display: none;">
+                            Извините, мы пока не доставляем в этот город
+                        </div>
+                    </div>
+                    
                     <div class="form-group">
-                        <label>Комментарий (необязательно)</label>
+                        <label>Комментарий к заказу (необязательно)</label>
                         <textarea id="orderComment" placeholder="Особые пожелания к заказу"></textarea>
                     </div>
                     <div class="order-summary">

@@ -38,6 +38,7 @@ let deliveryPrice = 0;
 let serviceFee = 450;
 let bonusUsed = 0;
 let accumulatedBonuses = 500;
+let savedAddresses = []; // Сохраненные адреса
 
 // Элементы DOM
 const productsContainer = document.getElementById('productsContainer');
@@ -429,6 +430,9 @@ navItems.forEach(item => {
 checkoutBtnFinal.addEventListener('click', () => {
     orderOverlay.classList.add('active');
     
+    // Загрузка адресов
+    loadSavedAddresses();
+    
     // Заполнение формы
     const summaryItems = document.getElementById('summaryItems');
     const summaryTotal = document.getElementById('summaryTotal');
@@ -467,10 +471,56 @@ function closeOrderPanel() {
 orderForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    // Сброс ошибок
+    document.querySelectorAll('#newAddressForm .form-group input, #newAddressForm .form-group textarea').forEach(field => {
+        validateField(field, true);
+    });
+    const orderAddressError = document.getElementById('orderAddressError');
+    if (orderAddressError) orderAddressError.style.display = 'none';
+    
     const name = document.getElementById('customerName').value;
     const phone = document.getElementById('customerPhone').value;
-    const address = document.getElementById('customerAddress').value;
     const comment = document.getElementById('orderComment').value;
+    
+    // Проверка выбранного адреса
+    const selectedAddressItem = document.querySelector('.saved-addresses-list .address-item.selected');
+    let addressData = null;
+    
+    if (selectedAddressItem) {
+        const addressId = parseInt(selectedAddressItem.dataset.addressId);
+        addressData = savedAddresses.find(a => a.id === addressId);
+    } else {
+        // Проверка формы нового адреса
+        const city = document.getElementById('orderAddressCity').value.trim();
+        const street = document.getElementById('orderAddressStreet').value.trim();
+        
+        let hasErrors = false;
+        if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
+            validateField(document.getElementById('orderAddressCity'), false);
+            if (orderAddressError) orderAddressError.style.display = 'block';
+            hasErrors = true;
+        }
+        if (!street) {
+            validateField(document.getElementById('orderAddressStreet'), false);
+            hasErrors = true;
+        }
+        
+        if (hasErrors) return;
+        
+        addressData = {
+            name: document.getElementById('orderAddressName').value.trim() || 'Новый адрес',
+            city: city,
+            street: street,
+            entrance: document.getElementById('orderAddressEntrance').value.trim(),
+            apartment: document.getElementById('orderAddressApartment').value.trim(),
+            floor: document.getElementById('orderAddressFloor').value.trim(),
+            intercom: document.getElementById('orderAddressIntercom').value.trim(),
+            comment: document.getElementById('orderAddressComment').value.trim()
+        };
+    }
+    
+    // Формирование строки адреса
+    const addressString = `${addressData.city}, ${addressData.street}${addressData.apartment ? ', ' + addressData.apartment : ''}${addressData.entrance ? ', парадная ' + addressData.entrance : ''}${addressData.floor ? ', этаж ' + addressData.floor : ''}${addressData.intercom ? ', домофон ' + addressData.intercom : ''}`;
     
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
@@ -489,7 +539,8 @@ orderForm.addEventListener('submit', async (e) => {
         bonusUsed: bonusUsed,
         name: name,
         phone: phone,
-        address: address,
+        address: addressString,
+        addressData: addressData,
         comment: comment,
         userId: tg.initDataUnsafe?.user?.id || null,
         username: tg.initDataUnsafe?.user?.username || null
@@ -636,32 +687,151 @@ closeBonusesModal.addEventListener('click', () => {
     tg.BackButton.hide();
 });
 
+// Валидация поля
+function validateField(field, isValid) {
+    if (isValid) {
+        field.classList.remove('error');
+        const label = field.closest('.form-group')?.querySelector('label');
+        if (label) label.classList.remove('error-label');
+    } else {
+        field.classList.add('error');
+        const label = field.closest('.form-group')?.querySelector('label');
+        if (label) label.classList.add('error-label');
+    }
+}
+
 // Обработка формы адреса
 addressForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const city = addressCity.value.trim();
     
-    if (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
-        addressError.style.display = 'block';
-        return;
-    }
-    
+    // Сброс всех ошибок
+    document.querySelectorAll('.form-group input, .form-group textarea').forEach(field => {
+        validateField(field, true);
+    });
     addressError.style.display = 'none';
     
-    // Сохранение адреса (здесь можно добавить отправку на сервер)
+    let hasErrors = false;
+    const city = addressCity.value.trim();
+    const street = document.getElementById('addressStreet').value.trim();
+    const name = document.getElementById('addressName').value.trim();
+    
+    // Валидация города
+    if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
+        validateField(addressCity, false);
+        addressError.style.display = 'block';
+        hasErrors = true;
+    }
+    
+    // Валидация наименования
+    if (!name) {
+        validateField(document.getElementById('addressName'), false);
+        hasErrors = true;
+    }
+    
+    // Валидация улицы
+    if (!street) {
+        validateField(document.getElementById('addressStreet'), false);
+        hasErrors = true;
+    }
+    
+    if (hasErrors) return;
+    
+    // Сохранение адреса
     const address = {
-        city: addressCity.value,
-        street: document.getElementById('addressStreet').value,
-        entrance: document.getElementById('addressEntrance').value,
-        floor: document.getElementById('addressFloor').value,
-        apartment: document.getElementById('addressApartment').value
+        id: Date.now(),
+        name: name,
+        city: city,
+        street: street,
+        entrance: document.getElementById('addressEntrance').value.trim(),
+        apartment: document.getElementById('addressApartment').value.trim(),
+        floor: document.getElementById('addressFloor').value.trim(),
+        intercom: document.getElementById('addressIntercom').value.trim(),
+        comment: document.getElementById('addressComment').value.trim()
     };
     
-    console.log('Адрес сохранен:', address);
-    alert('Адрес успешно сохранен!');
+    savedAddresses.push(address);
+    localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+    
     addressForm.reset();
     closeAddressModal.click();
+    loadSavedAddresses();
+    tg.HapticFeedback.notificationOccurred('success');
 });
+
+// Загрузка сохраненных адресов
+function loadSavedAddresses() {
+    const stored = localStorage.getItem('savedAddresses');
+    if (stored) {
+        savedAddresses = JSON.parse(stored);
+    }
+    
+    // Отображение в профиле
+    const addressesList = document.getElementById('deliveryAddressesList');
+    if (addressesList) {
+        if (savedAddresses.length === 0) {
+            addressesList.innerHTML = '<p class="no-addresses">Адреса не добавлены</p>';
+        } else {
+            addressesList.innerHTML = savedAddresses.map(addr => `
+                <div class="address-item">
+                    <div class="address-item-name">${addr.name}</div>
+                    <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
+                </div>
+            `).join('');
+        }
+    }
+    
+    // Отображение в форме заказа
+    const savedAddressesSection = document.getElementById('savedAddressesSection');
+    const savedAddressesList = document.getElementById('savedAddressesList');
+    const newAddressForm = document.getElementById('newAddressForm');
+    const useNewAddressBtn = document.getElementById('useNewAddressBtn');
+    
+    if (savedAddresses.length > 0) {
+        savedAddressesSection.style.display = 'block';
+        newAddressForm.style.display = 'none';
+        
+        savedAddressesList.innerHTML = savedAddresses.map(addr => `
+            <div class="address-item" data-address-id="${addr.id}">
+                <div class="address-item-name">${addr.name}</div>
+                <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
+            </div>
+        `).join('');
+        
+        // Обработка выбора адреса
+        savedAddressesList.querySelectorAll('.address-item').forEach(item => {
+            item.addEventListener('click', () => {
+                savedAddressesList.querySelectorAll('.address-item').forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+                const addressId = parseInt(item.dataset.addressId);
+                const selectedAddress = savedAddresses.find(a => a.id === addressId);
+                // Заполняем скрытые поля формы
+                fillOrderFormWithAddress(selectedAddress);
+            });
+        });
+        
+        if (useNewAddressBtn) {
+            useNewAddressBtn.addEventListener('click', () => {
+                savedAddressesSection.style.display = 'none';
+                newAddressForm.style.display = 'block';
+            });
+        }
+    } else {
+        if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+        if (newAddressForm) newAddressForm.style.display = 'block';
+    }
+}
+
+// Заполнение формы заказа адресом
+function fillOrderFormWithAddress(address) {
+    document.getElementById('orderAddressName').value = address.name || '';
+    document.getElementById('orderAddressCity').value = address.city || '';
+    document.getElementById('orderAddressStreet').value = address.street || '';
+    document.getElementById('orderAddressEntrance').value = address.entrance || '';
+    document.getElementById('orderAddressApartment').value = address.apartment || '';
+    document.getElementById('orderAddressFloor').value = address.floor || '';
+    document.getElementById('orderAddressIntercom').value = address.intercom || '';
+    document.getElementById('orderAddressComment').value = address.comment || '';
+}
 
 // Загрузка истории заказов
 function loadOrderHistory() {
@@ -686,6 +856,7 @@ function loadOrderHistory() {
 // Инициализация при загрузке
 loadProducts();
 loadProfile();
+loadSavedAddresses();
 
 // Экспорт функций для глобального доступа
 window.addToCart = addToCart;
