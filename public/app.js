@@ -3,6 +3,27 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
+// Поиск логотипа в разных форматах
+let logoFormats = ['logo.jpg', 'logo.png', 'logo.svg', 'logo.jpeg'];
+let currentLogoIndex = 0;
+
+function tryNextLogoFormat() {
+    const logoImg = document.getElementById('logoImg');
+    const logoFallback = document.getElementById('logoFallback');
+    
+    if (currentLogoIndex < logoFormats.length - 1) {
+        currentLogoIndex++;
+        logoImg.src = logoFormats[currentLogoIndex];
+    } else {
+        // Если ни один формат не найден, показываем fallback
+        logoImg.style.display = 'none';
+        logoFallback.style.display = 'block';
+    }
+}
+
+// Экспорт для использования в onerror
+window.tryNextLogoFormat = tryNextLogoFormat;
+
 // Состояние приложения
 let products = [];
 let cart = [];
