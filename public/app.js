@@ -433,6 +433,22 @@ checkoutBtnFinal.addEventListener('click', () => {
     // Загрузка адресов
     loadSavedAddresses();
     
+    // Установка минимальной даты (завтра)
+    const deliveryDateInput = document.getElementById('deliveryDate');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    deliveryDateInput.min = tomorrow.toISOString().split('T')[0];
+    deliveryDateInput.value = tomorrow.toISOString().split('T')[0];
+    
+    // Обработка выбора времени доставки
+    document.querySelectorAll('.time-slot-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
+        });
+    });
+    
     // Заполнение формы
     const summaryItems = document.getElementById('summaryItems');
     const summaryTotal = document.getElementById('summaryTotal');
@@ -480,7 +496,17 @@ orderForm.addEventListener('submit', async (e) => {
     
     const name = document.getElementById('customerName').value;
     const phone = document.getElementById('customerPhone').value;
+    const email = document.getElementById('customerEmail').value;
     const comment = document.getElementById('orderComment').value;
+    const deliveryDate = document.getElementById('deliveryDate').value;
+    const selectedTimeSlot = document.querySelector('.time-slot-btn.active');
+    const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : null;
+    
+    // Проверка времени доставки
+    if (!deliveryTime) {
+        alert('Пожалуйста, выберите время доставки');
+        return;
+    }
     
     // Проверка выбранного адреса
     const selectedAddressItem = document.querySelector('.saved-addresses-list .address-item.selected');
@@ -539,8 +565,11 @@ orderForm.addEventListener('submit', async (e) => {
         bonusUsed: bonusUsed,
         name: name,
         phone: phone,
+        email: email,
         address: addressString,
         addressData: addressData,
+        deliveryDate: deliveryDate,
+        deliveryTime: deliveryTime,
         comment: comment,
         userId: tg.initDataUnsafe?.user?.id || null,
         username: tg.initDataUnsafe?.user?.username || null
@@ -700,6 +729,42 @@ function validateField(field, isValid) {
     }
 }
 
+// Редактирование адреса
+function editAddress(addressId) {
+    const address = savedAddresses.find(a => a.id === addressId);
+    if (!address) return;
+    
+    editingAddressId = addressId;
+    document.getElementById('addressModalTitle').textContent = 'Редактировать адрес';
+    document.getElementById('deleteAddressBtn').style.display = 'block';
+    
+    // Заполнение формы
+    document.getElementById('addressName').value = address.name || '';
+    document.getElementById('addressCity').value = address.city || '';
+    document.getElementById('addressStreet').value = address.street || '';
+    document.getElementById('addressEntrance').value = address.entrance || '';
+    document.getElementById('addressApartment').value = address.apartment || '';
+    document.getElementById('addressFloor').value = address.floor || '';
+    document.getElementById('addressIntercom').value = address.intercom || '';
+    document.getElementById('addressComment').value = address.comment || '';
+    
+    addressModal.style.display = 'flex';
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        closeAddressModal.click();
+    });
+}
+
+// Удаление адреса
+function deleteAddress(addressId) {
+    if (confirm('Вы уверены, что хотите удалить этот адрес?')) {
+        savedAddresses = savedAddresses.filter(a => a.id !== addressId);
+        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        loadSavedAddresses();
+        tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
 // Обработка формы адреса
 addressForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -736,9 +801,8 @@ addressForm.addEventListener('submit', (e) => {
     
     if (hasErrors) return;
     
-    // Сохранение адреса
     const address = {
-        id: Date.now(),
+        id: editingAddressId || Date.now(),
         name: name,
         city: city,
         street: street,
@@ -749,14 +813,53 @@ addressForm.addEventListener('submit', (e) => {
         comment: document.getElementById('addressComment').value.trim()
     };
     
-    savedAddresses.push(address);
+    if (editingAddressId) {
+        // Обновление существующего адреса
+        const index = savedAddresses.findIndex(a => a.id === editingAddressId);
+        if (index !== -1) {
+            savedAddresses[index] = address;
+        }
+        editingAddressId = null;
+    } else {
+        // Добавление нового адреса
+        savedAddresses.push(address);
+    }
+    
     localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
     
     addressForm.reset();
+    document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
+    document.getElementById('deleteAddressBtn').style.display = 'none';
     closeAddressModal.click();
     loadSavedAddresses();
     tg.HapticFeedback.notificationOccurred('success');
 });
+
+// Обработка удаления адреса
+document.getElementById('deleteAddressBtn').addEventListener('click', () => {
+    if (editingAddressId && confirm('Вы уверены, что хотите удалить этот адрес?')) {
+        savedAddresses = savedAddresses.filter(a => a.id !== editingAddressId);
+        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        addressForm.reset();
+        editingAddressId = null;
+        document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
+        document.getElementById('deleteAddressBtn').style.display = 'none';
+        closeAddressModal.click();
+        loadSavedAddresses();
+        tg.HapticFeedback.impactOccurred('light');
+    }
+});
+
+// Сброс формы при открытии для нового адреса
+addressesBtn.addEventListener('click', () => {
+    editingAddressId = null;
+    document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
+    document.getElementById('deleteAddressBtn').style.display = 'none';
+    addressForm.reset();
+});
+
+// Текущий редактируемый адрес
+let editingAddressId = null;
 
 // Загрузка сохраненных адресов
 function loadSavedAddresses() {
@@ -775,6 +878,10 @@ function loadSavedAddresses() {
                 <div class="address-item">
                     <div class="address-item-name">${addr.name}</div>
                     <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
+                    <div class="address-item-actions">
+                        <button class="address-edit-btn" onclick="editAddress(${addr.id})">Изменить</button>
+                        <button class="address-delete-btn" onclick="deleteAddress(${addr.id})">Удалить</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -864,3 +971,5 @@ window.removeFromCart = removeFromCart;
 window.changeQuantity = changeQuantity;
 window.changeProductQuantity = changeProductQuantity;
 window.switchTab = switchTab;
+window.editAddress = editAddress;
+window.deleteAddress = deleteAddress;

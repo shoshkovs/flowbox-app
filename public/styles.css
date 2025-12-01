@@ -23,7 +23,7 @@
 }
 
 :root {
-    --primary-color: #f2aac3;
+    --primary-color: #d95d83;
     --secondary-color: #d95d83;
     --bg-color: #ffffff;
     --text-color: #333333;
@@ -286,9 +286,7 @@ h1, h2, h3, .font-bold {
     left: 0;
     right: 0;
     padding: 12px 20px;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     z-index: 999;
-    background: transparent;
 }
 
 .go-to-cart-btn-full {
@@ -305,6 +303,16 @@ h1, h2, h3, .font-bold {
     justify-content: center;
     align-items: center;
     gap: 8px;
+    transition: transform 0.2s;
+    box-shadow: 0 4px 12px rgba(217, 93, 131, 0.3);
+}
+
+.go-to-cart-btn-full:hover {
+    transform: scale(1.02);
+}
+
+.go-to-cart-btn-full:active {
+    transform: scale(0.98);
 }
 
 .go-to-cart-btn-full span {
@@ -1351,6 +1359,97 @@ h1, h2, h3, .font-bold {
 .address-item.selected {
     border-color: var(--primary-color);
     background: #fff5f8;
+}
+
+.address-item-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.address-edit-btn,
+.address-delete-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.address-edit-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.address-delete-btn {
+    background: #f44336;
+    color: white;
+}
+
+.address-edit-btn:active,
+.address-delete-btn:active {
+    transform: scale(0.95);
+}
+
+/* Время доставки */
+.delivery-time-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.time-slot-btn {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.time-slot-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.time-slot-btn.active {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: white;
+}
+
+.address-form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.delete-address-btn {
+    padding: 12px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.add-address-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px dashed var(--primary-color);
+    background: white;
+    color: var(--primary-color);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
 }
 
 .address-item-name {

@@ -171,11 +171,7 @@
                         <div class="delivery-addresses-list" id="deliveryAddressesList">
                             <p class="no-addresses">Адреса не добавлены</p>
                         </div>
-                        <button class="profile-menu-btn" id="addressesBtn">
-                            <span class="menu-btn-icon">➕</span>
-                            <span class="menu-btn-text">Добавить новый адрес</span>
-                            <span class="menu-btn-arrow">›</span>
-                        </button>
+                        <button class="add-address-btn" id="addressesBtn">+ Добавить новый адрес</button>
                     </div>
                     
                     <!-- Кнопки меню -->
@@ -203,49 +199,44 @@
             <div class="modal-overlay" id="addressModal" style="display: none;">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3>Добавить адрес</h3>
+                        <h3 id="addressModalTitle">Добавить адрес</h3>
                         <button class="modal-close" id="closeAddressModal">✕</button>
                     </div>
                     <form class="address-form" id="addressForm">
                         <div class="form-group">
-                            <label>Наименование адреса</label>
-                            <input type="text" id="addressName" required placeholder="Мой дом">
+                            <input type="text" id="addressName" required placeholder="Наименование адреса (Мой дом)">
                         </div>
                         <div class="form-group">
-                            <label>Город</label>
-                            <input type="text" id="addressCity" required placeholder="Санкт-Петербург" list="cities">
+                            <input type="text" id="addressCity" required placeholder="Город (Санкт-Петербург)" list="cities">
                             <datalist id="cities">
                                 <option value="Санкт-Петербург">
                             </datalist>
                         </div>
                         <div class="form-group">
-                            <label>Улица, дом</label>
-                            <input type="text" id="addressStreet" required placeholder="Невский проспект, д. 1">
+                            <input type="text" id="addressStreet" required placeholder="Улица, дом">
                         </div>
                         <div class="form-group">
-                            <label>Парадная</label>
                             <input type="text" id="addressEntrance" placeholder="Парадная">
                         </div>
                         <div class="form-group">
-                            <label>Квартира/офис</label>
                             <input type="text" id="addressApartment" placeholder="Квартира/офис">
                         </div>
                         <div class="form-group">
-                            <label>Этаж</label>
                             <input type="text" id="addressFloor" placeholder="Этаж" inputmode="numeric" pattern="[0-9]*">
                         </div>
                         <div class="form-group">
-                            <label>Домофон</label>
                             <input type="text" id="addressIntercom" placeholder="Домофон">
                         </div>
                         <div class="form-group">
-                            <label>Комментарий <span class="optional-label">(Необязательно: уточнение к адресу)</span></label>
-                            <textarea id="addressComment" placeholder="Уточнение к адресу"></textarea>
+                            <textarea id="addressComment" placeholder="Комментарий (Необязательно: уточнение к адресу)"></textarea>
                         </div>
                         <div class="address-error" id="addressError" style="display: none;">
                             Извините, мы пока не доставляем в этот город
                         </div>
-                        <button type="submit" class="submit-address-btn">Сохранить адрес</button>
+                        <div class="address-form-actions">
+                            <button type="submit" class="submit-address-btn" id="saveAddressBtn">Сохранить адрес</button>
+                            <button type="button" class="delete-address-btn" id="deleteAddressBtn" style="display: none;">Удалить адрес</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -417,6 +408,10 @@
                         <label>Телефон</label>
                         <input type="tel" id="customerPhone" required placeholder="+7 (999) 123-45-67">
                     </div>
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" id="customerEmail" required placeholder="example@mail.com">
+                    </div>
                     
                     <!-- Сохраненные адреса -->
                     <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
@@ -428,42 +423,53 @@
                     <!-- Форма нового адреса -->
                     <div class="new-address-form" id="newAddressForm">
                         <div class="form-group">
-                            <label>Наименование адреса</label>
-                            <input type="text" id="orderAddressName" placeholder="Мой дом">
+                            <input type="text" id="orderAddressName" placeholder="Наименование адреса (Мой дом)">
                         </div>
                         <div class="form-group">
-                            <label>Город</label>
-                            <input type="text" id="orderAddressCity" required placeholder="Санкт-Петербург" list="orderCities">
+                            <input type="text" id="orderAddressCity" required placeholder="Город (Санкт-Петербург)" list="orderCities">
                             <datalist id="orderCities">
                                 <option value="Санкт-Петербург">
                             </datalist>
                         </div>
                         <div class="form-group">
-                            <label>Улица, дом</label>
-                            <input type="text" id="orderAddressStreet" required placeholder="Невский проспект, д. 1">
+                            <input type="text" id="orderAddressStreet" required placeholder="Улица, дом">
                         </div>
                         <div class="form-group">
-                            <label>Парадная</label>
                             <input type="text" id="orderAddressEntrance" placeholder="Парадная">
                         </div>
                         <div class="form-group">
-                            <label>Квартира/офис</label>
                             <input type="text" id="orderAddressApartment" placeholder="Квартира/офис">
                         </div>
                         <div class="form-group">
-                            <label>Этаж</label>
                             <input type="text" id="orderAddressFloor" placeholder="Этаж" inputmode="numeric" pattern="[0-9]*">
                         </div>
                         <div class="form-group">
-                            <label>Домофон</label>
                             <input type="text" id="orderAddressIntercom" placeholder="Домофон">
                         </div>
                         <div class="form-group">
-                            <label>Комментарий <span class="optional-label">(Необязательно: уточнение к адресу)</span></label>
-                            <textarea id="orderAddressComment" placeholder="Уточнение к адресу"></textarea>
+                            <textarea id="orderAddressComment" placeholder="Комментарий (Необязательно: уточнение к адресу)"></textarea>
                         </div>
                         <div class="address-error" id="orderAddressError" style="display: none;">
                             Извините, мы пока не доставляем в этот город
+                        </div>
+                    </div>
+                    
+                    <!-- Дата доставки -->
+                    <div class="form-group">
+                        <label>Дата доставки</label>
+                        <input type="date" id="deliveryDate" required min="">
+                    </div>
+                    
+                    <!-- Время доставки -->
+                    <div class="form-group">
+                        <label>Время доставки</label>
+                        <div class="delivery-time-options" id="deliveryTimeOptions">
+                            <button type="button" class="time-slot-btn" data-time="10-12">10:00 - 12:00</button>
+                            <button type="button" class="time-slot-btn" data-time="12-14">12:00 - 14:00</button>
+                            <button type="button" class="time-slot-btn" data-time="14-16">14:00 - 16:00</button>
+                            <button type="button" class="time-slot-btn" data-time="16-18">16:00 - 18:00</button>
+                            <button type="button" class="time-slot-btn" data-time="18-20">18:00 - 20:00</button>
+                            <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
                         </div>
                     </div>
                     
