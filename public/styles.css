@@ -603,6 +603,16 @@ h1, h2, h3, .font-bold {
 
 .summary-total-amount {
     color: var(--text-color) !important;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+}
+
+.no-time-slots {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 14px;
 }
 
 .form-section-label {
