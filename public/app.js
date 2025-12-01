@@ -29,7 +29,7 @@ let products = [];
 let cart = [];
 let filteredProducts = [];
 let activeFilters = {
-    type: [],
+    type: ['all'], // По умолчанию выбран "Все"
     color: [],
     feature: []
 };
@@ -146,16 +146,20 @@ filterButtons.forEach(btn => {
                 btn.classList.add('active');
             }
         } else {
-            // Для маленьких фильтров (color, feature) - только один выбор
+            // Для маленьких фильтров (color, feature) - только один выбор среди всех маленьких фильтров
             if (btn.classList.contains('active')) {
                 // Отмена фильтра
                 btn.classList.remove('active');
-                activeFilters[category] = [];
+                activeFilters.color = [];
+                activeFilters.feature = [];
             } else {
-                // Снимаем все активные фильтры этой категории
-                document.querySelectorAll(`.filter-btn[data-category="${category}"]`).forEach(b => {
+                // Снимаем все активные маленькие фильтры (и color, и feature)
+                document.querySelectorAll(`.filter-btn[data-category="color"], .filter-btn[data-category="feature"]`).forEach(b => {
                     b.classList.remove('active');
                 });
+                // Очищаем оба массива
+                activeFilters.color = [];
+                activeFilters.feature = [];
                 // Активация нового фильтра
                 btn.classList.add('active');
                 activeFilters[category] = [filter];
@@ -561,29 +565,55 @@ orderForm.addEventListener('submit', async (e) => {
     }
     
     // Проверка выбранного адреса
-    const selectedAddressItem = document.querySelector('.saved-addresses-list .address-item.selected');
+    const selectedRadio = document.querySelector('.address-radio-input:checked');
     let addressData = null;
+    let hasAddressErrors = false;
     
-    if (selectedAddressItem) {
-        const addressId = parseInt(selectedAddressItem.dataset.addressId);
+    if (selectedRadio) {
+        const addressId = parseInt(selectedRadio.value);
         addressData = savedAddresses.find(a => a.id === addressId);
     } else {
         // Проверка формы нового адреса
         const city = document.getElementById('orderAddressCity').value.trim();
         const street = document.getElementById('orderAddressStreet').value.trim();
         
-        let hasErrors = false;
+        // Валидация обязательных полей
         if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
             validateField(document.getElementById('orderAddressCity'), false);
             if (orderAddressError) orderAddressError.style.display = 'block';
-            hasErrors = true;
+            hasAddressErrors = true;
         }
         if (!street) {
             validateField(document.getElementById('orderAddressStreet'), false);
-            hasErrors = true;
+            hasAddressErrors = true;
         }
         
-        if (hasErrors) return;
+        // Валидация имени и телефона
+        if (!name) {
+            validateField(document.getElementById('customerName'), false);
+            hasAddressErrors = true;
+        }
+        if (!phone) {
+            validateField(document.getElementById('customerPhone'), false);
+            hasAddressErrors = true;
+        }
+        if (!email) {
+            validateField(document.getElementById('customerEmail'), false);
+            hasAddressErrors = true;
+        }
+        if (!deliveryDate) {
+            validateField(document.getElementById('deliveryDate'), false);
+            hasAddressErrors = true;
+        }
+        
+        if (hasAddressErrors) {
+            // Прокрутка к первому полю с ошибкой
+            const firstError = document.querySelector('#newAddressForm .error, #orderForm .error');
+            if (firstError) {
+                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
         
         addressData = {
             name: document.getElementById('orderAddressName').value.trim() || 'Новый адрес',
@@ -595,6 +625,12 @@ orderForm.addEventListener('submit', async (e) => {
             intercom: document.getElementById('orderAddressIntercom').value.trim(),
             comment: document.getElementById('orderAddressComment').value.trim()
         };
+    }
+    
+    // Если не выбран адрес и форма скрыта - показываем ошибку
+    if (!selectedRadio && savedAddresses.length > 0 && savedAddressesSection.style.display !== 'none') {
+        alert('Пожалуйста, выберите адрес доставки');
+        return;
     }
     
     // Формирование строки адреса
@@ -943,7 +979,7 @@ function loadSavedAddresses() {
                         <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
                     </div>
                     <button class="address-edit-icon-btn" onclick="editAddress(${addr.id})" title="Изменить">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
@@ -964,23 +1000,28 @@ function loadSavedAddresses() {
         newAddressForm.style.display = 'none';
         
         savedAddressesList.innerHTML = savedAddresses.map(addr => `
-            <div class="address-item" data-address-id="${addr.id}">
-                <div class="address-item-name">${addr.name}</div>
-                <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
-            </div>
+            <label class="address-item-radio">
+                <input type="radio" name="selectedAddress" value="${addr.id}" class="address-radio-input">
+                <div class="address-item" data-address-id="${addr.id}">
+                    <div class="address-item-content">
+                        <div class="address-item-name">${addr.name}</div>
+                        <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
+                    </div>
+                </div>
+            </label>
         `).join('');
         
         // Обработка выбора адреса
-        savedAddressesList.querySelectorAll('.address-item').forEach(item => {
-            item.addEventListener('click', () => {
-                savedAddressesList.querySelectorAll('.address-item').forEach(i => i.classList.remove('selected'));
-                item.classList.add('selected');
-                const addressId = parseInt(item.dataset.addressId);
-                const selectedAddress = savedAddresses.find(a => a.id === addressId);
-                // Показываем форму и заполняем её
-                savedAddressesSection.style.display = 'none';
-                newAddressForm.style.display = 'block';
-                fillOrderFormWithAddress(selectedAddress);
+        savedAddressesList.querySelectorAll('.address-radio-input').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) {
+                    const addressId = parseInt(radio.value);
+                    const selectedAddress = savedAddresses.find(a => a.id === addressId);
+                    // Показываем форму и заполняем её
+                    savedAddressesSection.style.display = 'none';
+                    newAddressForm.style.display = 'block';
+                    fillOrderFormWithAddress(selectedAddress);
+                }
             });
         });
         
@@ -1145,12 +1186,23 @@ profileEditForm.addEventListener('submit', (e) => {
     tg.HapticFeedback.notificationOccurred('success');
 });
 
+// Инициализация фильтров
+function initFilters() {
+    // Активируем кнопку "Все" по умолчанию
+    const allBtn = document.querySelector('.filter-btn[data-filter="all"][data-category="type"]');
+    if (allBtn) {
+        allBtn.classList.add('active');
+    }
+    applyFilters();
+}
+
 // Инициализация при загрузке
 loadProducts();
 loadCart(); // Загружаем корзину из localStorage
 loadProfile();
 loadSavedAddresses();
 loadActiveOrders();
+initFilters(); // Инициализируем фильтры
 
 // Экспорт функций для глобального доступа
 window.addToCart = addToCart;

@@ -118,11 +118,12 @@
                         <!-- Итого -->
                         <div class="cart-final-total">
                             <div class="final-total-service-fee">
-                                <span class="service-fee-text">Сервисный сбор</span>
+                                <span class="service-fee-label">Сервисный сбор:</span>
+                                <span class="service-fee-amount">450 ₽</span>
                             </div>
                             <div class="final-total-row">
                                 <span>Итого:</span>
-                                <span class="final-total-amount" id="finalTotalAmount">0</span> ₽
+                                <span class="final-total-amount" id="finalTotalAmount">0<span class="ruble-sign">₽</span></span>
                             </div>
                             <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
                         </div>
@@ -256,7 +257,7 @@
                             <input type="text" id="addressApartment" placeholder="Квартира/офис">
                         </div>
                         <div class="form-group">
-                            <input type="text" id="addressFloor" placeholder="Этаж" inputmode="numeric" pattern="[0-9]*">
+                            <input type="text" id="addressFloor" placeholder="Этаж">
                         </div>
                         <div class="form-group">
                             <input type="text" id="addressIntercom" placeholder="Домофон">
@@ -456,7 +457,7 @@
                             <input type="text" id="orderAddressApartment" placeholder="Квартира/офис">
                         </div>
                         <div class="form-group">
-                            <input type="text" id="orderAddressFloor" placeholder="Этаж" inputmode="numeric" pattern="[0-9]*">
+                            <input type="text" id="orderAddressFloor" placeholder="Этаж">
                         </div>
                         <div class="form-group">
                             <input type="text" id="orderAddressIntercom" placeholder="Домофон">

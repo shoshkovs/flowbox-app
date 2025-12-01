@@ -1034,10 +1034,18 @@ h1, h2, h3, .font-bold {
 }
 
 .final-total-service-fee {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 8px;
 }
 
-.service-fee-text {
+.service-fee-label {
+    font-size: 14px;
+    color: #999;
+}
+
+.service-fee-amount {
     font-size: 14px;
     color: #999;
 }
@@ -1053,6 +1061,47 @@ h1, h2, h3, .font-bold {
 
 .final-total-amount {
     color: var(--text-color);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+}
+
+.ruble-sign {
+    margin-left: 2px;
+}
+
+/* Радио-кнопки для адресов */
+.address-item-radio {
+    display: block;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.address-radio-input {
+    display: none;
+}
+
+.address-radio-input:checked + .address-item {
+    border-color: var(--primary-color);
+    background: #fff5f8;
+}
+
+.address-radio-input:checked + .address-item::before {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--primary-color);
+    border-radius: 50%;
+    background: var(--primary-color);
+    box-shadow: inset 0 0 0 4px white;
+}
+
+.address-item-radio .address-item {
+    position: relative;
 }
 
 .checkout-btn-final {
