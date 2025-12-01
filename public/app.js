@@ -39,6 +39,8 @@ let serviceFee = 450;
 let bonusUsed = 0;
 let accumulatedBonuses = 500;
 let savedAddresses = []; // Сохраненные адреса
+let userActiveOrders = []; // Активные заказы
+let userCompletedOrders = []; // Завершенные заказы
 
 // Элементы DOM
 const productsContainer = document.getElementById('productsContainer');
@@ -61,7 +63,7 @@ const profileName = document.getElementById('profileName');
 const profileInitial = document.getElementById('profileInitial');
 const profileAvatarImg = document.getElementById('profileAvatarImg');
 const profileAvatarFallback = document.getElementById('profileAvatarFallback');
-const activeOrders = document.getElementById('activeOrders');
+const activeOrdersElement = document.getElementById('activeOrders');
 
 // Навигация
 const navItems = document.querySelectorAll('.nav-item');
@@ -589,6 +591,35 @@ orderForm.addEventListener('submit', async (e) => {
         if (result.success) {
             tg.sendData(JSON.stringify(orderData));
             
+            // Сохранение заказа в активные
+            const order = {
+                id: result.orderId || Date.now(),
+                date: new Date().toLocaleDateString('ru-RU'),
+                items: orderData.items,
+                total: orderData.total,
+                address: orderData.address,
+                deliveryDate: orderData.deliveryDate,
+                deliveryTime: orderData.deliveryTime,
+                status: 'active',
+                createdAt: new Date().toISOString()
+            };
+            
+            userActiveOrders.push(order);
+            localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+            
+            // Через 5 секунд переместить в завершенные (заглушка)
+            setTimeout(() => {
+                const orderIndex = userActiveOrders.findIndex(o => o.id === order.id);
+                if (orderIndex !== -1) {
+                    userActiveOrders.splice(orderIndex, 1);
+                    order.status = 'completed';
+                    userCompletedOrders.push(order);
+                    localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+                    localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
+                    loadActiveOrders();
+                }
+            }, 5000);
+            
             orderOverlay.classList.remove('active');
             successOverlay.classList.add('active');
             tg.BackButton.hide();
@@ -597,6 +628,9 @@ orderForm.addEventListener('submit', async (e) => {
             cart = [];
             updateCartUI();
             orderForm.reset();
+            
+            // Обновление активных заказов
+            loadActiveOrders();
             
             switchTab('menuTab');
             
@@ -636,6 +670,11 @@ function loadProfile() {
             profileAvatarFallback.style.display = 'none';
         }
     }
+    
+    // Обновление бонусов внизу профиля
+    if (profileBonusesAmount) {
+        profileBonusesAmount.textContent = accumulatedBonuses;
+    }
 }
 
 // Модальные окна профиля
@@ -655,10 +694,7 @@ const supportModal = document.getElementById('supportModal');
 const closeSupportModal = document.getElementById('closeSupportModal');
 const supportBtn = document.getElementById('supportBtn');
 
-const bonusesModal = document.getElementById('bonusesModal');
-const modalBonusesAmount = document.getElementById('modalBonusesAmount');
-const closeBonusesModal = document.getElementById('closeBonusesModal');
-const bonusesBtn = document.getElementById('bonusesBtn');
+const profileBonusesAmount = document.getElementById('profileBonusesAmount');
 
 // Открытие модальных окон
 addressesBtn.addEventListener('click', () => {
@@ -686,15 +722,6 @@ supportBtn.addEventListener('click', () => {
     });
 });
 
-bonusesBtn.addEventListener('click', () => {
-    bonusesModal.style.display = 'flex';
-    modalBonusesAmount.textContent = accumulatedBonuses;
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        closeBonusesModal.click();
-    });
-});
-
 // Закрытие модальных окон
 closeAddressModal.addEventListener('click', () => {
     addressModal.style.display = 'none';
@@ -708,11 +735,6 @@ closeOrderHistoryModal.addEventListener('click', () => {
 
 closeSupportModal.addEventListener('click', () => {
     supportModal.style.display = 'none';
-    tg.BackButton.hide();
-});
-
-closeBonusesModal.addEventListener('click', () => {
-    bonusesModal.style.display = 'none';
     tg.BackButton.hide();
 });
 
@@ -876,12 +898,16 @@ function loadSavedAddresses() {
         } else {
             addressesList.innerHTML = savedAddresses.map(addr => `
                 <div class="address-item">
-                    <div class="address-item-name">${addr.name}</div>
-                    <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
-                    <div class="address-item-actions">
-                        <button class="address-edit-btn" onclick="editAddress(${addr.id})">Изменить</button>
-                        <button class="address-delete-btn" onclick="deleteAddress(${addr.id})">Удалить</button>
+                    <div class="address-item-content">
+                        <div class="address-item-name">${addr.name}</div>
+                        <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
                     </div>
+                    <button class="address-edit-icon-btn" onclick="editAddress(${addr.id})" title="Изменить">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
                 </div>
             `).join('');
         }
@@ -940,21 +966,56 @@ function fillOrderFormWithAddress(address) {
     document.getElementById('orderAddressComment').value = address.comment || '';
 }
 
+// Загрузка активных заказов
+function loadActiveOrders() {
+    const storedActive = localStorage.getItem('activeOrders');
+    const storedCompleted = localStorage.getItem('completedOrders');
+    
+    if (storedActive) {
+        userActiveOrders = JSON.parse(storedActive);
+    }
+    if (storedCompleted) {
+        userCompletedOrders = JSON.parse(storedCompleted);
+    }
+    
+    if (activeOrdersElement) {
+        if (userActiveOrders.length === 0) {
+            activeOrdersElement.innerHTML = '<p class="no-orders">У вас нет активных заказов</p>';
+        } else {
+            activeOrdersElement.innerHTML = userActiveOrders.map(order => `
+                <div class="order-item">
+                    <div class="order-item-header">
+                        <h4>Заказ #${order.id}</h4>
+                        <span class="order-status active">Активный</span>
+                    </div>
+                    <p class="order-date">Дата: ${order.date}</p>
+                    <p class="order-address">Адрес: ${order.address}</p>
+                    <p class="order-delivery">Доставка: ${order.deliveryDate} ${order.deliveryTime}</p>
+                    <p class="order-total">Сумма: ${order.total} ₽</p>
+                </div>
+            `).join('');
+        }
+    }
+}
+
 // Загрузка истории заказов
 function loadOrderHistory() {
-    // Здесь можно загрузить с сервера
-    const orders = []; // Заглушка
+    const allOrders = [...userActiveOrders, ...userCompletedOrders].sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
     
-    if (orders.length === 0) {
+    if (allOrders.length === 0) {
         orderHistoryList.innerHTML = '<p class="no-orders">Заказов пока нет</p>';
     } else {
-        orderHistoryList.innerHTML = orders.map(order => `
+        orderHistoryList.innerHTML = allOrders.map(order => `
             <div class="order-history-item">
-                <h4>Заказ #${order.id}</h4>
+                <div class="order-item-header">
+                    <h4>Заказ #${order.id}</h4>
+                    <span class="order-status ${order.status}">${order.status === 'completed' ? 'Завершен' : 'Активный'}</span>
+                </div>
                 <p>Дата: ${order.date}</p>
                 <p>Сумма: ${order.total} ₽</p>
-                <span class="order-status ${order.status}">${order.status === 'completed' ? 'Завершен' : 'Ожидает оплаты'}</span>
-                ${order.status === 'pending' ? '<button class="pay-btn">Оплатить</button>' : ''}
+                ${order.status === 'active' ? '<button class="pay-btn">Оплатить</button>' : ''}
             </div>
         `).join('');
     }
@@ -964,6 +1025,7 @@ function loadOrderHistory() {
 loadProducts();
 loadProfile();
 loadSavedAddresses();
+loadActiveOrders();
 
 // Экспорт функций для глобального доступа
 window.addToCart = addToCart;

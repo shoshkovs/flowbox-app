@@ -186,11 +186,17 @@
                             <span class="menu-btn-text">Поддержка</span>
                             <span class="menu-btn-arrow">›</span>
                         </button>
-                        <button class="profile-menu-btn" id="bonusesBtn">
-                            <span class="menu-btn-icon">🎁</span>
-                            <span class="menu-btn-text">Бонусы</span>
-                            <span class="menu-btn-arrow">›</span>
-                        </button>
+                    </div>
+                    
+                    <!-- Бонусы внизу -->
+                    <div class="profile-bonuses-footer">
+                        <div class="bonuses-footer-info">
+                            <span class="bonuses-footer-label">Бонусы:</span>
+                            <span class="bonuses-footer-amount" id="profileBonusesAmount">500</span>
+                        </div>
+                        <div class="bonuses-footer-description">
+                            Баллы начисляются в размере 1% с каждой покупки. 1 балл = 1 рубль
+                        </div>
                     </div>
                 </div>
             </div>
@@ -235,7 +241,7 @@
                         </div>
                         <div class="address-form-actions">
                             <button type="submit" class="submit-address-btn" id="saveAddressBtn">Сохранить адрес</button>
-                            <button type="button" class="delete-address-btn" id="deleteAddressBtn" style="display: none;">Удалить адрес</button>
+                            <button type="button" class="delete-address-btn-outline" id="deleteAddressBtn" style="display: none;">Удалить адрес</button>
                         </div>
                     </form>
                 </div>
@@ -267,26 +273,6 @@
                 </div>
             </div>
             
-            <!-- Модальное окно бонусов -->
-            <div class="modal-overlay" id="bonusesModal" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Бонусы</h3>
-                        <button class="modal-close" id="closeBonusesModal">✕</button>
-                    </div>
-                    <div class="bonuses-content">
-                        <div class="bonuses-amount">
-                            <span class="bonuses-label">На вашем счету:</span>
-                            <span class="bonuses-value" id="modalBonusesAmount">500</span> баллов
-                        </div>
-                        <div class="bonuses-description">
-                            <p>Баллы начисляются в размере 1% с каждой покупки</p>
-                            <p>1 балл = 1 рубль</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Вкладка: О проекте -->
             <div class="tab-content" id="aboutTab">
                 <div class="about-page">
@@ -415,13 +401,14 @@
                     
                     <!-- Сохраненные адреса -->
                     <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
-                        <label>Выберите адрес доставки</label>
+                        <label>Адрес доставки</label>
                         <div class="saved-addresses-list" id="savedAddressesList"></div>
                         <button type="button" class="use-new-address-btn" id="useNewAddressBtn">Использовать новый адрес</button>
                     </div>
                     
                     <!-- Форма нового адреса -->
                     <div class="new-address-form" id="newAddressForm">
+                        <label>Адрес доставки</label>
                         <div class="form-group">
                             <input type="text" id="orderAddressName" placeholder="Наименование адреса (Мой дом)">
                         </div>
@@ -479,15 +466,11 @@
                     </div>
                     <div class="order-summary">
                         <div class="summary-item">
-                            <span>Товаров:</span>
-                            <span id="summaryItems">0</span>
-                        </div>
-                        <div class="summary-item">
                             <span>Сумма:</span>
                             <span id="summaryTotal">0</span> ₽
                         </div>
                     </div>
-                    <button type="submit" class="submit-order-btn">Подтвердить заказ</button>
+                    <button type="submit" class="submit-order-btn">Оплатить</button>
                 </form>
             </div>
         </div>
@@ -496,8 +479,8 @@
         <div class="success-overlay" id="successOverlay">
             <div class="success-panel">
                 <div class="success-icon">✅</div>
-                <h2>Заказ оформлен!</h2>
-                <p>Мы свяжемся с вами в ближайшее время</p>
+                <h2>Спасибо за заказ!</h2>
+                <p>Ваш заказ принят и будет обработан в ближайшее время</p>
                 <button class="back-to-shop-btn" id="backToShop">Вернуться в магазин</button>
             </div>
         </div>
