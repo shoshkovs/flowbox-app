@@ -30,23 +30,20 @@ body {
 
 /* Header */
 .header {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    padding: 20px;
+    background: white;
+    padding: 12px 20px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
     z-index: 100;
 }
 
-.header h1 {
-    font-size: 24px;
-    font-weight: 600;
-    text-align: center;
-    width: 100%;
+.logo {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
 }
 
 /* Main Content */
@@ -66,57 +63,174 @@ body {
     display: block;
 }
 
+/* Фильтры */
+.filters-container {
+    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.filter-row::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-btn {
+    border: none;
+    border-radius: 20px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s;
+    background: white;
+    color: var(--text-color);
+}
+
+.filter-btn-large {
+    border: 1px solid #000;
+    padding: 12px 20px;
+    font-size: 15px;
+}
+
+.filter-btn-large.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.filter-btn-small {
+    border: 1px solid #ccc;
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+.filter-btn-small.active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
 .products-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
-    max-width: 1200px;
-    margin: 0 auto;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 100px;
 }
 
 .product-card {
     background: white;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: var(--shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
-    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
 }
 
-.product-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.product-image-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
 }
 
 .product-image {
     width: 100%;
-    height: 160px;
+    height: 100%;
     object-fit: cover;
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
 }
 
+.delivery-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: white;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
 .product-info {
     padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .product-name {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     color: var(--text-color);
+    line-height: 1.3;
 }
 
-.product-description {
-    font-size: 12px;
-    color: #666;
+.product-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 8px;
 }
 
 .product-price {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
-    color: var(--primary-color);
-    margin-bottom: 8px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.product-price .ruble {
+    font-size: 14px;
+}
+
+.product-quantity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quantity-btn-small {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-color);
+    transition: all 0.2s;
+}
+
+.quantity-btn-small:active {
+    transform: scale(0.9);
+    background: #f5f5f5;
+}
+
+.quantity-btn-small:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.quantity-value {
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+    font-size: 14px;
 }
 
 .add-to-cart-btn {
@@ -130,6 +244,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: background 0.3s;
+    margin-top: auto;
 }
 
 .add-to-cart-btn:hover {
@@ -138,6 +253,46 @@ body {
 
 .add-to-cart-btn:active {
     transform: scale(0.98);
+}
+
+/* Кнопка перейти в корзину */
+.go-to-cart-fixed {
+    position: fixed;
+    bottom: 80px;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 12px 20px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 999;
+}
+
+.go-to-cart-info {
+    flex: 1;
+}
+
+.go-to-cart-total {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.go-to-cart-total span {
+    color: var(--primary-color);
+    font-size: 18px;
+}
+
+.go-to-cart-btn {
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 12px;
 }
 
 .loading {
@@ -572,86 +727,194 @@ body {
 }
 
 /* Страница корзины */
+/* Корзина */
 .cart-page {
-    min-height: calc(100vh - 200px);
-    display: flex;
-    flex-direction: column;
+    padding: 0 20px 100px;
 }
 
-.cart-page-header {
-    padding: 20px;
-    background: white;
+/* Пустая корзина */
+.empty-cart-container {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-cart-text {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 24px;
+}
+
+.go-to-catalog-btn {
+    padding: 14px 32px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
     border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Корзина с товарами */
+.cart-with-items {
+    padding-bottom: 20px;
+}
+
+.cart-items-list {
     margin-bottom: 16px;
-    box-shadow: var(--shadow);
 }
 
-.cart-page-header h2 {
-    font-size: 24px;
-    margin-bottom: 12px;
-}
-
-.cart-total-header {
-    font-size: 20px;
-    font-weight: bold;
-    color: var(--primary-color);
-}
-
-.cart-items-page {
-    flex: 1;
-    padding: 0 20px;
-}
-
-.cart-item-page {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: var(--shadow);
+.cart-item-new {
     display: flex;
     gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
 }
 
-.cart-item-page-image {
-    width: 80px;
-    height: 80px;
+.cart-item-new-image {
+    width: 60px;
+    height: 60px;
     border-radius: 8px;
     object-fit: cover;
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
 }
 
-.cart-item-page-info {
+.cart-item-new-info {
     flex: 1;
 }
 
-.cart-item-page-name {
+.cart-item-new-name {
     font-weight: 600;
+    font-size: 14px;
     margin-bottom: 4px;
-    font-size: 16px;
 }
 
-.cart-item-page-price {
-    color: var(--primary-color);
-    font-weight: 600;
-    font-size: 16px;
+.cart-item-new-price {
+    font-size: 14px;
+    color: #666;
     margin-bottom: 8px;
 }
 
-.cart-item-page-controls {
+.cart-item-new-quantity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Сервисный сбор */
+.cart-service-fee {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+}
+
+.service-fee-amount {
+    font-weight: 600;
+}
+
+/* Доставка */
+.cart-delivery {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+}
+
+.delivery-title {
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.delivery-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.delivery-option {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    text-align: left;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delivery-option.active {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Бонусы */
+.cart-bonuses {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+}
+
+.bonus-header {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.cart-page-footer {
-    padding: 20px;
+.use-bonus-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--primary-color);
     background: white;
-    border-top: 1px solid var(--border-color);
-    position: sticky;
-    bottom: 80px;
+    color: var(--primary-color);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
 }
 
-.checkout-btn-page {
+.use-bonus-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.bonus-slider {
+    flex: 1;
+}
+
+.bonus-amount {
+    min-width: 50px;
+    text-align: right;
+    font-weight: 600;
+}
+
+/* Итого */
+.cart-final-total {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.final-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 16px;
+}
+
+.final-total-amount {
+    color: var(--primary-color);
+}
+
+.checkout-btn-final {
     width: 100%;
     padding: 16px;
     background: var(--primary-color);
@@ -661,52 +924,100 @@ body {
     font-size: 18px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.3s;
+    margin-bottom: 16px;
 }
 
-.checkout-btn-page:hover:not(:disabled) {
-    background: var(--secondary-color);
+.bonus-info {
+    padding-top: 16px;
+    border-top: 1px solid #eee;
 }
 
-.checkout-btn-page:disabled {
-    background: #ccc;
-    cursor: not-allowed;
+.bonus-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.bonus-info-note {
+    font-size: 12px;
+    color: #666;
+    margin-top: 8px;
 }
 
 /* Страница профиля */
 .profile-page {
-    padding: 0;
+    padding: 0 20px 100px;
 }
 
-.profile-header {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    padding: 40px 20px;
-    text-align: center;
-    border-radius: 0 0 24px 24px;
+.profile-header-new {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 0;
+    border-bottom: 1px solid #eee;
     margin-bottom: 20px;
 }
 
-.profile-avatar {
-    width: 80px;
-    height: 80px;
+.profile-avatar-img {
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
+    object-fit: cover;
+}
+
+.profile-avatar-fallback {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary-color);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 16px;
-    font-size: 40px;
-}
-
-.profile-header h2 {
+    color: white;
     font-size: 24px;
-    margin-bottom: 4px;
+    font-weight: 600;
 }
 
-.profile-username {
-    opacity: 0.9;
+.profile-header-new h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.profile-section {
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.active-orders, .delivery-addresses {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+}
+
+.no-orders, .no-addresses {
+    color: #666;
+    text-align: center;
+    padding: 20px;
+}
+
+.add-address-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px dashed var(--primary-color);
+    background: white;
+    color: var(--primary-color);
+    border-radius: 12px;
     font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .profile-menu {

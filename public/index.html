@@ -11,32 +11,132 @@
     <div class="app">
         <!-- Header -->
         <header class="header">
-            <h1>🌸 FlowBox</h1>
+            <img src="logo.png" alt="FlowBox" class="logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <h1 style="display:none;">🌸 FlowBox</h1>
         </header>
 
         <!-- Основной контент -->
         <main class="main-content" id="mainContent">
             <!-- Вкладка: Меню -->
             <div class="tab-content active" id="menuTab">
+                <!-- Фильтры -->
+                <div class="filters-container">
+                    <!-- Первая строка фильтров (большие, розовая заливка при выборе) -->
+                    <div class="filter-row filter-row-large">
+                        <button class="filter-btn filter-btn-large" data-filter="all" data-category="type">Все</button>
+                        <button class="filter-btn filter-btn-large" data-filter="chrysanthemums" data-category="type">Хризантемы</button>
+                        <button class="filter-btn filter-btn-large" data-filter="exotic" data-category="type">Экзотика</button>
+                        <button class="filter-btn filter-btn-large" data-filter="ranunculus" data-category="type">Ранункулюсы</button>
+                        <button class="filter-btn filter-btn-large" data-filter="greenery" data-category="type">Зелень</button>
+                        <button class="filter-btn filter-btn-large" data-filter="carnations" data-category="type">Гвоздики</button>
+                        <button class="filter-btn filter-btn-large" data-filter="conifers" data-category="type">Хвоя</button>
+                        <button class="filter-btn filter-btn-large" data-filter="bush-roses" data-category="type">Кустовые розы</button>
+                        <button class="filter-btn filter-btn-large" data-filter="roses" data-category="type">Розы</button>
+                        <button class="filter-btn filter-btn-large" data-filter="tulips" data-category="type">Тюльпаны</button>
+                    </div>
+                    
+                    <!-- Вторая строка фильтров (цвета, серая обводка) -->
+                    <div class="filter-row filter-row-small">
+                        <button class="filter-btn filter-btn-small" data-filter="pink" data-category="color">Розовые</button>
+                        <button class="filter-btn filter-btn-small" data-filter="white" data-category="color">Белые</button>
+                        <button class="filter-btn filter-btn-small" data-filter="green" data-category="color">Зеленые</button>
+                        <button class="filter-btn filter-btn-small" data-filter="brown" data-category="color">Коричневые</button>
+                        <button class="filter-btn filter-btn-small" data-filter="red" data-category="color">Красные</button>
+                        <button class="filter-btn filter-btn-small" data-filter="purple" data-category="color">Фиолетовые</button>
+                        <button class="filter-btn filter-btn-small" data-filter="orange" data-category="color">Оранжевые</button>
+                    </div>
+                    
+                    <!-- Третья строка фильтров (характеристики, серая обводка) -->
+                    <div class="filter-row filter-row-small">
+                        <button class="filter-btn filter-btn-small" data-filter="aromatic" data-category="feature">Ароматные</button>
+                        <button class="filter-btn filter-btn-small" data-filter="durable" data-category="feature">Стойкие</button>
+                        <button class="filter-btn filter-btn-small" data-filter="tall" data-category="feature">Высокие</button>
+                        <button class="filter-btn filter-btn-small" data-filter="peony" data-category="feature">Пионовидные</button>
+                    </div>
+                </div>
+                
+                <!-- Каталог товаров -->
                 <div class="products-container" id="productsContainer">
                     <div class="loading">Загрузка...</div>
+                </div>
+                
+                <!-- Кнопка перейти в корзину (появляется при добавлении товара) -->
+                <div class="go-to-cart-fixed" id="goToCartFixed" style="display: none;">
+                    <div class="go-to-cart-info">
+                        <span class="go-to-cart-total">Сумма: <span id="fixedCartTotal">0</span> ₽</span>
+                    </div>
+                    <button class="go-to-cart-btn" onclick="switchTab('cartTab')">Перейти в корзину</button>
                 </div>
             </div>
 
             <!-- Вкладка: Корзина -->
             <div class="tab-content" id="cartTab">
                 <div class="cart-page">
-                    <div class="cart-page-header">
-                        <h2>Корзина</h2>
-                        <div class="cart-total-header">
-                            Итого: <span id="cartTotalPage">0</span> ₽
+                    <!-- Пустая корзина -->
+                    <div class="empty-cart-container" id="emptyCartContainer" style="display: none;">
+                        <p class="empty-cart-text">Ваша корзина пуста</p>
+                        <button class="go-to-catalog-btn" onclick="switchTab('menuTab')">Перейти в каталог</button>
+                    </div>
+                    
+                    <!-- Корзина с товарами -->
+                    <div class="cart-with-items" id="cartWithItems" style="display: none;">
+                        <div class="cart-items-list" id="cartItemsList"></div>
+                        
+                        <!-- Сервисный сбор -->
+                        <div class="cart-service-fee">
+                            <span>Сервисный сбор</span>
+                            <span class="service-fee-amount">450 ₽</span>
                         </div>
-                    </div>
-                    <div class="cart-items-page" id="cartItemsPage">
-                        <p class="empty-cart">Корзина пуста</p>
-                    </div>
-                    <div class="cart-page-footer">
-                        <button class="checkout-btn-page" id="checkoutBtnPage" disabled>Оформить заказ</button>
+                        
+                        <!-- Доставка -->
+                        <div class="cart-delivery">
+                            <div class="delivery-title">Доставка</div>
+                            <div class="delivery-options">
+                                <button class="delivery-option" data-delivery="spb-kad" data-price="0">
+                                    Санкт-Петербург в пределах КАД и ниже 500р
+                                </button>
+                                <button class="delivery-option" data-delivery="10km" data-price="900">
+                                    До 10 км от КАД 900₽
+                                </button>
+                                <button class="delivery-option" data-delivery="20km" data-price="1300">
+                                    До 20 км от КАД 1300₽
+                                </button>
+                                <button class="delivery-option active" data-delivery="pickup" data-price="0">
+                                    Самовывоз 0₽
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Бонусы -->
+                        <div class="cart-bonuses">
+                            <div class="bonus-header">
+                                <button class="use-bonus-btn" id="useBonusBtn">Списать бонусы</button>
+                                <input type="range" class="bonus-slider" id="bonusSlider" min="0" max="0" value="0" disabled>
+                                <span class="bonus-amount" id="bonusAmount">0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Итого -->
+                        <div class="cart-final-total">
+                            <div class="final-total-row">
+                                <span>Итого:</span>
+                                <span class="final-total-amount" id="finalTotalAmount">0</span> ₽
+                            </div>
+                            <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
+                            
+                            <!-- Бонусная информация -->
+                            <div class="bonus-info">
+                                <div class="bonus-info-row">
+                                    <span>Накоплено бонусов:</span>
+                                    <span id="accumulatedBonuses">500</span>
+                                </div>
+                                <div class="bonus-info-row">
+                                    <span>Будет начислено за текущий заказ:</span>
+                                    <span id="bonusToEarn">0</span>
+                                </div>
+                                <div class="bonus-info-note">1 балл = 1 рубль. Начисляется только если не списываете бонусы в этом заказе.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -44,34 +144,29 @@
             <!-- Вкладка: Профиль -->
             <div class="tab-content" id="profileTab">
                 <div class="profile-page">
-                    <div class="profile-header">
-                        <div class="profile-avatar">
+                    <div class="profile-header-new">
+                        <img id="profileAvatarImg" src="" alt="Avatar" class="profile-avatar-img" style="display: none;">
+                        <div class="profile-avatar-fallback" id="profileAvatarFallback">
                             <span id="profileInitial">👤</span>
                         </div>
                         <h2 id="profileName">Пользователь</h2>
-                        <p id="profileUsername" class="profile-username"></p>
                     </div>
-                    <div class="profile-menu">
-                        <div class="profile-menu-item">
-                            <span class="menu-icon">📦</span>
-                            <span>Мои заказы</span>
-                            <span class="menu-arrow">›</span>
+                    
+                    <!-- Активные заказы -->
+                    <div class="profile-section">
+                        <h3 class="section-title">Активный заказ</h3>
+                        <div class="active-orders" id="activeOrders">
+                            <p class="no-orders">У вас нет активных заказов</p>
                         </div>
-                        <div class="profile-menu-item">
-                            <span class="menu-icon">📍</span>
-                            <span>Адреса доставки</span>
-                            <span class="menu-arrow">›</span>
+                    </div>
+                    
+                    <!-- Адреса доставки -->
+                    <div class="profile-section">
+                        <h3 class="section-title">Адреса доставки</h3>
+                        <div class="delivery-addresses" id="deliveryAddresses">
+                            <p class="no-addresses">Адреса не добавлены</p>
                         </div>
-                        <div class="profile-menu-item">
-                            <span class="menu-icon">💳</span>
-                            <span>Способы оплаты</span>
-                            <span class="menu-arrow">›</span>
-                        </div>
-                        <div class="profile-menu-item">
-                            <span class="menu-icon">⚙️</span>
-                            <span>Настройки</span>
-                            <span class="menu-arrow">›</span>
-                        </div>
+                        <button class="add-address-btn">+ Добавить адрес</button>
                     </div>
                 </div>
             </div>

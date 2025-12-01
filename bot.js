@@ -21,45 +21,103 @@ app.get('/api/products', (req, res) => {
   const products = [
     {
       id: 1,
-      name: 'Букет роз',
+      name: 'Розы красные',
       description: 'Красные розы, 11 штук',
       price: 2500,
-      image: 'https://via.placeholder.com/300x300?text=Розы'
+      image: 'https://via.placeholder.com/300x300?text=Розы',
+      type: 'roses',
+      color: 'red',
+      features: ['aromatic', 'durable']
     },
     {
       id: 2,
-      name: 'Букет тюльпанов',
+      name: 'Тюльпаны розовые',
       description: 'Яркие тюльпаны, 15 штук',
       price: 1800,
-      image: 'https://via.placeholder.com/300x300?text=Тюльпаны'
+      image: 'https://via.placeholder.com/300x300?text=Тюльпаны',
+      type: 'tulips',
+      color: 'pink',
+      features: ['durable']
     },
     {
       id: 3,
-      name: 'Смешанный букет',
-      description: 'Разноцветные цветы',
+      name: 'Хризантемы розовые',
+      description: 'Розовые хризантемы',
       price: 2200,
-      image: 'https://via.placeholder.com/300x300?text=Смешанный'
+      image: 'https://via.placeholder.com/300x300?text=Хризантемы',
+      type: 'chrysanthemums',
+      color: 'pink',
+      features: ['durable', 'tall']
     },
     {
       id: 4,
-      name: 'Букет хризантем',
+      name: 'Хризантемы белые',
       description: 'Белые хризантемы, 9 штук',
       price: 1500,
-      image: 'https://via.placeholder.com/300x300?text=Хризантемы'
+      image: 'https://via.placeholder.com/300x300?text=Хризантемы',
+      type: 'chrysanthemums',
+      color: 'white',
+      features: ['durable']
     },
     {
       id: 5,
-      name: 'Романтический букет',
+      name: 'Розы пионовидные',
       description: 'Розы и пионы',
       price: 3500,
-      image: 'https://via.placeholder.com/300x300?text=Романтика'
+      image: 'https://via.placeholder.com/300x300?text=Романтика',
+      type: 'roses',
+      color: 'pink',
+      features: ['aromatic', 'peony']
     },
     {
       id: 6,
-      name: 'Букет лилий',
-      description: 'Белые лилии, 7 штук',
+      name: 'Ранункулюсы белые',
+      description: 'Белые ранункулюсы, 7 штук',
       price: 2800,
-      image: 'https://via.placeholder.com/300x300?text=Лилии'
+      image: 'https://via.placeholder.com/300x300?text=Ранункулюсы',
+      type: 'ranunculus',
+      color: 'white',
+      features: ['aromatic']
+    },
+    {
+      id: 7,
+      name: 'Кустовые розы красные',
+      description: 'Красные кустовые розы',
+      price: 3200,
+      image: 'https://via.placeholder.com/300x300?text=Кустовые',
+      type: 'bush-roses',
+      color: 'red',
+      features: ['aromatic', 'durable', 'tall']
+    },
+    {
+      id: 8,
+      name: 'Гвоздики розовые',
+      description: 'Розовые гвоздики',
+      price: 1200,
+      image: 'https://via.placeholder.com/300x300?text=Гвоздики',
+      type: 'carnations',
+      color: 'pink',
+      features: ['durable']
+    },
+    {
+      id: 9,
+      name: 'Экзотика оранжевая',
+      description: 'Экзотические цветы',
+      price: 4500,
+      image: 'https://via.placeholder.com/300x300?text=Экзотика',
+      type: 'exotic',
+      color: 'orange',
+      features: ['tall']
+    },
+    {
+      id: 10,
+      name: 'Зелень',
+      description: 'Декоративная зелень',
+      price: 800,
+      image: 'https://via.placeholder.com/300x300?text=Зелень',
+      type: 'greenery',
+      color: 'green',
+      features: ['durable']
     }
   ];
   res.json(products);
