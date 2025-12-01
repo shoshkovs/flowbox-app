@@ -34,7 +34,7 @@ let activeFilters = {
     feature: []
 };
 let productQuantities = {}; // Количество для каждого товара в карточке
-let deliveryPrice = 0;
+let deliveryPrice = 500; // По умолчанию "В пределах КАД"
 let serviceFee = 450;
 let bonusUsed = 0;
 let accumulatedBonuses = 500;
@@ -330,11 +330,20 @@ function updateCartUI() {
                 <div class="cart-item-new-info">
                     <div class="cart-item-new-name">${item.name}</div>
                     <div class="cart-item-new-price">${item.price} ₽</div>
+                </div>
+                <div class="cart-item-new-controls">
                     <div class="cart-item-new-quantity">
                         <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, -1)">−</button>
                         <span class="quantity-value">${item.quantity}</span>
                         <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, 1)">+</button>
                     </div>
+                    <button class="cart-item-delete-btn" onclick="removeFromCart(${item.id})" title="Удалить">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
         `).join('');
@@ -451,23 +460,42 @@ checkoutBtnFinal.addEventListener('click', () => {
         });
     });
     
-    // Заполнение формы
-    const summaryItems = document.getElementById('summaryItems');
-    const summaryTotal = document.getElementById('summaryTotal');
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    // Расчет суммы
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
     
-    summaryItems.textContent = totalItems;
-    summaryTotal.textContent = total;
+    const summaryTotal = document.getElementById('summaryTotal');
+    if (summaryTotal) {
+        summaryTotal.textContent = total;
+    }
     
-    // Заполнение данных пользователя из Telegram
-    const user = tg.initDataUnsafe?.user;
-    if (user) {
-        const nameInput = document.getElementById('customerName');
-        if (user.first_name) {
-            const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-            nameInput.value = fullName;
+    // Заполнение данных пользователя из профиля или Telegram
+    const savedProfile = localStorage.getItem('userProfile');
+    let profileData = null;
+    if (savedProfile) {
+        try {
+            profileData = JSON.parse(savedProfile);
+        } catch (e) {
+            console.error('Ошибка парсинга профиля:', e);
+        }
+    }
+    
+    const nameInput = document.getElementById('customerName');
+    const phoneInput = document.getElementById('customerPhone');
+    const emailInput = document.getElementById('customerEmail');
+    
+    if (profileData) {
+        if (profileData.name) nameInput.value = profileData.name;
+        if (profileData.phone) phoneInput.value = profileData.phone;
+        if (profileData.email) emailInput.value = profileData.email;
+    } else {
+        // Заполнение из Telegram
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+            if (user.first_name) {
+                const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                nameInput.value = fullName;
+            }
         }
     }
     
@@ -606,19 +634,6 @@ orderForm.addEventListener('submit', async (e) => {
             
             userActiveOrders.push(order);
             localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
-            
-            // Через 5 секунд переместить в завершенные (заглушка)
-            setTimeout(() => {
-                const orderIndex = userActiveOrders.findIndex(o => o.id === order.id);
-                if (orderIndex !== -1) {
-                    userActiveOrders.splice(orderIndex, 1);
-                    order.status = 'completed';
-                    userCompletedOrders.push(order);
-                    localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
-                    localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
-                    loadActiveOrders();
-                }
-            }, 5000);
             
             orderOverlay.classList.remove('active');
             successOverlay.classList.add('active');
@@ -937,7 +952,9 @@ function loadSavedAddresses() {
                 item.classList.add('selected');
                 const addressId = parseInt(item.dataset.addressId);
                 const selectedAddress = savedAddresses.find(a => a.id === addressId);
-                // Заполняем скрытые поля формы
+                // Показываем форму и заполняем её
+                savedAddressesSection.style.display = 'none';
+                newAddressForm.style.display = 'block';
                 fillOrderFormWithAddress(selectedAddress);
             });
         });
@@ -946,6 +963,15 @@ function loadSavedAddresses() {
             useNewAddressBtn.addEventListener('click', () => {
                 savedAddressesSection.style.display = 'none';
                 newAddressForm.style.display = 'block';
+                // Очистка всех полей
+                document.getElementById('orderAddressName').value = '';
+                document.getElementById('orderAddressCity').value = '';
+                document.getElementById('orderAddressStreet').value = '';
+                document.getElementById('orderAddressEntrance').value = '';
+                document.getElementById('orderAddressApartment').value = '';
+                document.getElementById('orderAddressFloor').value = '';
+                document.getElementById('orderAddressIntercom').value = '';
+                document.getElementById('orderAddressComment').value = '';
             });
         }
     } else {
@@ -1020,6 +1046,79 @@ function loadOrderHistory() {
         `).join('');
     }
 }
+
+// Редактирование профиля
+const profileEditModal = document.getElementById('profileEditModal');
+const profileEditForm = document.getElementById('profileEditForm');
+const editProfileBtn = document.getElementById('editProfileBtn');
+const closeProfileEditModal = document.getElementById('closeProfileEditModal');
+
+editProfileBtn.addEventListener('click', () => {
+    const savedProfile = localStorage.getItem('userProfile');
+    let profileData = null;
+    if (savedProfile) {
+        try {
+            profileData = JSON.parse(savedProfile);
+        } catch (e) {
+            console.error('Ошибка парсинга профиля:', e);
+        }
+    }
+    
+    // Заполнение формы
+    if (profileData) {
+        document.getElementById('editProfileName').value = profileData.name || '';
+        document.getElementById('editProfilePhone').value = profileData.phone || '';
+        document.getElementById('editProfileEmail').value = profileData.email || '';
+    } else {
+        // Заполнение из текущих значений или Telegram
+        const nameInput = document.getElementById('customerName');
+        const phoneInput = document.getElementById('customerPhone');
+        const emailInput = document.getElementById('customerEmail');
+        
+        document.getElementById('editProfileName').value = nameInput ? nameInput.value : '';
+        document.getElementById('editProfilePhone').value = phoneInput ? phoneInput.value : '';
+        document.getElementById('editProfileEmail').value = emailInput ? emailInput.value : '';
+        
+        // Если нет в форме, берем из Telegram
+        const user = tg.initDataUnsafe?.user;
+        if (user && user.first_name) {
+            const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            if (!document.getElementById('editProfileName').value) {
+                document.getElementById('editProfileName').value = fullName;
+            }
+        }
+    }
+    
+    profileEditModal.style.display = 'flex';
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        closeProfileEditModal.click();
+    });
+});
+
+closeProfileEditModal.addEventListener('click', () => {
+    profileEditModal.style.display = 'none';
+    tg.BackButton.hide();
+});
+
+profileEditForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const profileData = {
+        name: document.getElementById('editProfileName').value,
+        phone: document.getElementById('editProfilePhone').value,
+        email: document.getElementById('editProfileEmail').value
+    };
+    
+    localStorage.setItem('userProfile', JSON.stringify(profileData));
+    
+    // Обновление отображения
+    profileName.textContent = profileData.name || 'Пользователь';
+    
+    profileEditModal.style.display = 'none';
+    tg.BackButton.hide();
+    tg.HapticFeedback.notificationOccurred('success');
+});
 
 // Инициализация при загрузке
 loadProducts();

@@ -590,9 +590,8 @@ h1, h2, h3, .font-bold {
 
 .summary-item {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
-    gap: 8px;
     margin-bottom: 8px;
     font-size: 18px;
     font-weight: bold;
@@ -602,8 +601,23 @@ h1, h2, h3, .font-bold {
     color: var(--text-color);
 }
 
-.summary-item span:last-child {
-    color: var(--primary-color);
+.summary-total-amount {
+    color: var(--text-color) !important;
+}
+
+.form-section-label {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.saved-addresses-section {
+    margin-bottom: 20px;
+}
+
+.saved-addresses-section .form-section-label {
+    margin-bottom: 12px;
 }
 
 .submit-order-btn {
@@ -816,6 +830,7 @@ h1, h2, h3, .font-bold {
     gap: 12px;
     padding: 12px 0;
     border-bottom: 1px solid #eee;
+    align-items: center;
 }
 
 .cart-item-new-image {
@@ -824,10 +839,14 @@ h1, h2, h3, .font-bold {
     border-radius: 8px;
     object-fit: cover;
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    flex-shrink: 0;
 }
 
 .cart-item-new-info {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .cart-item-new-name {
@@ -839,13 +858,33 @@ h1, h2, h3, .font-bold {
 .cart-item-new-price {
     font-size: 14px;
     color: #666;
-    margin-bottom: 8px;
+}
+
+.cart-item-new-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .cart-item-new-quantity {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.cart-item-delete-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.cart-item-delete-btn:active {
+    transform: scale(0.9);
 }
 
 /* Сервисный сбор */
@@ -1069,11 +1108,13 @@ h1, h2, h3, .font-bold {
     color: white;
     font-size: 24px;
     font-weight: 600;
+    flex-shrink: 0;
 }
 
 .profile-header-new h2 {
     font-size: 20px;
     font-weight: 600;
+    margin: 0;
 }
 
 .profile-section {
@@ -1100,8 +1141,40 @@ h1, h2, h3, .font-bold {
     padding: 20px;
 }
 
+.profile-header-new {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.profile-name-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.profile-edit-icon-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.profile-edit-icon-btn:active {
+    transform: scale(0.9);
+}
+
 .profile-menu-buttons {
-    padding: 0 20px;
+    padding: 0;
 }
 
 .profile-menu-btn {

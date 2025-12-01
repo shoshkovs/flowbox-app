@@ -85,7 +85,7 @@
                         <div class="cart-delivery">
                             <div class="delivery-title">Доставка по Санкт-Петербургу</div>
                             <div class="delivery-options-grid">
-                                <button class="delivery-option" data-delivery="spb-kad" data-price="500">
+                                <button class="delivery-option active" data-delivery="spb-kad" data-price="500">
                                     <div class="delivery-option-text">В пределах КАД</div>
                                     <div class="delivery-option-price">500 ₽</div>
                                 </button>
@@ -97,7 +97,7 @@
                                     <div class="delivery-option-text">До 20 км от КАД</div>
                                     <div class="delivery-option-price">1300 ₽</div>
                                 </button>
-                                <button class="delivery-option active" data-delivery="pickup" data-price="0">
+                                <button class="delivery-option" data-delivery="pickup" data-price="0">
                                     <div class="delivery-option-text">Самовывоз</div>
                                     <div class="delivery-option-price">0 ₽</div>
                                 </button>
@@ -154,7 +154,15 @@
                         <div class="profile-avatar-fallback" id="profileAvatarFallback">
                             <span id="profileInitial">👤</span>
                         </div>
-                        <h2 id="profileName">Пользователь</h2>
+                        <div class="profile-name-wrapper">
+                            <h2 id="profileName">Пользователь</h2>
+                            <button class="profile-edit-icon-btn" id="editProfileBtn" title="Редактировать">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Активные заказы -->
@@ -188,16 +196,41 @@
                         </button>
                     </div>
                     
-                    <!-- Бонусы внизу -->
-                    <div class="profile-bonuses-footer">
-                        <div class="bonuses-footer-info">
-                            <span class="bonuses-footer-label">Бонусы:</span>
-                            <span class="bonuses-footer-amount" id="profileBonusesAmount">500</span>
+                    <!-- Бонусы -->
+                    <div class="profile-section">
+                        <div class="bonuses-text-info">
+                            <span class="bonuses-text-label">Бонусы:</span>
+                            <span class="bonuses-text-amount" id="profileBonusesAmount">500</span>
                         </div>
-                        <div class="bonuses-footer-description">
+                        <div class="bonuses-text-description">
                             Баллы начисляются в размере 1% с каждой покупки. 1 балл = 1 рубль
                         </div>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Модальное окно редактирования профиля -->
+            <div class="modal-overlay" id="profileEditModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Редактировать профиль</h3>
+                        <button class="modal-close" id="closeProfileEditModal">✕</button>
+                    </div>
+                    <form class="profile-edit-form" id="profileEditForm">
+                        <div class="form-group">
+                            <label>Имя</label>
+                            <input type="text" id="editProfileName" required placeholder="Иван Иванов">
+                        </div>
+                        <div class="form-group">
+                            <label>Телефон</label>
+                            <input type="tel" id="editProfilePhone" required placeholder="+7 (999) 123-45-67">
+                        </div>
+                        <div class="form-group">
+                            <label>E-mail</label>
+                            <input type="email" id="editProfileEmail" required placeholder="example@mail.com">
+                        </div>
+                        <button type="submit" class="submit-address-btn">Сохранить</button>
+                    </form>
                 </div>
             </div>
             
@@ -401,14 +434,14 @@
                     
                     <!-- Сохраненные адреса -->
                     <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
-                        <label>Адрес доставки</label>
+                        <label class="form-section-label">Адрес доставки</label>
                         <div class="saved-addresses-list" id="savedAddressesList"></div>
                         <button type="button" class="use-new-address-btn" id="useNewAddressBtn">Использовать новый адрес</button>
                     </div>
                     
                     <!-- Форма нового адреса -->
                     <div class="new-address-form" id="newAddressForm">
-                        <label>Адрес доставки</label>
+                        <label class="form-section-label">Адрес доставки</label>
                         <div class="form-group">
                             <input type="text" id="orderAddressName" placeholder="Наименование адреса (Мой дом)">
                         </div>
@@ -461,13 +494,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label>Комментарий к заказу (необязательно)</label>
+                        <label>Комментарий к заказу</label>
                         <textarea id="orderComment" placeholder="Особые пожелания к заказу"></textarea>
                     </div>
                     <div class="order-summary">
                         <div class="summary-item">
                             <span>Сумма:</span>
-                            <span id="summaryTotal">0</span> ₽
+                            <span id="summaryTotal" class="summary-total-amount">0</span> ₽
                         </div>
                     </div>
                     <button type="submit" class="submit-order-btn">Оплатить</button>
