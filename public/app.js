@@ -1007,6 +1007,7 @@ function loadSavedAddresses() {
                         <div class="address-item-name">${addr.name}</div>
                         <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
                     </div>
+                    <div class="address-radio-button"></div>
                 </div>
             </label>
         `).join('');
