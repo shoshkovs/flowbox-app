@@ -119,18 +119,44 @@ filterButtons.forEach(btn => {
         const filter = btn.dataset.filter;
         const category = btn.dataset.category;
         
-        if (btn.classList.contains('active')) {
-            // Отмена фильтра
-            btn.classList.remove('active');
-            const index = activeFilters[category].indexOf(filter);
-            if (index > -1) {
-                activeFilters[category].splice(index, 1);
+        // Для первой строки (type) - взаимоисключающий выбор
+        if (category === 'type') {
+            // Если нажали "Все"
+            if (filter === 'all') {
+                // Снимаем все фильтры типа
+                document.querySelectorAll(`.filter-btn[data-category="type"]`).forEach(b => {
+                    b.classList.remove('active');
+                });
+                activeFilters.type = ['all'];
+                btn.classList.add('active');
+            } else {
+                // Если нажали конкретный тип - убираем "Все"
+                const allBtn = document.querySelector(`.filter-btn[data-filter="all"][data-category="type"]`);
+                if (allBtn) {
+                    allBtn.classList.remove('active');
+                }
+                // Убираем все остальные фильтры типа
+                document.querySelectorAll(`.filter-btn[data-category="type"]:not([data-filter="${filter}"])`).forEach(b => {
+                    b.classList.remove('active');
+                });
+                activeFilters.type = [filter];
+                btn.classList.add('active');
             }
         } else {
-            // Активация фильтра
-            btn.classList.add('active');
-            if (!activeFilters[category].includes(filter)) {
-                activeFilters[category].push(filter);
+            // Для остальных категорий - множественный выбор
+            if (btn.classList.contains('active')) {
+                // Отмена фильтра
+                btn.classList.remove('active');
+                const index = activeFilters[category].indexOf(filter);
+                if (index > -1) {
+                    activeFilters[category].splice(index, 1);
+                }
+            } else {
+                // Активация фильтра
+                btn.classList.add('active');
+                if (!activeFilters[category].includes(filter)) {
+                    activeFilters[category].push(filter);
+                }
             }
         }
         
@@ -151,7 +177,7 @@ function renderProducts() {
         const totalPrice = product.price * quantity;
         
         return `
-            <div class="product-card">
+            <div class="product-card" data-product-id="${product.id}">
                 <div class="product-image-wrapper">
                     <img src="${product.image}" alt="${product.name}" class="product-image">
                     <div class="delivery-badge">Доставим Завтра</div>
@@ -159,16 +185,16 @@ function renderProducts() {
                 <div class="product-info">
                     <div class="product-name">${product.name}</div>
                     <div class="product-price-row">
-                        <div class="product-price">
-                            ${product.price} <span class="ruble">₽</span>
+                        <div class="product-price" id="price-${product.id}">
+                            ${totalPrice} <span class="ruble">₽</span>
                         </div>
                         <div class="product-quantity">
                             <button class="quantity-btn-small" onclick="changeProductQuantity(${product.id}, -1)" ${quantity <= 1 ? 'disabled' : ''}>−</button>
-                            <span class="quantity-value">${quantity}</span>
+                            <span class="quantity-value" id="qty-${product.id}">${quantity}</span>
                             <button class="quantity-btn-small" onclick="changeProductQuantity(${product.id}, 1)" ${quantity >= 500 ? 'disabled' : ''}>+</button>
                         </div>
                     </div>
-                    <button class="add-to-cart-btn" onclick="addToCart(${product.id}, ${quantity})">
+                    <button class="add-to-cart-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
                         Добавить
                     </button>
                 </div>
@@ -183,19 +209,35 @@ function changeProductQuantity(productId, delta) {
     const newQty = Math.max(1, Math.min(500, currentQty + delta));
     productQuantities[productId] = newQty;
     
-    // Обновляем только эту карточку
-    const card = document.querySelector(`[onclick*="changeProductQuantity(${productId}"]`)?.closest('.product-card');
+    // Находим товар для получения цены
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const newTotalPrice = product.price * newQty;
+    
+    // Обновляем элементы карточки
+    const quantityValue = document.getElementById(`qty-${productId}`);
+    const priceElement = document.getElementById(`price-${productId}`);
+    const addBtn = document.getElementById(`add-btn-${productId}`);
+    const card = document.querySelector(`[data-product-id="${productId}"]`);
+    
+    if (quantityValue) quantityValue.textContent = newQty;
+    if (priceElement) priceElement.innerHTML = `${newTotalPrice} <span class="ruble">₽</span>`;
+    if (addBtn) addBtn.setAttribute('onclick', `addToCart(${productId}, ${newQty})`);
+    
+    // Обновляем кнопки +/-
     if (card) {
-        const quantityValue = card.querySelector('.quantity-value');
         const minusBtn = card.querySelector(`[onclick*="changeProductQuantity(${productId}, -1)"]`);
         const plusBtn = card.querySelector(`[onclick*="changeProductQuantity(${productId}, 1)"]`);
-        const priceRow = card.querySelector('.product-price-row');
-        const addBtn = card.querySelector('.add-to-cart-btn');
-        
-        if (quantityValue) quantityValue.textContent = newQty;
         if (minusBtn) minusBtn.disabled = newQty <= 1;
         if (plusBtn) plusBtn.disabled = newQty >= 500;
-        if (addBtn) addBtn.setAttribute('onclick', `addToCart(${productId}, ${newQty})`);
+    }
+    
+    // Обновляем корзину, если товар уже в корзине
+    const cartItem = cart.find(item => item.id === productId);
+    if (cartItem) {
+        cartItem.quantity = newQty;
+        updateCartUI();
     }
     
     tg.HapticFeedback.impactOccurred('light');
@@ -231,7 +273,7 @@ function updateGoToCartButton() {
     fixedCartTotal.textContent = total;
     
     if (cart.length > 0) {
-        goToCartFixed.style.display = 'flex';
+        goToCartFixed.style.display = 'block';
     } else {
         goToCartFixed.style.display = 'none';
     }
@@ -304,6 +346,12 @@ function updateCartUI() {
 // Расчет итоговой суммы
 function calculateFinalTotal() {
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Если тумблер включен, обновляем bonusUsed
+    if (bonusToggle && bonusToggle.checked) {
+        bonusUsed = Math.min(accumulatedBonuses, flowersTotal);
+    }
+    
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
     
     finalTotalAmount.textContent = total;
@@ -313,44 +361,32 @@ function calculateFinalTotal() {
     document.getElementById('bonusToEarn').textContent = bonusToEarn;
 }
 
-// Обработка доставки
-document.querySelectorAll('.delivery-option').forEach(btn => {
-    btn.addEventListener('click', () => {
+// Обработка доставки (используем делегирование событий для динамически созданных элементов)
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.delivery-option')) {
+        const btn = e.target.closest('.delivery-option');
         document.querySelectorAll('.delivery-option').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         deliveryPrice = parseInt(btn.dataset.price) || 0;
         calculateFinalTotal();
         tg.HapticFeedback.impactOccurred('light');
-    });
+    }
 });
 
-// Обработка бонусов
-const useBonusBtn = document.getElementById('useBonusBtn');
-const bonusSlider = document.getElementById('bonusSlider');
-const bonusAmount = document.getElementById('bonusAmount');
+// Обработка бонусов (тумблер)
+const bonusToggle = document.getElementById('bonusToggle');
 
-useBonusBtn.addEventListener('click', () => {
-    if (useBonusBtn.classList.contains('active')) {
-        useBonusBtn.classList.remove('active');
-        bonusSlider.disabled = true;
-        bonusSlider.value = 0;
-        bonusUsed = 0;
-        bonusAmount.textContent = '0';
-    } else {
-        useBonusBtn.classList.add('active');
+bonusToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+        // Включаем бонусы - списываем все доступные
         const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const maxBonus = Math.min(accumulatedBonuses, flowersTotal);
-        bonusSlider.disabled = false;
-        bonusSlider.max = maxBonus;
+        bonusUsed = Math.min(accumulatedBonuses, flowersTotal);
+    } else {
+        // Выключаем бонусы
+        bonusUsed = 0;
     }
     calculateFinalTotal();
     tg.HapticFeedback.impactOccurred('light');
-});
-
-bonusSlider.addEventListener('input', (e) => {
-    bonusUsed = parseInt(e.target.value) || 0;
-    bonusAmount.textContent = bonusUsed;
-    calculateFinalTotal();
 });
 
 // Переключение вкладок

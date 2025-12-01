@@ -62,10 +62,9 @@
                 
                 <!-- Кнопка перейти в корзину (появляется при добавлении товара) -->
                 <div class="go-to-cart-fixed" id="goToCartFixed" style="display: none;">
-                    <div class="go-to-cart-info">
-                        <span class="go-to-cart-total">Сумма: <span id="fixedCartTotal">0</span> ₽</span>
-                    </div>
-                    <button class="go-to-cart-btn" onclick="switchTab('cartTab')">Перейти в корзину</button>
+                    <button class="go-to-cart-btn-full" onclick="switchTab('cartTab')">
+                        Перейти в корзину <span id="fixedCartTotal">0</span> ₽
+                    </button>
                 </div>
             </div>
 
@@ -91,8 +90,8 @@
                         <!-- Доставка -->
                         <div class="cart-delivery">
                             <div class="delivery-title">Доставка</div>
-                            <div class="delivery-options">
-                                <button class="delivery-option" data-delivery="spb-kad" data-price="0">
+                            <div class="delivery-options-grid">
+                                <button class="delivery-option" data-delivery="spb-kad" data-price="500">
                                     Санкт-Петербург в пределах КАД и ниже 500р
                                 </button>
                                 <button class="delivery-option" data-delivery="10km" data-price="900">
@@ -109,10 +108,12 @@
                         
                         <!-- Бонусы -->
                         <div class="cart-bonuses">
-                            <div class="bonus-header">
-                                <button class="use-bonus-btn" id="useBonusBtn">Списать бонусы</button>
-                                <input type="range" class="bonus-slider" id="bonusSlider" min="0" max="0" value="0" disabled>
-                                <span class="bonus-amount" id="bonusAmount">0</span>
+                            <div class="bonus-toggle-row">
+                                <span class="bonus-label">Списать бонусные баллы</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="bonusToggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </div>
                         </div>
                         
