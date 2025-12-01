@@ -9,18 +9,24 @@ let cart = [];
 
 // Элементы DOM
 const productsContainer = document.getElementById('productsContainer');
-const cartIcon = document.getElementById('cartIcon');
-const cartCount = document.getElementById('cartCount');
-const cartOverlay = document.getElementById('cartOverlay');
-const cartItems = document.getElementById('cartItems');
-const cartTotal = document.getElementById('cartTotal');
-const closeCart = document.getElementById('closeCart');
-const checkoutBtn = document.getElementById('checkoutBtn');
+const navCartCount = document.getElementById('navCartCount');
+const cartItemsPage = document.getElementById('cartItemsPage');
+const cartTotalPage = document.getElementById('cartTotalPage');
+const checkoutBtnPage = document.getElementById('checkoutBtnPage');
 const orderOverlay = document.getElementById('orderOverlay');
 const closeOrder = document.getElementById('closeOrder');
 const orderForm = document.getElementById('orderForm');
 const successOverlay = document.getElementById('successOverlay');
 const backToShop = document.getElementById('backToShop');
+
+// Элементы профиля
+const profileName = document.getElementById('profileName');
+const profileUsername = document.getElementById('profileUsername');
+const profileInitial = document.getElementById('profileInitial');
+
+// Навигация
+const navItems = document.querySelectorAll('.nav-item');
+const tabContents = document.querySelectorAll('.tab-content');
 
 // Загрузка товаров
 async function loadProducts() {
@@ -74,6 +80,9 @@ function addToCart(productId) {
 
     updateCartUI();
     tg.HapticFeedback.impactOccurred('light');
+    
+    // Переключение на вкладку корзины, если товар добавлен
+    switchTab('cartTab');
 }
 
 // Удаление из корзины
@@ -100,22 +109,28 @@ function changeQuantity(productId, delta) {
 
 // Обновление UI корзины
 function updateCartUI() {
-    // Обновление счетчика
+    // Обновление счетчика в навигации
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    cartCount.textContent = totalItems;
-    
-    // Обновление содержимого корзины
-    if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="empty-cart">Корзина пуста</p>';
-        checkoutBtn.disabled = true;
+    navCartCount.textContent = totalItems;
+    if (totalItems === 0) {
+        navCartCount.style.display = 'none';
     } else {
-        cartItems.innerHTML = cart.map(item => `
-            <div class="cart-item">
-                <img src="${item.image}" alt="${item.name}" class="cart-item-image">
-                <div class="cart-item-info">
-                    <div class="cart-item-name">${item.name}</div>
-                    <div class="cart-item-price">${item.price} ₽</div>
-                    <div class="cart-item-controls">
+        navCartCount.style.display = 'block';
+    }
+    
+    // Обновление страницы корзины
+    if (cart.length === 0) {
+        cartItemsPage.innerHTML = '<p class="empty-cart">Корзина пуста</p>';
+        checkoutBtnPage.disabled = true;
+        cartTotalPage.textContent = '0';
+    } else {
+        cartItemsPage.innerHTML = cart.map(item => `
+            <div class="cart-item-page">
+                <img src="${item.image}" alt="${item.name}" class="cart-item-page-image">
+                <div class="cart-item-page-info">
+                    <div class="cart-item-page-name">${item.name}</div>
+                    <div class="cart-item-page-price">${item.price} ₽ × ${item.quantity}</div>
+                    <div class="cart-item-page-controls">
                         <button class="quantity-btn" onclick="changeQuantity(${item.id}, -1)">−</button>
                         <span class="quantity">${item.quantity}</span>
                         <button class="quantity-btn" onclick="changeQuantity(${item.id}, 1)">+</button>
@@ -123,34 +138,51 @@ function updateCartUI() {
                 </div>
             </div>
         `).join('');
-        checkoutBtn.disabled = false;
+        checkoutBtnPage.disabled = false;
+        
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        cartTotalPage.textContent = total;
     }
-
-    // Обновление общей суммы
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    cartTotal.textContent = total;
 }
 
-// Открытие корзины
-cartIcon.addEventListener('click', () => {
-    cartOverlay.classList.add('active');
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        closeCartPanel();
+// Переключение вкладок
+function switchTab(tabId) {
+    // Скрыть все вкладки
+    tabContents.forEach(tab => tab.classList.remove('active'));
+    
+    // Показать выбранную вкладку
+    const activeTab = document.getElementById(tabId);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    // Обновить навигацию
+    navItems.forEach(item => {
+        if (item.dataset.tab === tabId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+    
+    // Обновить корзину при открытии вкладки
+    if (tabId === 'cartTab') {
+        updateCartUI();
+    }
+    
+    tg.HapticFeedback.impactOccurred('light');
+}
+
+// Обработчики навигации
+navItems.forEach(item => {
+    item.addEventListener('click', () => {
+        const tabId = item.dataset.tab;
+        switchTab(tabId);
     });
 });
 
-// Закрытие корзины
-closeCart.addEventListener('click', closeCartPanel);
-
-function closeCartPanel() {
-    cartOverlay.classList.remove('active');
-    tg.BackButton.hide();
-}
-
 // Оформление заказа
-checkoutBtn.addEventListener('click', () => {
-    cartOverlay.classList.remove('active');
+checkoutBtnPage.addEventListener('click', () => {
     orderOverlay.classList.add('active');
     
     // Заполнение формы
@@ -161,6 +193,22 @@ checkoutBtn.addEventListener('click', () => {
     
     summaryItems.textContent = totalItems;
     summaryTotal.textContent = total;
+    
+    // Заполнение данных пользователя из Telegram, если доступны
+    const user = tg.initDataUnsafe?.user;
+    if (user) {
+        const nameInput = document.getElementById('customerName');
+        const phoneInput = document.getElementById('customerPhone');
+        
+        if (user.first_name) {
+            const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            nameInput.value = fullName;
+        }
+        
+        if (user.phone) {
+            phoneInput.value = user.phone;
+        }
+    }
     
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
@@ -230,6 +278,9 @@ orderForm.addEventListener('submit', async (e) => {
             // Очистка формы
             orderForm.reset();
             
+            // Переключение на вкладку меню
+            switchTab('menuTab');
+            
             tg.HapticFeedback.notificationOccurred('success');
         }
     } catch (error) {
@@ -241,13 +292,38 @@ orderForm.addEventListener('submit', async (e) => {
 // Возврат в магазин
 backToShop.addEventListener('click', () => {
     successOverlay.classList.remove('active');
+    switchTab('menuTab');
 });
+
+// Загрузка данных профиля
+function loadProfile() {
+    const user = tg.initDataUnsafe?.user;
+    
+    if (user) {
+        // Имя
+        if (user.first_name) {
+            const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            profileName.textContent = fullName;
+            
+            // Инициалы для аватара
+            const initials = user.first_name[0] + (user.last_name ? user.last_name[0] : '');
+            profileInitial.textContent = initials.toUpperCase();
+        }
+        
+        // Username
+        if (user.username) {
+            profileUsername.textContent = '@' + user.username;
+        } else {
+            profileUsername.style.display = 'none';
+        }
+    }
+}
 
 // Инициализация при загрузке
 loadProducts();
+loadProfile();
 
 // Экспорт функций для глобального доступа
 window.addToCart = addToCart;
 window.removeFromCart = removeFromCart;
 window.changeQuantity = changeQuantity;
-

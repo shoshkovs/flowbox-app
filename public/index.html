@@ -12,36 +12,124 @@
         <!-- Header -->
         <header class="header">
             <h1>🌸 FlowBox</h1>
-            <div class="cart-icon" id="cartIcon">
-                🛒 <span class="cart-count" id="cartCount">0</span>
-            </div>
         </header>
 
-        <!-- Каталог товаров -->
+        <!-- Основной контент -->
         <main class="main-content" id="mainContent">
-            <div class="products-container" id="productsContainer">
-                <div class="loading">Загрузка...</div>
+            <!-- Вкладка: Меню -->
+            <div class="tab-content active" id="menuTab">
+                <div class="products-container" id="productsContainer">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+
+            <!-- Вкладка: Корзина -->
+            <div class="tab-content" id="cartTab">
+                <div class="cart-page">
+                    <div class="cart-page-header">
+                        <h2>Корзина</h2>
+                        <div class="cart-total-header">
+                            Итого: <span id="cartTotalPage">0</span> ₽
+                        </div>
+                    </div>
+                    <div class="cart-items-page" id="cartItemsPage">
+                        <p class="empty-cart">Корзина пуста</p>
+                    </div>
+                    <div class="cart-page-footer">
+                        <button class="checkout-btn-page" id="checkoutBtnPage" disabled>Оформить заказ</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка: Профиль -->
+            <div class="tab-content" id="profileTab">
+                <div class="profile-page">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <span id="profileInitial">👤</span>
+                        </div>
+                        <h2 id="profileName">Пользователь</h2>
+                        <p id="profileUsername" class="profile-username"></p>
+                    </div>
+                    <div class="profile-menu">
+                        <div class="profile-menu-item">
+                            <span class="menu-icon">📦</span>
+                            <span>Мои заказы</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="profile-menu-item">
+                            <span class="menu-icon">📍</span>
+                            <span>Адреса доставки</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="profile-menu-item">
+                            <span class="menu-icon">💳</span>
+                            <span>Способы оплаты</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                        <div class="profile-menu-item">
+                            <span class="menu-icon">⚙️</span>
+                            <span>Настройки</span>
+                            <span class="menu-arrow">›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка: О проекте -->
+            <div class="tab-content" id="aboutTab">
+                <div class="about-page">
+                    <div class="about-header">
+                        <div class="about-logo">🌸</div>
+                        <h2>FlowBox</h2>
+                        <p class="about-tagline">Магазин цветов с доставкой</p>
+                    </div>
+                    <div class="about-content">
+                        <div class="about-section">
+                            <h3>О нас</h3>
+                            <p>FlowBox - это современный сервис для заказа цветов с быстрой доставкой. Мы предлагаем свежие букеты на любой вкус и случай.</p>
+                        </div>
+                        <div class="about-section">
+                            <h3>Контакты</h3>
+                            <p>📞 Телефон: +7 (999) 123-45-67</p>
+                            <p>📧 Email: info@flowbox.ru</p>
+                            <p>📍 Адрес: г. Москва, ул. Примерная, д. 1</p>
+                        </div>
+                        <div class="about-section">
+                            <h3>Режим работы</h3>
+                            <p>Пн-Вс: 9:00 - 21:00</p>
+                            <p>Доставка: круглосуточно</p>
+                        </div>
+                        <div class="about-section">
+                            <h3>Версия</h3>
+                            <p>1.0.0</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
-        <!-- Корзина -->
-        <div class="cart-overlay" id="cartOverlay">
-            <div class="cart-panel">
-                <div class="cart-header">
-                    <h2>Корзина</h2>
-                    <button class="close-btn" id="closeCart">✕</button>
-                </div>
-                <div class="cart-items" id="cartItems">
-                    <p class="empty-cart">Корзина пуста</p>
-                </div>
-                <div class="cart-footer">
-                    <div class="cart-total">
-                        Итого: <span id="cartTotal">0</span> ₽
-                    </div>
-                    <button class="checkout-btn" id="checkoutBtn" disabled>Оформить заказ</button>
-                </div>
-            </div>
-        </div>
+        <!-- Нижняя навигация -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-tab="menuTab">
+                <span class="nav-icon">🍽️</span>
+                <span class="nav-label">Меню</span>
+            </button>
+            <button class="nav-item" data-tab="cartTab">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-label">Корзина</span>
+                <span class="nav-badge" id="navCartCount">0</span>
+            </button>
+            <button class="nav-item" data-tab="profileTab">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Профиль</span>
+            </button>
+            <button class="nav-item" data-tab="aboutTab">
+                <span class="nav-icon">ℹ️</span>
+                <span class="nav-label">О проекте</span>
+            </button>
+        </nav>
+
 
         <!-- Форма заказа -->
         <div class="order-overlay" id="orderOverlay">
