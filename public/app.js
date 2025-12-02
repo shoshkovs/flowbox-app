@@ -826,34 +826,36 @@ function initOrderForm() {
         });
     });
     
-    // Специальная проверка города в реальном времени
+    // Специальная проверка города при выходе из поля (blur)
     const cityField = document.getElementById('orderAddressCity');
     const orderAddressError = document.getElementById('orderAddressError');
     if (cityField && orderAddressError) {
-        cityField.addEventListener('input', function() {
+        cityField.addEventListener('blur', function() {
             const city = this.value.trim();
+            // Проверяем только после того, как пользователь вышел из поля
             if (city && city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
-                // Показываем ошибку сразу, если город не СПб
+                // Показываем ошибку, если город не СПб
                 validateField(this, false);
                 orderAddressError.style.display = 'block';
-            } else {
-                // Убираем ошибку, если город правильный или пустой
-                if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
-                    validateField(this, true);
-                }
+            } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                // Убираем ошибку, если город правильный
+                validateField(this, true);
+                orderAddressError.style.display = 'none';
+            } else if (!city) {
+                // Если поле пустое - убираем сообщение об ошибке города (но поле может быть подсвечено красным как обязательное)
                 orderAddressError.style.display = 'none';
             }
         });
         
-        cityField.addEventListener('blur', function() {
+        // При вводе убираем сообщение об ошибке города (но не убираем красную рамку, если поле пустое)
+        cityField.addEventListener('input', function() {
             const city = this.value.trim();
-            // При потере фокуса проверяем еще раз
-            if (city && city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
-                validateField(this, false);
-                orderAddressError.style.display = 'block';
-            } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
-                validateField(this, true);
+            // Если пользователь начал вводить правильный город - убираем ошибку
+            if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб' || city.toLowerCase().startsWith('санкт-петербург') || city.toLowerCase().startsWith('спб')) {
                 orderAddressError.style.display = 'none';
+                if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                    validateField(this, true);
+                }
             }
         });
     }
