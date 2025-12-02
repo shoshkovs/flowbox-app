@@ -948,46 +948,37 @@ orderForm.addEventListener('submit', async (e) => {
             hasAddressErrors = true;
         }
         
-        // Валидация имени и телефона покупателя
-        if (!name) {
-            validateField(document.getElementById('customerName'), false);
+        // Валидация обязательных полей адреса
+        if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
+            validateField(document.getElementById('orderAddressCity'), false);
+            const orderAddressError = document.getElementById('orderAddressError');
+            if (orderAddressError) orderAddressError.style.display = 'block';
+            if (!firstErrorField) firstErrorField = document.getElementById('orderAddressCity');
             hasAddressErrors = true;
+            hasErrors = true;
         }
-        if (!phone) {
-            validateField(document.getElementById('customerPhone'), false);
+        if (!street) {
+            validateField(document.getElementById('orderAddressStreet'), false);
+            if (!firstErrorField) firstErrorField = document.getElementById('orderAddressStreet');
             hasAddressErrors = true;
+            hasErrors = true;
         }
-        if (!email) {
-            validateField(document.getElementById('customerEmail'), false);
+        if (!house) {
+            validateField(document.getElementById('orderAddressHouse'), false);
+            if (!firstErrorField) firstErrorField = document.getElementById('orderAddressHouse');
             hasAddressErrors = true;
-        }
-        if (!deliveryDate) {
-            validateField(document.getElementById('deliveryDate'), false);
-            hasAddressErrors = true;
-        }
-        
-        // Валидация получателя, если выбран "Другой получатель"
-        const recipientRadio = document.querySelector('input[name="recipient"]:checked');
-        if (recipientRadio && recipientRadio.value === 'other') {
-            const recipientNameField = document.getElementById('recipientName');
-            const recipientPhoneField = document.getElementById('recipientPhone');
-            const recipientName = recipientNameField ? recipientNameField.value.trim() : '';
-            const recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
-            if (!recipientName) {
-                validateField(recipientNameField, false);
-                hasAddressErrors = true;
-            }
-            if (!recipientPhone) {
-                validateField(recipientPhoneField, false);
-                hasAddressErrors = true;
-            }
+            hasErrors = true;
         }
         
         if (hasAddressErrors) {
-            // Прокрутка к первому полю с ошибкой
-            const firstError = document.querySelector('#newAddressForm .error, #orderForm .error');
-            if (firstError) {
-                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Прокрутка к первому полю с ошибкой адреса
+            if (firstErrorField) {
+                setTimeout(() => {
+                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (firstErrorField.focus && typeof firstErrorField.focus === 'function') {
+                        firstErrorField.focus();
+                    }
+                }, 100);
             }
             return;
         }
