@@ -630,7 +630,8 @@ function initOrderForm() {
                         savedAddresses.forEach(addr => {
                             const option = document.createElement('option');
                             option.value = addr.id;
-                            option.textContent = `${addr.name} - ${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}`;
+                            const addressText = `${addr.name} - ${addr.street}${addr.house ? ', д. ' + addr.house : ''}${addr.apartment ? ', ' + addr.apartment : ''}`;
+                            option.textContent = addressText;
                             savedAddressSelect.appendChild(option);
                         });
                     }
@@ -1246,74 +1247,43 @@ function loadSavedAddresses() {
         }
     }
     
-    // Отображение в форме заказа
-    const savedAddressesSection = document.getElementById('savedAddressesSection');
-    const savedAddressesList = document.getElementById('savedAddressesList');
-    const newAddressForm = document.getElementById('newAddressForm');
-    const useNewAddressBtn = document.getElementById('useNewAddressBtn');
-    
-    if (savedAddresses.length > 0) {
-        savedAddressesSection.style.display = 'block';
-        newAddressForm.style.display = 'none';
-        
-        savedAddressesList.innerHTML = savedAddresses.map(addr => `
-            <label class="address-item-radio">
-                <input type="radio" name="selectedAddress" value="${addr.id}" class="address-radio-input">
-                <div class="address-item" data-address-id="${addr.id}">
-                    <div class="address-item-content">
-                        <div class="address-item-name">${addr.name}</div>
-                        <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
-                    </div>
-                    <div class="address-radio-button"></div>
-                </div>
-            </label>
-        `).join('');
-        
-        // Обработка выбора адреса
-        savedAddressesList.querySelectorAll('.address-radio-input').forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (radio.checked) {
-                    const addressId = parseInt(radio.value);
-                    const selectedAddress = savedAddresses.find(a => a.id === addressId);
-                    // Показываем форму и заполняем её
-                    savedAddressesSection.style.display = 'none';
-                    newAddressForm.style.display = 'block';
-                    fillOrderFormWithAddress(selectedAddress);
-                }
-            });
+    // Обновление выпадающего списка сохраненных адресов (если он виден)
+    const savedAddressSelect = document.getElementById('savedAddressSelect');
+    if (savedAddressSelect && savedAddresses.length > 0) {
+        const currentValue = savedAddressSelect.value;
+        savedAddressSelect.innerHTML = '<option value="">Выберите сохраненный адрес</option>';
+        savedAddresses.forEach(addr => {
+            const option = document.createElement('option');
+            option.value = addr.id;
+            const addressText = `${addr.name} - ${addr.street}${addr.house ? ', д. ' + addr.house : ''}${addr.apartment ? ', ' + addr.apartment : ''}`;
+            option.textContent = addressText;
+            savedAddressSelect.appendChild(option);
         });
-        
-        if (useNewAddressBtn) {
-            useNewAddressBtn.addEventListener('click', () => {
-                savedAddressesSection.style.display = 'none';
-                newAddressForm.style.display = 'block';
-                // Очистка всех полей
-                document.getElementById('orderAddressName').value = '';
-                document.getElementById('orderAddressCity').value = '';
-                document.getElementById('orderAddressStreet').value = '';
-                document.getElementById('orderAddressEntrance').value = '';
-                document.getElementById('orderAddressApartment').value = '';
-                document.getElementById('orderAddressFloor').value = '';
-                document.getElementById('orderAddressIntercom').value = '';
-                document.getElementById('orderAddressComment').value = '';
-            });
+        if (currentValue) {
+            savedAddressSelect.value = currentValue;
         }
-    } else {
-        if (savedAddressesSection) savedAddressesSection.style.display = 'none';
-        if (newAddressForm) newAddressForm.style.display = 'block';
     }
 }
 
 // Заполнение формы заказа адресом
 function fillOrderFormWithAddress(address) {
-    document.getElementById('orderAddressName').value = address.name || '';
-    document.getElementById('orderAddressCity').value = address.city || '';
-    document.getElementById('orderAddressStreet').value = address.street || '';
-    document.getElementById('orderAddressEntrance').value = address.entrance || '';
-    document.getElementById('orderAddressApartment').value = address.apartment || '';
-    document.getElementById('orderAddressFloor').value = address.floor || '';
-    document.getElementById('orderAddressIntercom').value = address.intercom || '';
-    document.getElementById('orderAddressComment').value = address.comment || '';
+    const cityField = document.getElementById('orderAddressCity');
+    const streetField = document.getElementById('orderAddressStreet');
+    const houseField = document.getElementById('orderAddressHouse');
+    const entranceField = document.getElementById('orderAddressEntrance');
+    const apartmentField = document.getElementById('orderAddressApartment');
+    const floorField = document.getElementById('orderAddressFloor');
+    const intercomField = document.getElementById('orderAddressIntercom');
+    const commentField = document.getElementById('orderAddressComment');
+    
+    if (cityField) cityField.value = address.city || '';
+    if (streetField) streetField.value = address.street || '';
+    if (houseField) houseField.value = address.house || '';
+    if (entranceField) entranceField.value = address.entrance || '';
+    if (apartmentField) apartmentField.value = address.apartment || '';
+    if (floorField) floorField.value = address.floor || '';
+    if (intercomField) intercomField.value = address.intercom || '';
+    if (commentField) commentField.value = address.comment || '';
 }
 
 // Загрузка активных заказов
