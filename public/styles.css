@@ -673,6 +673,18 @@ h1, h2, h3, .font-bold {
     font-weight: normal;
 }
 
+.checkbox-label-inline {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+.checkbox-label-inline .checkbox-text {
+    font-weight: normal;
+}
+
 .checkbox-input {
     width: 20px;
     height: 20px;
@@ -684,6 +696,44 @@ h1, h2, h3, .font-bold {
 .checkbox-text {
     font-size: 16px;
     color: var(--text-color);
+    font-weight: normal;
+}
+
+.address-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.address-option-btn {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.address-option-btn:hover {
+    background-color: #f9f9f9;
+}
+
+.address-option-btn.selected {
+    border-color: var(--primary-color);
+    background-color: #fef5f8;
+}
+
+.address-option-btn .radio-input {
+    margin-right: 12px;
+}
+
+.address-option-btn .radio-label {
+    flex: 1;
+    font-weight: normal;
 }
 
 .form-group-label {
