@@ -2177,14 +2177,7 @@ h1, h2, h3, .font-bold {
     75% { transform: translateX(5px); }
 }
 
-#deliveryTimeOptions.error {
-    border: 2px solid #f44336 !important;
-    border-radius: 8px;
-    padding: 8px;
-    background-color: #fff5f5 !important; /* Легкий красный фон для лучшей видимости на Android */
-    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important; /* Тень для лучшей видимости */
-    animation: shake 0.3s ease-in-out;
-}
+/* Убрана рамка с контейнера - рамки только на кнопках */
 
 .form-group label.error-label {
     color: #000000; /* Заголовки остаются черными */

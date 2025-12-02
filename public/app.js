@@ -796,7 +796,6 @@ function initOrderForm() {
                 // Снимаем ошибку при выборе времени (в реальном времени)
                 const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
                 if (deliveryTimeOptions) {
-                    deliveryTimeOptions.classList.remove('error');
                     // Убираем красную рамку со всех кнопок времени сразу
                     const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
                     timeSlotButtons.forEach(btn => {
@@ -833,8 +832,6 @@ function initOrderForm() {
         // Используем делегирование событий для обработки кликов на кнопки времени
         deliveryTimeContainer.addEventListener('click', function(e) {
             if (e.target.classList.contains('time-slot-btn')) {
-                // Убираем ошибку с контейнера
-                this.classList.remove('error');
                 // Убираем красную рамку со всех кнопок времени
                 const timeSlotButtons = this.querySelectorAll('.time-slot-btn');
                 timeSlotButtons.forEach(btn => {
@@ -909,7 +906,6 @@ async function validateAndSubmitOrder(e) {
     // Сброс ошибки времени доставки
     const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
     if (deliveryTimeOptions) {
-        deliveryTimeOptions.classList.remove('error');
         // Убираем красную рамку со всех кнопок времени
         const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
         timeSlotButtons.forEach(btn => {
@@ -1103,9 +1099,7 @@ async function validateAndSubmitOrder(e) {
         const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
         const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
         if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
-            // Добавляем визуальную индикацию ошибки на контейнер
-            deliveryTimeOptions.classList.add('error');
-            // Добавляем красную рамку на все кнопки времени доставки
+            // Добавляем красную рамку на все кнопки времени доставки (без рамки на контейнере)
             const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
             timeSlotButtons.forEach(btn => {
                 btn.classList.add('error-time-slot');
@@ -1115,10 +1109,9 @@ async function validateAndSubmitOrder(e) {
             hasErrors = true;
         }
     } else {
-        // Если время выбрано - убираем ошибки
+        // Если время выбрано - убираем ошибки с кнопок
         const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
         if (deliveryTimeOptions) {
-            deliveryTimeOptions.classList.remove('error');
             const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
             timeSlotButtons.forEach(btn => {
                 btn.classList.remove('error-time-slot');
