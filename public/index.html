@@ -398,6 +398,9 @@
                                 <datalist id="orderCities">
                                     <option value="Санкт-Петербург">
                                 </datalist>
+                                <div class="address-error" id="orderAddressError" style="display: none;">
+                                    Извините, мы пока не доставляем в этот город
+                                </div>
                             </div>
                             <div class="form-group" id="anchor-orderAddressStreet">
                                 <label>Улица <span class="required">*</span></label>
@@ -430,9 +433,6 @@
                             <div class="form-group">
                                 <label>Комментарий</label>
                                 <textarea id="orderAddressComment" placeholder="Дополнительная информация для курьера"></textarea>
-                            </div>
-                            <div class="address-error" id="orderAddressError" style="display: none;">
-                                Извините, мы пока не доставляем в этот город
                             </div>
                         </div>
                     </div>
