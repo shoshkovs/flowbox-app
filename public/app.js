@@ -2216,7 +2216,271 @@ function loadOrderHistory() {
     }
 }
 
-// Форма редактирования профиля удалена
+// Редактирование профиля
+const profileEditModal = document.getElementById('profileEditModal');
+const profileEditForm = document.getElementById('profileEditForm');
+const editProfileBtn = document.getElementById('editProfileBtn');
+const closeProfileEditModal = document.getElementById('closeProfileEditModal');
+
+editProfileBtn.addEventListener('click', () => {
+    const user = tg.initDataUnsafe?.user;
+    const savedProfile = localStorage.getItem('userProfile');
+    let profileData = null;
+    
+    if (savedProfile) {
+        try {
+            profileData = JSON.parse(savedProfile);
+        } catch (e) {
+            console.error('Ошибка парсинга профиля:', e);
+        }
+    }
+    
+    // Заполнение формы
+    const editProfileNameField = document.getElementById('editProfileName');
+    const editProfilePhoneField = document.getElementById('editProfilePhone');
+    const editProfileEmailField = document.getElementById('editProfileEmail');
+    
+    if (profileData) {
+        editProfileNameField.value = profileData.name || '';
+        editProfilePhoneField.value = profileData.phone || '';
+        editProfileEmailField.value = profileData.email || '';
+    } else {
+        // Заполнение из Telegram
+        if (user) {
+            const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            editProfileNameField.value = fullName || '';
+        }
+        editProfilePhoneField.value = '';
+        editProfileEmailField.value = '';
+    }
+    
+    // Очистка ошибок
+    validateField(editProfileNameField, true);
+    validateField(editProfilePhoneField, true);
+    validateField(editProfileEmailField, true);
+    
+    profileEditModal.style.display = 'flex';
+    lockBodyScroll();
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        closeProfileEditModal.click();
+    });
+    
+    // Настройка форматирования телефона
+    if (editProfilePhoneField) {
+        // Удаляем старый обработчик через клонирование (если есть)
+        const hasListener = editProfilePhoneField.dataset.phoneFormatted === 'true';
+        let actualField = editProfilePhoneField;
+        
+        if (hasListener) {
+            const newField = editProfilePhoneField.cloneNode(true);
+            const savedValue = editProfilePhoneField.value;
+            editProfilePhoneField.parentNode.replaceChild(newField, editProfilePhoneField);
+            newField.value = savedValue;
+            actualField = newField;
+        }
+        
+        // Добавляем обработчик форматирования
+        setupPhoneInput(actualField);
+        
+        // Сохраняем ссылку на поле
+        window.editProfilePhoneField = actualField;
+        
+        // Если в поле уже есть значение, триггерим событие input для применения форматирования
+        if (actualField.value) {
+            setTimeout(() => {
+                actualField.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 10);
+        }
+    }
+    
+    // Валидация в реальном времени
+    editProfileNameField.addEventListener('input', function() {
+        const name = this.value.trim();
+        if (name && name.length >= 2) {
+            validateField(this, true);
+        }
+    });
+    
+    editProfileEmailField.addEventListener('input', function() {
+        const email = this.value.trim();
+        if (email && validateEmail(email)) {
+            validateField(this, true);
+        }
+    });
+    
+    editProfileEmailField.addEventListener('blur', function() {
+        const email = this.value.trim();
+        if (email && !validateEmail(email)) {
+            validateField(this, false);
+        }
+    });
+});
+
+closeProfileEditModal.addEventListener('click', () => {
+    profileEditModal.style.display = 'none';
+    tg.BackButton.hide();
+    unlockBodyScroll();
+});
+
+profileEditForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    // Валидация полей
+    let hasErrors = false;
+    let firstErrorField = null;
+    
+    const nameField = document.getElementById('editProfileName');
+    const phoneField = window.editProfilePhoneField || document.getElementById('editProfilePhone');
+    const emailField = document.getElementById('editProfileEmail');
+    
+    // Валидация имени
+    const name = nameField.value.trim();
+    if (!name || name.length < 2) {
+        validateField(nameField, false);
+        if (!firstErrorField) firstErrorField = document.getElementById('anchor-editProfileName') || nameField;
+        hasErrors = true;
+    } else {
+        validateField(nameField, true);
+    }
+    
+    // Валидация телефона
+    let phoneValue = phoneField ? phoneField.value : '';
+    if (!phoneValue || phoneValue.trim() === '') {
+        validateField(phoneField, false);
+        if (!firstErrorField) firstErrorField = document.getElementById('anchor-editProfilePhone') || phoneField;
+        hasErrors = true;
+    } else {
+        // Проверяем, что номер содержит достаточно цифр
+        const phoneDigits = phoneValue.replace(/\D/g, '');
+        if (phoneDigits.length < 11) {
+            validateField(phoneField, false);
+            if (!firstErrorField) firstErrorField = document.getElementById('anchor-editProfilePhone') || phoneField;
+            hasErrors = true;
+        } else {
+            validateField(phoneField, true);
+        }
+    }
+    
+    // Валидация email
+    const email = emailField.value.trim();
+    if (!email) {
+        validateField(emailField, false);
+        if (!firstErrorField) firstErrorField = document.getElementById('anchor-editProfileEmail') || emailField;
+        hasErrors = true;
+    } else if (!validateEmail(email)) {
+        validateField(emailField, false);
+        if (!firstErrorField) firstErrorField = document.getElementById('anchor-editProfileEmail') || emailField;
+        hasErrors = true;
+    } else {
+        validateField(emailField, true);
+    }
+    
+    // Если есть ошибки, прокручиваем к первой
+    if (hasErrors) {
+        if (firstErrorField) {
+            setTimeout(() => {
+                try {
+                    if (firstErrorField.scrollIntoView) {
+                        firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center' });
+                    }
+                    
+                    const rect = firstErrorField.getBoundingClientRect();
+                    const currentScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    const targetScroll = currentScroll + rect.top - 150;
+                    
+                    let startTime = null;
+                    const duration = 300;
+                    function animateScroll(currentTime) {
+                        if (!startTime) startTime = currentTime;
+                        const progress = Math.min((currentTime - startTime) / duration, 1);
+                        window.scrollTo(0, currentScroll + (targetScroll - currentScroll) * progress);
+                        if (progress < 1) {
+                            requestAnimationFrame(animateScroll);
+                        }
+                    }
+                    requestAnimationFrame(animateScroll);
+                    
+                    const inputField = firstErrorField.querySelector('input') || firstErrorField;
+                    if (inputField && inputField.focus) {
+                        setTimeout(() => {
+                            try {
+                                inputField.focus();
+                                if (inputField.scrollIntoView) {
+                                    inputField.scrollIntoView({ behavior: 'auto', block: 'center' });
+                                }
+                            } catch (focusError) {
+                                console.log('Не удалось установить фокус:', focusError);
+                            }
+                        }, 100);
+                    }
+                } catch (scrollError) {
+                    console.error('Ошибка прокрутки:', scrollError);
+                    try {
+                        if (firstErrorField.scrollIntoView) {
+                            firstErrorField.scrollIntoView();
+                        }
+                    } catch (e) {
+                        console.error('Критическая ошибка прокрутки:', e);
+                    }
+                }
+            }, 100);
+        }
+        return;
+    }
+    
+    // Форматируем номер перед сохранением
+    if (phoneValue) {
+        let phoneDigits = phoneValue.replace(/\D/g, '');
+        if (phoneDigits.startsWith('8')) {
+            phoneDigits = '7' + phoneDigits.substring(1);
+        }
+        if (phoneDigits.length > 0 && !phoneDigits.startsWith('7')) {
+            phoneDigits = '7' + phoneDigits;
+        }
+        if (phoneDigits.length > 11) {
+            phoneDigits = phoneDigits.substring(0, 11);
+        }
+        
+        let formattedPhone = '';
+        if (phoneDigits.length > 0) {
+            formattedPhone = '+7';
+            if (phoneDigits.length > 1) {
+                formattedPhone += ' (' + phoneDigits.substring(1, 4);
+            }
+            if (phoneDigits.length >= 5) {
+                formattedPhone += ') ' + phoneDigits.substring(4, 7);
+            }
+            if (phoneDigits.length >= 8) {
+                formattedPhone += '-' + phoneDigits.substring(7, 9);
+            }
+            if (phoneDigits.length >= 10) {
+                formattedPhone += '-' + phoneDigits.substring(9, 11);
+            }
+        }
+        phoneValue = formattedPhone || phoneValue;
+    }
+    
+    // Нормализуем email перед сохранением
+    const normalizedEmail = email.trim().replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase();
+    
+    const profileData = {
+        name: name,
+        phone: phoneValue,
+        email: normalizedEmail
+    };
+    
+    localStorage.setItem('userProfile', JSON.stringify(profileData));
+    saveUserData(); // Сохраняем на сервер
+    
+    // Обновление отображения
+    profileName.textContent = profileData.name || 'Пользователь';
+    
+    profileEditModal.style.display = 'none';
+    tg.BackButton.hide();
+    unlockBodyScroll();
+    tg.HapticFeedback.notificationOccurred('success');
+});
 
 // Инициализация фильтров
 function initFilters() {
