@@ -825,13 +825,13 @@ h1, h2, h3, .font-bold {
 .address-options-list {
     display: flex;
     flex-direction: column;
-    gap: 20px; /* увеличенный отступ между Дом 1 и Новый адрес */
-    margin-bottom: 20px;
+    gap: 12px; /* как в секции Получатель */
+    margin-bottom: 16px;
 }
 
-/* Фолбек для iOS/старых WebView, где gap для flex не работает */
+/* Фолбек для iOS/старых WebView, где gap для flex может не работать */
 .address-option-btn + .address-option-btn {
-    margin-top: 20px;
+    margin-top: 12px;
 }
 
 .address-option-btn {
