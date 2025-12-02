@@ -592,9 +592,24 @@ function initOrderForm() {
     const recipientFields = document.getElementById('recipientFields');
     
     if (recipientRadios.length > 0 && recipientFields) {
+        // Функция обновления стилей выбранной опции
+        function updateRecipientStyles() {
+            recipientRadios.forEach(radio => {
+                const radioOption = radio.closest('.radio-option');
+                if (radio.checked && radioOption) {
+                    radioOption.style.borderColor = 'var(--primary-color)';
+                    radioOption.style.backgroundColor = '#fef5f8';
+                } else if (radioOption) {
+                    radioOption.style.borderColor = 'var(--border-color)';
+                    radioOption.style.backgroundColor = 'white';
+                }
+            });
+        }
+        
         recipientRadios.forEach(radio => {
             radio.addEventListener('change', () => {
                 selectedRecipientId = radio.value;
+                updateRecipientStyles();
                 if (radio.value === 'other') {
                     recipientFields.style.display = 'block';
                 } else {
@@ -606,6 +621,9 @@ function initOrderForm() {
                 }
             });
         });
+        
+        // Инициализация стилей при загрузке
+        updateRecipientStyles();
     }
     
     // Инициализация списка адресов
