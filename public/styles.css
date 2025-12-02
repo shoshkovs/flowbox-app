@@ -2071,6 +2071,13 @@ h1, h2, h3, .font-bold {
     outline: none !important;
 }
 
+/* Красная рамка для кнопок времени доставки при ошибке */
+.time-slot-btn.error-time-slot {
+    border-color: #f44336 !important;
+    border-width: 2px !important;
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important;
+}
+
 .address-form-actions {
     display: flex;
     flex-direction: column;

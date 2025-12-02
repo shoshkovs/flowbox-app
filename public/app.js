@@ -974,10 +974,25 @@ async function validateAndSubmitOrder(e) {
         const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
         const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
         if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
-            // Добавляем визуальную индикацию ошибки
+            // Добавляем визуальную индикацию ошибки на контейнер
             deliveryTimeOptions.classList.add('error');
+            // Добавляем красную рамку на все кнопки времени доставки
+            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+            timeSlotButtons.forEach(btn => {
+                btn.classList.add('error-time-slot');
+            });
             if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
             hasErrors = true;
+        }
+    } else {
+        // Если время выбрано - убираем ошибки
+        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+        if (deliveryTimeOptions) {
+            deliveryTimeOptions.classList.remove('error');
+            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+            timeSlotButtons.forEach(btn => {
+                btn.classList.remove('error-time-slot');
+            });
         }
     }
     
@@ -1031,13 +1046,22 @@ async function validateAndSubmitOrder(e) {
         // Валидация обязательных полей адреса
         const cityField = document.getElementById('orderAddressCity');
         const cityAnchor = document.getElementById('anchor-orderAddressCity');
-        if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
+        const orderAddressError = document.getElementById('orderAddressError');
+        
+        if (!city) {
+            // Если поле пустое - показываем только красную рамку, без сообщения об ошибке города
+            validateField(cityField, false);
+            if (orderAddressError) orderAddressError.style.display = 'none';
+            if (!firstErrorField) firstErrorField = cityAnchor || cityField;
+            hasAddressErrors = true;
+            hasErrors = true;
+        } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+            // Если город правильный - убираем ошибку
             validateField(cityField, true);
-            const orderAddressError = document.getElementById('orderAddressError');
             if (orderAddressError) orderAddressError.style.display = 'none';
         } else {
+            // Если город заполнен, но не СПб - показываем ошибку города
             validateField(cityField, false);
-            const orderAddressError = document.getElementById('orderAddressError');
             if (orderAddressError) orderAddressError.style.display = 'block';
             if (!firstErrorField) firstErrorField = cityAnchor || cityField;
             hasAddressErrors = true;
