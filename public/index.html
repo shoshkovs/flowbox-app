@@ -312,6 +312,105 @@
                 </div>
             </div>
             
+            <!-- Вкладка: Оформление заказа -->
+            <div class="tab-content" id="orderTab">
+                <div class="order-page-header">
+                    <button class="back-btn-order" id="backFromOrder">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <h2 class="order-page-title">Оформление заказа</h2>
+                </div>
+                <form class="order-form" id="orderForm">
+                    <div class="form-group">
+                        <label>Ваше имя</label>
+                        <input type="text" id="customerName" required placeholder="Иван Иванов">
+                    </div>
+                    <div class="form-group">
+                        <label>Телефон</label>
+                        <input type="tel" id="customerPhone" required placeholder="+7 (999) 123-45-67">
+                    </div>
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" id="customerEmail" required placeholder="example@mail.com">
+                    </div>
+                    
+                    <!-- Сохраненные адреса -->
+                    <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
+                        <label class="form-section-label">Адрес доставки</label>
+                        <div class="saved-addresses-list" id="savedAddressesList"></div>
+                        <button type="button" class="use-new-address-btn" id="useNewAddressBtn">Использовать новый адрес</button>
+                    </div>
+                    
+                    <!-- Форма нового адреса -->
+                    <div class="new-address-form" id="newAddressForm">
+                        <label class="form-section-label">Адрес доставки</label>
+                        <div class="form-group">
+                            <input type="text" id="orderAddressName" placeholder="Наименование адреса (Мой дом)">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="orderAddressCity" required placeholder="Город (Санкт-Петербург)" list="orderCities">
+                            <datalist id="orderCities">
+                                <option value="Санкт-Петербург">
+                            </datalist>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="orderAddressStreet" required placeholder="Улица, дом">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="orderAddressEntrance" placeholder="Парадная">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="orderAddressApartment" placeholder="Квартира/офис">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="orderAddressFloor" placeholder="Этаж">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="orderAddressIntercom" placeholder="Домофон">
+                        </div>
+                        <div class="form-group">
+                            <textarea id="orderAddressComment" placeholder="Комментарий (Необязательно: уточнение к адресу)"></textarea>
+                        </div>
+                        <div class="address-error" id="orderAddressError" style="display: none;">
+                            Извините, мы пока не доставляем в этот город
+                        </div>
+                    </div>
+                    
+                    <!-- Дата доставки -->
+                    <div class="form-group">
+                        <label>Дата доставки</label>
+                        <input type="date" id="deliveryDate" required min="">
+                    </div>
+                    
+                    <!-- Время доставки -->
+                    <div class="form-group">
+                        <label>Время доставки</label>
+                        <div class="delivery-time-options" id="deliveryTimeOptions">
+                            <button type="button" class="time-slot-btn" data-time="10-12">10:00 - 12:00</button>
+                            <button type="button" class="time-slot-btn" data-time="12-14">12:00 - 14:00</button>
+                            <button type="button" class="time-slot-btn" data-time="14-16">14:00 - 16:00</button>
+                            <button type="button" class="time-slot-btn" data-time="16-18">16:00 - 18:00</button>
+                            <button type="button" class="time-slot-btn" data-time="18-20">18:00 - 20:00</button>
+                            <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Комментарий к заказу</label>
+                        <textarea id="orderComment" placeholder="Особые пожелания к заказу"></textarea>
+                    </div>
+                    <div class="order-summary">
+                        <div class="summary-item">
+                            <span>Сумма:</span>
+                            <span id="summaryTotal" class="summary-total-amount">0 <span class="ruble-sign">₽</span></span>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-order-btn">Оплатить</button>
+                </form>
+            </div>
+
             <!-- Вкладка: О проекте -->
             <div class="tab-content" id="aboutTab">
                 <div class="about-page">
@@ -417,102 +516,6 @@
         </nav>
 
 
-        <!-- Форма заказа -->
-        <div class="order-overlay" id="orderOverlay">
-            <div class="order-panel">
-                <div class="order-header">
-                    <h2>Оформление заказа</h2>
-                    <button class="close-btn" id="closeOrder">✕</button>
-                </div>
-                <form class="order-form" id="orderForm">
-                    <div class="form-group">
-                        <label>Ваше имя</label>
-                        <input type="text" id="customerName" required placeholder="Иван Иванов">
-                    </div>
-                    <div class="form-group">
-                        <label>Телефон</label>
-                        <input type="tel" id="customerPhone" required placeholder="+7 (999) 123-45-67">
-                    </div>
-                    <div class="form-group">
-                        <label>E-mail</label>
-                        <input type="email" id="customerEmail" required placeholder="example@mail.com">
-                    </div>
-                    
-                    <!-- Сохраненные адреса -->
-                    <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
-                        <label class="form-section-label">Адрес доставки</label>
-                        <div class="saved-addresses-list" id="savedAddressesList"></div>
-                        <button type="button" class="use-new-address-btn" id="useNewAddressBtn">Использовать новый адрес</button>
-                    </div>
-                    
-                    <!-- Форма нового адреса -->
-                    <div class="new-address-form" id="newAddressForm">
-                        <label class="form-section-label">Адрес доставки</label>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressName" placeholder="Наименование адреса (Мой дом)">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressCity" required placeholder="Город (Санкт-Петербург)" list="orderCities">
-                            <datalist id="orderCities">
-                                <option value="Санкт-Петербург">
-                            </datalist>
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressStreet" required placeholder="Улица, дом">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressEntrance" placeholder="Парадная">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressApartment" placeholder="Квартира/офис">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressFloor" placeholder="Этаж">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressIntercom" placeholder="Домофон">
-                        </div>
-                        <div class="form-group">
-                            <textarea id="orderAddressComment" placeholder="Комментарий (Необязательно: уточнение к адресу)"></textarea>
-                        </div>
-                        <div class="address-error" id="orderAddressError" style="display: none;">
-                            Извините, мы пока не доставляем в этот город
-                        </div>
-                    </div>
-                    
-                    <!-- Дата доставки -->
-                    <div class="form-group">
-                        <label>Дата доставки</label>
-                        <input type="date" id="deliveryDate" required min="">
-                    </div>
-                    
-                    <!-- Время доставки -->
-                    <div class="form-group">
-                        <label>Время доставки</label>
-                        <div class="delivery-time-options" id="deliveryTimeOptions">
-                            <button type="button" class="time-slot-btn" data-time="10-12">10:00 - 12:00</button>
-                            <button type="button" class="time-slot-btn" data-time="12-14">12:00 - 14:00</button>
-                            <button type="button" class="time-slot-btn" data-time="14-16">14:00 - 16:00</button>
-                            <button type="button" class="time-slot-btn" data-time="16-18">16:00 - 18:00</button>
-                            <button type="button" class="time-slot-btn" data-time="18-20">18:00 - 20:00</button>
-                            <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Комментарий к заказу</label>
-                        <textarea id="orderComment" placeholder="Особые пожелания к заказу"></textarea>
-                    </div>
-                    <div class="order-summary">
-                        <div class="summary-item">
-                            <span>Сумма:</span>
-                            <span id="summaryTotal" class="summary-total-amount">0 <span class="ruble-sign">₽</span></span>
-                        </div>
-                    </div>
-                    <button type="submit" class="submit-order-btn">Оплатить</button>
-                </form>
-            </div>
-        </div>
 
         <!-- Успешное оформление -->
         <div class="success-overlay" id="successOverlay">

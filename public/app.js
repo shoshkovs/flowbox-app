@@ -52,8 +52,8 @@ const cartWithItems = document.getElementById('cartWithItems');
 const cartItemsList = document.getElementById('cartItemsList');
 const finalTotalAmount = document.getElementById('finalTotalAmount');
 const checkoutBtnFinal = document.getElementById('checkoutBtnFinal');
-const orderOverlay = document.getElementById('orderOverlay');
-const closeOrder = document.getElementById('closeOrder');
+const orderTab = document.getElementById('orderTab');
+const backFromOrder = document.getElementById('backFromOrder');
 const orderForm = document.getElementById('orderForm');
 const successOverlay = document.getElementById('successOverlay');
 const backToShop = document.getElementById('backToShop');
@@ -535,6 +535,22 @@ function switchTab(tabId) {
         activeTab.classList.add('active');
     }
     
+    // Скрыть/показать навигацию и header
+    const bottomNav = document.querySelector('.bottom-nav');
+    const header = document.querySelector('.header');
+    
+    if (tabId === 'orderTab') {
+        // Скрыть навигацию и header при открытии формы заказа
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (header) header.style.display = 'none';
+        // Инициализировать форму заказа
+        initOrderForm();
+    } else {
+        // Показать навигацию и header для других вкладок
+        if (bottomNav) bottomNav.style.display = 'flex';
+        if (header) header.style.display = 'flex';
+    }
+    
     // Обновить навигацию
     navItems.forEach(item => {
         if (item.dataset.tab === tabId) {
@@ -562,7 +578,7 @@ navItems.forEach(item => {
 
 // Оформление заказа
 checkoutBtnFinal.addEventListener('click', () => {
-    orderOverlay.classList.add('active');
+    switchTab('orderTab');
     
     // Загрузка адресов
     loadSavedAddresses();
@@ -654,18 +670,72 @@ checkoutBtnFinal.addEventListener('click', () => {
         }
     }
     
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        closeOrderPanel();
-    });
+    // Инициализация формы заказа
+    initOrderForm();
 });
 
-// Закрытие формы заказа
-closeOrder.addEventListener('click', closeOrderPanel);
+// Инициализация формы заказа
+function initOrderForm() {
+    // Загрузка адресов
+    loadSavedAddresses();
+    
+    // Установка минимальной даты (завтра)
+    const deliveryDateInput = document.getElementById('deliveryDate');
+    if (deliveryDateInput) {
+        const today = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        deliveryDateInput.min = tomorrow.toISOString().split('T')[0];
+        deliveryDateInput.value = tomorrow.toISOString().split('T')[0];
+    }
+    
+    // Расчет суммы
+    const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
+    
+    const summaryTotal = document.getElementById('summaryTotal');
+    if (summaryTotal) {
+        summaryTotal.innerHTML = `${total} <span class="ruble-sign">₽</span>`;
+    }
+    
+    // Заполнение данных пользователя из профиля или Telegram
+    const savedProfile = localStorage.getItem('userProfile');
+    let profileData = null;
+    if (savedProfile) {
+        try {
+            profileData = JSON.parse(savedProfile);
+        } catch (e) {
+            console.error('Ошибка парсинга профиля:', e);
+        }
+    }
+    
+    const nameInput = document.getElementById('customerName');
+    const phoneInput = document.getElementById('customerPhone');
+    const emailInput = document.getElementById('customerEmail');
+    
+    if (nameInput && phoneInput && emailInput) {
+        if (profileData) {
+            if (profileData.name) nameInput.value = profileData.name;
+            if (profileData.phone) phoneInput.value = profileData.phone;
+            if (profileData.email) emailInput.value = profileData.email;
+        } else {
+            // Заполнение из Telegram
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                if (user.first_name) {
+                    const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                    nameInput.value = fullName;
+                }
+            }
+        }
+    }
+}
 
-function closeOrderPanel() {
-    orderOverlay.classList.remove('active');
-    tg.BackButton.hide();
+// Кнопка "Назад" в форме заказа
+if (backFromOrder) {
+    backFromOrder.addEventListener('click', () => {
+        switchTab('cartTab');
+    });
 }
 
 // Отправка заказа
@@ -822,9 +892,10 @@ orderForm.addEventListener('submit', async (e) => {
             userActiveOrders.push(order);
             saveUserData(); // Сохраняем на сервер
             
-            orderOverlay.classList.remove('active');
             successOverlay.classList.add('active');
-            tg.BackButton.hide();
+            // Скрыть форму заказа
+            const orderTab = document.getElementById('orderTab');
+            if (orderTab) orderTab.classList.remove('active');
             
             // Очистка корзины
             cart = [];

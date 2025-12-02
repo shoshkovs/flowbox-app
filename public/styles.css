@@ -513,55 +513,45 @@ h1, h2, h3, .font-bold {
     cursor: not-allowed;
 }
 
-/* Order Form */
-.order-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: none;
-    z-index: 2000;
-    animation: fadeIn 0.3s;
-    overflow-y: auto;
-}
-
-.order-overlay.active {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 20px;
-}
-
-.order-panel {
-    background: white;
-    width: 100%;
-    max-width: 500px;
-    border-radius: 12px;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    animation: slideUp 0.3s;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.order-header {
-    padding: 20px;
+/* Order Form Page */
+.order-page-header {
+    padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 16px;
+    background: white;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.order-page-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.back-btn-order {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    transition: opacity 0.2s;
+}
+
+.back-btn-order:active {
+    opacity: 0.6;
+}
+
+.back-btn-order svg {
+    width: 24px;
+    height: 24px;
 }
 
 .order-form {
