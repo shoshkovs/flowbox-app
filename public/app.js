@@ -1081,18 +1081,8 @@ async function validateAndSubmitOrder(e) {
             hasErrors = true;
         }
         
-        if (hasAddressErrors) {
-            // Прокрутка к первому полю с ошибкой адреса
-            if (firstErrorField) {
-                setTimeout(() => {
-                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    if (firstErrorField.focus && typeof firstErrorField.focus === 'function') {
-                        firstErrorField.focus();
-                    }
-                }, 100);
-            }
-            return;
-        }
+        // Не делаем return здесь - нужно проверить и время доставки тоже
+        // Ошибки адреса уже установлены, продолжаем проверку других полей
         
         addressData = {
             name: 'Новый адрес',
