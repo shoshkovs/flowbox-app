@@ -73,6 +73,29 @@ const tabContents = document.querySelectorAll('.tab-content');
 // Фильтры
 const filterButtons = document.querySelectorAll('.filter-btn');
 
+// Навигация по полям по Enter без отправки формы
+function setupEnterKeyNavigation(form) {
+    if (!form) return;
+    
+    const focusable = Array.from(
+        form.querySelectorAll('input, textarea, select')
+    ).filter(el => !el.disabled && el.type !== 'hidden');
+    
+    focusable.forEach((field, index) => {
+        field.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                // Не отправляем форму по Enter
+                e.preventDefault();
+                
+                const next = focusable[index + 1];
+                if (next && typeof next.focus === 'function') {
+                    next.focus();
+                }
+            }
+        });
+    });
+}
+
 // Загрузка товаров
 async function loadProducts() {
     try {
@@ -1553,6 +1576,9 @@ if (orderForm) {
     orderForm.addEventListener('submit', async (e) => {
         await validateAndSubmitOrder(e);
     }, false);
+    
+    // На мобильных Enter просто переносит фокус на следующее поле, не отправляя форму
+    setupEnterKeyNavigation(orderForm);
 }
 
 // Дополнительный обработчик клика на кнопку для Android (более надежный)
@@ -2141,6 +2167,8 @@ if (deleteAddressBtn) {
 }
 
 ensureAddressFormValidation();
+// На странице профиля Enter в форме адреса просто переходит к следующему полю
+setupEnterKeyNavigation(addressForm);
 
 // Текущий редактируемый адрес
 let editingAddressId = null;
@@ -2558,6 +2586,9 @@ profileEditForm.addEventListener('submit', (e) => {
     unlockBodyScroll();
     tg.HapticFeedback.notificationOccurred('success');
 });
+
+// В форме редактирования профиля Enter просто переходит к следующему полю
+setupEnterKeyNavigation(profileEditForm);
 
 // Инициализация фильтров
 function initFilters() {
