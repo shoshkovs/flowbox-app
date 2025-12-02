@@ -826,6 +826,38 @@ function initOrderForm() {
         });
     });
     
+    // Специальная проверка города в реальном времени
+    const cityField = document.getElementById('orderAddressCity');
+    const orderAddressError = document.getElementById('orderAddressError');
+    if (cityField && orderAddressError) {
+        cityField.addEventListener('input', function() {
+            const city = this.value.trim();
+            if (city && city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
+                // Показываем ошибку сразу, если город не СПб
+                validateField(this, false);
+                orderAddressError.style.display = 'block';
+            } else {
+                // Убираем ошибку, если город правильный или пустой
+                if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                    validateField(this, true);
+                }
+                orderAddressError.style.display = 'none';
+            }
+        });
+        
+        cityField.addEventListener('blur', function() {
+            const city = this.value.trim();
+            // При потере фокуса проверяем еще раз
+            if (city && city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
+                validateField(this, false);
+                orderAddressError.style.display = 'block';
+            } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                validateField(this, true);
+                orderAddressError.style.display = 'none';
+            }
+        });
+    }
+    
     // Обработчик для блока времени доставки (сброс ошибки при клике на любой слот в реальном времени)
     const deliveryTimeContainer = document.getElementById('deliveryTimeOptions');
     if (deliveryTimeContainer) {
@@ -1104,7 +1136,8 @@ async function validateAndSubmitOrder(e) {
             timeSlotButtons.forEach(btn => {
                 btn.classList.add('error-time-slot');
             });
-            // Устанавливаем firstErrorField только если еще не установлено (адрес имеет приоритет)
+            // Устанавливаем firstErrorField только если еще не установлено (адрес имеет приоритет для прокрутки)
+            // Но время все равно подсвечивается красным независимо от того, заполнен адрес или нет
             if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
             hasErrors = true;
         }
