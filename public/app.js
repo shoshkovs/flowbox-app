@@ -1953,6 +1953,77 @@ addressesBtn.addEventListener('click', () => {
     addressForm.reset();
 });
 
+// Инициализация валидации формы адреса в профиле
+function initAddressFormValidation() {
+    // Проверка города при выходе из поля (blur)
+    const addressCityField = document.getElementById('addressCity');
+    const addressErrorElement = document.getElementById('addressError');
+    
+    if (addressCityField && addressErrorElement) {
+        // Удаляем старые обработчики через клонирование (если есть)
+        const hasListener = addressCityField.dataset.cityValidated === 'true';
+        let actualCityField = addressCityField;
+        
+        if (hasListener) {
+            const newField = addressCityField.cloneNode(true);
+            const savedValue = addressCityField.value;
+            addressCityField.parentNode.replaceChild(newField, addressCityField);
+            newField.value = savedValue;
+            actualCityField = newField;
+        }
+        actualCityField.dataset.cityValidated = 'true';
+        
+        // Проверка города при выходе из поля (blur)
+        actualCityField.addEventListener('blur', function() {
+            const city = this.value.trim();
+            // Проверяем только после того, как пользователь вышел из поля
+            if (city && city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
+                // Показываем ошибку, если город не СПб
+                validateField(this, false);
+                addressErrorElement.style.display = 'block';
+            } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                // Убираем ошибку, если город правильный
+                validateField(this, true);
+                addressErrorElement.style.display = 'none';
+            } else if (!city) {
+                // Если поле пустое - убираем сообщение об ошибке города (но поле может быть подсвечено красным как обязательное)
+                addressErrorElement.style.display = 'none';
+            }
+        });
+        
+        // При вводе убираем сообщение об ошибке города
+        actualCityField.addEventListener('input', function() {
+            const city = this.value.trim();
+            // Если пользователь начал вводить правильный город - убираем ошибку
+            if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб' || city.toLowerCase().startsWith('санкт-петербург') || city.toLowerCase().startsWith('спб')) {
+                addressErrorElement.style.display = 'none';
+                if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                    validateField(this, true);
+                }
+            }
+        });
+    }
+    
+    // Автоматический сброс ошибок для всех полей формы адреса
+    const addressFormFields = document.querySelectorAll('#addressForm input, #addressForm textarea');
+    addressFormFields.forEach(field => {
+        if (field.id !== 'addressCity') {
+            // Удаляем старые обработчики через проверку флага
+            if (!field.dataset.addressFormatted) {
+                field.dataset.addressFormatted = 'true';
+                
+                field.addEventListener('input', function() {
+                    validateField(this, true);
+                });
+                
+                field.addEventListener('change', function() {
+                    validateField(this, true);
+                });
+            }
+        }
+    });
+}
+
 // Текущий редактируемый адрес
 let editingAddressId = null;
 
