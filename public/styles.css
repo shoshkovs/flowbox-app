@@ -736,6 +736,23 @@ h1, h2, h3, .font-bold {
 .address-option-btn .radio-label {
     flex: 1;
     font-weight: normal;
+    display: flex;
+    align-items: center;
+}
+
+.address-name-bold {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.address-separator {
+    color: var(--text-color);
+    margin: 0 4px;
+}
+
+.address-short {
+    color: #999;
+    font-weight: normal;
 }
 
 .form-group-label {
