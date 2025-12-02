@@ -850,9 +850,12 @@ if (backFromOrder) {
     });
 }
 
-// Отправка заказа
-orderForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+// Функция валидации и отправки заказа (вынесена отдельно для использования из разных обработчиков)
+async function validateAndSubmitOrder(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
     
     // Сброс всех ошибок
     document.querySelectorAll('#orderForm .form-group input, #orderForm .form-group textarea, #orderForm .form-group select').forEach(field => {
@@ -1050,70 +1053,80 @@ orderForm.addEventListener('submit', async (e) => {
     
     // Если есть ошибки, прокрутить к первому полю с ошибкой
     if (hasErrors) {
+        // Для Android используем более простой и надежный метод
         if (firstErrorField) {
-            setTimeout(() => {
-                // Для Android используем якоря (anchor links) - самый надежный метод
-                try {
-                    const fieldId = firstErrorField.id;
-                    if (fieldId) {
-                        // Используем location.hash для прокрутки к якорю (работает на Android)
-                        const anchorId = fieldId.startsWith('anchor-') ? fieldId : 'anchor-' + fieldId.replace(/^(customer|recipient|orderAddress|delivery)/, '');
-                        const anchorElement = document.getElementById(anchorId) || firstErrorField;
-                        
-                        // Метод 1: Якорь через location.hash (лучше всего работает на Android)
-                        if (anchorElement.id) {
-                            window.location.hash = anchorElement.id;
-                            // Убираем hash через небольшую задержку для плавности
-                            setTimeout(() => {
-                                window.history.replaceState(null, null, ' ');
-                            }, 1000);
-                        }
-                        
-                        // Метод 2: scrollIntoView с auto
-                        if (anchorElement.scrollIntoView) {
-                            anchorElement.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
-                        }
-                        
-                        // Метод 3: Прокрутка через getBoundingClientRect
-                        const rect = anchorElement.getBoundingClientRect();
-                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
-                        const targetY = rect.top + scrollTop - 100; // Отступ сверху 100px
-                        window.scrollTo({ top: Math.max(0, targetY), behavior: 'auto' });
-                        
-                        // Метод 4: Прямая прокрутка элемента
-                        if (anchorElement.scrollTop !== undefined) {
-                            anchorElement.scrollTop = 0;
-                        }
-                        
-                        // Фокус на поле ввода (если это input)
-                        const inputField = anchorElement.querySelector('input, textarea, select') || 
-                                         (firstErrorField.tagName === 'INPUT' || firstErrorField.tagName === 'TEXTAREA' ? firstErrorField : null);
-                        if (inputField && inputField.focus && typeof inputField.focus === 'function') {
-                            setTimeout(() => {
-                                inputField.focus();
-                                inputField.scrollIntoView({ behavior: 'auto', block: 'center' });
-                            }, 300);
-                        }
+            // Немедленная прокрутка без задержки для Android
+            try {
+                const fieldId = firstErrorField.id || '';
+                let anchorElement = firstErrorField;
+                
+                // Определяем якорь
+                if (fieldId && fieldId.startsWith('anchor-')) {
+                    anchorElement = firstErrorField;
+                } else if (fieldId) {
+                    // Пытаемся найти соответствующий якорь
+                    const anchorId = 'anchor-' + fieldId.replace(/^(customer|recipient|orderAddress|delivery)/, '');
+                    const foundAnchor = document.getElementById(anchorId);
+                    if (foundAnchor) {
+                        anchorElement = foundAnchor;
                     }
-                } catch (e) {
-                    console.error('Ошибка прокрутки:', e);
-                    // Fallback: простая прокрутка
+                }
+                
+                // Метод 1: Простая прокрутка через scrollIntoView (самый надежный для Android)
+                if (anchorElement && anchorElement.scrollIntoView) {
+                    anchorElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+                }
+                
+                // Метод 2: Прокрутка через getBoundingClientRect (для Android)
+                if (anchorElement) {
+                    const rect = anchorElement.getBoundingClientRect();
+                    const currentScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    const targetScroll = currentScroll + rect.top - 150; // Отступ 150px сверху
+                    
+                    // Используем requestAnimationFrame для плавной прокрутки на Android
+                    const scrollToPosition = () => {
+                        window.scrollTo(0, Math.max(0, targetScroll));
+                        document.documentElement.scrollTop = Math.max(0, targetScroll);
+                        document.body.scrollTop = Math.max(0, targetScroll);
+                    };
+                    
+                    if (window.requestAnimationFrame) {
+                        requestAnimationFrame(scrollToPosition);
+                    } else {
+                        scrollToPosition();
+                    }
+                }
+                
+                // Метод 3: Фокус на поле ввода
+                const inputField = anchorElement ? anchorElement.querySelector('input, textarea, select') : null;
+                if (inputField && inputField.focus) {
+                    setTimeout(() => {
+                        try {
+                            inputField.focus();
+                            // Дополнительная прокрутка после фокуса
+                            if (inputField.scrollIntoView) {
+                                inputField.scrollIntoView({ behavior: 'auto', block: 'center' });
+                            }
+                        } catch (focusError) {
+                            console.log('Не удалось установить фокус:', focusError);
+                        }
+                    }, 100);
+                }
+            } catch (scrollError) {
+                console.error('Ошибка прокрутки:', scrollError);
+                // Fallback: простая прокрутка
+                try {
                     if (firstErrorField.scrollIntoView) {
                         firstErrorField.scrollIntoView();
                     }
+                } catch (e) {
+                    console.error('Критическая ошибка прокрутки:', e);
                 }
-            }, 300);
+            }
         }
-        return;
-    }
-    
-    // Если есть ошибки, прокрутить к первому полю с ошибкой
-    if (hasErrors && firstErrorField) {
-        setTimeout(() => {
-            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            firstErrorField.focus();
-        }, 100);
-        return;
+        
+        // Важно: возвращаем false для предотвращения отправки формы
+        return false;
     }
     
     // Формирование строки адреса
