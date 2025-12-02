@@ -1091,6 +1091,13 @@ let editingAddressId = null;
 // Загрузка сохраненных адресов
 function loadSavedAddresses() {
     // Данные уже загружены в loadUserData, просто обновляем отображение
+    // Если данные не загружены с сервера, загружаем из localStorage
+    if (savedAddresses.length === 0) {
+        const stored = localStorage.getItem('savedAddresses');
+        if (stored) {
+            savedAddresses = JSON.parse(stored);
+        }
+    }
     
     // Отображение в профиле
     const addressesList = document.getElementById('deliveryAddressesList');
