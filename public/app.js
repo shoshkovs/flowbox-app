@@ -1671,6 +1671,7 @@ addressesBtn.addEventListener('click', () => {
     addressForm.reset();
     
     addressModal.style.display = 'flex';
+    lockBodyScroll();
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
         closeAddressModal.click();
