@@ -613,9 +613,14 @@ h1, h2, h3, .font-bold {
     background-color: #f9f9f9;
 }
 
+.radio-option .radio-input:checked ~ .radio-label,
 .radio-option:has(.radio-input:checked) {
     border-color: var(--primary-color);
     background-color: #fef5f8;
+}
+
+.radio-input:checked + .radio-label {
+    color: var(--text-color);
 }
 
 .radio-input {
