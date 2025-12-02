@@ -705,6 +705,60 @@ function initOrderForm() {
         tomorrow.setDate(tomorrow.getDate() + 1);
         deliveryDateInput.min = tomorrow.toISOString().split('T')[0];
         deliveryDateInput.value = tomorrow.toISOString().split('T')[0];
+        
+        // Функция обновления времени доставки
+        function updateDeliveryTimeOptions() {
+            const selectedDate = new Date(deliveryDateInput.value);
+            const todayStr = today.toISOString().split('T')[0];
+            const selectedDateStr = selectedDate.toISOString().split('T')[0];
+            const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+            
+            if (deliveryTimeOptions) {
+                // Если выбрана сегодняшняя дата
+                if (selectedDateStr === todayStr) {
+                    deliveryTimeOptions.innerHTML = '<div class="no-time-slots">Нет свободных слотов</div>';
+                } else {
+                    // Показываем обычные слоты времени
+                    deliveryTimeOptions.innerHTML = `
+                        <button type="button" class="time-slot-btn" data-time="10-12">10:00 - 12:00</button>
+                        <button type="button" class="time-slot-btn" data-time="12-14">12:00 - 14:00</button>
+                        <button type="button" class="time-slot-btn" data-time="14-16">14:00 - 16:00</button>
+                        <button type="button" class="time-slot-btn" data-time="16-18">16:00 - 18:00</button>
+                        <button type="button" class="time-slot-btn" data-time="18-20">18:00 - 20:00</button>
+                        <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
+                    `;
+                    
+                    // Обработка выбора времени доставки
+                    deliveryTimeOptions.querySelectorAll('.time-slot-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            deliveryTimeOptions.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            tg.HapticFeedback.impactOccurred('light');
+                        });
+                    });
+                }
+            }
+        }
+        
+        // Инициализация времени доставки
+        updateDeliveryTimeOptions();
+        
+        // Обработка изменения даты
+        deliveryDateInput.addEventListener('change', () => {
+            updateDeliveryTimeOptions();
+        });
+    }
+    
+    // Инициализация обработчиков времени доставки (если они уже есть в DOM)
+    const existingTimeSlots = document.querySelectorAll('.time-slot-btn');
+    if (existingTimeSlots.length > 0) {
+        existingTimeSlots.forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                tg.HapticFeedback.impactOccurred('light');
+            });
+        });
     }
     
     // Расчет суммы

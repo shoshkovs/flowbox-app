@@ -605,12 +605,17 @@ h1, h2, h3, .font-bold {
     padding: 12px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
     background-color: white;
 }
 
 .radio-option:hover {
     background-color: #f9f9f9;
+}
+
+.radio-option:has(.radio-input:checked) {
+    border-color: var(--primary-color);
+    background-color: #fef5f8;
 }
 
 .radio-input {
@@ -1957,8 +1962,8 @@ h1, h2, h3, .font-bold {
 
 .time-slot-btn.active {
     border-color: var(--primary-color);
-    background: var(--primary-color);
-    color: white;
+    background: #fef5f8;
+    color: var(--text-color);
 }
 
 .address-form-actions {
