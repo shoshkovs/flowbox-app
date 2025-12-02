@@ -615,7 +615,7 @@ function initOrderForm() {
     let selectedAddressId = null;
     
     // Функция для отображения списка адресов
-    function renderAddressOptions() {
+    window.renderAddressOptions = function() {
         if (!addressOptionsList) return;
         
         addressOptionsList.innerHTML = '';
@@ -652,7 +652,7 @@ function initOrderForm() {
     }
     
     // Инициализация списка адресов
-    renderAddressOptions();
+    window.renderAddressOptions();
     
     // Обработка выбора "Новый адрес"
     if (newAddressRadio) {
@@ -673,8 +673,13 @@ function initOrderForm() {
                                'orderAddressIntercom', 'orderAddressComment'];
                 fields.forEach(fieldId => {
                     const field = document.getElementById(fieldId);
-                    if (field) field.value = '';
+                    if (field) {
+                        field.value = '';
+                        validateField(field, true); // Сбросить ошибки валидации
+                    }
                 });
+                const orderAddressError = document.getElementById('orderAddressError');
+                if (orderAddressError) orderAddressError.style.display = 'none';
             }
         });
     }
@@ -1257,9 +1262,8 @@ function loadSavedAddresses() {
     }
     
     // Обновление списка адресов в форме заказа
-    const addressOptionsList = document.getElementById('addressOptionsList');
-    if (addressOptionsList && typeof renderAddressOptions === 'function') {
-        renderAddressOptions();
+    if (typeof window.renderAddressOptions === 'function') {
+        window.renderAddressOptions();
     }
 }
 
