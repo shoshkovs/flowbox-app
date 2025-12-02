@@ -677,20 +677,36 @@ h1, h2, h3, .font-bold {
     font-weight: normal;
 }
 
+.checkbox-group {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.checkbox-group .form-group {
+    margin-bottom: 0;
+}
+
 .checkbox-label-inline {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     cursor: pointer;
     font-weight: normal;
     margin-bottom: 0;
     flex-wrap: nowrap;
-    width: auto;
+    width: 100%;
+    gap: 8px;
+}
+
+.checkbox-label-inline .checkbox-input {
+    flex-shrink: 0;
+    margin-right: 0;
 }
 
 .checkbox-label-inline .checkbox-text {
     font-weight: normal;
     white-space: nowrap;
-    display: inline;
+    display: inline-block;
+    flex-shrink: 0;
 }
 
 .checkbox-input {
