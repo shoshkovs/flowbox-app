@@ -39,6 +39,10 @@ body {
     background: var(--bg-color);
     color: var(--text-color);
     overflow-x: hidden;
+    /* Улучшения для Android */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
 }
 
 h1, h2, h3, .font-bold {
@@ -803,7 +807,8 @@ h1, h2, h3, .font-bold {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
     width: 100%;
     padding: 12px;
     border: 1px solid var(--border-color);
