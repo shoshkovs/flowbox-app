@@ -1431,7 +1431,6 @@ function validateField(field, isValid) {
         if (field.id === 'deliveryDate') {
             const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
             if (deliveryTimeOptions) {
-                deliveryTimeOptions.classList.remove('error');
             }
         }
         // Не меняем цвет заголовка - он всегда черный
