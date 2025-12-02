@@ -1684,6 +1684,7 @@ addressesBtn.addEventListener('click', () => {
 
 orderHistoryBtn.addEventListener('click', () => {
     orderHistoryModal.style.display = 'flex';
+    lockBodyScroll();
     loadOrderHistory();
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
@@ -1702,19 +1703,35 @@ supportBtn.addEventListener('click', () => {
 });
 
 // Закрытие модальных окон
+// Функции для блокировки/разблокировки прокрутки фона
+function lockBodyScroll() {
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+}
+
+function unlockBodyScroll() {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+}
+
 closeAddressModal.addEventListener('click', () => {
     addressModal.style.display = 'none';
     tg.BackButton.hide();
+    unlockBodyScroll();
 });
 
 closeOrderHistoryModal.addEventListener('click', () => {
     orderHistoryModal.style.display = 'none';
     tg.BackButton.hide();
+    unlockBodyScroll();
 });
 
 closeSupportModal.addEventListener('click', () => {
     supportModal.style.display = 'none';
     tg.BackButton.hide();
+    unlockBodyScroll();
 });
 
 // Валидация поля
@@ -1942,6 +1959,7 @@ addressForm.addEventListener('submit', (e) => {
     addressForm.reset();
     document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
     document.getElementById('deleteAddressBtn').style.display = 'none';
+    unlockBodyScroll();
     closeAddressModal.click();
     loadSavedAddresses();
     tg.HapticFeedback.notificationOccurred('success');
@@ -1956,6 +1974,7 @@ document.getElementById('deleteAddressBtn').addEventListener('click', () => {
         editingAddressId = null;
         document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
         document.getElementById('deleteAddressBtn').style.display = 'none';
+        unlockBodyScroll();
         closeAddressModal.click();
         loadSavedAddresses();
         tg.HapticFeedback.impactOccurred('light');
@@ -2271,6 +2290,7 @@ editProfileBtn.addEventListener('click', () => {
     }
     
     profileEditModal.style.display = 'flex';
+    lockBodyScroll();
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
         closeProfileEditModal.click();
@@ -2309,6 +2329,7 @@ editProfileBtn.addEventListener('click', () => {
 closeProfileEditModal.addEventListener('click', () => {
     profileEditModal.style.display = 'none';
     tg.BackButton.hide();
+    unlockBodyScroll();
 });
 
 profileEditForm.addEventListener('submit', (e) => {
@@ -2405,6 +2426,7 @@ profileEditForm.addEventListener('submit', (e) => {
     
     profileEditModal.style.display = 'none';
     tg.BackButton.hide();
+    unlockBodyScroll();
     tg.HapticFeedback.notificationOccurred('success');
 });
 
@@ -2426,6 +2448,7 @@ const closeServiceFeeHelpModal = document.getElementById('closeServiceFeeHelpMod
 if (serviceFeeHelpBtn) {
     serviceFeeHelpBtn.addEventListener('click', () => {
         serviceFeeHelpModal.style.display = 'flex';
+        lockBodyScroll();
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
             closeServiceFeeHelpModal.click();
@@ -2437,6 +2460,7 @@ if (closeServiceFeeHelpModal) {
     closeServiceFeeHelpModal.addEventListener('click', () => {
         serviceFeeHelpModal.style.display = 'none';
         tg.BackButton.hide();
+        unlockBodyScroll();
     });
 }
 
