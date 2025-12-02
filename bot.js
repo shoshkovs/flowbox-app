@@ -169,18 +169,23 @@ app.post('/api/user-data', (req, res) => {
     return res.status(400).json({ error: 'userId required' });
   }
   
+  // Сохраняем существующие данные, если они есть, чтобы не потерять их
+  const existingData = userDataStore[userId] || {};
+  
   userDataStore[userId] = {
-    cart: cart || [],
-    addresses: addresses || [],
-    profile: profile || null,
-    activeOrders: activeOrders || [],
-    completedOrders: completedOrders || [],
-    bonuses: bonuses !== undefined ? bonuses : (userDataStore[userId]?.bonuses || 500),
+    cart: cart !== undefined ? cart : (existingData.cart || []),
+    addresses: addresses !== undefined ? addresses : (existingData.addresses || []),
+    profile: profile !== undefined ? profile : (existingData.profile || null),
+    activeOrders: activeOrders !== undefined ? activeOrders : (existingData.activeOrders || []),
+    completedOrders: completedOrders !== undefined ? completedOrders : (existingData.completedOrders || []),
+    bonuses: bonuses !== undefined ? bonuses : (existingData.bonuses !== undefined ? existingData.bonuses : 500),
     updatedAt: new Date().toISOString()
   };
   
   // Сохраняем данные в файл для постоянного хранения
   saveUserData(userDataStore);
+  
+  console.log(`💾 Сохранены данные для пользователя ${userId}: адресов=${userDataStore[userId].addresses.length}, заказов=${userDataStore[userId].activeOrders.length}`);
   
   res.json({ success: true });
 });
@@ -196,6 +201,8 @@ app.get('/api/user-data/:userId', (req, res) => {
     completedOrders: [],
     bonuses: 500
   };
+  
+  console.log(`📥 Загружены данные для пользователя ${userId}: адресов=${userData.addresses.length}, заказов=${userData.activeOrders.length}`);
   
   res.json(userData);
 });

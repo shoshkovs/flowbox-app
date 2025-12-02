@@ -333,7 +333,7 @@ async function saveUserData() {
     try {
         const profileData = localStorage.getItem('userProfile') ? JSON.parse(localStorage.getItem('userProfile')) : null;
         
-        await fetch('/api/user-data', {
+        const response = await fetch('/api/user-data', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -349,6 +349,15 @@ async function saveUserData() {
             })
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+            console.log(`💾 Данные сохранены на сервер: адресов=${savedAddresses.length}, заказов=${userActiveOrders.length}`);
+        }
+        
         // Также сохраняем локально как резервную копию
         localStorage.setItem('cart', JSON.stringify(cart));
         localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
@@ -362,6 +371,8 @@ async function saveUserData() {
         // Сохраняем локально при ошибке
         localStorage.setItem('cart', JSON.stringify(cart));
         localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+        localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
     }
 }
 
@@ -372,14 +383,32 @@ async function loadUserData() {
     if (userId) {
         try {
             const response = await fetch(`/api/user-data/${userId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
             
-            if (data.cart) cart = data.cart;
-            if (data.addresses) savedAddresses = data.addresses;
-            if (data.profile) localStorage.setItem('userProfile', JSON.stringify(data.profile));
-            if (data.activeOrders) userActiveOrders = data.activeOrders;
-            if (data.completedOrders) userCompletedOrders = data.completedOrders;
+            // Загружаем данные с сервера, если они есть
+            if (data.cart && Array.isArray(data.cart)) cart = data.cart;
+            if (data.addresses && Array.isArray(data.addresses)) {
+                savedAddresses = data.addresses;
+                // Синхронизируем с localStorage
+                localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+            }
+            if (data.profile) {
+                localStorage.setItem('userProfile', JSON.stringify(data.profile));
+            }
+            if (data.activeOrders && Array.isArray(data.activeOrders)) {
+                userActiveOrders = data.activeOrders;
+                localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+            }
+            if (data.completedOrders && Array.isArray(data.completedOrders)) {
+                userCompletedOrders = data.completedOrders;
+                localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
+            }
             if (data.bonuses !== undefined) accumulatedBonuses = data.bonuses;
+            
+            console.log(`✅ Загружены данные с сервера: адресов=${savedAddresses.length}, заказов=${userActiveOrders.length}`);
             
             // Обновляем UI
             updateCartUI();
