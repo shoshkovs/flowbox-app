@@ -556,6 +556,20 @@ h1, h2, h3, .font-bold {
 
 .order-form {
     padding: 20px;
+    padding-bottom: 100px; /* Отступ снизу для кнопки */
+}
+
+/* Стили для страницы заказа */
+#orderTab {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    background: white;
+}
+
+#orderTab.active {
+    display: flex;
 }
 
 .form-group {
