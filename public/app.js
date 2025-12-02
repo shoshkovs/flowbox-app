@@ -793,9 +793,16 @@ function initOrderForm() {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                // Снимаем ошибку при выборе времени
+                // Снимаем ошибку при выборе времени (в реальном времени)
                 const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-                if (deliveryTimeOptions) deliveryTimeOptions.classList.remove('error');
+                if (deliveryTimeOptions) {
+                    deliveryTimeOptions.classList.remove('error');
+                    // Убираем красную рамку со всех кнопок времени сразу
+                    const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+                    timeSlotButtons.forEach(btn => {
+                        btn.classList.remove('error-time-slot');
+                    });
+                }
                 tg.HapticFeedback.impactOccurred('light');
             });
         });
@@ -820,16 +827,21 @@ function initOrderForm() {
         });
     });
     
-    // Обработчик для блока времени доставки (сброс ошибки при клике на любой слот)
+    // Обработчик для блока времени доставки (сброс ошибки при клике на любой слот в реальном времени)
     const deliveryTimeContainer = document.getElementById('deliveryTimeOptions');
     if (deliveryTimeContainer) {
+        // Используем делегирование событий для обработки кликов на кнопки времени
         deliveryTimeContainer.addEventListener('click', function(e) {
-            // Если клик был на кнопку времени, ошибка уже сброшена выше
-            // Но на всякий случай сбрасываем при любом клике в контейнере
             if (e.target.classList.contains('time-slot-btn')) {
+                // Убираем ошибку с контейнера
                 this.classList.remove('error');
+                // Убираем красную рамку со всех кнопок времени
+                const timeSlotButtons = this.querySelectorAll('.time-slot-btn');
+                timeSlotButtons.forEach(btn => {
+                    btn.classList.remove('error-time-slot');
+                });
             }
-        });
+        }, true); // Используем capture phase для более раннего срабатывания
     }
     
     // Расчет суммы
@@ -976,45 +988,7 @@ async function validateAndSubmitOrder(e) {
         }
     }
     
-    // Проверка времени доставки
-    if (!deliveryTime) {
-        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-        const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
-        if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
-            // Добавляем визуальную индикацию ошибки на контейнер
-            deliveryTimeOptions.classList.add('error');
-            // Добавляем красную рамку на все кнопки времени доставки
-            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
-            timeSlotButtons.forEach(btn => {
-                btn.classList.add('error-time-slot');
-            });
-            if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
-            hasErrors = true;
-        }
-    } else {
-        // Если время выбрано - убираем ошибки
-        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-        if (deliveryTimeOptions) {
-            deliveryTimeOptions.classList.remove('error');
-            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
-            timeSlotButtons.forEach(btn => {
-                btn.classList.remove('error-time-slot');
-            });
-        }
-    }
-    
-    if (deliveryDate) {
-        const deliveryDateField = document.getElementById('deliveryDate');
-        validateField(deliveryDateField, true);
-    } else {
-        const deliveryDateField = document.getElementById('deliveryDate');
-        const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
-        validateField(deliveryDateField, false);
-        if (!firstErrorField) firstErrorField = deliveryDateAnchor || deliveryDateField;
-        hasErrors = true;
-    }
-    
-    // Проверка выбранного адреса
+    // Проверка выбранного адреса (ПЕРЕД проверкой времени доставки)
     const selectedAddressRadio = document.querySelector('input[name="selectedAddress"]:checked');
     const newAddressRadio = document.getElementById('newAddressRadio');
     let addressData = null;
@@ -1110,6 +1084,46 @@ async function validateAndSubmitOrder(e) {
             firstErrorField = addressOptionsList;
         }
         hasErrors = true;
+    }
+    
+    // Проверка даты доставки (после проверки адреса)
+    if (deliveryDate) {
+        const deliveryDateField = document.getElementById('deliveryDate');
+        validateField(deliveryDateField, true);
+    } else {
+        const deliveryDateField = document.getElementById('deliveryDate');
+        const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
+        validateField(deliveryDateField, false);
+        if (!firstErrorField) firstErrorField = deliveryDateAnchor || deliveryDateField;
+        hasErrors = true;
+    }
+    
+    // Проверка времени доставки (после проверки адреса и даты)
+    if (!deliveryTime) {
+        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+        const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
+        if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
+            // Добавляем визуальную индикацию ошибки на контейнер
+            deliveryTimeOptions.classList.add('error');
+            // Добавляем красную рамку на все кнопки времени доставки
+            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+            timeSlotButtons.forEach(btn => {
+                btn.classList.add('error-time-slot');
+            });
+            // Устанавливаем firstErrorField только если еще не установлено (адрес имеет приоритет)
+            if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
+            hasErrors = true;
+        }
+    } else {
+        // Если время выбрано - убираем ошибки
+        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+        if (deliveryTimeOptions) {
+            deliveryTimeOptions.classList.remove('error');
+            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+            timeSlotButtons.forEach(btn => {
+                btn.classList.remove('error-time-slot');
+            });
+        }
     }
     
     // Если есть ошибки, прокрутить к первому полю с ошибкой
