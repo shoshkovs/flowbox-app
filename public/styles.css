@@ -645,16 +645,7 @@ h1, h2, h3, .font-bold {
 .address-page-footer .submit-address-btn,
 .address-page-footer .delete-address-btn-outline {
     margin: 0;
-}
-
-.address-page-footer .submit-address-btn {
     flex: 1;
-}
-
-.address-page-footer .delete-address-btn-outline {
-    flex: 0 0 auto;
-    min-width: 100px;
-    padding: 12px 20px;
 }
 
 /* Стили для страницы заказа */
