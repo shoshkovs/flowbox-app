@@ -2092,14 +2092,20 @@ if (deleteAddressBtn) {
     deleteAddressBtn.addEventListener('click', () => {
         if (editingAddressId && confirm('Вы уверены, что хотите удалить этот адрес?')) {
             savedAddresses = savedAddresses.filter(a => String(a.id) !== String(editingAddressId));
-            saveUserData(); // Сохраняем на сервер
+            // Сохраняем на сервер и в localStorage
+            saveUserData();
+            // Принудительно обновляем localStorage, чтобы избежать кэша
+            localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
             resetAddressFormState();
             editingAddressId = null;
             if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
             deleteAddressBtn.style.display = 'none';
             switchTab('profileTab');
             tg.BackButton.hide();
-            loadSavedAddresses();
+            // Обновляем UI после небольшой задержки, чтобы убедиться, что данные сохранены
+            setTimeout(() => {
+                loadSavedAddresses();
+            }, 100);
             tg.HapticFeedback.impactOccurred('light');
         }
     });
@@ -2112,15 +2118,6 @@ let editingAddressId = null;
 
 // Загрузка сохраненных адресов
 function loadSavedAddresses() {
-    // Данные уже загружены в loadUserData, просто обновляем отображение
-    // Если данные не загружены с сервера, загружаем из localStorage
-    if (savedAddresses.length === 0) {
-        const stored = localStorage.getItem('savedAddresses');
-        if (stored) {
-            savedAddresses = JSON.parse(stored);
-        }
-    }
-    
     // Отображение в профиле
     const addressesList = document.getElementById('deliveryAddressesList');
     if (addressesList) {
