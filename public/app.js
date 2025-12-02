@@ -580,6 +580,14 @@ navItems.forEach(item => {
 // Оформление заказа
 checkoutBtnFinal.addEventListener('click', () => {
     switchTab('orderTab');
+    // Прокрутить страницу в начало
+    setTimeout(() => {
+        const orderTab = document.getElementById('orderTab');
+        if (orderTab) {
+            orderTab.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, 100);
 });
 
 // Инициализация формы заказа
@@ -832,25 +840,76 @@ if (backFromOrder) {
 orderForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    // Сброс ошибок
-    document.querySelectorAll('#newAddressForm .form-group input, #newAddressForm .form-group textarea').forEach(field => {
+    // Сброс всех ошибок
+    document.querySelectorAll('#orderForm .form-group input, #orderForm .form-group textarea, #orderForm .form-group select').forEach(field => {
         validateField(field, true);
     });
     const orderAddressError = document.getElementById('orderAddressError');
     if (orderAddressError) orderAddressError.style.display = 'none';
     
-    const name = document.getElementById('customerName').value;
-    const phone = document.getElementById('customerPhone').value;
-    const email = document.getElementById('customerEmail').value;
-    const comment = document.getElementById('orderComment').value;
+    let hasErrors = false;
+    let firstErrorField = null;
+    
+    // Проверка основных полей покупателя
+    const name = document.getElementById('customerName').value.trim();
+    const phone = document.getElementById('customerPhone').value.trim();
+    const email = document.getElementById('customerEmail').value.trim();
+    const comment = document.getElementById('orderComment').value.trim();
     const deliveryDate = document.getElementById('deliveryDate').value;
     const selectedTimeSlot = document.querySelector('.time-slot-btn.active');
     const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : null;
     
+    if (!name) {
+        validateField(document.getElementById('customerName'), false);
+        if (!firstErrorField) firstErrorField = document.getElementById('customerName');
+        hasErrors = true;
+    }
+    
+    if (!phone) {
+        validateField(document.getElementById('customerPhone'), false);
+        if (!firstErrorField) firstErrorField = document.getElementById('customerPhone');
+        hasErrors = true;
+    }
+    
+    if (!email) {
+        validateField(document.getElementById('customerEmail'), false);
+        if (!firstErrorField) firstErrorField = document.getElementById('customerEmail');
+        hasErrors = true;
+    }
+    
+    // Проверка получателя, если выбран "Другой получатель"
+    const recipientRadio = document.querySelector('input[name="recipient"]:checked');
+    if (recipientRadio && recipientRadio.value === 'other') {
+        const recipientName = document.getElementById('recipientName').value.trim();
+        const recipientPhone = document.getElementById('recipientPhone').value.trim();
+        
+        if (!recipientName) {
+            validateField(document.getElementById('recipientName'), false);
+            if (!firstErrorField) firstErrorField = document.getElementById('recipientName');
+            hasErrors = true;
+        }
+        
+        if (!recipientPhone) {
+            validateField(document.getElementById('recipientPhone'), false);
+            if (!firstErrorField) firstErrorField = document.getElementById('recipientPhone');
+            hasErrors = true;
+        }
+    }
+    
     // Проверка времени доставки
     if (!deliveryTime) {
-        alert('Пожалуйста, выберите время доставки');
-        return;
+        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+        if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
+            alert('Пожалуйста, выберите время доставки');
+            if (!firstErrorField) firstErrorField = deliveryTimeOptions;
+            hasErrors = true;
+        }
+    }
+    
+    if (!deliveryDate) {
+        validateField(document.getElementById('deliveryDate'), false);
+        if (!firstErrorField) firstErrorField = document.getElementById('deliveryDate');
+        hasErrors = true;
     }
     
     // Проверка выбранного адреса
@@ -947,6 +1006,19 @@ orderForm.addEventListener('submit', async (e) => {
     } else {
         // Не выбран адрес
         alert('Пожалуйста, выберите адрес доставки');
+        const addressOptionsList = document.getElementById('addressOptionsList');
+        if (addressOptionsList && !firstErrorField) {
+            firstErrorField = addressOptionsList;
+        }
+        hasErrors = true;
+    }
+    
+    // Если есть ошибки, прокрутить к первому полю с ошибкой
+    if (hasErrors && firstErrorField) {
+        setTimeout(() => {
+            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstErrorField.focus();
+        }, 100);
         return;
     }
     
