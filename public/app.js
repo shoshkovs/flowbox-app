@@ -629,6 +629,9 @@ function initOrderForm() {
                     addressBtn.classList.add('selected');
                     selectedAddressId = addr.id;
                     fillOrderFormWithAddress(addr);
+                    // Скрыть форму нового адреса, если выбран сохраненный
+                    if (newAddressForm) newAddressForm.style.display = 'none';
+                    if (newAddressRadio) newAddressRadio.checked = false;
                 }
                 addressBtn.innerHTML = `
                     <input type="radio" name="selectedAddress" value="${addr.id}" class="radio-input" ${index === 0 ? 'checked' : ''}>
@@ -648,6 +651,10 @@ function initOrderForm() {
                 });
                 addressOptionsList.appendChild(addressBtn);
             });
+        } else {
+            // Если нет сохраненных адресов, показать форму нового адреса
+            if (newAddressForm) newAddressForm.style.display = 'block';
+            if (newAddressRadio) newAddressRadio.checked = true;
         }
     }
     
