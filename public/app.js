@@ -878,27 +878,30 @@ orderForm.addEventListener('submit', async (e) => {
     
     // Валидация имени (минимум 2 символа)
     const nameField = document.getElementById('customerName');
+    const nameAnchor = document.getElementById('anchor-customerName');
     if (!name || name.length < 2) {
         validateField(nameField, false);
-        if (!firstErrorField) firstErrorField = nameField;
+        if (!firstErrorField) firstErrorField = nameAnchor || nameField;
         hasErrors = true;
     }
     
     // Валидация телефона (минимум 10 цифр)
     const phoneField = document.getElementById('customerPhone');
+    const phoneAnchor = document.getElementById('anchor-customerPhone');
     const phoneDigits = phone.replace(/\D/g, ''); // Убираем все нецифровые символы
     if (!phone || phoneDigits.length < 10) {
         validateField(phoneField, false);
-        if (!firstErrorField) firstErrorField = phoneField;
+        if (!firstErrorField) firstErrorField = phoneAnchor || phoneField;
         hasErrors = true;
     }
     
     // Валидация email
     const emailField = document.getElementById('customerEmail');
+    const emailAnchor = document.getElementById('anchor-customerEmail');
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
         validateField(emailField, false);
-        if (!firstErrorField) firstErrorField = emailField;
+        if (!firstErrorField) firstErrorField = emailAnchor || emailField;
         hasErrors = true;
     }
     
@@ -906,14 +909,16 @@ orderForm.addEventListener('submit', async (e) => {
     const recipientRadio = document.querySelector('input[name="recipient"]:checked');
     if (recipientRadio && recipientRadio.value === 'other') {
         const recipientNameField = document.getElementById('recipientName');
+        const recipientNameAnchor = document.getElementById('anchor-recipientName');
         const recipientPhoneField = document.getElementById('recipientPhone');
+        const recipientPhoneAnchor = document.getElementById('anchor-recipientPhone');
         const recipientName = recipientNameField ? recipientNameField.value.trim() : '';
         const recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
         
         // Валидация имени получателя (минимум 2 символа)
         if (!recipientName || recipientName.length < 2) {
             validateField(recipientNameField, false);
-            if (!firstErrorField) firstErrorField = recipientNameField;
+            if (!firstErrorField) firstErrorField = recipientNameAnchor || recipientNameField;
             hasErrors = true;
         }
         
@@ -921,7 +926,7 @@ orderForm.addEventListener('submit', async (e) => {
         const recipientPhoneDigits = recipientPhone.replace(/\D/g, '');
         if (!recipientPhone || recipientPhoneDigits.length < 10) {
             validateField(recipientPhoneField, false);
-            if (!firstErrorField) firstErrorField = recipientPhoneField;
+            if (!firstErrorField) firstErrorField = recipientPhoneAnchor || recipientPhoneField;
             hasErrors = true;
         }
     }
@@ -929,17 +934,20 @@ orderForm.addEventListener('submit', async (e) => {
     // Проверка времени доставки
     if (!deliveryTime) {
         const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+        const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
         if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
             // Добавляем визуальную индикацию ошибки
             deliveryTimeOptions.classList.add('error');
-            if (!firstErrorField) firstErrorField = deliveryTimeOptions;
+            if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
             hasErrors = true;
         }
     }
     
     if (!deliveryDate) {
-        validateField(document.getElementById('deliveryDate'), false);
-        if (!firstErrorField) firstErrorField = document.getElementById('deliveryDate');
+        const deliveryDateField = document.getElementById('deliveryDate');
+        const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
+        validateField(deliveryDateField, false);
+        if (!firstErrorField) firstErrorField = deliveryDateAnchor || deliveryDateField;
         hasErrors = true;
     }
     
@@ -980,23 +988,29 @@ orderForm.addEventListener('submit', async (e) => {
         }
         
         // Валидация обязательных полей адреса
+        const cityField = document.getElementById('orderAddressCity');
+        const cityAnchor = document.getElementById('anchor-orderAddressCity');
         if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
-            validateField(document.getElementById('orderAddressCity'), false);
+            validateField(cityField, false);
             const orderAddressError = document.getElementById('orderAddressError');
             if (orderAddressError) orderAddressError.style.display = 'block';
-            if (!firstErrorField) firstErrorField = document.getElementById('orderAddressCity');
+            if (!firstErrorField) firstErrorField = cityAnchor || cityField;
             hasAddressErrors = true;
             hasErrors = true;
         }
+        const streetField = document.getElementById('orderAddressStreet');
+        const streetAnchor = document.getElementById('anchor-orderAddressStreet');
         if (!street) {
-            validateField(document.getElementById('orderAddressStreet'), false);
-            if (!firstErrorField) firstErrorField = document.getElementById('orderAddressStreet');
+            validateField(streetField, false);
+            if (!firstErrorField) firstErrorField = streetAnchor || streetField;
             hasAddressErrors = true;
             hasErrors = true;
         }
+        const houseField = document.getElementById('orderAddressHouse');
+        const houseAnchor = document.getElementById('anchor-orderAddressHouse');
         if (!house) {
-            validateField(document.getElementById('orderAddressHouse'), false);
-            if (!firstErrorField) firstErrorField = document.getElementById('orderAddressHouse');
+            validateField(houseField, false);
+            if (!firstErrorField) firstErrorField = houseAnchor || houseField;
             hasAddressErrors = true;
             hasErrors = true;
         }
@@ -1038,24 +1052,48 @@ orderForm.addEventListener('submit', async (e) => {
     if (hasErrors) {
         if (firstErrorField) {
             setTimeout(() => {
-                // Для Android используем более надежный метод прокрутки
+                // Для Android используем якоря (anchor links) - самый надежный метод
                 try {
-                    // Метод 1: scrollIntoView с auto для лучшей совместимости
-                    if (firstErrorField.scrollIntoView) {
-                        firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
-                    }
-                    // Метод 2: Прокрутка через getBoundingClientRect (для Android)
-                    const rect = firstErrorField.getBoundingClientRect();
-                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                    const targetY = rect.top + scrollTop - (window.innerHeight / 2);
-                    window.scrollTo({ top: targetY, behavior: 'auto' });
-                    // Метод 3: Прямая прокрутка элемента (если это контейнер)
-                    if (firstErrorField.scrollTop !== undefined) {
-                        firstErrorField.scrollTop = 0;
-                    }
-                    // Фокус на поле (если это input)
-                    if (firstErrorField.focus && typeof firstErrorField.focus === 'function' && firstErrorField.tagName === 'INPUT') {
-                        setTimeout(() => firstErrorField.focus(), 200);
+                    const fieldId = firstErrorField.id;
+                    if (fieldId) {
+                        // Используем location.hash для прокрутки к якорю (работает на Android)
+                        const anchorId = fieldId.startsWith('anchor-') ? fieldId : 'anchor-' + fieldId.replace(/^(customer|recipient|orderAddress|delivery)/, '');
+                        const anchorElement = document.getElementById(anchorId) || firstErrorField;
+                        
+                        // Метод 1: Якорь через location.hash (лучше всего работает на Android)
+                        if (anchorElement.id) {
+                            window.location.hash = anchorElement.id;
+                            // Убираем hash через небольшую задержку для плавности
+                            setTimeout(() => {
+                                window.history.replaceState(null, null, ' ');
+                            }, 1000);
+                        }
+                        
+                        // Метод 2: scrollIntoView с auto
+                        if (anchorElement.scrollIntoView) {
+                            anchorElement.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
+                        }
+                        
+                        // Метод 3: Прокрутка через getBoundingClientRect
+                        const rect = anchorElement.getBoundingClientRect();
+                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
+                        const targetY = rect.top + scrollTop - 100; // Отступ сверху 100px
+                        window.scrollTo({ top: Math.max(0, targetY), behavior: 'auto' });
+                        
+                        // Метод 4: Прямая прокрутка элемента
+                        if (anchorElement.scrollTop !== undefined) {
+                            anchorElement.scrollTop = 0;
+                        }
+                        
+                        // Фокус на поле ввода (если это input)
+                        const inputField = anchorElement.querySelector('input, textarea, select') || 
+                                         (firstErrorField.tagName === 'INPUT' || firstErrorField.tagName === 'TEXTAREA' ? firstErrorField : null);
+                        if (inputField && inputField.focus && typeof inputField.focus === 'function') {
+                            setTimeout(() => {
+                                inputField.focus();
+                                inputField.scrollIntoView({ behavior: 'auto', block: 'center' });
+                            }, 300);
+                        }
                     }
                 } catch (e) {
                     console.error('Ошибка прокрутки:', e);
@@ -1064,7 +1102,7 @@ orderForm.addEventListener('submit', async (e) => {
                         firstErrorField.scrollIntoView();
                     }
                 }
-            }, 200);
+            }, 300);
         }
         return;
     }

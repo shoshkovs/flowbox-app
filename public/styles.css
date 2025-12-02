@@ -2061,13 +2061,30 @@ h1, h2, h3, .font-bold {
 .form-group select.error {
     border-color: #f44336 !important;
     border-width: 2px;
+    background-color: #fff5f5 !important; /* Легкий красный фон для Android */
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important; /* Тень для лучшей видимости */
+}
+
+/* Подсветка контейнера поля с ошибкой */
+.form-group:has(input.error),
+.form-group:has(textarea.error),
+.form-group:has(select.error) {
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
 }
 
 #deliveryTimeOptions.error {
     border: 2px solid #f44336 !important;
     border-radius: 8px;
     padding: 8px;
-    background-color: #fff5f5; /* Легкий красный фон для лучшей видимости на Android */
+    background-color: #fff5f5 !important; /* Легкий красный фон для лучшей видимости на Android */
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important; /* Тень для лучшей видимости */
+    animation: shake 0.3s ease-in-out;
 }
 
 .form-group label.error-label {
