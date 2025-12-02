@@ -41,6 +41,7 @@ let accumulatedBonuses = 500;
 let savedAddresses = []; // Сохраненные адреса
 let userActiveOrders = []; // Активные заказы
 let userCompletedOrders = []; // Завершенные заказы
+let selectedRecipientId = 'self'; // Выбранный получатель
 
 // Элементы DOM
 const productsContainer = document.getElementById('productsContainer');
@@ -586,6 +587,27 @@ function initOrderForm() {
     // Загрузка адресов
     loadSavedAddresses();
     
+    // Инициализация радио-кнопок получателя
+    const recipientRadios = document.querySelectorAll('input[name="recipient"]');
+    const recipientFields = document.getElementById('recipientFields');
+    
+    if (recipientRadios.length > 0 && recipientFields) {
+        recipientRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                selectedRecipientId = radio.value;
+                if (radio.value === 'other') {
+                    recipientFields.style.display = 'block';
+                } else {
+                    recipientFields.style.display = 'none';
+                    const recipientNameField = document.getElementById('recipientName');
+                    const recipientPhoneField = document.getElementById('recipientPhone');
+                    if (recipientNameField) recipientNameField.value = '';
+                    if (recipientPhoneField) recipientPhoneField.value = '';
+                }
+            });
+        });
+    }
+    
     // Установка минимальной даты (завтра)
     const deliveryDateInput = document.getElementById('deliveryDate');
     if (deliveryDateInput) {
@@ -760,6 +782,8 @@ orderForm.addEventListener('submit', async (e) => {
         name: name,
         phone: phone,
         email: email,
+        recipientName: recipientName,
+        recipientPhone: recipientPhone,
         address: addressString,
         addressData: addressData,
         deliveryDate: deliveryDate,

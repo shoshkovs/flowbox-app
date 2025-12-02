@@ -576,6 +576,61 @@ h1, h2, h3, .font-bold {
     margin-bottom: 20px;
 }
 
+.form-section {
+    margin-bottom: 24px;
+}
+
+.form-section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 16px;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.radio-option:hover {
+    background-color: #f9f9f9;
+}
+
+.radio-input {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+.radio-label {
+    font-size: 16px;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.recipient-fields {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.required {
+    color: #ff0000;
+}
+
 .form-group label {
     display: block;
     margin-bottom: 8px;

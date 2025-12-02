@@ -336,6 +336,31 @@
                         <input type="email" id="customerEmail" required placeholder="example@mail.com">
                     </div>
                     
+                    <!-- Получатель -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Получатель</h3>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="recipient" value="self" class="radio-input" checked>
+                                <span class="radio-label">Я получу заказ</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="recipient" value="other" class="radio-input">
+                                <span class="radio-label">Другой получатель</span>
+                            </label>
+                        </div>
+                        <div class="recipient-fields" id="recipientFields" style="display: none;">
+                            <div class="form-group">
+                                <label>Имя получателя <span class="required">*</span></label>
+                                <input type="text" id="recipientName" placeholder="Введите имя получателя">
+                            </div>
+                            <div class="form-group">
+                                <label>Телефон получателя <span class="required">*</span></label>
+                                <input type="tel" id="recipientPhone" placeholder="+7 (___) ___-__-__">
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Сохраненные адреса -->
                     <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
                         <label class="form-section-label">Адрес доставки</label>
