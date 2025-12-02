@@ -679,10 +679,12 @@ h1, h2, h3, .font-bold {
     cursor: pointer;
     font-weight: normal;
     margin-bottom: 0;
+    flex-wrap: nowrap;
 }
 
 .checkbox-label-inline .checkbox-text {
     font-weight: normal;
+    white-space: nowrap;
 }
 
 .checkbox-input {
@@ -747,6 +749,7 @@ h1, h2, h3, .font-bold {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
+    font-size: 16px;
     color: var(--text-color);
 }
 

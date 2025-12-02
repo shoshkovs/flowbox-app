@@ -633,9 +633,15 @@ function initOrderForm() {
                     if (newAddressForm) newAddressForm.style.display = 'none';
                     if (newAddressRadio) newAddressRadio.checked = false;
                 }
+                // Формируем краткий адрес
+                const shortAddress = `${addr.street}${addr.house ? ', д. ' + addr.house : ''}${addr.apartment ? ', ' + addr.apartment : ''}`;
                 addressBtn.innerHTML = `
                     <input type="radio" name="selectedAddress" value="${addr.id}" class="radio-input" ${index === 0 ? 'checked' : ''}>
-                    <span class="radio-label">${addr.name}</span>
+                    <span class="radio-label">
+                        <span class="address-name-bold">${addr.name}</span>
+                        <span class="address-separator"> - </span>
+                        <span class="address-short">${shortAddress}</span>
+                    </span>
                 `;
                 addressBtn.addEventListener('click', () => {
                     // Убрать выделение со всех кнопок
