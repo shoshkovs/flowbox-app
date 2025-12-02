@@ -2012,54 +2012,28 @@ editProfileBtn.addEventListener('click', () => {
     if (editProfilePhoneField) {
         // Удаляем старый обработчик через клонирование (если есть)
         const hasListener = editProfilePhoneField.dataset.phoneFormatted === 'true';
+        let actualField = editProfilePhoneField;
+        
         if (hasListener) {
             const newField = editProfilePhoneField.cloneNode(true);
             const savedValue = editProfilePhoneField.value;
             editProfilePhoneField.parentNode.replaceChild(newField, editProfilePhoneField);
             newField.value = savedValue;
-            editProfilePhoneField = newField;
+            actualField = newField;
         }
         
         // Добавляем обработчик форматирования
-        setupPhoneInput(editProfilePhoneField);
+        setupPhoneInput(actualField);
         
         // Сохраняем ссылку на поле
-        window.editProfilePhoneField = editProfilePhoneField;
+        window.editProfilePhoneField = actualField;
         
-        // Если в поле уже есть значение, форматируем его сразу
-        if (editProfilePhoneField.value) {
-            const currentValue = editProfilePhoneField.value;
-            const digits = currentValue.replace(/\D/g, '');
-            if (digits.length > 0) {
-                let phoneDigits = digits;
-                if (phoneDigits.startsWith('8')) {
-                    phoneDigits = '7' + phoneDigits.substring(1);
-                }
-                if (phoneDigits.length > 0 && !phoneDigits.startsWith('7')) {
-                    phoneDigits = '7' + phoneDigits;
-                }
-                if (phoneDigits.length > 11) {
-                    phoneDigits = phoneDigits.substring(0, 11);
-                }
-                
-                let formattedValue = '';
-                if (phoneDigits.length > 0) {
-                    formattedValue = '+7';
-                    if (phoneDigits.length > 1) {
-                        formattedValue += ' (' + phoneDigits.substring(1, 4);
-                    }
-                    if (phoneDigits.length >= 5) {
-                        formattedValue += ') ' + phoneDigits.substring(4, 7);
-                    }
-                    if (phoneDigits.length >= 8) {
-                        formattedValue += '-' + phoneDigits.substring(7, 9);
-                    }
-                    if (phoneDigits.length >= 10) {
-                        formattedValue += '-' + phoneDigits.substring(9, 11);
-                    }
-                }
-                editProfilePhoneField.value = formattedValue;
-            }
+        // Если в поле уже есть значение, триггерим событие input для применения форматирования
+        if (actualField.value) {
+            // Используем setTimeout, чтобы обработчик успел добавиться
+            setTimeout(() => {
+                actualField.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 10);
         }
     }
 });
