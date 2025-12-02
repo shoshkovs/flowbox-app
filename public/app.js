@@ -879,41 +879,72 @@ function initOrderForm() {
     function setupPhoneInput(phoneField) {
         if (!phoneField) return;
         
+        // Проверяем, не добавлен ли уже обработчик
+        if (phoneField.dataset.phoneFormatted === 'true') return;
+        phoneField.dataset.phoneFormatted = 'true';
+        
         phoneField.addEventListener('input', function(e) {
-            let value = this.value.replace(/\D/g, ''); // Удаляем все нецифровые символы
+            let value = this.value;
             const cursorPosition = this.selectionStart;
             const oldLength = this.value.length;
             
-            // Если начинается с 8, заменяем на 7
+            // Если начинается с 8, заменяем на +7
             if (value.startsWith('8')) {
-                value = '7' + value.substring(1);
+                value = '+7' + value.substring(1);
+                this.value = value;
+                const newPosition = Math.min(cursorPosition + 1, value.length);
+                this.setSelectionRange(newPosition, newPosition);
+                return;
+            }
+            
+            // Если начинается с +7, оставляем как есть
+            if (value.startsWith('+7')) {
+                // Продолжаем обработку для форматирования
+            }
+            // Если начинается с цифры или скобки (но не +7), добавляем +7 в начало
+            else if (value.length > 0 && (value[0].match(/\d/) || value[0] === '(')) {
+                if (!value.startsWith('+7') && !value.startsWith('+')) {
+                    value = '+7' + value;
+                    this.value = value;
+                    const newPosition = Math.min(cursorPosition + 2, value.length);
+                    this.setSelectionRange(newPosition, newPosition);
+                    return;
+                }
+            }
+            
+            // Удаляем все нецифровые символы для обработки
+            let digits = value.replace(/\D/g, '');
+            
+            // Если начинается с 8, заменяем на 7
+            if (digits.startsWith('8')) {
+                digits = '7' + digits.substring(1);
             }
             
             // Если не начинается с 7, добавляем 7 в начало
-            if (value.length > 0 && !value.startsWith('7')) {
-                value = '7' + value;
+            if (digits.length > 0 && !digits.startsWith('7')) {
+                digits = '7' + digits;
             }
             
             // Ограничиваем до 11 цифр (7 + 10 цифр)
-            if (value.length > 11) {
-                value = value.substring(0, 11);
+            if (digits.length > 11) {
+                digits = digits.substring(0, 11);
             }
             
             // Форматируем номер
             let formattedValue = '';
-            if (value.length > 0) {
+            if (digits.length > 0) {
                 formattedValue = '+7';
-                if (value.length > 1) {
-                    formattedValue += ' (' + value.substring(1, 4);
+                if (digits.length > 1) {
+                    formattedValue += ' (' + digits.substring(1, 4);
                 }
-                if (value.length >= 5) {
-                    formattedValue += ') ' + value.substring(4, 7);
+                if (digits.length >= 5) {
+                    formattedValue += ') ' + digits.substring(4, 7);
                 }
-                if (value.length >= 8) {
-                    formattedValue += '-' + value.substring(7, 9);
+                if (digits.length >= 8) {
+                    formattedValue += '-' + digits.substring(7, 9);
                 }
-                if (value.length >= 10) {
-                    formattedValue += '-' + value.substring(9, 11);
+                if (digits.length >= 10) {
+                    formattedValue += '-' + digits.substring(9, 11);
                 }
             }
             
@@ -954,38 +985,38 @@ function initOrderForm() {
         phoneField.addEventListener('paste', function(e) {
             e.preventDefault();
             const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-            let value = pastedText.replace(/\D/g, '');
+            let digits = pastedText.replace(/\D/g, '');
             
             // Если начинается с 8, заменяем на 7
-            if (value.startsWith('8')) {
-                value = '7' + value.substring(1);
+            if (digits.startsWith('8')) {
+                digits = '7' + digits.substring(1);
             }
             
             // Если не начинается с 7, добавляем 7 в начало
-            if (value.length > 0 && !value.startsWith('7')) {
-                value = '7' + value;
+            if (digits.length > 0 && !digits.startsWith('7')) {
+                digits = '7' + digits;
             }
             
             // Ограничиваем до 11 цифр
-            if (value.length > 11) {
-                value = value.substring(0, 11);
+            if (digits.length > 11) {
+                digits = digits.substring(0, 11);
             }
             
             // Форматируем и вставляем
             let formattedValue = '';
-            if (value.length > 0) {
+            if (digits.length > 0) {
                 formattedValue = '+7';
-                if (value.length > 1) {
-                    formattedValue += ' (' + value.substring(1, 4);
+                if (digits.length > 1) {
+                    formattedValue += ' (' + digits.substring(1, 4);
                 }
-                if (value.length >= 5) {
-                    formattedValue += ') ' + value.substring(4, 7);
+                if (digits.length >= 5) {
+                    formattedValue += ') ' + digits.substring(4, 7);
                 }
-                if (value.length >= 8) {
-                    formattedValue += '-' + value.substring(7, 9);
+                if (digits.length >= 8) {
+                    formattedValue += '-' + digits.substring(7, 9);
                 }
-                if (value.length >= 10) {
-                    formattedValue += '-' + value.substring(9, 11);
+                if (digits.length >= 10) {
+                    formattedValue += '-' + digits.substring(9, 11);
                 }
             }
             
@@ -1895,9 +1926,42 @@ editProfileBtn.addEventListener('click', () => {
     }
     
     // Заполнение формы
+    const editProfilePhoneField = document.getElementById('editProfilePhone');
     if (profileData) {
         document.getElementById('editProfileName').value = profileData.name || '';
-        document.getElementById('editProfilePhone').value = profileData.phone || '';
+        // Форматируем номер телефона при загрузке
+        if (profileData.phone) {
+            let phoneDigits = profileData.phone.replace(/\D/g, '');
+            if (phoneDigits.startsWith('8')) {
+                phoneDigits = '7' + phoneDigits.substring(1);
+            }
+            if (phoneDigits.length > 0 && !phoneDigits.startsWith('7')) {
+                phoneDigits = '7' + phoneDigits;
+            }
+            if (phoneDigits.length > 11) {
+                phoneDigits = phoneDigits.substring(0, 11);
+            }
+            // Форматируем
+            let formattedPhone = '';
+            if (phoneDigits.length > 0) {
+                formattedPhone = '+7';
+                if (phoneDigits.length > 1) {
+                    formattedPhone += ' (' + phoneDigits.substring(1, 4);
+                }
+                if (phoneDigits.length >= 5) {
+                    formattedPhone += ') ' + phoneDigits.substring(4, 7);
+                }
+                if (phoneDigits.length >= 8) {
+                    formattedPhone += '-' + phoneDigits.substring(7, 9);
+                }
+                if (phoneDigits.length >= 10) {
+                    formattedPhone += '-' + phoneDigits.substring(9, 11);
+                }
+            }
+            editProfilePhoneField.value = formattedPhone || profileData.phone;
+        } else {
+            editProfilePhoneField.value = '';
+        }
         document.getElementById('editProfileEmail').value = profileData.email || '';
     } else {
         // Заполнение из текущих значений или Telegram
@@ -1906,7 +1970,7 @@ editProfileBtn.addEventListener('click', () => {
         const emailInput = document.getElementById('customerEmail');
         
         document.getElementById('editProfileName').value = nameInput ? nameInput.value : '';
-        document.getElementById('editProfilePhone').value = phoneInput ? phoneInput.value : '';
+        editProfilePhoneField.value = phoneInput ? phoneInput.value : '';
         document.getElementById('editProfileEmail').value = emailInput ? emailInput.value : '';
         
         // Если нет в форме, берем из Telegram
@@ -1926,12 +1990,8 @@ editProfileBtn.addEventListener('click', () => {
     });
     
     // Настройка форматирования телефона для профиля
-    const editProfilePhoneField = document.getElementById('editProfilePhone');
     if (editProfilePhoneField) {
-        // Удаляем старые обработчики, если они есть (через клонирование)
-        const newPhoneField = editProfilePhoneField.cloneNode(true);
-        editProfilePhoneField.parentNode.replaceChild(newPhoneField, editProfilePhoneField);
-        setupPhoneInput(newPhoneField);
+        setupPhoneInput(editProfilePhoneField);
     }
 });
 
