@@ -896,7 +896,14 @@ async function validateAndSubmitOrder(e) {
     if (orderAddressError) orderAddressError.style.display = 'none';
     // Сброс ошибки времени доставки
     const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-    if (deliveryTimeOptions) deliveryTimeOptions.classList.remove('error');
+    if (deliveryTimeOptions) {
+        deliveryTimeOptions.classList.remove('error');
+        // Убираем красную рамку со всех кнопок времени
+        const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+        timeSlotButtons.forEach(btn => {
+            btn.classList.remove('error-time-slot');
+        });
+    }
     
     let hasErrors = false;
     let firstErrorField = null;
@@ -1026,22 +1033,6 @@ async function validateAndSubmitOrder(e) {
         const city = document.getElementById('orderAddressCity').value.trim();
         const street = document.getElementById('orderAddressStreet').value.trim();
         const house = document.getElementById('orderAddressHouse').value.trim();
-        
-        // Валидация обязательных полей
-        if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
-            validateField(document.getElementById('orderAddressCity'), false);
-            const orderAddressError = document.getElementById('orderAddressError');
-            if (orderAddressError) orderAddressError.style.display = 'block';
-            hasAddressErrors = true;
-        }
-        if (!street) {
-            validateField(document.getElementById('orderAddressStreet'), false);
-            hasAddressErrors = true;
-        }
-        if (!house) {
-            validateField(document.getElementById('orderAddressHouse'), false);
-            hasAddressErrors = true;
-        }
         
         // Валидация обязательных полей адреса
         const cityField = document.getElementById('orderAddressCity');
