@@ -1234,7 +1234,26 @@ async function validateAndSubmitOrder(e) {
         console.error('Ошибка отправки заказа:', error);
         alert('Произошла ошибка при оформлении заказа. Попробуйте еще раз.');
     }
-});
+    
+    return true;
+}
+
+// Отправка заказа - обработчик submit формы
+if (orderForm) {
+    orderForm.addEventListener('submit', async (e) => {
+        await validateAndSubmitOrder(e);
+    }, false);
+}
+
+// Дополнительный обработчик клика на кнопку для Android (более надежный)
+const submitBtn = document.querySelector('.submit-order-btn');
+if (submitBtn) {
+    submitBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await validateAndSubmitOrder(e);
+    }, false);
+}
 
 // Возврат в магазин
 backToShop.addEventListener('click', () => {
