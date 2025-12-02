@@ -83,6 +83,11 @@ h1, h2, h3, .font-bold {
     z-index: 1; /* Минимальный z-index, чтобы модальные окна были поверх */
 }
 
+/* Убеждаемся, что header всегда под модальными окнами */
+.modal-overlay {
+    z-index: 9999 !important; /* Очень высокий z-index для гарантии, что модальное окно поверх всего */
+}
+
 .logo-wrapper {
     display: flex;
     align-items: center;
@@ -1701,6 +1706,9 @@ h1, h2, h3, .font-bold {
     transition: transform 0.2s;
     border: none;
     text-align: left;
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .profile-menu-btn:active {
@@ -1715,6 +1723,8 @@ h1, h2, h3, .font-bold {
     flex: 1;
     font-size: 16px;
     font-weight: 500;
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
 }
 
 .menu-btn-arrow {

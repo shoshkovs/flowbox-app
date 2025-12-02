@@ -245,6 +245,7 @@ function changeProductQuantity(productId, delta) {
     if (cartItem) {
         cartItem.quantity = newQty;
         updateCartUI();
+        saveUserData(); // Сохраняем корзину на сервер
     }
     
     tg.HapticFeedback.impactOccurred('light');
@@ -271,6 +272,7 @@ function addToCart(productId, quantity = 1) {
 
     updateCartUI();
     updateGoToCartButton();
+    saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
 }
 
@@ -290,6 +292,7 @@ function updateGoToCartButton() {
 function removeFromCart(productId) {
     cart = cart.filter(item => item.id !== productId);
     updateCartUI();
+    saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
 }
 
@@ -304,6 +307,7 @@ function changeQuantity(productId, delta) {
         removeFromCart(productId);
     } else {
         updateCartUI();
+        saveUserData(); // Сохраняем корзину на сервер
         tg.HapticFeedback.impactOccurred('light');
     }
 }
