@@ -829,8 +829,9 @@ h1, h2, h3, .font-bold {
     margin-bottom: 20px;
 }
 
-.address-option-btn {
-    margin-bottom: 0;
+/* Фолбек для iOS/старых WebView, где gap для flex не работает */
+.address-option-btn + .address-option-btn {
+    margin-top: 20px;
 }
 
 .address-option-btn {
