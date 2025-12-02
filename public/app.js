@@ -875,145 +875,6 @@ function initOrderForm() {
         }, true); // Используем capture phase для более раннего срабатывания
     }
     
-    // Красивое форматирование номера телефона в реальном времени
-    function setupPhoneInput(phoneField) {
-        if (!phoneField) return;
-        
-        // Проверяем, не добавлен ли уже обработчик
-        if (phoneField.dataset.phoneFormatted === 'true') {
-            // Если обработчик уже есть, удаляем его через клонирование
-            const newField = phoneField.cloneNode(true);
-            const savedValue = phoneField.value;
-            phoneField.parentNode.replaceChild(newField, phoneField);
-            newField.value = savedValue;
-            phoneField = newField;
-        }
-        phoneField.dataset.phoneFormatted = 'true';
-        
-        phoneField.addEventListener('input', function(e) {
-            let value = this.value;
-            const cursorPosition = this.selectionStart;
-            const oldLength = this.value.length;
-            
-            // Сохраняем количество цифр до курсора для правильного позиционирования
-            const digitsBeforeCursor = value.substring(0, cursorPosition).replace(/\D/g, '').length;
-            
-            // Если начинается с 8, заменяем на +7
-            if (value.startsWith('8')) {
-                value = '+7' + value.substring(1);
-            }
-            // Если начинается с цифры (но не 8) и не +7, добавляем +7 в начало
-            else if (value.length > 0 && value[0].match(/\d/) && !value.startsWith('+7') && !value.startsWith('8')) {
-                value = '+7' + value;
-            }
-            
-            // Удаляем все нецифровые символы для обработки
-            let digits = value.replace(/\D/g, '');
-            
-            // Если начинается с 8, заменяем на 7
-            if (digits.startsWith('8')) {
-                digits = '7' + digits.substring(1);
-            }
-            
-            // Если не начинается с 7, добавляем 7 в начало
-            if (digits.length > 0 && !digits.startsWith('7')) {
-                digits = '7' + digits;
-            }
-            
-            // Ограничиваем до 11 цифр (7 + 10 цифр)
-            if (digits.length > 11) {
-                digits = digits.substring(0, 11);
-            }
-            
-            // Форматируем номер
-            let formattedValue = '';
-            if (digits.length > 0) {
-                formattedValue = '+7';
-                if (digits.length > 1) {
-                    formattedValue += ' (' + digits.substring(1, 4);
-                }
-                if (digits.length >= 5) {
-                    formattedValue += ') ' + digits.substring(4, 7);
-                }
-                if (digits.length >= 8) {
-                    formattedValue += '-' + digits.substring(7, 9);
-                }
-                if (digits.length >= 10) {
-                    formattedValue += '-' + digits.substring(9, 11);
-                }
-            }
-            
-            // Всегда применяем форматирование для реального времени
-            this.value = formattedValue;
-            
-            // Корректировка позиции курсора
-            let newPosition = formattedValue.length;
-            
-            // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
-            if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
-                // Находим позицию в новом отформатированном значении
-                let digitCount = 0;
-                for (let i = 0; i < formattedValue.length; i++) {
-                    if (/\d/.test(formattedValue[i])) {
-                        digitCount++;
-                        if (digitCount === digitsBeforeCursor) {
-                            newPosition = i + 1;
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Используем setTimeout для правильной установки курсора после обновления DOM
-            setTimeout(() => {
-                this.setSelectionRange(newPosition, newPosition);
-            }, 0);
-        });
-        
-        // При вставке (paste) тоже форматируем
-        phoneField.addEventListener('paste', function(e) {
-            e.preventDefault();
-            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-            let digits = pastedText.replace(/\D/g, '');
-            
-            // Если начинается с 8, заменяем на 7
-            if (digits.startsWith('8')) {
-                digits = '7' + digits.substring(1);
-            }
-            
-            // Если не начинается с 7, добавляем 7 в начало
-            if (digits.length > 0 && !digits.startsWith('7')) {
-                digits = '7' + digits;
-            }
-            
-            // Ограничиваем до 11 цифр
-            if (digits.length > 11) {
-                digits = digits.substring(0, 11);
-            }
-            
-            // Форматируем и вставляем
-            let formattedValue = '';
-            if (digits.length > 0) {
-                formattedValue = '+7';
-                if (digits.length > 1) {
-                    formattedValue += ' (' + digits.substring(1, 4);
-                }
-                if (digits.length >= 5) {
-                    formattedValue += ') ' + digits.substring(4, 7);
-                }
-                if (digits.length >= 8) {
-                    formattedValue += '-' + digits.substring(7, 9);
-                }
-                if (digits.length >= 10) {
-                    formattedValue += '-' + digits.substring(9, 11);
-                }
-            }
-            
-            this.value = formattedValue;
-            this.setSelectionRange(formattedValue.length, formattedValue.length);
-        });
-    }
-    
     // Настройка полей телефона
     const customerPhoneField = document.getElementById('customerPhone');
     const recipientPhoneField = document.getElementById('recipientPhone');
@@ -1752,6 +1613,145 @@ function validateField(field, isValid) {
         field.classList.add('error');
         // Поле подсвечивается красным через CSS класс .error
     }
+}
+
+// Красивое форматирование номера телефона в реальном времени (используется в заказе и профиле)
+function setupPhoneInput(phoneField) {
+    if (!phoneField) return;
+    
+    // Проверяем, не добавлен ли уже обработчик
+    if (phoneField.dataset.phoneFormatted === 'true') {
+        // Если обработчик уже есть, удаляем его через клонирование
+        const newField = phoneField.cloneNode(true);
+        const savedValue = phoneField.value;
+        phoneField.parentNode.replaceChild(newField, phoneField);
+        newField.value = savedValue;
+        phoneField = newField;
+    }
+    phoneField.dataset.phoneFormatted = 'true';
+    
+    phoneField.addEventListener('input', function() {
+        let value = this.value;
+        const cursorPosition = this.selectionStart;
+        const oldLength = this.value.length;
+        
+        // Сохраняем количество цифр до курсора для правильного позиционирования
+        const digitsBeforeCursor = value.substring(0, cursorPosition).replace(/\D/g, '').length;
+        
+        // Если начинается с 8, заменяем на +7
+        if (value.startsWith('8')) {
+            value = '+7' + value.substring(1);
+        }
+        // Если начинается с цифры (но не 8) и не +7, добавляем +7 в начало
+        else if (value.length > 0 && value[0].match(/\d/) && !value.startsWith('+7') && !value.startsWith('8')) {
+            value = '+7' + value;
+        }
+        
+        // Удаляем все нецифровые символы для обработки
+        let digits = value.replace(/\D/g, '');
+        
+        // Если начинается с 8, заменяем на 7
+        if (digits.startsWith('8')) {
+            digits = '7' + digits.substring(1);
+        }
+        
+        // Если не начинается с 7, добавляем 7 в начало
+        if (digits.length > 0 && !digits.startsWith('7')) {
+            digits = '7' + digits;
+        }
+        
+        // Ограничиваем до 11 цифр (7 + 10 цифр)
+        if (digits.length > 11) {
+            digits = digits.substring(0, 11);
+        }
+        
+        // Форматируем номер
+        let formattedValue = '';
+        if (digits.length > 0) {
+            formattedValue = '+7';
+            if (digits.length > 1) {
+                formattedValue += ' (' + digits.substring(1, 4);
+            }
+            if (digits.length >= 5) {
+                formattedValue += ') ' + digits.substring(4, 7);
+            }
+            if (digits.length >= 8) {
+                formattedValue += '-' + digits.substring(7, 9);
+            }
+            if (digits.length >= 10) {
+                formattedValue += '-' + digits.substring(9, 11);
+            }
+        }
+        
+        // Всегда применяем форматирование для реального времени
+        this.value = formattedValue;
+        
+        // Корректировка позиции курсора
+        let newPosition = formattedValue.length;
+        
+        // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
+        if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
+            // Находим позицию в новом отформатированном значении
+            let digitCount = 0;
+            for (let i = 0; i < formattedValue.length; i++) {
+                if (/\d/.test(formattedValue[i])) {
+                    digitCount++;
+                    if (digitCount === digitsBeforeCursor) {
+                        newPosition = i + 1;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Используем setTimeout для правильной установки курсора после обновления DOM
+        setTimeout(() => {
+            this.setSelectionRange(newPosition, newPosition);
+        }, 0);
+    });
+    
+    // При вставке (paste) тоже форматируем
+    phoneField.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        let digits = pastedText.replace(/\D/g, '');
+        
+        // Если начинается с 8, заменяем на 7
+        if (digits.startsWith('8')) {
+            digits = '7' + digits.substring(1);
+        }
+        
+        // Если не начинается с 7, добавляем 7 в начало
+        if (digits.length > 0 && !digits.startsWith('7')) {
+            digits = '7' + digits;
+        }
+        
+        // Ограничиваем до 11 цифр
+        if (digits.length > 11) {
+            digits = digits.substring(0, 11);
+        }
+        
+        // Форматируем и вставляем
+        let formattedValue = '';
+        if (digits.length > 0) {
+            formattedValue = '+7';
+            if (digits.length > 1) {
+                formattedValue += ' (' + digits.substring(1, 4);
+            }
+            if (digits.length >= 5) {
+                formattedValue += ') ' + digits.substring(4, 7);
+            }
+            if (digits.length >= 8) {
+                formattedValue += '-' + digits.substring(7, 9);
+            }
+            if (digits.length >= 10) {
+                formattedValue += '-' + digits.substring(9, 11);
+            }
+        }
+        
+        this.value = formattedValue;
+        this.setSelectionRange(formattedValue.length, formattedValue.length);
+    });
 }
 
 // Редактирование адреса
