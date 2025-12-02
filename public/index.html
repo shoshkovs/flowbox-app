@@ -167,12 +167,6 @@
                         </div>
                         <div class="profile-name-wrapper">
                             <h2 id="profileName">Пользователь</h2>
-                            <button class="profile-edit-icon-btn" id="editProfileBtn" title="Редактировать">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                            </button>
                         </div>
                     </div>
                     
@@ -218,30 +212,6 @@
                 </div>
             </div>
             
-            <!-- Модальное окно редактирования профиля -->
-            <div class="modal-overlay" id="profileEditModal" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Редактировать профиль</h3>
-                        <button class="modal-close" id="closeProfileEditModal">✕</button>
-                    </div>
-                    <form class="profile-edit-form" id="profileEditForm">
-                        <div class="form-group">
-                            <label>Имя</label>
-                            <input type="text" id="editProfileName" required placeholder="Иван Иванов">
-                        </div>
-                        <div class="form-group">
-                            <label>Телефон</label>
-                            <input type="tel" id="editProfilePhone" required placeholder="+7 (999) 123-45-67">
-                        </div>
-                        <div class="form-group">
-                            <label>E-mail</label>
-                            <input type="email" id="editProfileEmail" required placeholder="example@mail.com">
-                        </div>
-                        <button type="submit" class="submit-address-btn">Сохранить</button>
-                    </form>
-                </div>
-            </div>
             
             <!-- Модальное окно адреса -->
             <div class="modal-overlay" id="addressModal" style="display: none;">
