@@ -879,11 +879,13 @@ function initOrderForm() {
     function setupPhoneInput(phoneField) {
         if (!phoneField) return;
         
-        // Удаляем старые обработчики через клонирование (если они есть)
-        const hasListener = phoneField.dataset.phoneFormatted === 'true';
-        if (hasListener) {
+        // Проверяем, не добавлен ли уже обработчик
+        if (phoneField.dataset.phoneFormatted === 'true') {
+            // Если обработчик уже есть, удаляем его через клонирование
             const newField = phoneField.cloneNode(true);
+            const savedValue = phoneField.value;
             phoneField.parentNode.replaceChild(newField, phoneField);
+            newField.value = savedValue;
             phoneField = newField;
         }
         phoneField.dataset.phoneFormatted = 'true';
@@ -942,30 +944,32 @@ function initOrderForm() {
             }
             
             // Всегда применяем форматирование для реального времени
-            this.value = formattedValue;
-            
-            // Корректировка позиции курсора
-            let newPosition = formattedValue.length;
-            
-            // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
-            if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
-                // Находим позицию в новом отформатированном значении
-                let digitCount = 0;
-                for (let i = 0; i < formattedValue.length; i++) {
-                    if (/\d/.test(formattedValue[i])) {
-                        digitCount++;
-                        if (digitCount === digitsBeforeCursor) {
-                            newPosition = i + 1;
-                            break;
+            if (this.value !== formattedValue) {
+                this.value = formattedValue;
+                
+                // Корректировка позиции курсора
+                let newPosition = formattedValue.length;
+                
+                // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
+                if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
+                    // Находим позицию в новом отформатированном значении
+                    let digitCount = 0;
+                    for (let i = 0; i < formattedValue.length; i++) {
+                        if (/\d/.test(formattedValue[i])) {
+                            digitCount++;
+                            if (digitCount === digitsBeforeCursor) {
+                                newPosition = i + 1;
+                                break;
+                            }
                         }
                     }
                 }
+                
+                // Используем requestAnimationFrame для правильной установки курсора
+                requestAnimationFrame(() => {
+                    this.setSelectionRange(newPosition, newPosition);
+                });
             }
-            
-            // Используем setTimeout для правильной установки курсора после обновления значения
-            setTimeout(() => {
-                this.setSelectionRange(newPosition, newPosition);
-            }, 0);
         });
         
         // При вставке (paste) тоже форматируем
@@ -1978,19 +1982,14 @@ editProfileBtn.addEventListener('click', () => {
     
     // Настройка форматирования телефона для профиля
     if (editProfilePhoneField) {
-        // Удаляем старый обработчик, если он был, и добавляем новый
-        const newField = editProfilePhoneField.cloneNode(true);
-        editProfilePhoneField.parentNode.replaceChild(newField, editProfilePhoneField);
+        // Сбрасываем флаг, чтобы обработчик мог быть добавлен
+        editProfilePhoneField.dataset.phoneFormatted = 'false';
         
-        // Восстанавливаем значение
-        const savedValue = editProfilePhoneField.value || newField.value;
-        newField.value = savedValue;
+        // Добавляем обработчик форматирования напрямую
+        setupPhoneInput(editProfilePhoneField);
         
-        // Добавляем обработчик форматирования
-        setupPhoneInput(newField);
-        
-        // Обновляем ссылку на поле
-        window.editProfilePhoneField = newField;
+        // Сохраняем ссылку на поле
+        window.editProfilePhoneField = editProfilePhoneField;
     }
 });
 
