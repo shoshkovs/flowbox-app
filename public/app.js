@@ -716,7 +716,7 @@ orderForm.addEventListener('submit', async (e) => {
             hasAddressErrors = true;
         }
         
-        // Валидация имени и телефона
+        // Валидация имени и телефона покупателя
         if (!name) {
             validateField(document.getElementById('customerName'), false);
             hasAddressErrors = true;
@@ -732,6 +732,23 @@ orderForm.addEventListener('submit', async (e) => {
         if (!deliveryDate) {
             validateField(document.getElementById('deliveryDate'), false);
             hasAddressErrors = true;
+        }
+        
+        // Валидация получателя, если выбран "Другой получатель"
+        const recipientRadio = document.querySelector('input[name="recipient"]:checked');
+        if (recipientRadio && recipientRadio.value === 'other') {
+            const recipientNameField = document.getElementById('recipientName');
+            const recipientPhoneField = document.getElementById('recipientPhone');
+            const recipientName = recipientNameField ? recipientNameField.value.trim() : '';
+            const recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
+            if (!recipientName) {
+                validateField(recipientNameField, false);
+                hasAddressErrors = true;
+            }
+            if (!recipientPhone) {
+                validateField(recipientPhoneField, false);
+                hasAddressErrors = true;
+            }
         }
         
         if (hasAddressErrors) {
