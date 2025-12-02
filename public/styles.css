@@ -651,6 +651,12 @@ h1, h2, h3, .font-bold {
     flex: 1;
 }
 
+.address-page-footer .delete-address-btn-outline {
+    flex: 0 0 auto;
+    min-width: 100px;
+    padding: 12px 20px;
+}
+
 /* Стили для страницы заказа */
 #orderTab {
     display: none;
@@ -828,7 +834,7 @@ h1, h2, h3, .font-bold {
 .address-options-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     margin-bottom: 16px;
 }
 
