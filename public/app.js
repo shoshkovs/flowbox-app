@@ -875,6 +875,72 @@ function initOrderForm() {
         }, true); // Используем capture phase для более раннего срабатывания
     }
     
+    // Упрощенный ввод номера телефона
+    function setupPhoneInput(phoneField) {
+        if (!phoneField) return;
+        
+        phoneField.addEventListener('input', function(e) {
+            let value = this.value;
+            const cursorPosition = this.selectionStart;
+            
+            // Если начинается с 8, заменяем на +7
+            if (value.startsWith('8')) {
+                value = '+7' + value.substring(1);
+                this.value = value;
+                // Сохраняем позицию курсора
+                const newPosition = Math.min(cursorPosition + 1, value.length);
+                this.setSelectionRange(newPosition, newPosition);
+            }
+            // Если начинается с +7, оставляем как есть
+            else if (value.startsWith('+7')) {
+                // Ничего не делаем
+            }
+            // Если начинается с цифры или скобки (123), добавляем +7 в начало
+            else if (value.length > 0 && (value[0].match(/\d/) || value[0] === '(')) {
+                // Проверяем, нет ли уже +7
+                if (!value.startsWith('+7') && !value.startsWith('+')) {
+                    value = '+7' + value;
+                    this.value = value;
+                    const newPosition = Math.min(cursorPosition + 2, value.length);
+                    this.setSelectionRange(newPosition, newPosition);
+                }
+            }
+        });
+    }
+    
+    // Настройка полей телефона
+    const customerPhoneField = document.getElementById('customerPhone');
+    const recipientPhoneField = document.getElementById('recipientPhone');
+    setupPhoneInput(customerPhoneField);
+    setupPhoneInput(recipientPhoneField);
+    
+    // Автоматическое разбиение адреса на улицу и дом
+    const streetField = document.getElementById('orderAddressStreet');
+    const houseField = document.getElementById('orderAddressHouse');
+    
+    if (streetField && houseField) {
+        streetField.addEventListener('blur', function() {
+            const value = this.value.trim();
+            if (value && !houseField.value.trim()) {
+                // Паттерн: "Улица Номер" или "Улица НомерБуква" (например, "Корпусная 9" или "Невский проспект 35Б")
+                // Ищем последнее число с возможной буквой в конце
+                const match = value.match(/^(.+?)\s+(\d+[А-Яа-яA-Za-z]*)$/);
+                if (match) {
+                    const street = match[1].trim();
+                    const house = match[2].trim();
+                    
+                    // Заполняем поля
+                    this.value = street;
+                    houseField.value = house;
+                    
+                    // Убираем ошибки валидации
+                    validateField(this, true);
+                    validateField(houseField, true);
+                }
+            }
+        });
+    }
+    
     // Расчет суммы
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
