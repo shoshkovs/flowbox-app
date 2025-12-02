@@ -1665,11 +1665,21 @@ const profileBonusesAmount = document.getElementById('profileBonusesAmount');
 
 // Открытие модальных окон
 addressesBtn.addEventListener('click', () => {
+    editingAddressId = null;
+    document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
+    document.getElementById('deleteAddressBtn').style.display = 'none';
+    addressForm.reset();
+    
     addressModal.style.display = 'flex';
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
         closeAddressModal.click();
     });
+    
+    // Инициализация улучшений для формы адреса
+    setTimeout(() => {
+        initAddressFormValidation();
+    }, 100);
 });
 
 orderHistoryBtn.addEventListener('click', () => {
@@ -1752,6 +1762,11 @@ function editAddress(addressId) {
     tg.BackButton.onClick(() => {
         closeAddressModal.click();
     });
+    
+    // Инициализация улучшений для формы адреса
+    setTimeout(() => {
+        initAddressFormValidation();
+    }, 100);
 }
 
 // Удаление адреса
@@ -1769,44 +1784,116 @@ addressForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
     // Сброс всех ошибок
-    document.querySelectorAll('.form-group input, .form-group textarea').forEach(field => {
+    document.querySelectorAll('#addressForm .form-group input, #addressForm .form-group textarea').forEach(field => {
         validateField(field, true);
     });
-    addressError.style.display = 'none';
+    if (addressError) addressError.style.display = 'none';
     
     let hasErrors = false;
-    const city = addressCity.value.trim();
-    const street = document.getElementById('addressStreet').value.trim();
-    const name = document.getElementById('addressName').value.trim();
+    let firstErrorField = null;
+    
+    const city = addressCity ? addressCity.value.trim() : '';
+    const street = document.getElementById('addressStreet') ? document.getElementById('addressStreet').value.trim() : '';
+    const name = document.getElementById('addressName') ? document.getElementById('addressName').value.trim() : '';
     const house = document.getElementById('addressHouse') ? document.getElementById('addressHouse').value.trim() : '';
     
-    // Валидация города
-    if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
-        validateField(addressCity, false);
-        addressError.style.display = 'block';
+    // Валидация наименования
+    const addressNameField = document.getElementById('addressName');
+    if (!name) {
+        validateField(addressNameField, false);
+        if (!firstErrorField) firstErrorField = addressNameField;
         hasErrors = true;
+    } else {
+        validateField(addressNameField, true);
     }
     
-    // Валидация наименования
-    if (!name) {
-        validateField(document.getElementById('addressName'), false);
+    // Валидация города (улучшенная логика)
+    if (!city) {
+        // Если поле пустое - показываем только красную рамку, без сообщения об ошибке города
+        validateField(addressCity, false);
+        if (addressError) addressError.style.display = 'none';
+        if (!firstErrorField) firstErrorField = addressCity;
+        hasErrors = true;
+    } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+        // Если город правильный - убираем ошибку
+        validateField(addressCity, true);
+        if (addressError) addressError.style.display = 'none';
+    } else {
+        // Если город заполнен, но не СПб - показываем ошибку города
+        validateField(addressCity, false);
+        if (addressError) addressError.style.display = 'block';
+        if (!firstErrorField) firstErrorField = addressCity;
         hasErrors = true;
     }
     
     // Валидация улицы
+    const addressStreetField = document.getElementById('addressStreet');
     if (!street) {
-        validateField(document.getElementById('addressStreet'), false);
+        validateField(addressStreetField, false);
+        if (!firstErrorField) firstErrorField = addressStreetField;
         hasErrors = true;
+    } else {
+        validateField(addressStreetField, true);
     }
     
     // Валидация дома
     const addressHouseField = document.getElementById('addressHouse');
     if (addressHouseField && !house) {
         validateField(addressHouseField, false);
+        if (!firstErrorField) firstErrorField = addressHouseField;
         hasErrors = true;
+    } else if (addressHouseField && house) {
+        validateField(addressHouseField, true);
     }
     
-    if (hasErrors) return;
+    // Если есть ошибки, прокрутить к первому полю с ошибкой
+    if (hasErrors && firstErrorField) {
+        setTimeout(() => {
+            try {
+                if (firstErrorField.scrollIntoView) {
+                    firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center' });
+                }
+                const rect = firstErrorField.getBoundingClientRect();
+                const currentScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                const targetScroll = currentScroll + rect.top - 150;
+                
+                const scrollToPosition = () => {
+                    window.scrollTo(0, Math.max(0, targetScroll));
+                    document.documentElement.scrollTop = Math.max(0, targetScroll);
+                    document.body.scrollTop = Math.max(0, targetScroll);
+                };
+                
+                if (window.requestAnimationFrame) {
+                    requestAnimationFrame(scrollToPosition);
+                } else {
+                    scrollToPosition();
+                }
+                
+                if (firstErrorField.focus && typeof firstErrorField.focus === 'function' && firstErrorField.tagName === 'INPUT') {
+                    setTimeout(() => {
+                        try {
+                            firstErrorField.focus();
+                            if (firstErrorField.scrollIntoView) {
+                                firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center' });
+                            }
+                        } catch (focusError) {
+                            console.log('Не удалось установить фокус:', focusError);
+                        }
+                    }, 100);
+                }
+            } catch (scrollError) {
+                console.error('Ошибка прокрутки:', scrollError);
+                try {
+                    if (firstErrorField.scrollIntoView) {
+                        firstErrorField.scrollIntoView();
+                    }
+                } catch (e) {
+                    console.error('Критическая ошибка прокрутки:', e);
+                }
+            }
+        }, 200);
+        return;
+    }
     
     const address = {
         id: editingAddressId || Date.now(),
