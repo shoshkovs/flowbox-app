@@ -782,6 +782,9 @@ function initOrderForm() {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                // Снимаем ошибку при выборе времени
+                const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+                if (deliveryTimeOptions) deliveryTimeOptions.classList.remove('error');
                 tg.HapticFeedback.impactOccurred('light');
             });
         });
