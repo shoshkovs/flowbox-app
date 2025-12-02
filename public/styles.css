@@ -2035,16 +2035,40 @@ h1, h2, h3, .font-bold {
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
+    /* Убираем системные подсветки */
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-focus-ring-color: transparent;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.time-slot-btn:focus,
+.time-slot-btn:active {
+    outline: none !important;
+    border-color: var(--primary-color);
+    box-shadow: none;
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
 }
 
 .time-slot-btn:hover {
     border-color: var(--primary-color);
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
 }
 
 .time-slot-btn.active {
     border-color: var(--primary-color);
     background: #fef5f8;
-    color: var(--text-color);
+    color: var(--text-color) !important;
+    -webkit-text-fill-color: var(--text-color) !important;
+    outline: none !important;
 }
 
 .address-form-actions {
