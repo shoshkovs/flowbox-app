@@ -843,10 +843,8 @@ orderForm.addEventListener('submit', async (e) => {
             return;
         }
         
-        const orderAddressNameField = document.getElementById('orderAddressName');
-        const addressName = orderAddressNameField ? orderAddressNameField.value.trim() : '';
         addressData = {
-            name: addressName || 'Новый адрес',
+            name: 'Новый адрес',
             city: city,
             street: street,
             house: house,
@@ -856,6 +854,10 @@ orderForm.addEventListener('submit', async (e) => {
             intercom: document.getElementById('orderAddressIntercom').value.trim(),
             comment: document.getElementById('orderAddressComment').value.trim()
         };
+    } else {
+        // Не выбран адрес
+        alert('Пожалуйста, выберите адрес доставки');
+        return;
     }
     
     // Формирование строки адреса
@@ -1263,7 +1265,6 @@ function loadSavedAddresses() {
 
 // Заполнение формы заказа адресом
 function fillOrderFormWithAddress(address) {
-    const nameField = document.getElementById('orderAddressName');
     const cityField = document.getElementById('orderAddressCity');
     const streetField = document.getElementById('orderAddressStreet');
     const houseField = document.getElementById('orderAddressHouse');
@@ -1273,7 +1274,6 @@ function fillOrderFormWithAddress(address) {
     const intercomField = document.getElementById('orderAddressIntercom');
     const commentField = document.getElementById('orderAddressComment');
     
-    if (nameField) nameField.value = address.name || '';
     if (cityField) cityField.value = address.city || '';
     if (streetField) streetField.value = address.street || '';
     if (houseField) houseField.value = address.house || '';
