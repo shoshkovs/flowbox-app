@@ -850,8 +850,10 @@ orderForm.addEventListener('submit', async (e) => {
             return;
         }
         
+        const orderAddressNameField = document.getElementById('orderAddressName');
+        const addressName = orderAddressNameField ? orderAddressNameField.value.trim() : '';
         addressData = {
-            name: 'Новый адрес',
+            name: addressName || 'Новый адрес',
             city: city,
             street: street,
             house: house,
@@ -1278,6 +1280,7 @@ function loadSavedAddresses() {
 
 // Заполнение формы заказа адресом
 function fillOrderFormWithAddress(address) {
+    const nameField = document.getElementById('orderAddressName');
     const cityField = document.getElementById('orderAddressCity');
     const streetField = document.getElementById('orderAddressStreet');
     const houseField = document.getElementById('orderAddressHouse');
@@ -1287,6 +1290,7 @@ function fillOrderFormWithAddress(address) {
     const intercomField = document.getElementById('orderAddressIntercom');
     const commentField = document.getElementById('orderAddressComment');
     
+    if (nameField) nameField.value = address.name || '';
     if (cityField) cityField.value = address.city || '';
     if (streetField) streetField.value = address.street || '';
     if (houseField) houseField.value = address.house || '';
