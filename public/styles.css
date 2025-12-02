@@ -2053,9 +2053,10 @@ h1, h2, h3, .font-bold {
 }
 
 #deliveryTimeOptions.error {
-    border: 2px solid #f44336;
+    border: 2px solid #f44336 !important;
     border-radius: 8px;
     padding: 8px;
+    background-color: #fff5f5; /* Легкий красный фон для лучшей видимости на Android */
 }
 
 .form-group label.error-label {

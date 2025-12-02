@@ -546,6 +546,24 @@ function switchTab(tabId) {
         if (header) header.style.display = 'none';
         // Инициализировать форму заказа
         initOrderForm();
+        // Прокрутить страницу в начало (для Android)
+        setTimeout(() => {
+            const orderTab = document.getElementById('orderTab');
+            if (orderTab) {
+                // Для Android используем несколько методов прокрутки
+                orderTab.scrollTop = 0;
+                if (orderTab.scrollIntoView) {
+                    orderTab.scrollIntoView({ behavior: 'auto', block: 'start' });
+                }
+                // Прокрутка окна
+                if (window.scrollTo) {
+                    window.scrollTo(0, 0);
+                }
+                // Альтернативный метод для старых браузеров
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+            }
+        }, 150);
     } else {
         // Показать навигацию и header для других вкладок
         if (bottomNav) bottomNav.style.display = 'flex';
@@ -580,14 +598,7 @@ navItems.forEach(item => {
 // Оформление заказа
 checkoutBtnFinal.addEventListener('click', () => {
     switchTab('orderTab');
-    // Прокрутить страницу в начало
-    setTimeout(() => {
-        const orderTab = document.getElementById('orderTab');
-        if (orderTab) {
-            orderTab.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, 100);
+    // Прокрутка обрабатывается в switchTab для orderTab
 });
 
 // Инициализация формы заказа
@@ -1027,11 +1038,33 @@ orderForm.addEventListener('submit', async (e) => {
     if (hasErrors) {
         if (firstErrorField) {
             setTimeout(() => {
-                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                if (firstErrorField.focus && typeof firstErrorField.focus === 'function') {
-                    firstErrorField.focus();
+                // Для Android используем более надежный метод прокрутки
+                try {
+                    // Метод 1: scrollIntoView с auto для лучшей совместимости
+                    if (firstErrorField.scrollIntoView) {
+                        firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
+                    }
+                    // Метод 2: Прокрутка через getBoundingClientRect (для Android)
+                    const rect = firstErrorField.getBoundingClientRect();
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const targetY = rect.top + scrollTop - (window.innerHeight / 2);
+                    window.scrollTo({ top: targetY, behavior: 'auto' });
+                    // Метод 3: Прямая прокрутка элемента (если это контейнер)
+                    if (firstErrorField.scrollTop !== undefined) {
+                        firstErrorField.scrollTop = 0;
+                    }
+                    // Фокус на поле (если это input)
+                    if (firstErrorField.focus && typeof firstErrorField.focus === 'function' && firstErrorField.tagName === 'INPUT') {
+                        setTimeout(() => firstErrorField.focus(), 200);
+                    }
+                } catch (e) {
+                    console.error('Ошибка прокрутки:', e);
+                    // Fallback: простая прокрутка
+                    if (firstErrorField.scrollIntoView) {
+                        firstErrorField.scrollIntoView();
+                    }
                 }
-            }, 100);
+            }, 200);
         }
         return;
     }
