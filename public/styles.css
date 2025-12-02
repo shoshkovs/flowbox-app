@@ -835,7 +835,11 @@ h1, h2, h3, .font-bold {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+}
+
+.address-option-btn {
+    margin-bottom: 0;
 }
 
 .address-option-btn {
