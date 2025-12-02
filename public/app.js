@@ -1790,12 +1790,8 @@ addressForm.addEventListener('submit', (e) => {
     const addressHouseField = document.getElementById('addressHouse');
     const addressErrorElement = document.getElementById('addressError');
     
-    // Сброс всех ошибок
-    if (addressNameField) validateField(addressNameField, true);
-    if (addressCityField) validateField(addressCityField, true);
-    if (addressStreetField) validateField(addressStreetField, true);
-    if (addressHouseField) validateField(addressHouseField, true);
-    if (addressErrorElement) addressErrorElement.style.display = 'none';
+    // НЕ сбрасываем ошибки сразу - сначала проверяем все поля, потом подсвечиваем ошибки
+    // Это нужно для того, чтобы все незаполненные поля подсветились красным
     
     let hasErrors = false;
     let firstErrorField = null;
@@ -2017,24 +2013,67 @@ function initAddressFormValidation() {
         });
     }
     
-    // Автоматический сброс ошибок для всех полей формы адреса
+    // Автоматический сброс ошибок для всех полей формы адреса при вводе
     const addressFormFields = document.querySelectorAll('#addressForm input, #addressForm textarea');
     addressFormFields.forEach(field => {
+        // Удаляем старые обработчики через клонирование (если есть)
+        const hasListener = field.dataset.addressFormatted === 'true';
+        let actualField = field;
+        
+        if (hasListener && field.id !== 'addressCity') {
+            const newField = field.cloneNode(true);
+            const savedValue = field.value;
+            field.parentNode.replaceChild(newField, field);
+            newField.value = savedValue;
+            actualField = newField;
+        }
+        
         if (field.id !== 'addressCity') {
-            // Удаляем старые обработчики через проверку флага
-            if (!field.dataset.addressFormatted) {
-                field.dataset.addressFormatted = 'true';
-                
-                field.addEventListener('input', function() {
+            actualField.dataset.addressFormatted = 'true';
+            
+            // Убираем красную рамку при вводе
+            actualField.addEventListener('input', function() {
+                const value = this.value.trim();
+                // Если поле заполнено, убираем ошибку
+                if (value) {
                     validateField(this, true);
-                });
-                
-                field.addEventListener('change', function() {
+                }
+            });
+            
+            // Убираем красную рамку при изменении (для select и других)
+            actualField.addEventListener('change', function() {
+                const value = this.value.trim();
+                if (value) {
                     validateField(this, true);
-                });
-            }
+                }
+            });
         }
     });
+    
+    // Для поля города тоже добавляем обработчик input для убирания ошибки при вводе
+    if (addressCityField && addressErrorElement) {
+        const cityField = addressCityField.dataset.cityValidated === 'true' 
+            ? document.getElementById('addressCity') 
+            : addressCityField;
+        
+        if (cityField && !cityField.dataset.cityInputListener) {
+            cityField.dataset.cityInputListener = 'true';
+            cityField.addEventListener('input', function() {
+                const city = this.value.trim();
+                // Если поле заполнено и город правильный, убираем ошибку
+                if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
+                    validateField(this, true);
+                    addressErrorElement.style.display = 'none';
+                } else if (city) {
+                    // Если поле заполнено, но город неправильный - оставляем ошибку, но убираем только при правильном городе
+                    // Здесь не убираем ошибку, она уберется только при правильном городе
+                } else {
+                    // Если поле пустое, убираем только сообщение об ошибке города, но рамка останется красной
+                    addressErrorElement.style.display = 'none';
+                }
+            });
+        }
+    }
 }
 
 // Текущий редактируемый адрес
