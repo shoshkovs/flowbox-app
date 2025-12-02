@@ -1783,61 +1783,74 @@ function deleteAddress(addressId) {
 addressForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
+    // Получаем все поля заново, чтобы убедиться, что они актуальны
+    const addressNameField = document.getElementById('addressName');
+    const addressCityField = document.getElementById('addressCity');
+    const addressStreetField = document.getElementById('addressStreet');
+    const addressHouseField = document.getElementById('addressHouse');
+    const addressErrorElement = document.getElementById('addressError');
+    
     // Сброс всех ошибок
-    document.querySelectorAll('#addressForm .form-group input, #addressForm .form-group textarea').forEach(field => {
-        validateField(field, true);
-    });
-    if (addressError) addressError.style.display = 'none';
+    if (addressNameField) validateField(addressNameField, true);
+    if (addressCityField) validateField(addressCityField, true);
+    if (addressStreetField) validateField(addressStreetField, true);
+    if (addressHouseField) validateField(addressHouseField, true);
+    if (addressErrorElement) addressErrorElement.style.display = 'none';
     
     let hasErrors = false;
     let firstErrorField = null;
     
-    const city = addressCity ? addressCity.value.trim() : '';
-    const street = document.getElementById('addressStreet') ? document.getElementById('addressStreet').value.trim() : '';
-    const name = document.getElementById('addressName') ? document.getElementById('addressName').value.trim() : '';
-    const house = document.getElementById('addressHouse') ? document.getElementById('addressHouse').value.trim() : '';
+    const name = addressNameField ? addressNameField.value.trim() : '';
+    const city = addressCityField ? addressCityField.value.trim() : '';
+    const street = addressStreetField ? addressStreetField.value.trim() : '';
+    const house = addressHouseField ? addressHouseField.value.trim() : '';
     
     // Валидация наименования
-    const addressNameField = document.getElementById('addressName');
     if (!name) {
-        validateField(addressNameField, false);
-        if (!firstErrorField) firstErrorField = addressNameField;
+        if (addressNameField) {
+            validateField(addressNameField, false);
+            if (!firstErrorField) firstErrorField = addressNameField;
+        }
         hasErrors = true;
     } else {
-        validateField(addressNameField, true);
+        if (addressNameField) validateField(addressNameField, true);
     }
     
     // Валидация города (улучшенная логика)
     if (!city) {
         // Если поле пустое - показываем только красную рамку, без сообщения об ошибке города
-        validateField(addressCity, false);
-        if (addressError) addressError.style.display = 'none';
-        if (!firstErrorField) firstErrorField = addressCity;
+        if (addressCityField) {
+            validateField(addressCityField, false);
+            if (!firstErrorField) firstErrorField = addressCityField;
+        }
+        if (addressErrorElement) addressErrorElement.style.display = 'none';
         hasErrors = true;
     } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
         // Если город правильный - убираем ошибку
-        validateField(addressCity, true);
-        if (addressError) addressError.style.display = 'none';
+        if (addressCityField) validateField(addressCityField, true);
+        if (addressErrorElement) addressErrorElement.style.display = 'none';
     } else {
         // Если город заполнен, но не СПб - показываем ошибку города
-        validateField(addressCity, false);
-        if (addressError) addressError.style.display = 'block';
-        if (!firstErrorField) firstErrorField = addressCity;
+        if (addressCityField) {
+            validateField(addressCityField, false);
+            if (!firstErrorField) firstErrorField = addressCityField;
+        }
+        if (addressErrorElement) addressErrorElement.style.display = 'block';
         hasErrors = true;
     }
     
     // Валидация улицы
-    const addressStreetField = document.getElementById('addressStreet');
     if (!street) {
-        validateField(addressStreetField, false);
-        if (!firstErrorField) firstErrorField = addressStreetField;
+        if (addressStreetField) {
+            validateField(addressStreetField, false);
+            if (!firstErrorField) firstErrorField = addressStreetField;
+        }
         hasErrors = true;
     } else {
-        validateField(addressStreetField, true);
+        if (addressStreetField) validateField(addressStreetField, true);
     }
     
     // Валидация дома
-    const addressHouseField = document.getElementById('addressHouse');
     if (addressHouseField && !house) {
         validateField(addressHouseField, false);
         if (!firstErrorField) firstErrorField = addressHouseField;
