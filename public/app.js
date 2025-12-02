@@ -1790,16 +1790,24 @@ addressForm.addEventListener('submit', (e) => {
     const addressHouseField = document.getElementById('addressHouse');
     const addressErrorElement = document.getElementById('addressError');
     
-    // НЕ сбрасываем ошибки сразу - сначала проверяем все поля, потом подсвечиваем ошибки
-    // Это нужно для того, чтобы все незаполненные поля подсветились красным
-    
-    let hasErrors = false;
-    let firstErrorField = null;
-    
+    // Сначала убираем ошибки только с правильно заполненных полей
+    // Это нужно для того, чтобы при повторной проверке правильно работала валидация
     const name = addressNameField ? addressNameField.value.trim() : '';
     const city = addressCityField ? addressCityField.value.trim() : '';
     const street = addressStreetField ? addressStreetField.value.trim() : '';
     const house = addressHouseField ? addressHouseField.value.trim() : '';
+    
+    // Убираем ошибки только с правильно заполненных полей
+    if (name && addressNameField) validateField(addressNameField, true);
+    if (street && addressStreetField) validateField(addressStreetField, true);
+    if (house && addressHouseField) validateField(addressHouseField, true);
+    if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
+        if (addressCityField) validateField(addressCityField, true);
+        if (addressErrorElement) addressErrorElement.style.display = 'none';
+    }
+    
+    let hasErrors = false;
+    let firstErrorField = null;
     
     // Валидация наименования
     if (!name) {
