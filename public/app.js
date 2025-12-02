@@ -1094,6 +1094,8 @@ function editAddress(addressId) {
     document.getElementById('addressName').value = address.name || '';
     document.getElementById('addressCity').value = address.city || '';
     document.getElementById('addressStreet').value = address.street || '';
+    const addressHouseField = document.getElementById('addressHouse');
+    if (addressHouseField) addressHouseField.value = address.house || '';
     document.getElementById('addressEntrance').value = address.entrance || '';
     document.getElementById('addressApartment').value = address.apartment || '';
     document.getElementById('addressFloor').value = address.floor || '';
@@ -1131,6 +1133,7 @@ addressForm.addEventListener('submit', (e) => {
     const city = addressCity.value.trim();
     const street = document.getElementById('addressStreet').value.trim();
     const name = document.getElementById('addressName').value.trim();
+    const house = document.getElementById('addressHouse') ? document.getElementById('addressHouse').value.trim() : '';
     
     // Валидация города
     if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
@@ -1151,6 +1154,13 @@ addressForm.addEventListener('submit', (e) => {
         hasErrors = true;
     }
     
+    // Валидация дома
+    const addressHouseField = document.getElementById('addressHouse');
+    if (addressHouseField && !house) {
+        validateField(addressHouseField, false);
+        hasErrors = true;
+    }
+    
     if (hasErrors) return;
     
     const address = {
@@ -1158,6 +1168,7 @@ addressForm.addEventListener('submit', (e) => {
         name: name,
         city: city,
         street: street,
+        house: house,
         entrance: document.getElementById('addressEntrance').value.trim(),
         apartment: document.getElementById('addressApartment').value.trim(),
         floor: document.getElementById('addressFloor').value.trim(),
