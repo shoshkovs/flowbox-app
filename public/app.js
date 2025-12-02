@@ -849,6 +849,9 @@ orderForm.addEventListener('submit', async (e) => {
     });
     const orderAddressError = document.getElementById('orderAddressError');
     if (orderAddressError) orderAddressError.style.display = 'none';
+    // Сброс ошибки времени доставки
+    const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+    if (deliveryTimeOptions) deliveryTimeOptions.classList.remove('error');
     
     let hasErrors = false;
     let firstErrorField = null;
