@@ -1044,11 +1044,20 @@ async function validateAndSubmitOrder(e) {
         hasErrors = true;
     }
     
-    // Валидация email
+    // Валидация email (улучшенная: должна быть @ и точка, нельзя белеберду)
     const emailField = document.getElementById('customerEmail');
     const emailAnchor = document.getElementById('anchor-customerEmail');
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
+    // Более строгая проверка: должна быть @, точка после @, и валидные символы
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (email && emailRegex.test(email) && email.includes('@') && email.includes('.') && email.indexOf('@') < email.lastIndexOf('.')) {
+        validateField(emailField, true);
+    } else if (!email) {
+        // Пустое поле - ошибка
+        validateField(emailField, false);
+        if (!firstErrorField) firstErrorField = emailAnchor || emailField;
+        hasErrors = true;
+    } else {
+        // Email заполнен, но невалидный
         validateField(emailField, false);
         if (!firstErrorField) firstErrorField = emailAnchor || emailField;
         hasErrors = true;
