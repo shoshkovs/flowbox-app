@@ -1074,7 +1074,37 @@ function initOrderForm() {
     if (nameInput && phoneInput && emailInput) {
         if (profileData) {
             if (profileData.name) nameInput.value = profileData.name;
-            if (profileData.phone) phoneInput.value = profileData.phone;
+            if (profileData.phone) {
+                // Форматируем номер при загрузке в форму заказа
+                let phoneDigits = profileData.phone.replace(/\D/g, '');
+                if (phoneDigits.startsWith('8')) {
+                    phoneDigits = '7' + phoneDigits.substring(1);
+                }
+                if (phoneDigits.length > 0 && !phoneDigits.startsWith('7')) {
+                    phoneDigits = '7' + phoneDigits;
+                }
+                if (phoneDigits.length > 11) {
+                    phoneDigits = phoneDigits.substring(0, 11);
+                }
+                
+                let formattedPhone = '';
+                if (phoneDigits.length > 0) {
+                    formattedPhone = '+7';
+                    if (phoneDigits.length > 1) {
+                        formattedPhone += ' (' + phoneDigits.substring(1, 4);
+                    }
+                    if (phoneDigits.length >= 5) {
+                        formattedPhone += ') ' + phoneDigits.substring(4, 7);
+                    }
+                    if (phoneDigits.length >= 8) {
+                        formattedPhone += '-' + phoneDigits.substring(7, 9);
+                    }
+                    if (phoneDigits.length >= 10) {
+                        formattedPhone += '-' + phoneDigits.substring(9, 11);
+                    }
+                }
+                phoneInput.value = formattedPhone || profileData.phone;
+            }
             if (profileData.email) emailInput.value = profileData.email;
         } else {
             // Заполнение из Telegram
@@ -2044,10 +2074,43 @@ profileEditForm.addEventListener('submit', (e) => {
     
     // Используем актуальное поле (может быть клонированным)
     const phoneField = window.editProfilePhoneField || document.getElementById('editProfilePhone');
+    let phoneValue = phoneField ? phoneField.value : document.getElementById('editProfilePhone').value;
+    
+    // Форматируем номер перед сохранением, если он не отформатирован
+    if (phoneValue) {
+        let phoneDigits = phoneValue.replace(/\D/g, '');
+        if (phoneDigits.startsWith('8')) {
+            phoneDigits = '7' + phoneDigits.substring(1);
+        }
+        if (phoneDigits.length > 0 && !phoneDigits.startsWith('7')) {
+            phoneDigits = '7' + phoneDigits;
+        }
+        if (phoneDigits.length > 11) {
+            phoneDigits = phoneDigits.substring(0, 11);
+        }
+        
+        let formattedPhone = '';
+        if (phoneDigits.length > 0) {
+            formattedPhone = '+7';
+            if (phoneDigits.length > 1) {
+                formattedPhone += ' (' + phoneDigits.substring(1, 4);
+            }
+            if (phoneDigits.length >= 5) {
+                formattedPhone += ') ' + phoneDigits.substring(4, 7);
+            }
+            if (phoneDigits.length >= 8) {
+                formattedPhone += '-' + phoneDigits.substring(7, 9);
+            }
+            if (phoneDigits.length >= 10) {
+                formattedPhone += '-' + phoneDigits.substring(9, 11);
+            }
+        }
+        phoneValue = formattedPhone || phoneValue;
+    }
     
     const profileData = {
         name: document.getElementById('editProfileName').value,
-        phone: phoneField ? phoneField.value : document.getElementById('editProfilePhone').value,
+        phone: phoneValue,
         email: document.getElementById('editProfileEmail').value
     };
     
