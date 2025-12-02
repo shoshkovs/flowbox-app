@@ -909,6 +909,7 @@ orderForm.addEventListener('submit', async (e) => {
         email: email,
         recipientName: recipientName,
         recipientPhone: recipientPhone,
+        anonymousDelivery: document.getElementById('anonymousDelivery') ? document.getElementById('anonymousDelivery').checked : false,
         address: addressString,
         addressData: addressData,
         deliveryDate: deliveryDate,
