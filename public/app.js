@@ -875,36 +875,122 @@ function initOrderForm() {
         }, true); // Используем capture phase для более раннего срабатывания
     }
     
-    // Упрощенный ввод номера телефона
+    // Красивое форматирование номера телефона в реальном времени
     function setupPhoneInput(phoneField) {
         if (!phoneField) return;
         
         phoneField.addEventListener('input', function(e) {
-            let value = this.value;
+            let value = this.value.replace(/\D/g, ''); // Удаляем все нецифровые символы
             const cursorPosition = this.selectionStart;
+            const oldLength = this.value.length;
             
-            // Если начинается с 8, заменяем на +7
+            // Если начинается с 8, заменяем на 7
             if (value.startsWith('8')) {
-                value = '+7' + value.substring(1);
-                this.value = value;
-                // Сохраняем позицию курсора
-                const newPosition = Math.min(cursorPosition + 1, value.length);
-                this.setSelectionRange(newPosition, newPosition);
+                value = '7' + value.substring(1);
             }
-            // Если начинается с +7, оставляем как есть
-            else if (value.startsWith('+7')) {
-                // Ничего не делаем
+            
+            // Если не начинается с 7, добавляем 7 в начало
+            if (value.length > 0 && !value.startsWith('7')) {
+                value = '7' + value;
             }
-            // Если начинается с цифры или скобки (123), добавляем +7 в начало
-            else if (value.length > 0 && (value[0].match(/\d/) || value[0] === '(')) {
-                // Проверяем, нет ли уже +7
-                if (!value.startsWith('+7') && !value.startsWith('+')) {
-                    value = '+7' + value;
-                    this.value = value;
-                    const newPosition = Math.min(cursorPosition + 2, value.length);
-                    this.setSelectionRange(newPosition, newPosition);
+            
+            // Ограничиваем до 11 цифр (7 + 10 цифр)
+            if (value.length > 11) {
+                value = value.substring(0, 11);
+            }
+            
+            // Форматируем номер
+            let formattedValue = '';
+            if (value.length > 0) {
+                formattedValue = '+7';
+                if (value.length > 1) {
+                    formattedValue += ' (' + value.substring(1, 4);
+                }
+                if (value.length >= 5) {
+                    formattedValue += ') ' + value.substring(4, 7);
+                }
+                if (value.length >= 8) {
+                    formattedValue += '-' + value.substring(7, 9);
+                }
+                if (value.length >= 10) {
+                    formattedValue += '-' + value.substring(9, 11);
                 }
             }
+            
+            this.value = formattedValue;
+            
+            // Корректировка позиции курсора
+            const newLength = this.value.length;
+            const diff = newLength - oldLength;
+            let newPosition = cursorPosition + diff;
+            
+            // Если курсор был в конце старого значения, ставим его в конец нового
+            if (cursorPosition >= oldLength) {
+                newPosition = newLength;
+            } else {
+                // Иначе пытаемся сохранить относительную позицию
+                // Считаем количество цифр до курсора
+                const digitsBeforeCursor = this.value.substring(0, cursorPosition).replace(/\D/g, '').length;
+                // Находим позицию в новом отформатированном значении
+                let digitCount = 0;
+                for (let i = 0; i < formattedValue.length; i++) {
+                    if (/\d/.test(formattedValue[i])) {
+                        digitCount++;
+                        if (digitCount === digitsBeforeCursor) {
+                            newPosition = i + 1;
+                            break;
+                        }
+                    }
+                }
+                if (digitCount < digitsBeforeCursor) {
+                    newPosition = formattedValue.length;
+                }
+            }
+            
+            this.setSelectionRange(newPosition, newPosition);
+        });
+        
+        // При вставке (paste) тоже форматируем
+        phoneField.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            let value = pastedText.replace(/\D/g, '');
+            
+            // Если начинается с 8, заменяем на 7
+            if (value.startsWith('8')) {
+                value = '7' + value.substring(1);
+            }
+            
+            // Если не начинается с 7, добавляем 7 в начало
+            if (value.length > 0 && !value.startsWith('7')) {
+                value = '7' + value;
+            }
+            
+            // Ограничиваем до 11 цифр
+            if (value.length > 11) {
+                value = value.substring(0, 11);
+            }
+            
+            // Форматируем и вставляем
+            let formattedValue = '';
+            if (value.length > 0) {
+                formattedValue = '+7';
+                if (value.length > 1) {
+                    formattedValue += ' (' + value.substring(1, 4);
+                }
+                if (value.length >= 5) {
+                    formattedValue += ') ' + value.substring(4, 7);
+                }
+                if (value.length >= 8) {
+                    formattedValue += '-' + value.substring(7, 9);
+                }
+                if (value.length >= 10) {
+                    formattedValue += '-' + value.substring(9, 11);
+                }
+            }
+            
+            this.value = formattedValue;
+            this.setSelectionRange(formattedValue.length, formattedValue.length);
         });
     }
     
@@ -1838,6 +1924,15 @@ editProfileBtn.addEventListener('click', () => {
     tg.BackButton.onClick(() => {
         closeProfileEditModal.click();
     });
+    
+    // Настройка форматирования телефона для профиля
+    const editProfilePhoneField = document.getElementById('editProfilePhone');
+    if (editProfilePhoneField) {
+        // Удаляем старые обработчики, если они есть (через клонирование)
+        const newPhoneField = editProfilePhoneField.cloneNode(true);
+        editProfilePhoneField.parentNode.replaceChild(newPhoneField, editProfilePhoneField);
+        setupPhoneInput(newPhoneField);
+    }
 });
 
 closeProfileEditModal.addEventListener('click', () => {
