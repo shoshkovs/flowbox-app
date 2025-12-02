@@ -888,28 +888,16 @@ function initOrderForm() {
             const cursorPosition = this.selectionStart;
             const oldLength = this.value.length;
             
+            // Сохраняем количество цифр до курсора для правильного позиционирования
+            const digitsBeforeCursor = value.substring(0, cursorPosition).replace(/\D/g, '').length;
+            
             // Если начинается с 8, заменяем на +7
             if (value.startsWith('8')) {
                 value = '+7' + value.substring(1);
-                this.value = value;
-                const newPosition = Math.min(cursorPosition + 1, value.length);
-                this.setSelectionRange(newPosition, newPosition);
-                return;
             }
-            
-            // Если начинается с +7, оставляем как есть
-            if (value.startsWith('+7')) {
-                // Продолжаем обработку для форматирования
-            }
-            // Если начинается с цифры или скобки (но не +7), добавляем +7 в начало
-            else if (value.length > 0 && (value[0].match(/\d/) || value[0] === '(')) {
-                if (!value.startsWith('+7') && !value.startsWith('+')) {
-                    value = '+7' + value;
-                    this.value = value;
-                    const newPosition = Math.min(cursorPosition + 2, value.length);
-                    this.setSelectionRange(newPosition, newPosition);
-                    return;
-                }
+            // Если начинается с цифры (но не 8) и не +7, добавляем +7 в начало
+            else if (value.length > 0 && value[0].match(/\d/) && !value.startsWith('+7') && !value.startsWith('8')) {
+                value = '+7' + value;
             }
             
             // Удаляем все нецифровые символы для обработки
@@ -948,37 +936,30 @@ function initOrderForm() {
                 }
             }
             
-            this.value = formattedValue;
-            
-            // Корректировка позиции курсора
-            const newLength = this.value.length;
-            const diff = newLength - oldLength;
-            let newPosition = cursorPosition + diff;
-            
-            // Если курсор был в конце старого значения, ставим его в конец нового
-            if (cursorPosition >= oldLength) {
-                newPosition = newLength;
-            } else {
-                // Иначе пытаемся сохранить относительную позицию
-                // Считаем количество цифр до курсора
-                const digitsBeforeCursor = this.value.substring(0, cursorPosition).replace(/\D/g, '').length;
-                // Находим позицию в новом отформатированном значении
-                let digitCount = 0;
-                for (let i = 0; i < formattedValue.length; i++) {
-                    if (/\d/.test(formattedValue[i])) {
-                        digitCount++;
-                        if (digitCount === digitsBeforeCursor) {
-                            newPosition = i + 1;
-                            break;
+            // Применяем форматирование только если значение изменилось
+            if (this.value !== formattedValue) {
+                this.value = formattedValue;
+                
+                // Корректировка позиции курсора
+                let newPosition = formattedValue.length;
+                
+                // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
+                if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
+                    // Находим позицию в новом отформатированном значении
+                    let digitCount = 0;
+                    for (let i = 0; i < formattedValue.length; i++) {
+                        if (/\d/.test(formattedValue[i])) {
+                            digitCount++;
+                            if (digitCount === digitsBeforeCursor) {
+                                newPosition = i + 1;
+                                break;
+                            }
                         }
                     }
                 }
-                if (digitCount < digitsBeforeCursor) {
-                    newPosition = formattedValue.length;
-                }
+                
+                this.setSelectionRange(newPosition, newPosition);
             }
-            
-            this.setSelectionRange(newPosition, newPosition);
         });
         
         // При вставке (paste) тоже форматируем
@@ -1991,6 +1972,8 @@ editProfileBtn.addEventListener('click', () => {
     
     // Настройка форматирования телефона для профиля
     if (editProfilePhoneField) {
+        // Сбрасываем флаг, чтобы обработчик мог быть добавлен заново
+        editProfilePhoneField.dataset.phoneFormatted = 'false';
         setupPhoneInput(editProfilePhoneField);
     }
 });
