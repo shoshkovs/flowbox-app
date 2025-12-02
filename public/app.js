@@ -801,6 +801,37 @@ function initOrderForm() {
         });
     }
     
+    // Добавление обработчиков для автоматического сброса ошибок при вводе
+    const formFields = document.querySelectorAll('#orderForm input, #orderForm textarea, #orderForm select');
+    formFields.forEach(field => {
+        // Сброс ошибки при вводе
+        field.addEventListener('input', function() {
+            validateField(this, true);
+        });
+        
+        // Сброс ошибки при изменении (для select и date)
+        field.addEventListener('change', function() {
+            validateField(this, true);
+        });
+        
+        // Сброс ошибки при фокусе (когда пользователь начинает вводить)
+        field.addEventListener('focus', function() {
+            // Не сбрасываем сразу, только при вводе
+        });
+    });
+    
+    // Обработчик для блока времени доставки (сброс ошибки при клике на любой слот)
+    const deliveryTimeContainer = document.getElementById('deliveryTimeOptions');
+    if (deliveryTimeContainer) {
+        deliveryTimeContainer.addEventListener('click', function(e) {
+            // Если клик был на кнопку времени, ошибка уже сброшена выше
+            // Но на всякий случай сбрасываем при любом клике в контейнере
+            if (e.target.classList.contains('time-slot-btn')) {
+                this.classList.remove('error');
+            }
+        });
+    }
+    
     // Расчет суммы
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
@@ -919,7 +950,9 @@ async function validateAndSubmitOrder(e) {
         const recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
         
         // Валидация имени получателя (минимум 2 символа)
-        if (!recipientName || recipientName.length < 2) {
+        if (recipientName && recipientName.length >= 2) {
+            validateField(recipientNameField, true);
+        } else {
             validateField(recipientNameField, false);
             if (!firstErrorField) firstErrorField = recipientNameAnchor || recipientNameField;
             hasErrors = true;
@@ -927,7 +960,9 @@ async function validateAndSubmitOrder(e) {
         
         // Валидация телефона получателя (минимум 10 цифр)
         const recipientPhoneDigits = recipientPhone.replace(/\D/g, '');
-        if (!recipientPhone || recipientPhoneDigits.length < 10) {
+        if (recipientPhone && recipientPhoneDigits.length >= 10) {
+            validateField(recipientPhoneField, true);
+        } else {
             validateField(recipientPhoneField, false);
             if (!firstErrorField) firstErrorField = recipientPhoneAnchor || recipientPhoneField;
             hasErrors = true;
@@ -946,7 +981,10 @@ async function validateAndSubmitOrder(e) {
         }
     }
     
-    if (!deliveryDate) {
+    if (deliveryDate) {
+        const deliveryDateField = document.getElementById('deliveryDate');
+        validateField(deliveryDateField, true);
+    } else {
         const deliveryDateField = document.getElementById('deliveryDate');
         const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
         validateField(deliveryDateField, false);
@@ -993,7 +1031,11 @@ async function validateAndSubmitOrder(e) {
         // Валидация обязательных полей адреса
         const cityField = document.getElementById('orderAddressCity');
         const cityAnchor = document.getElementById('anchor-orderAddressCity');
-        if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
+        if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
+            validateField(cityField, true);
+            const orderAddressError = document.getElementById('orderAddressError');
+            if (orderAddressError) orderAddressError.style.display = 'none';
+        } else {
             validateField(cityField, false);
             const orderAddressError = document.getElementById('orderAddressError');
             if (orderAddressError) orderAddressError.style.display = 'block';
@@ -1003,7 +1045,9 @@ async function validateAndSubmitOrder(e) {
         }
         const streetField = document.getElementById('orderAddressStreet');
         const streetAnchor = document.getElementById('anchor-orderAddressStreet');
-        if (!street) {
+        if (street) {
+            validateField(streetField, true);
+        } else {
             validateField(streetField, false);
             if (!firstErrorField) firstErrorField = streetAnchor || streetField;
             hasAddressErrors = true;
@@ -1011,7 +1055,9 @@ async function validateAndSubmitOrder(e) {
         }
         const houseField = document.getElementById('orderAddressHouse');
         const houseAnchor = document.getElementById('anchor-orderAddressHouse');
-        if (!house) {
+        if (house) {
+            validateField(houseField, true);
+        } else {
             validateField(houseField, false);
             if (!firstErrorField) firstErrorField = houseAnchor || houseField;
             hasAddressErrors = true;
@@ -1359,6 +1405,13 @@ function validateField(field, isValid) {
     
     if (isValid) {
         field.classList.remove('error');
+        // Сбрасываем ошибку времени доставки, если это поле даты
+        if (field.id === 'deliveryDate') {
+            const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+            if (deliveryTimeOptions) {
+                deliveryTimeOptions.classList.remove('error');
+            }
+        }
         // Не меняем цвет заголовка - он всегда черный
     } else {
         field.classList.add('error');
