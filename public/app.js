@@ -1775,6 +1775,7 @@ function editAddress(addressId) {
     document.getElementById('addressComment').value = address.comment || '';
     
     addressModal.style.display = 'flex';
+    lockBodyScroll();
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
         closeAddressModal.click();
