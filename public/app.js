@@ -871,9 +871,12 @@ orderForm.addEventListener('submit', async (e) => {
         hasErrors = true;
     }
     
-    if (!email) {
-        validateField(document.getElementById('customerEmail'), false);
-        if (!firstErrorField) firstErrorField = document.getElementById('customerEmail');
+    // Валидация email
+    const emailField = document.getElementById('customerEmail');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+        validateField(emailField, false);
+        if (!firstErrorField) firstErrorField = emailField;
         hasErrors = true;
     }
     
@@ -900,7 +903,8 @@ orderForm.addEventListener('submit', async (e) => {
     if (!deliveryTime) {
         const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
         if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
-            alert('Пожалуйста, выберите время доставки');
+            // Добавляем визуальную индикацию ошибки
+            deliveryTimeOptions.classList.add('error');
             if (!firstErrorField) firstErrorField = deliveryTimeOptions;
             hasErrors = true;
         }
@@ -1232,14 +1236,14 @@ closeSupportModal.addEventListener('click', () => {
 
 // Валидация поля
 function validateField(field, isValid) {
+    if (!field) return;
+    
     if (isValid) {
         field.classList.remove('error');
-        const label = field.closest('.form-group')?.querySelector('label');
-        if (label) label.classList.remove('error-label');
+        // Не меняем цвет заголовка - он всегда черный
     } else {
         field.classList.add('error');
-        const label = field.closest('.form-group')?.querySelector('label');
-        if (label) label.classList.add('error-label');
+        // Поле подсвечивается красным через CSS класс .error
     }
 }
 
