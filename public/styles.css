@@ -2022,6 +2022,9 @@ h1, h2, h3, .font-bold {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     margin-top: 8px;
+    /* Убираем системные подсветки */
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .time-slot-btn {
