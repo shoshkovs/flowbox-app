@@ -1831,9 +1831,9 @@ h1, h2, h3, .font-bold {
 .delete-address-btn-outline {
     width: 100%;
     padding: 12px;
-    border: 1px solid #f44336;
+    border: 1px solid var(--primary-color);
     background: white;
-    color: #f44336;
+    color: var(--primary-color);
     border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
