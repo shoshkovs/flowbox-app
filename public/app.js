@@ -1149,7 +1149,7 @@ async function validateAndSubmitOrder(e) {
     if (selectedAddressRadio) {
         // Выбран сохраненный адрес
         const addressId = parseInt(selectedAddressRadio.value);
-        addressData = savedAddresses.find(a => a.id === addressId);
+        addressData = savedAddresses.find(a => String(a.id) === String(addressId));
         if (!addressData) {
             alert('Выбранный адрес не найден');
             return;
@@ -1523,13 +1523,92 @@ const closeSupportModal = document.getElementById('closeSupportModal');
 const supportBtn = document.getElementById('supportBtn');
 
 const profileBonusesAmount = document.getElementById('profileBonusesAmount');
+const addressModalTitle = document.getElementById('addressModalTitle');
+const deleteAddressBtn = document.getElementById('deleteAddressBtn');
 
-// Открытие модальных окон
-addressesBtn.addEventListener('click', () => {
-    editingAddressId = null;
-    document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
-    document.getElementById('deleteAddressBtn').style.display = 'none';
+function resetAddressFormState() {
+    if (!addressForm) return;
     addressForm.reset();
+    if (addressError) addressError.style.display = 'none';
+    
+    const errorFields = addressForm.querySelectorAll('.error');
+    errorFields.forEach(field => field.classList.remove('error'));
+}
+
+function setAddressFormValues(address) {
+    if (!address) return;
+    document.getElementById('addressName').value = address.name || '';
+    document.getElementById('addressCity').value = address.city || '';
+    document.getElementById('addressStreet').value = address.street || '';
+    const addressHouseField = document.getElementById('addressHouse');
+    if (addressHouseField) addressHouseField.value = address.house || '';
+    document.getElementById('addressEntrance').value = address.entrance || '';
+    document.getElementById('addressApartment').value = address.apartment || '';
+    document.getElementById('addressFloor').value = address.floor || '';
+    document.getElementById('addressIntercom').value = address.intercom || '';
+    document.getElementById('addressComment').value = address.comment || '';
+}
+
+function ensureAddressFormValidation() {
+    if (!addressForm || addressForm.dataset.validationInitialized === 'true') return;
+    addressForm.dataset.validationInitialized = 'true';
+    
+    const fields = addressForm.querySelectorAll('input, textarea');
+    fields.forEach(field => {
+        field.addEventListener('input', function() {
+            if (this.value.trim()) {
+                validateField(this, true);
+            }
+        });
+        field.addEventListener('change', function() {
+            if (this.value.trim()) {
+                validateField(this, true);
+            }
+        });
+    });
+    
+    if (addressCity && addressError) {
+        addressCity.addEventListener('blur', function() {
+            const city = this.value.trim();
+            if (city && city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
+                validateField(this, false);
+                addressError.style.display = 'block';
+            } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                validateField(this, true);
+                addressError.style.display = 'none';
+            } else if (!city) {
+                addressError.style.display = 'none';
+            }
+        });
+        
+        addressCity.addEventListener('input', function() {
+            const city = this.value.trim();
+            if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                validateField(this, true);
+                addressError.style.display = 'none';
+            } else if (!city) {
+                addressError.style.display = 'none';
+            }
+        });
+    }
+}
+
+function openAddressModal(address = null) {
+    if (!addressModal || !addressForm) return;
+    
+    ensureAddressFormValidation();
+    resetAddressFormState();
+    
+    if (address) {
+        editingAddressId = address.id;
+        if (addressModalTitle) addressModalTitle.textContent = 'Редактировать адрес';
+        if (deleteAddressBtn) deleteAddressBtn.style.display = 'block';
+        setAddressFormValues(address);
+    } else {
+        editingAddressId = null;
+        if (addressModalTitle) addressModalTitle.textContent = 'Добавить адрес';
+        if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
+    }
     
     addressModal.style.display = 'flex';
     lockBodyScroll();
@@ -1537,12 +1616,14 @@ addressesBtn.addEventListener('click', () => {
     tg.BackButton.onClick(() => {
         closeAddressModal.click();
     });
-    
-    // Инициализация улучшений для формы адреса
-    setTimeout(() => {
-        initAddressFormValidation();
-    }, 100);
-});
+}
+
+// Открытие модальных окон
+if (addressesBtn) {
+    addressesBtn.addEventListener('click', () => {
+        openAddressModal();
+    });
+}
 
 orderHistoryBtn.addEventListener('click', () => {
     orderHistoryModal.style.display = 'flex';
@@ -1756,42 +1837,15 @@ function setupPhoneInput(phoneField) {
 
 // Редактирование адреса
 function editAddress(addressId) {
-    const address = savedAddresses.find(a => a.id === addressId);
+    const address = savedAddresses.find(a => String(a.id) === String(addressId));
     if (!address) return;
-    
-    editingAddressId = addressId;
-    document.getElementById('addressModalTitle').textContent = 'Редактировать адрес';
-    document.getElementById('deleteAddressBtn').style.display = 'block';
-    
-    // Заполнение формы
-    document.getElementById('addressName').value = address.name || '';
-    document.getElementById('addressCity').value = address.city || '';
-    document.getElementById('addressStreet').value = address.street || '';
-    const addressHouseField = document.getElementById('addressHouse');
-    if (addressHouseField) addressHouseField.value = address.house || '';
-    document.getElementById('addressEntrance').value = address.entrance || '';
-    document.getElementById('addressApartment').value = address.apartment || '';
-    document.getElementById('addressFloor').value = address.floor || '';
-    document.getElementById('addressIntercom').value = address.intercom || '';
-    document.getElementById('addressComment').value = address.comment || '';
-    
-    addressModal.style.display = 'flex';
-    lockBodyScroll();
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        closeAddressModal.click();
-    });
-    
-    // Инициализация улучшений для формы адреса
-    setTimeout(() => {
-        initAddressFormValidation();
-    }, 100);
+    openAddressModal(address);
 }
 
 // Удаление адреса
 function deleteAddress(addressId) {
     if (confirm('Вы уверены, что хотите удалить этот адрес?')) {
-        savedAddresses = savedAddresses.filter(a => a.id !== addressId);
+        savedAddresses = savedAddresses.filter(a => String(a.id) !== String(addressId));
         saveUserData(); // Сохраняем на сервер
         loadSavedAddresses();
         tg.HapticFeedback.impactOccurred('light');
@@ -1946,7 +2000,7 @@ addressForm.addEventListener('submit', (e) => {
     
     if (editingAddressId) {
         // Обновление существующего адреса
-        const index = savedAddresses.findIndex(a => a.id === editingAddressId);
+        const index = savedAddresses.findIndex(a => String(a.id) === String(editingAddressId));
         if (index !== -1) {
             savedAddresses[index] = address;
         }
@@ -1958,9 +2012,9 @@ addressForm.addEventListener('submit', (e) => {
     
     saveUserData(); // Сохраняем на сервер
     
-    addressForm.reset();
-    document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
-    document.getElementById('deleteAddressBtn').style.display = 'none';
+    resetAddressFormState();
+    if (addressModalTitle) addressModalTitle.textContent = 'Добавить адрес';
+    if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
     unlockBodyScroll();
     closeAddressModal.click();
     loadSavedAddresses();
@@ -1968,142 +2022,24 @@ addressForm.addEventListener('submit', (e) => {
 });
 
 // Обработка удаления адреса
-document.getElementById('deleteAddressBtn').addEventListener('click', () => {
-    if (editingAddressId && confirm('Вы уверены, что хотите удалить этот адрес?')) {
-        savedAddresses = savedAddresses.filter(a => a.id !== editingAddressId);
-        saveUserData(); // Сохраняем на сервер
-        addressForm.reset();
-        editingAddressId = null;
-        document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
-        document.getElementById('deleteAddressBtn').style.display = 'none';
-        unlockBodyScroll();
-        closeAddressModal.click();
-        loadSavedAddresses();
-        tg.HapticFeedback.impactOccurred('light');
-    }
-});
-
-// Сброс формы при открытии для нового адреса
-addressesBtn.addEventListener('click', () => {
-    editingAddressId = null;
-    document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
-    document.getElementById('deleteAddressBtn').style.display = 'none';
-    addressForm.reset();
-});
-
-// Инициализация валидации формы адреса в профиле
-function initAddressFormValidation() {
-    // Проверка города при выходе из поля (blur)
-    const addressCityField = document.getElementById('addressCity');
-    const addressErrorElement = document.getElementById('addressError');
-    
-    if (addressCityField && addressErrorElement) {
-        // Удаляем старые обработчики через клонирование (если есть)
-        const hasListener = addressCityField.dataset.cityValidated === 'true';
-        let actualCityField = addressCityField;
-        
-        if (hasListener) {
-            const newField = addressCityField.cloneNode(true);
-            const savedValue = addressCityField.value;
-            addressCityField.parentNode.replaceChild(newField, addressCityField);
-            newField.value = savedValue;
-            actualCityField = newField;
-        }
-        actualCityField.dataset.cityValidated = 'true';
-        
-        // Проверка города при выходе из поля (blur)
-        actualCityField.addEventListener('blur', function() {
-            const city = this.value.trim();
-            // Проверяем только после того, как пользователь вышел из поля
-            if (city && city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб') {
-                // Показываем ошибку, если город не СПб
-                validateField(this, false);
-                addressErrorElement.style.display = 'block';
-            } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
-                // Убираем ошибку, если город правильный
-                validateField(this, true);
-                addressErrorElement.style.display = 'none';
-            } else if (!city) {
-                // Если поле пустое - убираем сообщение об ошибке города (но поле может быть подсвечено красным как обязательное)
-                addressErrorElement.style.display = 'none';
-            }
-        });
-        
-        // При вводе убираем сообщение об ошибке города
-        actualCityField.addEventListener('input', function() {
-            const city = this.value.trim();
-            // Если пользователь начал вводить правильный город - убираем ошибку
-            if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб' || city.toLowerCase().startsWith('санкт-петербург') || city.toLowerCase().startsWith('спб')) {
-                addressErrorElement.style.display = 'none';
-                if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
-                    validateField(this, true);
-                }
-            }
-        });
-    }
-    
-    // Автоматический сброс ошибок для всех полей формы адреса при вводе
-    const addressFormFields = document.querySelectorAll('#addressForm input, #addressForm textarea');
-    addressFormFields.forEach(field => {
-        // Удаляем старые обработчики через клонирование (если есть)
-        const hasListener = field.dataset.addressFormatted === 'true';
-        let actualField = field;
-        
-        if (hasListener && field.id !== 'addressCity') {
-            const newField = field.cloneNode(true);
-            const savedValue = field.value;
-            field.parentNode.replaceChild(newField, field);
-            newField.value = savedValue;
-            actualField = newField;
-        }
-        
-        if (field.id !== 'addressCity') {
-            actualField.dataset.addressFormatted = 'true';
-            
-            // Убираем красную рамку при вводе
-            actualField.addEventListener('input', function() {
-                const value = this.value.trim();
-                // Если поле заполнено, убираем ошибку
-                if (value) {
-                    validateField(this, true);
-                }
-            });
-            
-            // Убираем красную рамку при изменении (для select и других)
-            actualField.addEventListener('change', function() {
-                const value = this.value.trim();
-                if (value) {
-                    validateField(this, true);
-                }
-            });
+if (deleteAddressBtn) {
+    deleteAddressBtn.addEventListener('click', () => {
+        if (editingAddressId && confirm('Вы уверены, что хотите удалить этот адрес?')) {
+            savedAddresses = savedAddresses.filter(a => String(a.id) !== String(editingAddressId));
+            saveUserData(); // Сохраняем на сервер
+            resetAddressFormState();
+            editingAddressId = null;
+            if (addressModalTitle) addressModalTitle.textContent = 'Добавить адрес';
+            deleteAddressBtn.style.display = 'none';
+            unlockBodyScroll();
+            closeAddressModal.click();
+            loadSavedAddresses();
+            tg.HapticFeedback.impactOccurred('light');
         }
     });
-    
-    // Для поля города тоже добавляем обработчик input для убирания ошибки при вводе
-    if (addressCityField && addressErrorElement) {
-        const cityField = addressCityField.dataset.cityValidated === 'true' 
-            ? document.getElementById('addressCity') 
-            : addressCityField;
-        
-        if (cityField && !cityField.dataset.cityInputListener) {
-            cityField.dataset.cityInputListener = 'true';
-            cityField.addEventListener('input', function() {
-                const city = this.value.trim();
-                // Если поле заполнено и город правильный, убираем ошибку
-                if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
-                    validateField(this, true);
-                    addressErrorElement.style.display = 'none';
-                } else if (city) {
-                    // Если поле заполнено, но город неправильный - оставляем ошибку, но убираем только при правильном городе
-                    // Здесь не убираем ошибку, она уберется только при правильном городе
-                } else {
-                    // Если поле пустое, убираем только сообщение об ошибке города, но рамка останется красной
-                    addressErrorElement.style.display = 'none';
-                }
-            });
-        }
-    }
 }
+
+ensureAddressFormValidation();
 
 // Текущий редактируемый адрес
 let editingAddressId = null;
@@ -2131,7 +2067,7 @@ function loadSavedAddresses() {
                         <div class="address-item-name">${addr.name}</div>
                         <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
                     </div>
-                    <button class="address-edit-icon-btn" onclick="editAddress(${addr.id})" title="Изменить">
+                    <button class="address-edit-icon-btn" onclick="editAddress(${JSON.stringify(addr.id)})" title="Изменить">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
