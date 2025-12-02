@@ -631,6 +631,41 @@ h1, h2, h3, .font-bold {
     color: #ff0000;
 }
 
+.address-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.form-group-half {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.address-select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--text-color);
+    background-color: white;
+    cursor: pointer;
+}
+
+.address-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.form-group-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
 .form-group label {
     display: block;
     margin-bottom: 8px;

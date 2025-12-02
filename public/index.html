@@ -361,45 +361,76 @@
                         </div>
                     </div>
                     
-                    <!-- Сохраненные адреса -->
-                    <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
-                        <label class="form-section-label">Адрес доставки</label>
-                        <div class="saved-addresses-list" id="savedAddressesList"></div>
-                        <button type="button" class="use-new-address-btn" id="useNewAddressBtn">Использовать новый адрес</button>
-                    </div>
-                    
-                    <!-- Форма нового адреса -->
-                    <div class="new-address-form" id="newAddressForm">
-                        <label class="form-section-label">Адрес доставки</label>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressName" placeholder="Наименование адреса (Мой дом)">
+                    <!-- Адрес доставки -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Адрес доставки</h3>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="addressType" value="new" class="radio-input" checked>
+                                <span class="radio-label">Новый адрес</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="addressType" value="saved" class="radio-input">
+                                <span class="radio-label">Сохраненные адреса</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="addressType" value="ask" class="radio-input">
+                                <span class="radio-label">Уточнить у получателя</span>
+                            </label>
                         </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressCity" required placeholder="Город (Санкт-Петербург)" list="orderCities">
-                            <datalist id="orderCities">
-                                <option value="Санкт-Петербург">
-                            </datalist>
+                        
+                        <!-- Сохраненные адреса (выпадающий список) -->
+                        <div class="saved-addresses-section" id="savedAddressesSection" style="display: none;">
+                            <label class="form-group-label">Выберите адрес <span class="required">*</span></label>
+                            <select id="savedAddressSelect" class="address-select">
+                                <option value="">Выберите сохраненный адрес</option>
+                            </select>
                         </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressStreet" required placeholder="Улица, дом">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressEntrance" placeholder="Парадная">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressApartment" placeholder="Квартира/офис">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressFloor" placeholder="Этаж">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="orderAddressIntercom" placeholder="Домофон">
-                        </div>
-                        <div class="form-group">
-                            <textarea id="orderAddressComment" placeholder="Комментарий (Необязательно: уточнение к адресу)"></textarea>
-                        </div>
-                        <div class="address-error" id="orderAddressError" style="display: none;">
-                            Извините, мы пока не доставляем в этот город
+                        
+                        <!-- Форма нового адреса -->
+                        <div class="new-address-form" id="newAddressForm">
+                            <div class="form-group">
+                                <label>Город <span class="required">*</span></label>
+                                <input type="text" id="orderAddressCity" required placeholder="Введите город" list="orderCities">
+                                <datalist id="orderCities">
+                                    <option value="Санкт-Петербург">
+                                </datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>Улица <span class="required">*</span></label>
+                                <input type="text" id="orderAddressStreet" required placeholder="Введите улицу">
+                            </div>
+                            <div class="address-row">
+                                <div class="form-group form-group-half">
+                                    <label>Дом <span class="required">*</span></label>
+                                    <input type="text" id="orderAddressHouse" required placeholder="№ дома">
+                                </div>
+                                <div class="form-group form-group-half">
+                                    <label>Подъезд</label>
+                                    <input type="text" id="orderAddressEntrance" placeholder="№">
+                                </div>
+                            </div>
+                            <div class="address-row">
+                                <div class="form-group form-group-half">
+                                    <label>Квартира/Офис</label>
+                                    <input type="text" id="orderAddressApartment" placeholder="№">
+                                </div>
+                                <div class="form-group form-group-half">
+                                    <label>Этаж</label>
+                                    <input type="text" id="orderAddressFloor" placeholder="№">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Домофон</label>
+                                <input type="text" id="orderAddressIntercom" placeholder="Код домофона">
+                            </div>
+                            <div class="form-group">
+                                <label>Комментарий</label>
+                                <textarea id="orderAddressComment" placeholder="Дополнительная информация для курьера"></textarea>
+                            </div>
+                            <div class="address-error" id="orderAddressError" style="display: none;">
+                                Извините, мы пока не доставляем в этот город
+                            </div>
                         </div>
                     </div>
                     

@@ -608,6 +608,60 @@ function initOrderForm() {
         });
     }
     
+    // Инициализация радио-кнопок типа адреса
+    const addressTypeRadios = document.querySelectorAll('input[name="addressType"]');
+    const savedAddressesSection = document.getElementById('savedAddressesSection');
+    const newAddressForm = document.getElementById('newAddressForm');
+    const savedAddressSelect = document.getElementById('savedAddressSelect');
+    
+    if (addressTypeRadios.length > 0) {
+        addressTypeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                const addressType = radio.value;
+                
+                if (addressType === 'saved') {
+                    // Показать выпадающий список сохраненных адресов
+                    if (savedAddressesSection) savedAddressesSection.style.display = 'block';
+                    if (newAddressForm) newAddressForm.style.display = 'none';
+                    
+                    // Заполнить выпадающий список
+                    if (savedAddressSelect) {
+                        savedAddressSelect.innerHTML = '<option value="">Выберите сохраненный адрес</option>';
+                        savedAddresses.forEach(addr => {
+                            const option = document.createElement('option');
+                            option.value = addr.id;
+                            option.textContent = `${addr.name} - ${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}`;
+                            savedAddressSelect.appendChild(option);
+                        });
+                    }
+                } else if (addressType === 'new') {
+                    // Показать форму нового адреса
+                    if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+                    if (newAddressForm) newAddressForm.style.display = 'block';
+                    // Очистить поля
+                    if (savedAddressSelect) savedAddressSelect.value = '';
+                } else if (addressType === 'ask') {
+                    // Уточнить у получателя - скрыть все формы
+                    if (savedAddressesSection) savedAddressesSection.style.display = 'none';
+                    if (newAddressForm) newAddressForm.style.display = 'none';
+                }
+            });
+        });
+        
+        // Обработка выбора адреса из выпадающего списка
+        if (savedAddressSelect) {
+            savedAddressSelect.addEventListener('change', () => {
+                const selectedAddressId = parseInt(savedAddressSelect.value);
+                if (selectedAddressId) {
+                    const selectedAddress = savedAddresses.find(a => a.id === selectedAddressId);
+                    if (selectedAddress) {
+                        fillOrderFormWithAddress(selectedAddress);
+                    }
+                }
+            });
+        }
+    }
+    
     // Установка минимальной даты (завтра)
     const deliveryDateInput = document.getElementById('deliveryDate');
     if (deliveryDateInput) {
@@ -692,27 +746,62 @@ orderForm.addEventListener('submit', async (e) => {
         return;
     }
     
-    // Проверка выбранного адреса
-    const selectedRadio = document.querySelector('.address-radio-input:checked');
+    // Проверка выбранного типа адреса
+    const addressTypeRadio = document.querySelector('input[name="addressType"]:checked');
+    const addressType = addressTypeRadio ? addressTypeRadio.value : 'new';
     let addressData = null;
     let hasAddressErrors = false;
     
-    if (selectedRadio) {
-        const addressId = parseInt(selectedRadio.value);
-        addressData = savedAddresses.find(a => a.id === addressId);
+    if (addressType === 'ask') {
+        // Уточнить у получателя - адрес будет уточнен позже
+        addressData = {
+            name: 'Уточнить у получателя',
+            city: '',
+            street: '',
+            house: '',
+            entrance: '',
+            apartment: '',
+            floor: '',
+            intercom: '',
+            comment: 'Адрес будет уточнен у получателя'
+        };
+    } else if (addressType === 'saved') {
+        // Проверка выбранного сохраненного адреса
+        const savedAddressSelect = document.getElementById('savedAddressSelect');
+        const selectedAddressId = savedAddressSelect ? parseInt(savedAddressSelect.value) : null;
+        
+        if (!selectedAddressId) {
+            alert('Пожалуйста, выберите сохраненный адрес');
+            if (savedAddressSelect) {
+                savedAddressSelect.focus();
+            }
+            return;
+        }
+        
+        addressData = savedAddresses.find(a => a.id === selectedAddressId);
+        if (!addressData) {
+            alert('Выбранный адрес не найден');
+            return;
+        }
     } else {
         // Проверка формы нового адреса
         const city = document.getElementById('orderAddressCity').value.trim();
         const street = document.getElementById('orderAddressStreet').value.trim();
+        const house = document.getElementById('orderAddressHouse').value.trim();
         
         // Валидация обязательных полей
         if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
             validateField(document.getElementById('orderAddressCity'), false);
+            const orderAddressError = document.getElementById('orderAddressError');
             if (orderAddressError) orderAddressError.style.display = 'block';
             hasAddressErrors = true;
         }
         if (!street) {
             validateField(document.getElementById('orderAddressStreet'), false);
+            hasAddressErrors = true;
+        }
+        if (!house) {
+            validateField(document.getElementById('orderAddressHouse'), false);
             hasAddressErrors = true;
         }
         
@@ -761,9 +850,10 @@ orderForm.addEventListener('submit', async (e) => {
         }
         
         addressData = {
-            name: document.getElementById('orderAddressName').value.trim() || 'Новый адрес',
+            name: 'Новый адрес',
             city: city,
             street: street,
+            house: house,
             entrance: document.getElementById('orderAddressEntrance').value.trim(),
             apartment: document.getElementById('orderAddressApartment').value.trim(),
             floor: document.getElementById('orderAddressFloor').value.trim(),
@@ -772,14 +862,29 @@ orderForm.addEventListener('submit', async (e) => {
         };
     }
     
-    // Если не выбран адрес и форма скрыта - показываем ошибку
-    if (!selectedRadio && savedAddresses.length > 0 && savedAddressesSection.style.display !== 'none') {
-        alert('Пожалуйста, выберите адрес доставки');
-        return;
-    }
-    
     // Формирование строки адреса
-    const addressString = `${addressData.city}, ${addressData.street}${addressData.apartment ? ', ' + addressData.apartment : ''}${addressData.entrance ? ', парадная ' + addressData.entrance : ''}${addressData.floor ? ', этаж ' + addressData.floor : ''}${addressData.intercom ? ', домофон ' + addressData.intercom : ''}`;
+    let addressString = '';
+    if (addressData.city) {
+        addressString = addressData.city;
+    }
+    if (addressData.street) {
+        addressString += addressString ? ', ' + addressData.street : addressData.street;
+    }
+    if (addressData.house) {
+        addressString += ', д. ' + addressData.house;
+    }
+    if (addressData.apartment) {
+        addressString += ', ' + addressData.apartment;
+    }
+    if (addressData.entrance) {
+        addressString += ', парадная ' + addressData.entrance;
+    }
+    if (addressData.floor) {
+        addressString += ', этаж ' + addressData.floor;
+    }
+    if (addressData.intercom) {
+        addressString += ', домофон ' + addressData.intercom;
+    }
     
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
