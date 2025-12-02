@@ -996,12 +996,24 @@ orderForm.addEventListener('submit', async (e) => {
         };
     } else {
         // Не выбран адрес
-        alert('Пожалуйста, выберите адрес доставки');
         const addressOptionsList = document.getElementById('addressOptionsList');
         if (addressOptionsList && !firstErrorField) {
             firstErrorField = addressOptionsList;
         }
         hasErrors = true;
+    }
+    
+    // Если есть ошибки, прокрутить к первому полю с ошибкой
+    if (hasErrors) {
+        if (firstErrorField) {
+            setTimeout(() => {
+                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (firstErrorField.focus && typeof firstErrorField.focus === 'function') {
+                    firstErrorField.focus();
+                }
+            }, 100);
+        }
+        return;
     }
     
     // Если есть ошибки, прокрутить к первому полю с ошибкой
