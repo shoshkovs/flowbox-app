@@ -1126,6 +1126,55 @@ if (backFromOrder) {
     });
 }
 
+// Строгая валидация email по правилам
+function validateEmail(email) {
+    if (!email) return false;
+    
+    // 1. Перед проверкой: trim(), убрать невидимые символы, привести к нижнему регистру
+    email = email.trim().replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase();
+    
+    if (!email) return false;
+    
+    // 2. Формат: должен быть один @, обе части не пустые, без пробелов внутри, домен содержит хотя бы одну точку
+    const atCount = (email.match(/@/g) || []).length;
+    if (atCount !== 1) return false;
+    
+    const parts = email.split('@');
+    const localPart = parts[0];
+    const domainPart = parts[1];
+    
+    if (!localPart || !domainPart) return false;
+    if (email.includes(' ')) return false;
+    if (!domainPart.includes('.')) return false;
+    
+    // 3. Local-part (до @): разрешены буквы, цифры, . _ - +
+    // нельзя начинать/заканчивать точкой, нельзя ..
+    const localPartRegex = /^[a-z0-9._+-]+$/;
+    if (!localPartRegex.test(localPart)) return false;
+    if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
+    if (localPart.includes('..')) return false;
+    
+    // 4. Domain-part (после @): разрешены буквы/цифры/дефисы
+    // сегменты между точками не начинаются и не заканчиваются -
+    // доменная зона ≥ 2 символов, без ограничений по длине
+    const domainSegments = domainPart.split('.');
+    if (domainSegments.length < 2) return false;
+    
+    const domainSegmentRegex = /^[a-z0-9-]+$/;
+    for (let i = 0; i < domainSegments.length; i++) {
+        const segment = domainSegments[i];
+        if (!segment) return false; // Пустой сегмент
+        if (!domainSegmentRegex.test(segment)) return false;
+        if (segment.startsWith('-') || segment.endsWith('-')) return false;
+    }
+    
+    // Доменная зона (последний сегмент) должна быть ≥ 2 символов
+    const tld = domainSegments[domainSegments.length - 1];
+    if (tld.length < 2) return false;
+    
+    return true;
+}
+
 // Функция валидации и отправки заказа (вынесена отдельно для использования из разных обработчиков)
 async function validateAndSubmitOrder(e) {
     if (e) {
@@ -1184,19 +1233,20 @@ async function validateAndSubmitOrder(e) {
     const emailField = document.getElementById('customerEmail');
     const emailAnchor = document.getElementById('anchor-customerEmail');
     // Более строгая проверка: должна быть @, точка после @, и валидные символы
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (email && emailRegex.test(email) && email.includes('@') && email.includes('.') && email.indexOf('@') < email.lastIndexOf('.')) {
-        validateField(emailField, true);
-    } else if (!email) {
+    // Используем строгую валидацию email
+    if (!email) {
         // Пустое поле - ошибка
         validateField(emailField, false);
         if (!firstErrorField) firstErrorField = emailAnchor || emailField;
         hasErrors = true;
-    } else {
+    } else if (!validateEmail(email)) {
         // Email заполнен, но невалидный
         validateField(emailField, false);
         if (!firstErrorField) firstErrorField = emailAnchor || emailField;
         hasErrors = true;
+    } else {
+        // Email валидный
+        validateField(emailField, true);
     }
     
     // Проверка получателя, если выбран "Другой получатель"
@@ -2046,6 +2096,44 @@ closeProfileEditModal.addEventListener('click', () => {
 profileEditForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
+    // Валидация полей
+    let hasErrors = false;
+    const nameField = document.getElementById('editProfileName');
+    const emailField = document.getElementById('editProfileEmail');
+    
+    // Валидация имени
+    const name = nameField.value.trim();
+    if (!name || name.length < 2) {
+        validateField(nameField, false);
+        hasErrors = true;
+    } else {
+        validateField(nameField, true);
+    }
+    
+    // Валидация email
+    const email = emailField.value.trim();
+    if (!email) {
+        validateField(emailField, false);
+        hasErrors = true;
+    } else if (!validateEmail(email)) {
+        validateField(emailField, false);
+        hasErrors = true;
+    } else {
+        validateField(emailField, true);
+    }
+    
+    // Если есть ошибки, не сохраняем
+    if (hasErrors) {
+        // Прокрутка к первому полю с ошибкой
+        const firstErrorField = nameField.classList.contains('error') ? nameField : emailField;
+        setTimeout(() => {
+            if (firstErrorField.scrollIntoView) {
+                firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center' });
+            }
+        }, 100);
+        return;
+    }
+    
     // Используем актуальное поле (может быть клонированным)
     const phoneField = window.editProfilePhoneField || document.getElementById('editProfilePhone');
     let phoneValue = phoneField ? phoneField.value : document.getElementById('editProfilePhone').value;
@@ -2082,10 +2170,13 @@ profileEditForm.addEventListener('submit', (e) => {
         phoneValue = formattedPhone || phoneValue;
     }
     
+    // Нормализуем email перед сохранением (trim, lowercase)
+    const normalizedEmail = email.trim().replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase();
+    
     const profileData = {
-        name: document.getElementById('editProfileName').value,
+        name: name,
         phone: phoneValue,
-        email: document.getElementById('editProfileEmail').value
+        email: normalizedEmail
     };
     
     localStorage.setItem('userProfile', JSON.stringify(profileData));
