@@ -859,15 +859,20 @@ orderForm.addEventListener('submit', async (e) => {
     const selectedTimeSlot = document.querySelector('.time-slot-btn.active');
     const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : null;
     
-    if (!name) {
-        validateField(document.getElementById('customerName'), false);
-        if (!firstErrorField) firstErrorField = document.getElementById('customerName');
+    // Валидация имени (минимум 2 символа)
+    const nameField = document.getElementById('customerName');
+    if (!name || name.length < 2) {
+        validateField(nameField, false);
+        if (!firstErrorField) firstErrorField = nameField;
         hasErrors = true;
     }
     
-    if (!phone) {
-        validateField(document.getElementById('customerPhone'), false);
-        if (!firstErrorField) firstErrorField = document.getElementById('customerPhone');
+    // Валидация телефона (минимум 10 цифр)
+    const phoneField = document.getElementById('customerPhone');
+    const phoneDigits = phone.replace(/\D/g, ''); // Убираем все нецифровые символы
+    if (!phone || phoneDigits.length < 10) {
+        validateField(phoneField, false);
+        if (!firstErrorField) firstErrorField = phoneField;
         hasErrors = true;
     }
     
@@ -883,18 +888,23 @@ orderForm.addEventListener('submit', async (e) => {
     // Проверка получателя, если выбран "Другой получатель"
     const recipientRadio = document.querySelector('input[name="recipient"]:checked');
     if (recipientRadio && recipientRadio.value === 'other') {
-        const recipientName = document.getElementById('recipientName').value.trim();
-        const recipientPhone = document.getElementById('recipientPhone').value.trim();
+        const recipientNameField = document.getElementById('recipientName');
+        const recipientPhoneField = document.getElementById('recipientPhone');
+        const recipientName = recipientNameField ? recipientNameField.value.trim() : '';
+        const recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
         
-        if (!recipientName) {
-            validateField(document.getElementById('recipientName'), false);
-            if (!firstErrorField) firstErrorField = document.getElementById('recipientName');
+        // Валидация имени получателя (минимум 2 символа)
+        if (!recipientName || recipientName.length < 2) {
+            validateField(recipientNameField, false);
+            if (!firstErrorField) firstErrorField = recipientNameField;
             hasErrors = true;
         }
         
-        if (!recipientPhone) {
-            validateField(document.getElementById('recipientPhone'), false);
-            if (!firstErrorField) firstErrorField = document.getElementById('recipientPhone');
+        // Валидация телефона получателя (минимум 10 цифр)
+        const recipientPhoneDigits = recipientPhone.replace(/\D/g, '');
+        if (!recipientPhone || recipientPhoneDigits.length < 10) {
+            validateField(recipientPhoneField, false);
+            if (!firstErrorField) firstErrorField = recipientPhoneField;
             hasErrors = true;
         }
     }
