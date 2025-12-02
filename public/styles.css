@@ -825,8 +825,8 @@ h1, h2, h3, .font-bold {
 .address-options-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 20px; /* увеличенный отступ между Дом 1 и Новый адрес */
+    margin-bottom: 20px;
 }
 
 .address-option-btn {
