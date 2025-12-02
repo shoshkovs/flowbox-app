@@ -1,6 +1,7 @@
 const { Telegraf } = require('telegraf');
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -131,8 +132,34 @@ app.get('/api/products', (req, res) => {
   res.json(products);
 });
 
-// Простое хранилище данных пользователей (в продакшене использовать БД)
-const userDataStore = {};
+// Путь к файлу для постоянного хранения данных
+const DATA_FILE = path.join(__dirname, 'user-data.json');
+
+// Функция загрузки данных из файла
+function loadUserData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки данных из файла:', error);
+  }
+  return {};
+}
+
+// Функция сохранения данных в файл
+function saveUserData(data) {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (error) {
+    console.error('Ошибка сохранения данных в файл:', error);
+  }
+}
+
+// Загружаем данные при старте сервера
+const userDataStore = loadUserData();
+console.log(`📦 Загружены данные для ${Object.keys(userDataStore).length} пользователей`);
 
 // API endpoint для сохранения данных пользователя
 app.post('/api/user-data', (req, res) => {
@@ -148,9 +175,12 @@ app.post('/api/user-data', (req, res) => {
     profile: profile || null,
     activeOrders: activeOrders || [],
     completedOrders: completedOrders || [],
-    bonuses: bonuses || 500,
+    bonuses: bonuses !== undefined ? bonuses : (userDataStore[userId]?.bonuses || 500),
     updatedAt: new Date().toISOString()
   };
+  
+  // Сохраняем данные в файл для постоянного хранения
+  saveUserData(userDataStore);
   
   res.json({ success: true });
 });
