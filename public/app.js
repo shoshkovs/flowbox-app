@@ -357,12 +357,12 @@ function updateCartUI() {
                     <div class="cart-item-new-name">${item.name}</div>
                     <div class="cart-item-new-price">${item.price} ₽</div>
                 </div>
-                <div class="cart-item-new-controls">
-                    <div class="cart-item-new-quantity">
-                        <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, -1)">−</button>
-                        <span class="quantity-value">${item.quantity}</span>
-                        <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, 1)">+</button>
-                    </div>
+                    <div class="cart-item-new-controls">
+                        <div class="cart-item-new-quantity">
+                            <button class="quantity-btn-small ${item.quantity <= 1 ? 'disabled' : ''}" onclick="changeQuantity(${item.id}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>−</button>
+                            <span class="quantity-value">${item.quantity}</span>
+                            <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, 1)">+</button>
+                        </div>
                     <button class="cart-item-delete-btn" onclick="removeFromCart(${item.id})" title="Удалить">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2">
                             <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -396,11 +396,22 @@ function calculateFinalTotal() {
         finalTotalAmount.innerHTML = `${total} <span class="ruble-sign">₽</span>`;
     }
     
+    // Обновление детализации
+    const flowersTotalElement = document.getElementById('flowersTotalAmount');
+    if (flowersTotalElement) {
+        flowersTotalElement.textContent = `${flowersTotal} ₽`;
+    }
+    
+    const deliveryTotalElement = document.getElementById('deliveryTotalAmount');
+    if (deliveryTotalElement) {
+        deliveryTotalElement.textContent = `${deliveryPrice} ₽`;
+    }
+    
     // Расчет бонусов
     const bonusToEarn = bonusUsed > 0 ? 0 : Math.floor(flowersTotal * 0.01);
     const bonusToEarnElement = document.getElementById('bonusToEarn');
     if (bonusToEarnElement) {
-        bonusToEarnElement.textContent = `+${bonusToEarn}`;
+        bonusToEarnElement.textContent = bonusToEarn;
     }
 }
 
@@ -1232,6 +1243,28 @@ function initFilters() {
         allBtn.classList.add('active');
     }
     applyFilters();
+}
+
+// Модальное окно объяснения сборов
+const serviceFeeHelpModal = document.getElementById('serviceFeeHelpModal');
+const serviceFeeHelpBtn = document.getElementById('serviceFeeHelpBtn');
+const closeServiceFeeHelpModal = document.getElementById('closeServiceFeeHelpModal');
+
+if (serviceFeeHelpBtn) {
+    serviceFeeHelpBtn.addEventListener('click', () => {
+        serviceFeeHelpModal.style.display = 'flex';
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            closeServiceFeeHelpModal.click();
+        });
+    });
+}
+
+if (closeServiceFeeHelpModal) {
+    closeServiceFeeHelpModal.addEventListener('click', () => {
+        serviceFeeHelpModal.style.display = 'none';
+        tg.BackButton.hide();
+    });
 }
 
 // Инициализация при загрузке

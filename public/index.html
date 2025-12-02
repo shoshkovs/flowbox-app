@@ -11,8 +11,10 @@
     <div class="app">
         <!-- Header -->
         <header class="header">
-            <img src="logo.jpg" alt="FlowBox" class="logo" id="logoImg" onerror="tryNextLogoFormat()">
-            <h1 id="logoFallback" style="display:none;">🌸 FlowBox</h1>
+            <div class="logo-wrapper" onclick="switchTab('menuTab')" style="cursor: pointer;">
+                <img src="logo.jpg" alt="FlowBox" class="logo" id="logoImg" onerror="tryNextLogoFormat()">
+                <h1 id="logoFallback" style="display:none;">🌸 FlowBox</h1>
+            </div>
         </header>
 
         <!-- Основной контент -->
@@ -109,7 +111,7 @@
                             <div class="bonus-toggle-row">
                                 <div class="bonus-label-wrapper">
                                     <span class="bonus-label">Списать бонусные баллы</span>
-                                    <span class="bonus-balance">у вас: <span id="accumulatedBonuses">500</span> flow-баксов</span>
+                                    <span class="bonus-balance">У вас: <span id="accumulatedBonuses">500</span> flow-баксов</span>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="bonusToggle">
@@ -120,17 +122,31 @@
                         
                         <!-- Итого -->
                         <div class="cart-final-total">
-                            <div class="final-total-service-fee">
-                                <span class="service-fee-label">Сервисный сбор:</span>
-                                <span class="service-fee-amount">450 ₽</span>
+                            <div class="final-total-details">
+                                <div class="total-detail-row">
+                                    <span class="total-detail-label">Стоимость товаров</span>
+                                    <span class="total-detail-value" id="flowersTotalAmount">0 ₽</span>
+                                </div>
+                                <div class="total-detail-row">
+                                    <div class="total-detail-label-with-help">
+                                        <span class="total-detail-label">Сборы</span>
+                                        <button class="help-icon-btn" id="serviceFeeHelpBtn" type="button">?</button>
+                                    </div>
+                                    <span class="total-detail-value">450 ₽</span>
+                                </div>
+                                <div class="total-detail-row">
+                                    <span class="total-detail-label">Доставка</span>
+                                    <span class="total-detail-value" id="deliveryTotalAmount">500 ₽</span>
+                                </div>
                             </div>
                             <div class="final-total-row">
                                 <span>Итого:</span>
                                 <span class="final-total-amount" id="finalTotalAmount">0 <span class="ruble-sign">₽</span></span>
                             </div>
                             <div class="bonus-earn-row">
-                                <span>Начислится flow-баксов:</span>
-                                <span class="bonus-earn-amount" id="bonusToEarn">+0</span>
+                                <span>Вы получите</span>
+                                <span class="bonus-earn-amount" id="bonusToEarn">0</span>
+                                <span class="bonus-earn-label">flow-баксов</span>
                             </div>
                             <button class="checkout-btn-final" id="checkoutBtnFinal">Перейти к оформлению</button>
                         </div>
@@ -363,13 +379,13 @@
         <!-- Нижняя навигация -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-tab="menuTab">
-                <img src="icons/menu.png" alt="Меню" class="nav-icon" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <img src="icons/menu.png" alt="Каталог" class="nav-icon" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                 <svg class="nav-icon-fallback" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
                     <line x1="3" y1="18" x2="21" y2="18"></line>
                 </svg>
-                <span class="nav-label">Меню</span>
+                <span class="nav-label">Каталог</span>
             </button>
             <button class="nav-item" data-tab="cartTab">
                 <img src="icons/cart.png" alt="Корзина" class="nav-icon" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
@@ -510,6 +526,24 @@
     </div>
 
     <script src="app.js"></script>
+    
+    <!-- Модальное окно объяснения сборов -->
+    <div class="modal-overlay" id="serviceFeeHelpModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Что включает сервисный сбор</h3>
+                <button class="modal-close" id="closeServiceFeeHelpModal">✕</button>
+            </div>
+            <div class="service-fee-help-content">
+                <p>Сервисный сбор включает в себя:</p>
+                <ul class="service-fee-list">
+                    <li>Сборку на складе</li>
+                    <li>Упаковку для транспортировки</li>
+                    <li>Налоги</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 
