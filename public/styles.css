@@ -576,6 +576,10 @@ h1, h2, h3, .font-bold {
     margin-bottom: 20px;
 }
 
+.form-group:has(.checkbox-label-inline) {
+    margin-bottom: 20px;
+}
+
 .form-section {
     margin-bottom: 24px;
 }
@@ -674,17 +678,19 @@ h1, h2, h3, .font-bold {
 }
 
 .checkbox-label-inline {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     cursor: pointer;
     font-weight: normal;
     margin-bottom: 0;
     flex-wrap: nowrap;
+    width: auto;
 }
 
 .checkbox-label-inline .checkbox-text {
     font-weight: normal;
     white-space: nowrap;
+    display: inline;
 }
 
 .checkbox-input {
