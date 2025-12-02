@@ -2393,6 +2393,67 @@ if (closeServiceFeeHelpModal) {
     });
 }
 
+// Скрытие нижнего меню при открытии клавиатуры
+function initKeyboardHandling() {
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (!bottomNav) return;
+    
+    // Используем visualViewport API для отслеживания изменений размера viewport
+    if (window.visualViewport) {
+        let initialViewportHeight = window.visualViewport.height;
+        
+        window.visualViewport.addEventListener('resize', () => {
+            const currentHeight = window.visualViewport.height;
+            const heightDifference = initialViewportHeight - currentHeight;
+            
+            // Если высота уменьшилась более чем на 150px, считаем что клавиатура открыта
+            if (heightDifference > 150) {
+                bottomNav.classList.add('hidden');
+            } else {
+                bottomNav.classList.remove('hidden');
+            }
+        });
+    }
+    
+    // Альтернативный метод: отслеживание focus/blur на полях ввода
+    const inputFields = document.querySelectorAll('input, textarea, select');
+    let activeInputs = 0;
+    
+    inputFields.forEach(field => {
+        field.addEventListener('focus', () => {
+            activeInputs++;
+            bottomNav.classList.add('hidden');
+        });
+        
+        field.addEventListener('blur', () => {
+            activeInputs--;
+            // Используем небольшую задержку, чтобы убедиться, что клавиатура закрылась
+            setTimeout(() => {
+                if (activeInputs === 0) {
+                    bottomNav.classList.remove('hidden');
+                }
+            }, 300);
+        });
+    });
+    
+    // Отслеживание изменения размера окна (fallback для старых браузеров)
+    let lastWindowHeight = window.innerHeight;
+    window.addEventListener('resize', () => {
+        const currentHeight = window.innerHeight;
+        const heightDifference = lastWindowHeight - currentHeight;
+        
+        // Если высота уменьшилась более чем на 150px, считаем что клавиатура открыта
+        if (heightDifference > 150) {
+            bottomNav.classList.add('hidden');
+        } else if (heightDifference < -50) {
+            // Если высота увеличилась, клавиатура закрылась
+            bottomNav.classList.remove('hidden');
+        }
+        
+        lastWindowHeight = currentHeight;
+    });
+}
+
 // Инициализация при загрузке
 loadProducts();
 loadUserData(); // Загружаем все данные пользователя с сервера
@@ -2400,6 +2461,7 @@ loadProfile();
 loadSavedAddresses();
 loadActiveOrders();
 initFilters(); // Инициализируем фильтры
+initKeyboardHandling(); // Инициализируем обработку клавиатуры
 
 // Экспорт функций для глобального доступа
 window.addToCart = addToCart;
