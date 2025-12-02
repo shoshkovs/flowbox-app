@@ -879,8 +879,13 @@ function initOrderForm() {
     function setupPhoneInput(phoneField) {
         if (!phoneField) return;
         
-        // Проверяем, не добавлен ли уже обработчик
-        if (phoneField.dataset.phoneFormatted === 'true') return;
+        // Удаляем старые обработчики через клонирование (если они есть)
+        const hasListener = phoneField.dataset.phoneFormatted === 'true';
+        if (hasListener) {
+            const newField = phoneField.cloneNode(true);
+            phoneField.parentNode.replaceChild(newField, phoneField);
+            phoneField = newField;
+        }
         phoneField.dataset.phoneFormatted = 'true';
         
         phoneField.addEventListener('input', function(e) {
@@ -936,30 +941,31 @@ function initOrderForm() {
                 }
             }
             
-            // Применяем форматирование только если значение изменилось
-            if (this.value !== formattedValue) {
-                this.value = formattedValue;
-                
-                // Корректировка позиции курсора
-                let newPosition = formattedValue.length;
-                
-                // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
-                if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
-                    // Находим позицию в новом отформатированном значении
-                    let digitCount = 0;
-                    for (let i = 0; i < formattedValue.length; i++) {
-                        if (/\d/.test(formattedValue[i])) {
-                            digitCount++;
-                            if (digitCount === digitsBeforeCursor) {
-                                newPosition = i + 1;
-                                break;
-                            }
+            // Всегда применяем форматирование для реального времени
+            this.value = formattedValue;
+            
+            // Корректировка позиции курсора
+            let newPosition = formattedValue.length;
+            
+            // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
+            if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
+                // Находим позицию в новом отформатированном значении
+                let digitCount = 0;
+                for (let i = 0; i < formattedValue.length; i++) {
+                    if (/\d/.test(formattedValue[i])) {
+                        digitCount++;
+                        if (digitCount === digitsBeforeCursor) {
+                            newPosition = i + 1;
+                            break;
                         }
                     }
                 }
-                
-                this.setSelectionRange(newPosition, newPosition);
             }
+            
+            // Используем setTimeout для правильной установки курсора после обновления значения
+            setTimeout(() => {
+                this.setSelectionRange(newPosition, newPosition);
+            }, 0);
         });
         
         // При вставке (paste) тоже форматируем
@@ -1972,9 +1978,19 @@ editProfileBtn.addEventListener('click', () => {
     
     // Настройка форматирования телефона для профиля
     if (editProfilePhoneField) {
-        // Сбрасываем флаг, чтобы обработчик мог быть добавлен заново
-        editProfilePhoneField.dataset.phoneFormatted = 'false';
-        setupPhoneInput(editProfilePhoneField);
+        // Удаляем старый обработчик, если он был, и добавляем новый
+        const newField = editProfilePhoneField.cloneNode(true);
+        editProfilePhoneField.parentNode.replaceChild(newField, editProfilePhoneField);
+        
+        // Восстанавливаем значение
+        const savedValue = editProfilePhoneField.value || newField.value;
+        newField.value = savedValue;
+        
+        // Добавляем обработчик форматирования
+        setupPhoneInput(newField);
+        
+        // Обновляем ссылку на поле
+        window.editProfilePhoneField = newField;
     }
 });
 
@@ -1986,9 +2002,12 @@ closeProfileEditModal.addEventListener('click', () => {
 profileEditForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
+    // Используем актуальное поле (может быть клонированным)
+    const phoneField = window.editProfilePhoneField || document.getElementById('editProfilePhone');
+    
     const profileData = {
         name: document.getElementById('editProfileName').value,
-        phone: document.getElementById('editProfilePhone').value,
+        phone: phoneField ? phoneField.value : document.getElementById('editProfilePhone').value,
         email: document.getElementById('editProfileEmail').value
     };
     
