@@ -568,6 +568,18 @@ function switchTab(tabId) {
                 document.documentElement.scrollTop = 0;
             }
         }, 150);
+    } else if (tabId === 'addressTab') {
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (header) header.style.display = 'none';
+        setTimeout(() => {
+            const addressTab = document.getElementById('addressTab');
+            if (addressTab) {
+                addressTab.scrollTop = 0;
+                if (window.scrollTo) {
+                    window.scrollTo(0, 0);
+                }
+            }
+        }, 150);
     } else {
         // Показать навигацию и header для других вкладок
         if (bottomNav) bottomNav.style.display = 'flex';
@@ -652,91 +664,100 @@ function initOrderForm() {
     // Инициализация списка адресов
     const addressOptionsList = document.getElementById('addressOptionsList');
     const newAddressForm = document.getElementById('newAddressForm');
-    const newAddressRadio = document.getElementById('newAddressRadio');
     let selectedAddressId = null;
     
-    // Функция для отображения списка адресов
     window.renderAddressOptions = function() {
         if (!addressOptionsList) return;
         
         addressOptionsList.innerHTML = '';
         
-        // Добавляем сохраненные адреса как кнопки
-        if (savedAddresses.length > 0) {
-            savedAddresses.forEach((addr, index) => {
-                const addressBtn = document.createElement('label');
-                addressBtn.className = 'address-option-btn';
-                if (index === 0) {
-                    addressBtn.classList.add('selected');
-                    selectedAddressId = addr.id;
-                    fillOrderFormWithAddress(addr);
-                    // Скрыть форму нового адреса, если выбран сохраненный
-                    if (newAddressForm) newAddressForm.style.display = 'none';
-                    if (newAddressRadio) newAddressRadio.checked = false;
-                }
-                // Формируем краткий адрес
-                const shortAddress = `${addr.street}${addr.house ? ', д. ' + addr.house : ''}${addr.apartment ? ', ' + addr.apartment : ''}`;
-                addressBtn.innerHTML = `
-                    <input type="radio" name="selectedAddress" value="${addr.id}" class="radio-input" ${index === 0 ? 'checked' : ''}>
-                    <span class="radio-label">
-                        <span class="address-name-bold">${addr.name}</span>
-                        <span class="address-separator"> - </span>
-                        <span class="address-short">${shortAddress}</span>
-                    </span>
-                `;
-                addressBtn.addEventListener('click', () => {
-                    // Убрать выделение со всех кнопок
-                    document.querySelectorAll('.address-option-btn').forEach(btn => btn.classList.remove('selected'));
-                    // Добавить выделение к выбранной
-                    addressBtn.classList.add('selected');
-                    selectedAddressId = addr.id;
-                    // Скрыть форму нового адреса
-                    if (newAddressForm) newAddressForm.style.display = 'none';
-                    if (newAddressRadio) newAddressRadio.checked = false;
-                    // Заполнить форму выбранным адресом
-                    fillOrderFormWithAddress(addr);
-                });
-                addressOptionsList.appendChild(addressBtn);
-            });
-        } else {
-            // Если нет сохраненных адресов, показать форму нового адреса
+        if (savedAddresses.length === 0) {
+            addressOptionsList.style.display = 'none';
+            selectedAddressId = 'new';
             if (newAddressForm) newAddressForm.style.display = 'block';
-            if (newAddressRadio) newAddressRadio.checked = true;
+            clearOrderAddressFields();
+            return;
         }
-    }
-    
-    // Инициализация списка адресов
-    window.renderAddressOptions();
-    
-    // Обработка выбора "Новый адрес"
-    if (newAddressRadio) {
-        newAddressRadio.addEventListener('change', () => {
-            if (newAddressRadio.checked) {
-                // Убрать выделение со всех кнопок адресов
-                document.querySelectorAll('.address-option-btn').forEach(btn => {
-                    btn.classList.remove('selected');
-                    const radio = btn.querySelector('input[type="radio"]');
-                    if (radio) radio.checked = false;
-                });
-                selectedAddressId = null;
-                // Показать форму нового адреса
-                if (newAddressForm) newAddressForm.style.display = 'block';
-                // Очистить все поля
-                const fields = ['orderAddressCity', 'orderAddressStreet', 'orderAddressHouse', 
-                               'orderAddressEntrance', 'orderAddressApartment', 'orderAddressFloor', 
-                               'orderAddressIntercom', 'orderAddressComment'];
-                fields.forEach(fieldId => {
-                    const field = document.getElementById(fieldId);
-                    if (field) {
-                        field.value = '';
-                        validateField(field, true); // Сбросить ошибки валидации
-                    }
-                });
-                const orderAddressError = document.getElementById('orderAddressError');
-                if (orderAddressError) orderAddressError.style.display = 'none';
+        
+        addressOptionsList.style.display = 'block';
+        
+        if (!selectedAddressId || selectedAddressId === 'new') {
+            selectedAddressId = savedAddresses[0]?.id || null;
+        }
+        
+        const selectedSavedAddress = savedAddresses.find(addr => String(addr.id) === String(selectedAddressId));
+        if (selectedAddressId !== 'new' && selectedSavedAddress) {
+            fillOrderFormWithAddress(selectedSavedAddress);
+            if (newAddressForm) newAddressForm.style.display = 'none';
+        } else if (selectedAddressId === 'new') {
+            clearOrderAddressFields();
+            if (newAddressForm) newAddressForm.style.display = 'block';
+        }
+        
+        savedAddresses.forEach(addr => {
+            const shortParts = [];
+            if (addr.street) shortParts.push(addr.street);
+            if (addr.house) shortParts.push(addr.house);
+            if (addr.apartment) shortParts.push(addr.apartment);
+            const shortAddress = shortParts.join(', ') || 'Адрес не заполнен';
+            
+            const option = document.createElement('label');
+            option.className = 'address-option-btn';
+            option.innerHTML = `
+                <input type="radio" name="selectedAddress" value="${addr.id}" class="radio-input">
+                <span class="radio-label">
+                    <span class="address-name-bold">${addr.name || 'Без названия'}</span>
+                    <span class="address-separator"> - </span>
+                    <span class="address-short">${shortAddress}</span>
+                </span>
+            `;
+            
+            const radio = option.querySelector('input');
+            if (String(selectedAddressId) === String(addr.id)) {
+                radio.checked = true;
+                option.classList.add('selected');
             }
+            
+            radio.addEventListener('change', () => {
+                selectedAddressId = addr.id;
+                document.querySelectorAll('.address-option-btn').forEach(btn => btn.classList.remove('selected'));
+                option.classList.add('selected');
+                fillOrderFormWithAddress(addr);
+                if (newAddressForm) newAddressForm.style.display = 'none';
+            });
+            
+            addressOptionsList.appendChild(option);
         });
-    }
+        
+        const newOption = document.createElement('label');
+        newOption.className = 'address-option-btn new-address-option';
+        newOption.innerHTML = `
+            <input type="radio" name="selectedAddress" value="new" class="radio-input">
+            <span class="radio-label">
+                <span class="address-name-bold">Новый адрес</span>
+                <span class="address-separator"> - </span>
+                <span class="address-short">Добавить другой адрес</span>
+            </span>
+        `;
+        const newRadio = newOption.querySelector('input');
+        if (selectedAddressId === 'new') {
+            newRadio.checked = true;
+            newOption.classList.add('selected');
+            if (newAddressForm) newAddressForm.style.display = 'block';
+        }
+        
+        newRadio.addEventListener('change', () => {
+            selectedAddressId = 'new';
+            document.querySelectorAll('.address-option-btn').forEach(btn => btn.classList.remove('selected'));
+            newOption.classList.add('selected');
+            clearOrderAddressFields();
+            if (newAddressForm) newAddressForm.style.display = 'block';
+        });
+        
+        addressOptionsList.appendChild(newOption);
+    };
+    
+    window.renderAddressOptions();
     
     // Установка минимальной даты (завтра)
     const deliveryDateInput = document.getElementById('deliveryDate');
@@ -1146,19 +1167,16 @@ async function validateAndSubmitOrder(e) {
     
     // Проверка выбранного адреса (ПЕРЕД проверкой времени доставки)
     const selectedAddressRadio = document.querySelector('input[name="selectedAddress"]:checked');
-    const newAddressRadio = document.getElementById('newAddressRadio');
+    const addressOptionsList = document.getElementById('addressOptionsList');
     let addressData = null;
     let hasAddressErrors = false;
     
-    if (selectedAddressRadio) {
-        // Выбран сохраненный адрес
-        const addressId = parseInt(selectedAddressRadio.value);
-        addressData = savedAddresses.find(a => String(a.id) === String(addressId));
-        if (!addressData) {
-            alert('Выбранный адрес не найден');
-            return;
-        }
-    } else if (newAddressRadio && newAddressRadio.checked) {
+    const shouldUseForm =
+        savedAddresses.length === 0 ||
+        !selectedAddressRadio ||
+        selectedAddressRadio.value === 'new';
+    
+    if (shouldUseForm) {
         // Проверка формы нового адреса
         const city = document.getElementById('orderAddressCity').value.trim();
         const street = document.getElementById('orderAddressStreet').value.trim();
@@ -1224,12 +1242,14 @@ async function validateAndSubmitOrder(e) {
             comment: document.getElementById('orderAddressComment').value.trim()
         };
     } else {
-        // Не выбран адрес
-        const addressOptionsList = document.getElementById('addressOptionsList');
-        if (addressOptionsList && !firstErrorField) {
-            firstErrorField = addressOptionsList;
+        const addressId = selectedAddressRadio.value;
+        addressData = savedAddresses.find(a => String(a.id) === String(addressId));
+        if (!addressData) {
+            if (addressOptionsList && !firstErrorField) {
+                firstErrorField = addressOptionsList;
+            }
+            hasErrors = true;
         }
-        hasErrors = true;
     }
     
     // Проверка даты доставки (после проверки адреса)
@@ -1509,13 +1529,14 @@ function loadProfile() {
     }
 }
 
-// Модальные окна профиля
-const addressModal = document.getElementById('addressModal');
+// Страница адреса
 const addressForm = document.getElementById('addressForm');
 const addressCity = document.getElementById('addressCity');
 const addressError = document.getElementById('addressError');
-const closeAddressModal = document.getElementById('closeAddressModal');
 const addressesBtn = document.getElementById('addressesBtn');
+const backFromAddressBtn = document.getElementById('backFromAddressBtn');
+const addressPageTitle = document.getElementById('addressPageTitle');
+const deleteAddressBtn = document.getElementById('deleteAddressBtn');
 
 const orderHistoryModal = document.getElementById('orderHistoryModal');
 const orderHistoryList = document.getElementById('orderHistoryList');
@@ -1527,8 +1548,6 @@ const closeSupportModal = document.getElementById('closeSupportModal');
 const supportBtn = document.getElementById('supportBtn');
 
 const profileBonusesAmount = document.getElementById('profileBonusesAmount');
-const addressModalTitle = document.getElementById('addressModalTitle');
-const deleteAddressBtn = document.getElementById('deleteAddressBtn');
 
 function resetAddressFormState() {
     if (!addressForm) return;
@@ -1597,35 +1616,42 @@ function ensureAddressFormValidation() {
     }
 }
 
-function openAddressModal(address = null) {
-    if (!addressModal || !addressForm) return;
+function openAddressPage(address = null) {
+    if (!addressForm) return;
     
     ensureAddressFormValidation();
     resetAddressFormState();
     
     if (address) {
         editingAddressId = address.id;
-        if (addressModalTitle) addressModalTitle.textContent = 'Редактировать адрес';
+        if (addressPageTitle) addressPageTitle.textContent = address.name || 'Редактировать адрес';
         if (deleteAddressBtn) deleteAddressBtn.style.display = 'block';
         setAddressFormValues(address);
     } else {
         editingAddressId = null;
-        if (addressModalTitle) addressModalTitle.textContent = 'Добавить адрес';
+        if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
         if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
     }
     
-    addressModal.style.display = 'flex';
-    lockBodyScroll();
+    switchTab('addressTab');
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
-        closeAddressModal.click();
+        switchTab('profileTab');
+        tg.BackButton.hide();
     });
 }
 
 // Открытие модальных окон
 if (addressesBtn) {
     addressesBtn.addEventListener('click', () => {
-        openAddressModal();
+        openAddressPage();
+    });
+}
+
+if (backFromAddressBtn) {
+    backFromAddressBtn.addEventListener('click', () => {
+        switchTab('profileTab');
+        tg.BackButton.hide();
     });
 }
 
@@ -1662,12 +1688,6 @@ function unlockBodyScroll() {
     document.body.style.position = '';
     document.body.style.width = '';
 }
-
-closeAddressModal.addEventListener('click', () => {
-    addressModal.style.display = 'none';
-    tg.BackButton.hide();
-    unlockBodyScroll();
-});
 
 closeOrderHistoryModal.addEventListener('click', () => {
     orderHistoryModal.style.display = 'none';
@@ -1843,7 +1863,7 @@ function setupPhoneInput(phoneField) {
 function editAddress(addressId) {
     const address = savedAddresses.find(a => String(a.id) === String(addressId));
     if (!address) return;
-    openAddressModal(address);
+    openAddressPage(address);
 }
 
 // Удаление адреса
@@ -2017,10 +2037,10 @@ addressForm.addEventListener('submit', (e) => {
     saveUserData(); // Сохраняем на сервер
     
     resetAddressFormState();
-    if (addressModalTitle) addressModalTitle.textContent = 'Добавить адрес';
+    if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
     if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
-    unlockBodyScroll();
-    closeAddressModal.click();
+    switchTab('profileTab');
+    tg.BackButton.hide();
     loadSavedAddresses();
     tg.HapticFeedback.notificationOccurred('success');
 });
@@ -2033,10 +2053,10 @@ if (deleteAddressBtn) {
             saveUserData(); // Сохраняем на сервер
             resetAddressFormState();
             editingAddressId = null;
-            if (addressModalTitle) addressModalTitle.textContent = 'Добавить адрес';
+            if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
             deleteAddressBtn.style.display = 'none';
-            unlockBodyScroll();
-            closeAddressModal.click();
+            switchTab('profileTab');
+            tg.BackButton.hide();
             loadSavedAddresses();
             tg.HapticFeedback.impactOccurred('light');
         }
@@ -2063,13 +2083,19 @@ function loadSavedAddresses() {
     const addressesList = document.getElementById('deliveryAddressesList');
     if (addressesList) {
         if (savedAddresses.length === 0) {
-            addressesList.innerHTML = '<p class="no-addresses">Адреса не добавлены</p>';
+            addressesList.innerHTML = '<p class="no-addresses">У вас нет сохраненных адресов доставки</p>';
         } else {
-            addressesList.innerHTML = savedAddresses.map(addr => `
+            addressesList.innerHTML = savedAddresses.map(addr => {
+                const parts = [];
+                if (addr.street) parts.push(addr.street);
+                if (addr.house) parts.push(addr.house);
+                if (addr.apartment) parts.push(addr.apartment);
+                const shortAddress = parts.join(', ');
+                return `
                 <div class="address-item">
                     <div class="address-item-content">
-                        <div class="address-item-name">${addr.name}</div>
-                        <div class="address-item-details">${addr.street}${addr.apartment ? ', ' + addr.apartment : ''}</div>
+                        <div class="address-item-name">${addr.name || 'Без названия'}</div>
+                        <div class="address-item-details">${shortAddress || 'Адрес не заполнен'}</div>
                     </div>
                     <button class="address-edit-icon-btn" onclick="editAddress(${JSON.stringify(addr.id)})" title="Изменить">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
@@ -2078,7 +2104,8 @@ function loadSavedAddresses() {
                         </svg>
                     </button>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
     }
     
@@ -2090,6 +2117,7 @@ function loadSavedAddresses() {
 
 // Заполнение формы заказа адресом
 function fillOrderFormWithAddress(address) {
+    clearOrderAddressErrors();
     const cityField = document.getElementById('orderAddressCity');
     const streetField = document.getElementById('orderAddressStreet');
     const houseField = document.getElementById('orderAddressHouse');
@@ -2107,6 +2135,47 @@ function fillOrderFormWithAddress(address) {
     if (floorField) floorField.value = address.floor || '';
     if (intercomField) intercomField.value = address.intercom || '';
     if (commentField) commentField.value = address.comment || '';
+}
+
+function clearOrderAddressErrors() {
+    const fields = [
+        'orderAddressCity',
+        'orderAddressStreet',
+        'orderAddressHouse',
+        'orderAddressEntrance',
+        'orderAddressApartment',
+        'orderAddressFloor',
+        'orderAddressIntercom',
+        'orderAddressComment'
+    ];
+    fields.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.classList.remove('error');
+    });
+    const orderAddressError = document.getElementById('orderAddressError');
+    if (orderAddressError) orderAddressError.style.display = 'none';
+}
+
+function clearOrderAddressFields() {
+    const fields = [
+        'orderAddressCity',
+        'orderAddressStreet',
+        'orderAddressHouse',
+        'orderAddressEntrance',
+        'orderAddressApartment',
+        'orderAddressFloor',
+        'orderAddressIntercom',
+        'orderAddressComment'
+    ];
+    fields.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) {
+            field.value = '';
+            field.classList.remove('error');
+        }
+    });
+    const orderAddressError = document.getElementById('orderAddressError');
+    if (orderAddressError) orderAddressError.style.display = 'none';
 }
 
 // Загрузка активных заказов

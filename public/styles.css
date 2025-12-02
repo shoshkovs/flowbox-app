@@ -582,6 +582,75 @@ h1, h2, h3, .font-bold {
     padding-bottom: 100px; /* Отступ снизу для кнопки */
 }
 
+/* Страница адреса */
+.address-page {
+    min-height: calc(100vh - 60px);
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+.address-page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: #fff;
+}
+
+.address-page-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.back-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.back-btn:active {
+    opacity: 0.6;
+}
+
+.address-page-body {
+    flex: 1;
+    padding: 20px;
+    padding-bottom: 140px;
+    overflow-y: auto;
+}
+
+.address-page-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.address-page-footer .submit-address-btn,
+.address-page-footer .delete-address-btn-outline {
+    margin: 0;
+}
+
+.address-page-footer .submit-address-btn {
+    flex: 1;
+}
+
 /* Стили для страницы заказа */
 #orderTab {
     display: none;
@@ -2215,6 +2284,7 @@ input[type="text"][inputmode="numeric"]::-webkit-outer-spin-button {
 
 input[type="text"][inputmode="numeric"] {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .optional-label {
