@@ -2240,6 +2240,11 @@ h1, h2, h3, .font-bold {
 
 .new-address-form {
     display: block;
+    margin-top: 16px;
+}
+
+.new-address-form .form-group {
+    margin-bottom: 20px;
 }
 
 /* Валидация полей */

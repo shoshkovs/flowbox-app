@@ -406,6 +406,50 @@ async function loadUserData() {
             cart = [];
         }
     }
+    
+    // Загружаем адреса из localStorage
+    const savedAddressesLocal = localStorage.getItem('savedAddresses');
+    if (savedAddressesLocal) {
+        try {
+            savedAddresses = JSON.parse(savedAddressesLocal);
+            loadSavedAddresses();
+        } catch (e) {
+            console.error('Ошибка загрузки адресов:', e);
+            savedAddresses = [];
+        }
+    }
+    
+    // Загружаем заказы из localStorage
+    const savedActiveOrders = localStorage.getItem('activeOrders');
+    if (savedActiveOrders) {
+        try {
+            userActiveOrders = JSON.parse(savedActiveOrders);
+            loadActiveOrders();
+        } catch (e) {
+            console.error('Ошибка загрузки активных заказов:', e);
+            userActiveOrders = [];
+        }
+    }
+    
+    const savedCompletedOrders = localStorage.getItem('completedOrders');
+    if (savedCompletedOrders) {
+        try {
+            userCompletedOrders = JSON.parse(savedCompletedOrders);
+        } catch (e) {
+            console.error('Ошибка загрузки завершенных заказов:', e);
+            userCompletedOrders = [];
+        }
+    }
+    
+    // Загружаем профиль из localStorage
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+        try {
+            loadProfile();
+        } catch (e) {
+            console.error('Ошибка загрузки профиля:', e);
+        }
+    }
 }
 
 // Сохранение корзины (обновленная функция)
@@ -735,8 +779,6 @@ function initOrderForm() {
             <input type="radio" name="selectedAddress" value="new" class="radio-input">
             <span class="radio-label">
                 <span class="address-name-bold">Новый адрес</span>
-                <span class="address-separator"> - </span>
-                <span class="address-short">Добавить другой адрес</span>
             </span>
         `;
         const newRadio = newOption.querySelector('input');
