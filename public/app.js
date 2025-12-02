@@ -944,32 +944,30 @@ function initOrderForm() {
             }
             
             // Всегда применяем форматирование для реального времени
-            if (this.value !== formattedValue) {
-                this.value = formattedValue;
-                
-                // Корректировка позиции курсора
-                let newPosition = formattedValue.length;
-                
-                // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
-                if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
-                    // Находим позицию в новом отформатированном значении
-                    let digitCount = 0;
-                    for (let i = 0; i < formattedValue.length; i++) {
-                        if (/\d/.test(formattedValue[i])) {
-                            digitCount++;
-                            if (digitCount === digitsBeforeCursor) {
-                                newPosition = i + 1;
-                                break;
-                            }
+            this.value = formattedValue;
+            
+            // Корректировка позиции курсора
+            let newPosition = formattedValue.length;
+            
+            // Если курсор был не в конце, пытаемся сохранить позицию относительно цифр
+            if (cursorPosition < oldLength && digitsBeforeCursor > 0) {
+                // Находим позицию в новом отформатированном значении
+                let digitCount = 0;
+                for (let i = 0; i < formattedValue.length; i++) {
+                    if (/\d/.test(formattedValue[i])) {
+                        digitCount++;
+                        if (digitCount === digitsBeforeCursor) {
+                            newPosition = i + 1;
+                            break;
                         }
                     }
                 }
-                
-                // Используем requestAnimationFrame для правильной установки курсора
-                requestAnimationFrame(() => {
-                    this.setSelectionRange(newPosition, newPosition);
-                });
             }
+            
+            // Используем setTimeout для правильной установки курсора после обновления DOM
+            setTimeout(() => {
+                this.setSelectionRange(newPosition, newPosition);
+            }, 0);
         });
         
         // При вставке (paste) тоже форматируем
@@ -1982,14 +1980,57 @@ editProfileBtn.addEventListener('click', () => {
     
     // Настройка форматирования телефона для профиля
     if (editProfilePhoneField) {
-        // Сбрасываем флаг, чтобы обработчик мог быть добавлен
-        editProfilePhoneField.dataset.phoneFormatted = 'false';
+        // Удаляем старый обработчик через клонирование (если есть)
+        const hasListener = editProfilePhoneField.dataset.phoneFormatted === 'true';
+        if (hasListener) {
+            const newField = editProfilePhoneField.cloneNode(true);
+            const savedValue = editProfilePhoneField.value;
+            editProfilePhoneField.parentNode.replaceChild(newField, editProfilePhoneField);
+            newField.value = savedValue;
+            editProfilePhoneField = newField;
+        }
         
-        // Добавляем обработчик форматирования напрямую
+        // Добавляем обработчик форматирования
         setupPhoneInput(editProfilePhoneField);
         
         // Сохраняем ссылку на поле
         window.editProfilePhoneField = editProfilePhoneField;
+        
+        // Если в поле уже есть значение, форматируем его сразу
+        if (editProfilePhoneField.value) {
+            const currentValue = editProfilePhoneField.value;
+            const digits = currentValue.replace(/\D/g, '');
+            if (digits.length > 0) {
+                let phoneDigits = digits;
+                if (phoneDigits.startsWith('8')) {
+                    phoneDigits = '7' + phoneDigits.substring(1);
+                }
+                if (phoneDigits.length > 0 && !phoneDigits.startsWith('7')) {
+                    phoneDigits = '7' + phoneDigits;
+                }
+                if (phoneDigits.length > 11) {
+                    phoneDigits = phoneDigits.substring(0, 11);
+                }
+                
+                let formattedValue = '';
+                if (phoneDigits.length > 0) {
+                    formattedValue = '+7';
+                    if (phoneDigits.length > 1) {
+                        formattedValue += ' (' + phoneDigits.substring(1, 4);
+                    }
+                    if (phoneDigits.length >= 5) {
+                        formattedValue += ') ' + phoneDigits.substring(4, 7);
+                    }
+                    if (phoneDigits.length >= 8) {
+                        formattedValue += '-' + phoneDigits.substring(7, 9);
+                    }
+                    if (phoneDigits.length >= 10) {
+                        formattedValue += '-' + phoneDigits.substring(9, 11);
+                    }
+                }
+                editProfilePhoneField.value = formattedValue;
+            }
+        }
     }
 });
 
