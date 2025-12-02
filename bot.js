@@ -123,12 +123,51 @@ app.get('/api/products', (req, res) => {
   res.json(products);
 });
 
+// Простое хранилище данных пользователей (в продакшене использовать БД)
+const userDataStore = {};
+
+// API endpoint для сохранения данных пользователя
+app.post('/api/user-data', (req, res) => {
+  const { userId, cart, addresses, profile, activeOrders, completedOrders, bonuses } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'userId required' });
+  }
+  
+  userDataStore[userId] = {
+    cart: cart || [],
+    addresses: addresses || [],
+    profile: profile || null,
+    activeOrders: activeOrders || [],
+    completedOrders: completedOrders || [],
+    bonuses: bonuses || 500,
+    updatedAt: new Date().toISOString()
+  };
+  
+  res.json({ success: true });
+});
+
+// API endpoint для загрузки данных пользователя
+app.get('/api/user-data/:userId', (req, res) => {
+  const { userId } = req.params;
+  const userData = userDataStore[userId] || {
+    cart: [],
+    addresses: [],
+    profile: null,
+    activeOrders: [],
+    completedOrders: [],
+    bonuses: 500
+  };
+  
+  res.json(userData);
+});
+
 // API endpoint для создания заказа
 app.post('/api/orders', (req, res) => {
-  const { items, total, address, phone, name } = req.body;
+  const { items, total, address, phone, name, userId } = req.body;
   
   // Здесь можно добавить сохранение в базу данных
-  console.log('Новый заказ:', { items, total, address, phone, name });
+  console.log('Новый заказ:', { items, total, address, phone, name, userId });
   
   // Отправляем уведомление в Telegram (опционально)
   // bot.telegram.sendMessage(ADMIN_CHAT_ID, `Новый заказ на сумму ${total}₽`);

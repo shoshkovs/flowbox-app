@@ -307,13 +307,89 @@ function changeQuantity(productId, delta) {
     }
 }
 
-// Сохранение корзины в localStorage
-function saveCart() {
-    localStorage.setItem('cart', JSON.stringify(cart));
+// Получение ID пользователя Telegram
+function getUserId() {
+    return tg.initDataUnsafe?.user?.id || null;
 }
 
-// Загрузка корзины из localStorage
-function loadCart() {
+// Сохранение всех данных пользователя на сервер
+async function saveUserData() {
+    const userId = getUserId();
+    if (!userId) {
+        // Если нет userId, сохраняем только локально
+        localStorage.setItem('cart', JSON.stringify(cart));
+        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        localStorage.setItem('userProfile', JSON.stringify(localStorage.getItem('userProfile') ? JSON.parse(localStorage.getItem('userProfile')) : null));
+        localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+        localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
+        return;
+    }
+    
+    try {
+        const profileData = localStorage.getItem('userProfile') ? JSON.parse(localStorage.getItem('userProfile')) : null;
+        
+        await fetch('/api/user-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: userId,
+                cart: cart,
+                addresses: savedAddresses,
+                profile: profileData,
+                activeOrders: userActiveOrders,
+                completedOrders: userCompletedOrders,
+                bonuses: accumulatedBonuses
+            })
+        });
+        
+        // Также сохраняем локально как резервную копию
+        localStorage.setItem('cart', JSON.stringify(cart));
+        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        if (profileData) {
+            localStorage.setItem('userProfile', JSON.stringify(profileData));
+        }
+        localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+        localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
+    } catch (error) {
+        console.error('Ошибка сохранения данных на сервер:', error);
+        // Сохраняем локально при ошибке
+        localStorage.setItem('cart', JSON.stringify(cart));
+        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+    }
+}
+
+// Загрузка всех данных пользователя с сервера
+async function loadUserData() {
+    const userId = getUserId();
+    
+    if (userId) {
+        try {
+            const response = await fetch(`/api/user-data/${userId}`);
+            const data = await response.json();
+            
+            if (data.cart) cart = data.cart;
+            if (data.addresses) savedAddresses = data.addresses;
+            if (data.profile) localStorage.setItem('userProfile', JSON.stringify(data.profile));
+            if (data.activeOrders) userActiveOrders = data.activeOrders;
+            if (data.completedOrders) userCompletedOrders = data.completedOrders;
+            if (data.bonuses !== undefined) accumulatedBonuses = data.bonuses;
+            
+            // Обновляем UI
+            updateCartUI();
+            updateGoToCartButton();
+            loadSavedAddresses();
+            loadActiveOrders();
+            loadProfile();
+            
+            return;
+        } catch (error) {
+            console.error('Ошибка загрузки данных с сервера:', error);
+        }
+    }
+    
+    // Если нет userId или ошибка, загружаем из localStorage
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
         try {
@@ -325,6 +401,11 @@ function loadCart() {
             cart = [];
         }
     }
+}
+
+// Сохранение корзины (обновленная функция)
+function saveCart() {
+    saveUserData();
 }
 
 // Обновление UI корзины
@@ -739,7 +820,7 @@ orderForm.addEventListener('submit', async (e) => {
             };
             
             userActiveOrders.push(order);
-            localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+            saveUserData(); // Сохраняем на сервер
             
             orderOverlay.classList.remove('active');
             successOverlay.classList.add('active');
@@ -905,7 +986,7 @@ function editAddress(addressId) {
 function deleteAddress(addressId) {
     if (confirm('Вы уверены, что хотите удалить этот адрес?')) {
         savedAddresses = savedAddresses.filter(a => a.id !== addressId);
-        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        saveUserData(); // Сохраняем на сервер
         loadSavedAddresses();
         tg.HapticFeedback.impactOccurred('light');
     }
@@ -971,7 +1052,7 @@ addressForm.addEventListener('submit', (e) => {
         savedAddresses.push(address);
     }
     
-    localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+    saveUserData(); // Сохраняем на сервер
     
     addressForm.reset();
     document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
@@ -985,7 +1066,7 @@ addressForm.addEventListener('submit', (e) => {
 document.getElementById('deleteAddressBtn').addEventListener('click', () => {
     if (editingAddressId && confirm('Вы уверены, что хотите удалить этот адрес?')) {
         savedAddresses = savedAddresses.filter(a => a.id !== editingAddressId);
-        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        saveUserData(); // Сохраняем на сервер
         addressForm.reset();
         editingAddressId = null;
         document.getElementById('addressModalTitle').textContent = 'Добавить адрес';
@@ -1009,10 +1090,7 @@ let editingAddressId = null;
 
 // Загрузка сохраненных адресов
 function loadSavedAddresses() {
-    const stored = localStorage.getItem('savedAddresses');
-    if (stored) {
-        savedAddresses = JSON.parse(stored);
-    }
+    // Данные уже загружены в loadUserData, просто обновляем отображение
     
     // Отображение в профиле
     const addressesList = document.getElementById('deliveryAddressesList');
@@ -1109,15 +1187,7 @@ function fillOrderFormWithAddress(address) {
 
 // Загрузка активных заказов
 function loadActiveOrders() {
-    const storedActive = localStorage.getItem('activeOrders');
-    const storedCompleted = localStorage.getItem('completedOrders');
-    
-    if (storedActive) {
-        userActiveOrders = JSON.parse(storedActive);
-    }
-    if (storedCompleted) {
-        userCompletedOrders = JSON.parse(storedCompleted);
-    }
+    // Данные уже загружены в loadUserData, просто обновляем отображение
     
     if (activeOrdersElement) {
         if (userActiveOrders.length === 0) {
@@ -1226,6 +1296,7 @@ profileEditForm.addEventListener('submit', (e) => {
     };
     
     localStorage.setItem('userProfile', JSON.stringify(profileData));
+    saveUserData(); // Сохраняем на сервер
     
     // Обновление отображения
     profileName.textContent = profileData.name || 'Пользователь';
@@ -1269,7 +1340,7 @@ if (closeServiceFeeHelpModal) {
 
 // Инициализация при загрузке
 loadProducts();
-loadCart(); // Загружаем корзину из localStorage
+loadUserData(); // Загружаем все данные пользователя с сервера
 loadProfile();
 loadSavedAddresses();
 loadActiveOrders();
