@@ -637,17 +637,20 @@ function renderOrdersTable(orders) {
         const statusText = getOrderStatusText(order.status);
         const statusClass = getOrderStatusClass(order.status);
         
+        const createdDate = order.created_at ? new Date(order.created_at).toLocaleDateString('ru-RU') : '-';
+        const deliveryDate = order.delivery_date ? (typeof order.delivery_date === 'string' ? order.delivery_date : new Date(order.delivery_date).toLocaleDateString('ru-RU')) : '-';
+        
         return `
             <tr>
-                <td>${order.id}</td>
-                <td>${new Date(order.created_at).toLocaleDateString('ru-RU')}</td>
+                <td>${order.id || '-'}</td>
+                <td>${createdDate}</td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                <td>${order.customer_name || '-'}</td>
-                <td>${order.recipient_name || '-'}</td>
-                <td>${order.total} ₽</td>
-                <td>${order.delivery_date || '-'} ${order.delivery_time || ''}</td>
+                <td>${order.customer_name || order.recipient_name || '-'}</td>
+                <td>${order.recipient_name || order.customer_name || '-'}</td>
+                <td>${order.total || 0} ₽</td>
+                <td>${deliveryDate} ${order.delivery_time || ''}</td>
                 <td>
-                    <button class="btn-icon" onclick="viewOrder(${order.id})" type="button">👁️</button>
+                    <button class="btn-icon" onclick="viewOrder(${order.id})" type="button" title="Просмотр">👁️</button>
                 </td>
             </tr>
         `;
