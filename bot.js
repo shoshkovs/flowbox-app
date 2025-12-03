@@ -855,7 +855,7 @@ async function createOrderInDb(orderData) {
       );
       
       const order = orderResult.rows[0];
-      console.log('✅ Заказ создан в БД, order_id:', order.id);
+      console.log('✅ Заказ создан в БД, order_id:', order.id, 'user_id в заказе:', order.user_id || 'NULL');
       
       // Проверяем остатки перед добавлением позиций
       for (const item of orderData.items || []) {
