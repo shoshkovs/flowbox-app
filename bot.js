@@ -2432,16 +2432,32 @@ app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
         FROM products p
         LEFT JOIN stock_movements sm ON p.id = sm.product_id
         WHERE p.is_active = true
+          AND (
+            EXISTS (SELECT 1 FROM stock_movements sm2 WHERE sm2.product_id = p.id)
+            OR EXISTS (SELECT 1 FROM supplies s WHERE s.product_id = p.id)
+          )
         GROUP BY p.id, p.name, p.image_url, p.price_per_stem
         ORDER BY p.name`
       );
+      
+      console.log(`📦 Получено товаров со склада: ${result.rows.length}`);
+      if (result.rows.length > 0) {
+        console.log('📦 Пример товара:', {
+          id: result.rows[0].product_id,
+          name: result.rows[0].product_name,
+          stock: result.rows[0].stock,
+          total_supplied: result.rows[0].total_supplied
+        });
+      }
+      
       res.json(result.rows);
     } finally {
       client.release();
     }
   } catch (error) {
     console.error('Ошибка получения остатков:', error);
-    res.status(500).json({ error: 'Ошибка получения остатков' });
+    console.error('Детали ошибки:', error.message, error.stack);
+    res.status(500).json({ error: 'Ошибка получения остатков: ' + error.message });
   }
 });
 
