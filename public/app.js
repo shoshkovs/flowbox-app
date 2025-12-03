@@ -325,10 +325,20 @@ function addToCart(productId, quantity = 1) {
     
     if (existingItem) {
         existingItem.quantity += actualQty;
+        // Обновляем minStemQuantity, если его еще нет
+        if (!existingItem.minStemQuantity) {
+            existingItem.minStemQuantity = minQty;
+            existingItem.min_order_quantity = product.min_order_quantity || minQty;
+            existingItem.min_stem_quantity = product.min_stem_quantity || minQty;
+        }
     } else {
+        // Сохраняем minStemQuantity в объекте товара в корзине
         cart.push({
             ...product,
-            quantity: actualQty
+            quantity: actualQty,
+            minStemQuantity: minQty, // Сохраняем для использования в корзине
+            min_order_quantity: product.min_order_quantity || minQty,
+            min_stem_quantity: product.min_stem_quantity || minQty
         });
     }
     
