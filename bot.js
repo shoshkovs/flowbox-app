@@ -69,6 +69,63 @@ if (process.env.DATABASE_URL) {
   
   // Запускаем тест подключения
   testConnection();
+  
+  // Выполняем миграцию features в JSONB (если нужно)
+  setTimeout(async () => {
+    try {
+      const client = await pool.connect();
+      try {
+        // Проверяем тип колонки features
+        const columnInfo = await client.query(`
+          SELECT data_type 
+          FROM information_schema.columns 
+          WHERE table_name = 'products' AND column_name = 'features'
+        `);
+        
+        if (columnInfo.rows.length > 0 && columnInfo.rows[0].data_type === 'ARRAY') {
+          console.log('🔄 Выполняем миграцию features: TEXT[] → JSONB...');
+          
+          // Выполняем миграцию
+          await client.query(`
+            DO $$
+            BEGIN
+              -- Конвертируем существующие данные
+              UPDATE products 
+              SET features = CASE 
+                  WHEN features IS NULL THEN NULL::jsonb
+                  WHEN pg_typeof(features) = 'text[]'::regtype THEN 
+                      jsonb_build_array(features)
+                  ELSE features::jsonb
+              END
+              WHERE features IS NOT NULL;
+            END $$;
+          `);
+          
+          await client.query(`
+            ALTER TABLE products 
+            ALTER COLUMN features TYPE JSONB 
+            USING CASE 
+                WHEN features IS NULL THEN NULL::jsonb
+                WHEN pg_typeof(features) = 'text[]'::regtype THEN 
+                    jsonb_build_array(features)
+                ELSE features::jsonb
+            END;
+          `);
+          
+          console.log('✅ Миграция features завершена');
+        }
+      } catch (migrationError) {
+        // Игнорируем ошибки миграции (возможно, уже выполнена)
+        if (migrationError.code !== '42804' && migrationError.code !== '42P16') {
+          console.log('⚠️  Миграция features:', migrationError.message);
+        }
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      // Игнорируем ошибки при миграции
+    }
+  }, 5000); // Ждем 5 секунд после подключения
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
   console.log('💡 Для использования БД добавь переменную DATABASE_URL в Environment Render.com');
@@ -168,16 +225,45 @@ app.get('/api/products', async (req, res) => {
         );
         
         // Преобразуем в формат для фронтенда
-        const products = result.rows.map(row => ({
-          id: row.id,
-          name: row.name,
-          description: row.description || '',
-          price: row.price,
-          image: row.image_url || 'https://via.placeholder.com/300x300?text=Цветы',
-          type: row.type || '',
-          color: row.color || '',
-          features: row.features ? (typeof row.features === 'string' ? JSON.parse(row.features) : row.features) : {}
-        }));
+        const products = result.rows.map(row => {
+          // Обрабатываем features: может быть JSONB объект, массив или null
+          let features = {};
+          if (row.features_json) {
+            try {
+              features = JSON.parse(row.features_json);
+            } catch (e) {
+              features = {};
+            }
+          } else if (row.features) {
+            // Fallback для старого формата
+            if (typeof row.features === 'string') {
+              try {
+                features = JSON.parse(row.features);
+              } catch (e) {
+                features = {};
+              }
+            } else if (Array.isArray(row.features)) {
+              features = row.features;
+            } else {
+              features = row.features;
+            }
+          }
+          
+          return {
+            id: row.id,
+            name: row.name,
+            description: row.description || '',
+            price: row.price,
+            image: row.image_url || 'https://via.placeholder.com/300x300?text=Цветы',
+            image_url: row.image_url,
+            type: row.type || '',
+            color: row.color || '',
+            features: features,
+            is_active: row.is_active !== false,
+            stock: row.stock,
+            min_stock: row.min_stock
+          };
+        });
         
         res.json(products);
       } finally {
