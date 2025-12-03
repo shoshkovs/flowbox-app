@@ -2397,7 +2397,7 @@ app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
         FROM products p
         LEFT JOIN stock_movements sm ON p.id = sm.product_id
         WHERE p.is_active = true
-        GROUP BY p.id, p.name, p.min_stock
+        GROUP BY p.id, p.name, p.image_url, p.price_per_stem, p.min_stock
         ORDER BY p.name`
       );
       res.json(result.rows);
