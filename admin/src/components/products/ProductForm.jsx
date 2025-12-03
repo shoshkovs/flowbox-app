@@ -25,6 +25,7 @@ export function ProductForm({ authToken, productId }) {
     is_active: true,
     is_bestseller: false,
     is_new: false,
+    min_order_quantity: 1,
   });
 
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,7 @@ export function ProductForm({ authToken, productId }) {
           is_active: product.is_active !== false,
           is_bestseller: product.features?.is_bestseller || false,
           is_new: product.features?.is_new || false,
+          min_order_quantity: product.min_order_quantity || 1,
         });
       } else {
         toast.error('Ошибка загрузки товара');
@@ -210,6 +212,20 @@ export function ProductForm({ authToken, productId }) {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   placeholder="250"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Минимальное количество для заказа
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={productForm.min_order_quantity}
+                  onChange={(e) => setProductForm({ ...productForm, min_order_quantity: parseInt(e.target.value) || 1 })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  placeholder="1"
+                />
+                <p className="text-xs text-gray-500 mt-1">Минимальное количество, которое можно заказать (по умолчанию 1)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Описание</label>

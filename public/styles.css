@@ -286,6 +286,12 @@ h1, h2, h3, .font-bold {
     border-color: #ddd;
 }
 
+.quantity-btn-small.disabled {
+    background: #e5e5e5;
+    border-color: #ccc;
+    color: #999;
+}
+
 .quantity-value {
     font-weight: 600;
     min-width: 20px;

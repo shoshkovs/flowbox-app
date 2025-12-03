@@ -70,8 +70,39 @@ if (process.env.DATABASE_URL) {
   // Запускаем тест подключения
   testConnection();
   
-  // Выполняем миграцию features в JSONB (если нужно)
+  // Выполняем миграции
   setTimeout(async () => {
+    // Миграция min_order_quantity
+    try {
+      const client = await pool.connect();
+      try {
+        const columnCheck = await client.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'products' AND column_name = 'min_order_quantity'
+        `);
+        
+        if (columnCheck.rows.length === 0) {
+          console.log('🔄 Выполняем миграцию: добавление min_order_quantity...');
+          await client.query(`
+            ALTER TABLE products 
+            ADD COLUMN IF NOT EXISTS min_order_quantity INTEGER DEFAULT 1
+          `);
+          console.log('✅ Миграция min_order_quantity завершена');
+        }
+      } catch (migrationError) {
+        if (migrationError.code !== '42P16') {
+          console.log('⚠️  Миграция min_order_quantity:', migrationError.message);
+        }
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      // Игнорируем ошибки при миграции
+    }
+    
+    // Выполняем миграцию features в JSONB (если нужно)
+    setTimeout(async () => {
     try {
       const client = await pool.connect();
       try {
@@ -993,7 +1024,7 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { name, description, price, image_url, type, color, features } = req.body;
+  const { name, description, price, image_url, type, color, features, min_order_quantity } = req.body;
   
   if (!name || !price) {
     return res.status(400).json({ error: 'Название и цена обязательны' });
@@ -1016,8 +1047,8 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
       }
       
       const result = await client.query(
-        `INSERT INTO products (name, description, price, image_url, type, color, features)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        `INSERT INTO products (name, description, price, image_url, type, color, features, min_order_quantity)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
          RETURNING *`,
         [
           name,
@@ -1026,7 +1057,8 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
           image_url || null,
           type || null,
           color || null,
-          featuresValue
+          featuresValue,
+          min_order_quantity || 1
         ]
       );
       res.json(result.rows[0]);
@@ -1046,7 +1078,7 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   }
   
   const { id } = req.params;
-  const { name, description, price, image_url, type, color, features, is_active, stock, min_stock } = req.body;
+  const { name, description, price, image_url, type, color, features, is_active, stock, min_stock, min_order_quantity } = req.body;
   
   try {
     const client = await pool.connect();
@@ -1085,11 +1117,12 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
             color = COALESCE($6, color),
             features = COALESCE($7::jsonb, features),
             is_active = COALESCE($8, is_active),
+            min_order_quantity = COALESCE($9, min_order_quantity),
             updated_at = now()
       `;
       
-      const params = [name, description, price, image_url, type, color, featuresValue, is_active];
-      let paramIndex = 9;
+      const params = [name, description, price, image_url, type, color, featuresValue, is_active, min_order_quantity];
+      let paramIndex = 10;
       
       if (hasStock && stock !== undefined) {
         updateQuery += `, stock = $${paramIndex}`;

@@ -203,8 +203,10 @@ function renderProducts() {
     }
 
     productsContainer.innerHTML = filteredProducts.map(product => {
-        const quantity = productQuantities[product.id] || 1;
+        const minQty = product.min_order_quantity || 1;
+        const quantity = productQuantities[product.id] || minQty;
         const totalPrice = product.price * quantity;
+        const isMinQty = quantity <= minQty;
         
         return `
             <div class="product-card" data-product-id="${product.id}">
@@ -219,7 +221,7 @@ function renderProducts() {
                             ${totalPrice} <span class="ruble">₽</span>
                         </div>
                         <div class="product-quantity">
-                            <button class="quantity-btn-small" onclick="changeProductQuantity(${product.id}, -1)" ${quantity <= 1 ? 'disabled' : ''}>−</button>
+                            <button class="quantity-btn-small ${isMinQty ? 'disabled' : ''}" onclick="changeProductQuantity(${product.id}, -1)" ${isMinQty ? 'disabled' : ''}>−</button>
                             <span class="quantity-value" id="qty-${product.id}">${quantity}</span>
                             <button class="quantity-btn-small" onclick="changeProductQuantity(${product.id}, 1)" ${quantity >= 500 ? 'disabled' : ''}>+</button>
                         </div>
@@ -235,15 +237,16 @@ function renderProducts() {
 
 // Изменение количества товара в карточке
 function changeProductQuantity(productId, delta) {
-    const currentQty = productQuantities[productId] || 1;
-    const newQty = Math.max(1, Math.min(500, currentQty + delta));
-    productQuantities[productId] = newQty;
-    
-    // Находим товар для получения цены
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
+    const minQty = product.min_order_quantity || 1;
+    const currentQty = productQuantities[productId] || minQty;
+    const newQty = Math.max(minQty, Math.min(500, currentQty + delta));
+    productQuantities[productId] = newQty;
+    
     const newTotalPrice = product.price * newQty;
+    const isMinQty = newQty <= minQty;
     
     // Обновляем элементы карточки
     const quantityValue = document.getElementById(`qty-${productId}`);
@@ -259,7 +262,14 @@ function changeProductQuantity(productId, delta) {
     if (card) {
         const minusBtn = card.querySelector(`[onclick*="changeProductQuantity(${productId}, -1)"]`);
         const plusBtn = card.querySelector(`[onclick*="changeProductQuantity(${productId}, 1)"]`);
-        if (minusBtn) minusBtn.disabled = newQty <= 1;
+        if (minusBtn) {
+            minusBtn.disabled = isMinQty;
+            if (isMinQty) {
+                minusBtn.classList.add('disabled');
+            } else {
+                minusBtn.classList.remove('disabled');
+            }
+        }
         if (plusBtn) plusBtn.disabled = newQty >= 500;
     }
     
@@ -279,24 +289,30 @@ function addToCart(productId, quantity = 1) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
+    const minQty = product.min_order_quantity || 1;
+    const actualQty = Math.max(minQty, quantity);
+
     const existingItem = cart.find(item => item.id === productId);
     
     if (existingItem) {
-        existingItem.quantity += quantity;
+        existingItem.quantity += actualQty;
     } else {
         cart.push({
             ...product,
-            quantity: quantity
+            quantity: actualQty
         });
     }
     
-    // Сброс количества в карточке
-    productQuantities[productId] = 1;
+    // Сброс количества в карточке на минимальное
+    productQuantities[productId] = minQty;
 
     updateCartUI();
     updateGoToCartButton();
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
+    
+    // Обновляем отображение карточки
+    renderProducts();
 }
 
 // Обновление кнопки "Перейти в корзину"
