@@ -1762,19 +1762,46 @@ async function validateAndSubmitOrder(e) {
                 cityField.value = 'Санкт-Петербург';
             }
             
-            // Обновление активных заказов (сначала локально)
+            // Сохраняем данные на сервер сразу (включая новый заказ)
+            await saveUserData();
+            console.log('📦 Данные сохранены на сервер, активных заказов:', userActiveOrders.length);
+            
+            // Обновление активных заказов (отображаем локально добавленный заказ)
             loadActiveOrders();
             console.log('📦 Активных заказов после loadActiveOrders:', userActiveOrders.length);
             
-            // Сохраняем данные на сервер сразу
-            saveUserData();
-            
-            // Перезагружаем данные пользователя с сервера, чтобы получить актуальный список заказов
+            // Перезагружаем данные пользователя с сервера через 1.5 секунды, чтобы сервер успел обработать
             setTimeout(async () => {
                 try {
                     console.log('📦 Перезагружаем данные с сервера...');
+                    const oldOrdersCount = userActiveOrders.length;
                     await loadUserData();
+                    console.log('📦 Активных заказов до перезагрузки:', oldOrdersCount);
                     console.log('📦 Активных заказов после перезагрузки:', userActiveOrders.length);
+                    
+                    // Проверяем, не потеряли ли мы заказ при перезагрузке
+                    const orderStillExists = userActiveOrders.some(o => o.id === orderId);
+                    if (!orderStillExists && oldOrdersCount > 0) {
+                        console.warn('⚠️ Заказ потерян при перезагрузке, восстанавливаем из локальных данных');
+                        // Восстанавливаем заказ из локального массива
+                        const localOrder = {
+                            id: orderId,
+                            date: new Date().toLocaleDateString('ru-RU'),
+                            items: orderData.items,
+                            total: orderData.total,
+                            address: orderData.address,
+                            deliveryDate: orderData.deliveryDate,
+                            deliveryTime: orderData.deliveryTime,
+                            status: 'NEW',
+                            createdAt: new Date().toISOString()
+                        };
+                        // Проверяем, нет ли уже такого заказа
+                        if (!userActiveOrders.some(o => o.id === orderId)) {
+                            userActiveOrders.push(localOrder);
+                            await saveUserData();
+                        }
+                    }
+                    
                     // Обновляем отображение после перезагрузки
                     loadActiveOrders();
                 } catch (e) {
@@ -1782,7 +1809,7 @@ async function validateAndSubmitOrder(e) {
                     // Если перезагрузка не удалась, используем локальные данные
                     loadActiveOrders();
                 }
-            }, 1000);
+            }, 1500);
             
             switchTab('menuTab');
             
