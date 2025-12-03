@@ -1666,10 +1666,25 @@ async function validateAndSubmitOrder(e) {
         const result = await response.json();
         console.log('📦 Ответ от сервера при создании заказа:', result);
         
-        // Проверяем успешность операции - явная проверка
-        if (result.success === true && result.orderId) {
+        // Проверяем успешность операции - явная проверка (orderId может быть числом или строкой)
+        const hasOrderId = result.orderId !== undefined && result.orderId !== null;
+        const isSuccess = result.success === true && hasOrderId;
+        
+        console.log('📦 Проверка успешности:', { 
+            success: result.success, 
+            orderId: result.orderId, 
+            hasOrderId, 
+            isSuccess 
+        });
+        
+        if (isSuccess) {
             // Успешный ответ - обрабатываем заказ
-            tg.sendData(JSON.stringify(orderData));
+            try {
+                tg.sendData(JSON.stringify(orderData));
+            } catch (tgError) {
+                console.warn('⚠️ Ошибка отправки данных в Telegram:', tgError);
+                // Не критично, продолжаем обработку заказа
+            }
             
             // Обновление бонусов: списываем использованные и начисляем новые
             accumulatedBonuses = accumulatedBonuses - bonusUsed + bonusEarned;
@@ -1677,8 +1692,9 @@ async function validateAndSubmitOrder(e) {
             updateBonusesDisplay();
             
             // Сохранение заказа в активные
+            const orderId = parseInt(result.orderId) || result.orderId; // Приводим к числу, если возможно
             const order = {
-                id: result.orderId || Date.now(),
+                id: orderId,
                 date: new Date().toLocaleDateString('ru-RU'),
                 items: orderData.items,
                 total: orderData.total,
@@ -1689,7 +1705,9 @@ async function validateAndSubmitOrder(e) {
                 createdAt: new Date().toISOString()
             };
             
+            console.log('📦 Добавляем заказ в активные:', order);
             userActiveOrders.push(order);
+            console.log('📦 Активных заказов после добавления:', userActiveOrders.length);
             
             // Сохранение адреса из заказа в сохраненные адреса (если это новый адрес и его еще нет)
             if (addressData && shouldUseForm) {
@@ -1744,17 +1762,27 @@ async function validateAndSubmitOrder(e) {
                 cityField.value = 'Санкт-Петербург';
             }
             
-            // Обновление активных заказов
+            // Обновление активных заказов (сначала локально)
             loadActiveOrders();
+            console.log('📦 Активных заказов после loadActiveOrders:', userActiveOrders.length);
+            
+            // Сохраняем данные на сервер сразу
+            saveUserData();
             
             // Перезагружаем данные пользователя с сервера, чтобы получить актуальный список заказов
             setTimeout(async () => {
                 try {
+                    console.log('📦 Перезагружаем данные с сервера...');
                     await loadUserData();
+                    console.log('📦 Активных заказов после перезагрузки:', userActiveOrders.length);
+                    // Обновляем отображение после перезагрузки
+                    loadActiveOrders();
                 } catch (e) {
                     console.error('Ошибка перезагрузки данных:', e);
+                    // Если перезагрузка не удалась, используем локальные данные
+                    loadActiveOrders();
                 }
-            }, 500);
+            }, 1000);
             
             switchTab('menuTab');
             
