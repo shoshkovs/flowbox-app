@@ -1656,6 +1656,7 @@ async function validateAndSubmitOrder(e) {
             body: JSON.stringify(orderData)
         });
 
+        // Проверяем статус ответа
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Ошибка сервера' }));
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -1663,6 +1664,12 @@ async function validateAndSubmitOrder(e) {
         
         const result = await response.json();
         
+        // Проверяем успешность операции
+        if (!result.success && !result.orderId) {
+            throw new Error(result.error || 'Заказ не был создан');
+        }
+        
+        // Если успешно, обрабатываем заказ
         if (result.success || result.orderId) {
             tg.sendData(JSON.stringify(orderData));
             
@@ -1742,12 +1749,25 @@ async function validateAndSubmitOrder(e) {
             // Обновление активных заказов
             loadActiveOrders();
             
+            // Перезагружаем данные пользователя с сервера, чтобы получить актуальный список заказов
+            setTimeout(async () => {
+                try {
+                    await loadUserData();
+                } catch (e) {
+                    console.error('Ошибка перезагрузки данных:', e);
+                }
+            }, 500);
+            
             switchTab('menuTab');
             
             tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            // Если ответ не содержит success или orderId, считаем это ошибкой
+            throw new Error('Неожиданный формат ответа от сервера');
         }
     } catch (error) {
         console.error('Ошибка отправки заказа:', error);
+        console.error('Детали ошибки:', error.message, error.stack);
         alert('Произошла ошибка при оформлении заказа. Попробуйте еще раз.');
     }
     

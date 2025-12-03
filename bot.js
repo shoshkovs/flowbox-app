@@ -1191,7 +1191,7 @@ app.post('/api/orders', async (req, res) => {
         //   );
         // }
         
-        res.json({ success: true, orderId: result.telegramOrderId });
+        res.json({ success: true, orderId: result.orderId || result.telegramOrderId });
       } else {
         throw new Error('Не удалось создать заказ в БД');
       }
