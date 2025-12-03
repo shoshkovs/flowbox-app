@@ -52,11 +52,23 @@ export function OrderDetail({ authToken, orderId }) {
         })
       ]);
 
-      if (orderRes.ok && historyRes.ok) {
+      if (orderRes.ok) {
         const orderData = await orderRes.json();
-        const historyData = await historyRes.json();
         setOrder(orderData);
-        setOrderHistory(historyData);
+        // Загружаем историю, если endpoint доступен
+        if (historyRes.ok) {
+          const historyData = await historyRes.json();
+          setOrderHistory(historyData);
+        }
+        // Инициализируем комментарии из заказа
+        setInternalComment(orderData.internal_comment || '');
+        setCourierComment(orderData.courier_comment || '');
+      } else if (orderRes.status === 404) {
+        setOrder(null);
+        toast.error('Заказ не найден');
+      } else {
+        const errorData = await orderRes.json().catch(() => ({ error: 'Ошибка загрузки заказа' }));
+        toast.error(errorData.error || 'Ошибка загрузки заказа');
       }
     } catch (error) {
       console.error('Ошибка загрузки деталей заказа:', error);
@@ -84,7 +96,9 @@ export function OrderDetail({ authToken, orderId }) {
           delivery_date: order.delivery_date,
           delivery_time: order.delivery_time,
           comment: order.comment || statusComment || null,
-          address_json: order.address_data || null,
+          address_json: order.address_data || order.address_json || null,
+          internal_comment: internalComment || null,
+          courier_comment: courierComment || null,
         }),
       });
 
@@ -258,10 +272,14 @@ export function OrderDetail({ authToken, orderId }) {
                 </div>
                 <div className="ml-6">
                   <div>{order.recipient_name || order.customer_name || '-'}</div>
-                  <div className="text-sm text-gray-600 flex items-center gap-1">
-                    <Phone className="w-3 h-3" />
-                    {order.recipient_phone || order.customer_phone || '-'}
-                  </div>
+                  {order.recipient_phone && (
+                    <div className="text-sm text-gray-600 flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
+                      <a href={`tel:${order.recipient_phone}`} className="text-blue-600 hover:underline">
+                        {order.recipient_phone}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -319,9 +337,10 @@ export function OrderDetail({ authToken, orderId }) {
             <div className="space-y-4">
               {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
                 order.items.map((item, index) => {
-                  const productImage = getProductImage(item.product_id);
+                  const productImage = item.product_image || getProductImage(item.product_id);
+                  const itemTotal = (parseFloat(item.price || 0) * parseInt(item.quantity || 1));
                   return (
-                    <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div key={item.id || index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
                       {productImage ? (
                         <img
                           src={productImage}
@@ -336,11 +355,11 @@ export function OrderDetail({ authToken, orderId }) {
                       <div className="flex-1">
                         <div className="font-medium">{item.name}</div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {item.price} ₽ × {item.quantity}
+                          {item.price_per_stem ? `${item.price_per_stem} ₽/шт` : `${item.price} ₽`} × {item.quantity} шт
                         </div>
                       </div>
                       <div className="font-semibold text-lg">
-                        {(parseFloat(item.price || 0) * parseInt(item.quantity || 1)).toLocaleString()} ₽
+                        {itemTotal.toLocaleString('ru-RU')} ₽
                       </div>
                     </div>
                   );

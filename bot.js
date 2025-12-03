@@ -2002,7 +2002,12 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
   }
   
   const { id } = req.params;
-  const { status, recipient_name, recipient_phone, delivery_date, delivery_time, comment, address_json } = req.body;
+  const orderId = parseInt(id);
+  if (isNaN(orderId)) {
+    return res.status(400).json({ error: 'Неверный ID заказа' });
+  }
+  
+  const { status, recipient_name, recipient_phone, delivery_date, delivery_time, comment, address_json, internal_comment, courier_comment } = req.body;
   
   try {
     const client = await pool.connect();
@@ -2041,14 +2046,24 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         params.push(comment);
         paramIndex++;
       }
+      if (internal_comment !== undefined) {
+        updateQuery += `, internal_comment = $${paramIndex}`;
+        params.push(internal_comment);
+        paramIndex++;
+      }
+      if (courier_comment !== undefined) {
+        updateQuery += `, courier_comment = $${paramIndex}`;
+        params.push(courier_comment);
+        paramIndex++;
+      }
       if (address_json !== undefined) {
         updateQuery += `, address_json = $${paramIndex}::jsonb`;
-        params.push(JSON.stringify(address_json));
+        params.push(typeof address_json === 'object' ? JSON.stringify(address_json) : address_json);
         paramIndex++;
       }
       
       updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
-      params.push(id);
+      params.push(orderId);
       
       const result = await client.query(updateQuery, params);
       
@@ -2543,50 +2558,112 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
   }
   
   const { id } = req.params;
+  const orderId = parseInt(id);
+  
+  if (isNaN(orderId)) {
+    return res.status(400).json({ error: 'Неверный ID заказа' });
+  }
   
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query(
+      // Получаем основной заказ с информацией о клиенте
+      const orderResult = await client.query(
         `SELECT 
           o.*,
           u.first_name as customer_name,
           u.last_name as customer_last_name,
           u.phone as customer_phone,
           u.email as customer_email,
-          json_agg(
-            json_build_object(
-              'id', oi.id,
-              'product_id', oi.product_id,
-              'name', oi.name,
-              'price', oi.price,
-              'quantity', oi.quantity
-            )
-          ) FILTER (WHERE oi.id IS NOT NULL) as items
+          u.telegram_username as customer_telegram_username,
+          u.telegram_id as customer_telegram_id
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
-        LEFT JOIN order_items oi ON o.id = oi.order_id
-        WHERE o.id = $1
-        GROUP BY o.id, u.id`,
-        [id]
+        WHERE o.id = $1`,
+        [orderId]
       );
       
-      if (result.rows.length === 0) {
+      if (orderResult.rows.length === 0) {
         return res.status(404).json({ error: 'Заказ не найден' });
       }
       
-      const order = result.rows[0];
-      res.json({
-        ...order,
-        total: order.total || 0, // Используем total вместо total_amount
-        address_data: typeof order.address_json === 'object' ? order.address_json : (order.address_json ? JSON.parse(order.address_json) : {})
-      });
+      const order = orderResult.rows[0];
+      
+      // Получаем позиции заказа с информацией о продуктах
+      const itemsResult = await client.query(
+        `SELECT 
+          oi.id,
+          oi.product_id,
+          oi.name,
+          oi.price,
+          oi.quantity,
+          p.image_url as product_image,
+          p.price_per_stem
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = $1
+        ORDER BY oi.id`,
+        [orderId]
+      );
+      
+      // Парсим address_json если он есть
+      let addressData = {};
+      if (order.address_json) {
+        try {
+          addressData = typeof order.address_json === 'object' 
+            ? order.address_json 
+            : JSON.parse(order.address_json);
+        } catch (e) {
+          console.error('Ошибка парсинга address_json:', e);
+        }
+      }
+      
+      // Формируем ответ
+      const response = {
+        id: order.id,
+        status: order.status,
+        total: parseFloat(order.total || 0),
+        flowers_total: parseFloat(order.flowers_total || 0),
+        delivery_price: parseFloat(order.delivery_price || 0),
+        service_fee: parseFloat(order.service_fee || 0),
+        bonus_earned: parseFloat(order.bonus_earned || 0),
+        bonus_used: parseFloat(order.bonus_used || 0),
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        delivery_date: order.delivery_date,
+        delivery_time: order.delivery_time,
+        comment: order.comment,
+        internal_comment: order.internal_comment || null,
+        courier_comment: order.courier_comment || null,
+        address_string: order.address_string,
+        address_json: addressData,
+        address_data: addressData, // Для обратной совместимости
+        recipient_name: order.recipient_name,
+        recipient_phone: order.recipient_phone,
+        customer_name: order.customer_name || order.recipient_name,
+        customer_last_name: order.customer_last_name || '',
+        customer_phone: order.customer_phone || order.recipient_phone,
+        customer_email: order.customer_email,
+        customer_telegram_username: order.customer_telegram_username,
+        customer_telegram_id: order.customer_telegram_id,
+        items: itemsResult.rows.map(row => ({
+          id: row.id,
+          product_id: row.product_id,
+          name: row.name,
+          price: parseFloat(row.price || 0),
+          quantity: parseInt(row.quantity || 0),
+          product_image: row.product_image,
+          price_per_stem: row.price_per_stem ? parseFloat(row.price_per_stem) : null
+        }))
+      };
+      
+      res.json(response);
     } finally {
       client.release();
     }
   } catch (error) {
     console.error('Ошибка получения заказа:', error);
-    res.status(500).json({ error: 'Ошибка получения заказа' });
+    res.status(500).json({ error: 'Ошибка получения заказа: ' + error.message });
   }
 });
 

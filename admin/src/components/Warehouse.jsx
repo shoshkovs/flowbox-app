@@ -62,7 +62,7 @@ export function Warehouse({ authToken }) {
   
   const totalStockValue = products.reduce((sum, p) => {
     const stock = p.stock !== null && p.stock !== undefined ? p.stock : 0;
-    const price = p.price || 0;
+    const price = p.price_per_stem || p.price || 0;
     return sum + (stock * price);
   }, 0);
 
