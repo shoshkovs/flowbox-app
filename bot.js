@@ -2199,7 +2199,7 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
           p.color,
           p.price_per_stem as price,
           p.image_url,
-          COALESCE(p.min_stock, 10) as min_stock,
+          20 as min_stock,
           p.is_active,
           COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) as total_supplied,
           COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as total_sold,
@@ -2210,7 +2210,7 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
         FROM products p
         LEFT JOIN stock_movements sm ON p.id = sm.product_id
         WHERE p.is_active = true
-        GROUP BY p.id, p.name, p.type, p.color, p.price_per_stem, p.image_url, p.min_stock, p.is_active
+        GROUP BY p.id, p.name, p.type, p.color, p.price_per_stem, p.image_url, p.is_active
         ORDER BY p.name`
       );
       res.json(result.rows);
