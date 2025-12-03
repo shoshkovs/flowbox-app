@@ -930,8 +930,14 @@ async function loadUserOrders(userId, status = null) {
       
       const params = [userId];
       if (status) {
-        query += ' AND o.status = $2';
-        params.push(status);
+        // Поддерживаем как массив статусов, так и один статус
+        if (Array.isArray(status)) {
+          query += ' AND o.status = ANY($2::text[])';
+          params.push(status);
+        } else {
+          query += ' AND o.status = $2';
+          params.push(status);
+        }
       }
       
       query += ' GROUP BY o.id ORDER BY o.created_at DESC';
