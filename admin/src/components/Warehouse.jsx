@@ -15,6 +15,17 @@ export function Warehouse({ authToken }) {
     loadProducts();
   }, []);
 
+  // Перезагружаем данные при возврате на страницу (если пользователь вернулся с формы добавления)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadProducts();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const loadProducts = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/admin/warehouse/stock`, {
@@ -49,9 +60,12 @@ export function Warehouse({ authToken }) {
   const filteredProducts = products.filter(product => {
     const matchesSearch = (product.product_name || product.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const stock = product.stock !== null && product.stock !== undefined ? product.stock : 0;
+    const totalSupplied = product.total_supplied || 0;
     const minStock = product.min_stock || 10;
+    // Показываем товар, если есть поставки или если он соответствует фильтру
     const matchesFilter = !filterLowStock || stock < minStock || stock <= 0;
-    return matchesSearch && matchesFilter;
+    // Показываем товар, если есть хотя бы одна поставка или он соответствует поиску
+    return matchesSearch && matchesFilter && (totalSupplied > 0 || searchQuery.length > 0);
   });
 
   const lowStockCount = products.filter(p => {
