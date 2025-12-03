@@ -143,29 +143,85 @@ if (process.env.DATABASE_URL) {
       try {
         const client = await pool.connect();
         try {
-          const fs = require('fs');
-          const path = require('path');
-          const migrationSQL = fs.readFileSync(
-            path.join(__dirname, 'database', 'migrate-price-to-price-per-stem.sql'),
-            'utf8'
-          );
+          // Проверяем наличие price_per_stem
+          const columnCheck = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'products' AND column_name = 'price_per_stem'
+          `);
           
-          // Выполняем миграцию построчно
-          const statements = migrationSQL.split(';').filter(s => s.trim());
-          for (const statement of statements) {
-            if (statement.trim()) {
-              try {
-                await client.query(statement);
-              } catch (err) {
-                // Игнорируем ошибки "уже существует" и "не существует"
-                if (!err.message.includes('already exists') && 
-                    !err.message.includes('duplicate') && 
-                    !err.message.includes('does not exist')) {
-                  console.log('⚠️  Ошибка миграции price:', err.message);
-                }
-              }
+          if (columnCheck.rows.length === 0) {
+            // Создаем price_per_stem как INTEGER
+            await client.query(`
+              ALTER TABLE products ADD COLUMN price_per_stem INTEGER
+            `);
+            
+            // Копируем данные из price, если существует
+            const priceCheck = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'products' AND column_name = 'price'
+            `);
+            
+            if (priceCheck.rows.length > 0) {
+              await client.query(`
+                UPDATE products SET price_per_stem = price WHERE price IS NOT NULL
+              `);
+            }
+            
+            // Делаем price_per_stem NOT NULL с DEFAULT
+            await client.query(`
+              ALTER TABLE products ALTER COLUMN price_per_stem SET DEFAULT 0
+            `);
+            await client.query(`
+              UPDATE products SET price_per_stem = 0 WHERE price_per_stem IS NULL
+            `);
+            await client.query(`
+              ALTER TABLE products ALTER COLUMN price_per_stem SET NOT NULL
+            `);
+          } else {
+            // Если price_per_stem существует, проверяем тип
+            const typeCheck = await client.query(`
+              SELECT data_type 
+              FROM information_schema.columns 
+              WHERE table_name = 'products' AND column_name = 'price_per_stem'
+            `);
+            
+            if (typeCheck.rows.length > 0 && 
+                (typeCheck.rows[0].data_type === 'numeric' || typeCheck.rows[0].data_type === 'decimal')) {
+              // Конвертируем DECIMAL в INTEGER
+              await client.query(`
+                ALTER TABLE products ALTER COLUMN price_per_stem TYPE INTEGER USING ROUND(price_per_stem)::INTEGER
+              `);
             }
           }
+          
+          // Делаем старое поле price nullable
+          const priceColumnCheck = await client.query(`
+            SELECT is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'products' AND column_name = 'price' AND is_nullable = 'NO'
+          `);
+          
+          if (priceColumnCheck.rows.length > 0) {
+            await client.query(`
+              ALTER TABLE products ALTER COLUMN price DROP NOT NULL
+            `);
+          }
+          
+          // Делаем description nullable
+          const descColumnCheck = await client.query(`
+            SELECT is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'products' AND column_name = 'description' AND is_nullable = 'NO'
+          `);
+          
+          if (descColumnCheck.rows.length > 0) {
+            await client.query(`
+              ALTER TABLE products ALTER COLUMN description DROP NOT NULL
+            `);
+          }
+          
           console.log('✅ Миграция price -> price_per_stem завершена');
         } catch (migrationError) {
           console.log('⚠️  Миграция price:', migrationError.message);
@@ -176,6 +232,44 @@ if (process.env.DATABASE_URL) {
         // Игнорируем ошибки при миграции
       }
     }, 3000);
+    
+    // Миграция таблиц склада
+    setTimeout(async () => {
+      try {
+        const client = await pool.connect();
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const migrationSQL = fs.readFileSync(
+            path.join(__dirname, 'database', 'create-warehouse-tables.sql'),
+            'utf8'
+          );
+          
+          // Выполняем миграцию построчно
+          const statements = migrationSQL.split(';').filter(s => s.trim());
+          for (const statement of statements) {
+            if (statement.trim()) {
+              try {
+                await client.query(statement);
+              } catch (err) {
+                // Игнорируем ошибки "уже существует"
+                if (!err.message.includes('already exists') && 
+                    !err.message.includes('duplicate')) {
+                  console.log('⚠️  Ошибка миграции склада:', err.message);
+                }
+              }
+            }
+          }
+          console.log('✅ Миграция таблиц склада завершена');
+        } catch (migrationError) {
+          console.log('⚠️  Миграция склада:', migrationError.message);
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибки при миграции
+      }
+    }, 4000);
     
     // Выполняем миграцию features в JSONB (если нужно)
     setTimeout(async () => {
@@ -736,15 +830,51 @@ async function createOrderInDb(orderData) {
       const order = orderResult.rows[0];
       console.log('✅ Заказ создан в БД, order_id:', order.id);
       
-      // Добавляем позиции заказа
+      // Проверяем остатки перед добавлением позиций
       for (const item of orderData.items || []) {
+        const productId = item.id;
+        const requestedQty = item.quantity || 0;
+        
+        // Рассчитываем доступный остаток по движениям
+        const stockResult = await client.query(
+          `SELECT 
+            COALESCE(SUM(CASE WHEN type = 'SUPPLY' THEN quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as available
+          FROM stock_movements
+          WHERE product_id = $1`,
+          [productId]
+        );
+        
+        const available = parseInt(stockResult.rows[0]?.available || 0);
+        
+        if (requestedQty > available) {
+          await client.query('ROLLBACK');
+          const productName = item.name || `товар #${productId}`;
+          throw new Error(`Недостаточно товара на складе: ${productName}. Запрошено: ${requestedQty}, доступно: ${available}`);
+        }
+      }
+      
+      // Добавляем позиции заказа и создаем движения
+      for (const item of orderData.items || []) {
+        const productId = item.id;
+        const quantity = item.quantity || 0;
+        
+        // Добавляем позицию заказа
         await client.query(
           `INSERT INTO order_items (order_id, product_id, name, price, quantity)
            VALUES ($1, $2, $3, $4, $5)`,
-          [order.id, item.id, item.name, item.price, item.quantity]
+          [order.id, productId, item.name, item.price, quantity]
+        );
+        
+        // Создаем движение типа SALE
+        await client.query(
+          `INSERT INTO stock_movements (product_id, type, quantity, order_id, comment)
+           VALUES ($1, 'SALE', $2, $3, $4)`,
+          [productId, quantity, order.id, `Продажа по заказу #${order.id}`]
         );
       }
-      console.log('✅ Позиции заказа добавлены, количество:', orderData.items?.length || 0);
+      console.log('✅ Позиции заказа добавлены и движения созданы, количество:', orderData.items?.length || 0);
       
       // Обновляем бонусы пользователя
       if (userId) {
@@ -1986,7 +2116,7 @@ app.post('/api/admin/orders/refresh', checkAdminAuth, async (req, res) => {
   }
 });
 
-// API: Получить склад (остатки товаров)
+// API: Получить склад (остатки товаров с расчетом по движениям)
 app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
@@ -1997,12 +2127,25 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
     try {
       const result = await client.query(
         `SELECT 
-          id, name, type, color, price, image_url,
-          COALESCE(stock, 0) as stock,
-          COALESCE(min_stock, 0) as min_stock,
-          is_active
-        FROM products 
-        ORDER BY name`
+          p.id,
+          p.name,
+          p.type,
+          p.color,
+          p.price_per_stem as price,
+          p.image_url,
+          COALESCE(p.min_stock, 10) as min_stock,
+          p.is_active,
+          COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) as total_supplied,
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as total_sold,
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as total_written_off,
+          COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as stock
+        FROM products p
+        LEFT JOIN stock_movements sm ON p.id = sm.product_id
+        WHERE p.is_active = true
+        GROUP BY p.id, p.name, p.type, p.color, p.price_per_stem, p.image_url, p.min_stock, p.is_active
+        ORDER BY p.name`
       );
       res.json(result.rows);
     } finally {
@@ -2014,16 +2157,241 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Получить поставку по ID
+app.get('/api/admin/warehouse/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT s.*, p.name as product_name
+         FROM supplies s
+         JOIN products p ON s.product_id = p.id
+         WHERE s.id = $1`,
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Поставка не найдена' });
+      }
+      
+      // Рассчитываем доступный остаток для этой поставки
+      const stockResult = await client.query(
+        `SELECT 
+          COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' AND sm.supply_id = $1 THEN sm.quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' AND sm.supply_id = $1 THEN sm.quantity ELSE 0 END), 0) as available
+        FROM stock_movements sm
+        WHERE sm.supply_id = $1`,
+        [id]
+      );
+      
+      const supply = result.rows[0];
+      supply.available_quantity = parseInt(stockResult.rows[0]?.available || supply.quantity);
+      
+      res.json(supply);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения поставки:', error);
+    res.status(500).json({ error: 'Ошибка получения поставки' });
+  }
+});
+
+// API: Обновить поставку (с возможностью списания)
+app.put('/api/admin/warehouse/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const { product_id, quantity, purchase_price, delivery_date, comment, write_off_qty } = req.body;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Проверяем существование поставки
+      const supplyResult = await client.query('SELECT * FROM supplies WHERE id = $1', [id]);
+      if (supplyResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Поставка не найдена' });
+      }
+      
+      const currentSupply = supplyResult.rows[0];
+      
+      // Обновляем поля поставки, если переданы
+      const updates = [];
+      const params = [];
+      let paramIndex = 1;
+      
+      if (product_id !== undefined) {
+        updates.push(`product_id = $${paramIndex}`);
+        params.push(product_id);
+        paramIndex++;
+      }
+      if (quantity !== undefined) {
+        updates.push(`quantity = $${paramIndex}`);
+        params.push(quantity);
+        paramIndex++;
+      }
+      if (purchase_price !== undefined) {
+        updates.push(`unit_purchase_price = $${paramIndex}`);
+        params.push(purchase_price);
+        paramIndex++;
+      }
+      if (delivery_date !== undefined) {
+        updates.push(`delivery_date = $${paramIndex}`);
+        params.push(delivery_date);
+        paramIndex++;
+      }
+      if (comment !== undefined) {
+        updates.push(`comment = $${paramIndex}`);
+        params.push(comment);
+        paramIndex++;
+      }
+      
+      if (updates.length > 0) {
+        updates.push(`updated_at = now()`);
+        await client.query(
+          `UPDATE supplies SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+          [...params, id]
+        );
+      }
+      
+      // Обработка списания
+      if (write_off_qty !== undefined && write_off_qty > 0) {
+        const writeOffQtyInt = parseInt(write_off_qty);
+        
+        if (!Number.isInteger(writeOffQtyInt) || writeOffQtyInt <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Количество списания должно быть целым числом больше 0' });
+        }
+        
+        // Рассчитываем доступный остаток для этой поставки
+        const stockResult = await client.query(
+          `SELECT 
+            COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' AND sm.supply_id = $1 THEN sm.quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' AND sm.supply_id = $1 THEN sm.quantity ELSE 0 END), 0) as available
+          FROM stock_movements sm
+          WHERE sm.supply_id = $1`,
+          [id]
+        );
+        
+        const available = parseInt(stockResult.rows[0]?.available || currentSupply.quantity);
+        
+        if (writeOffQtyInt > available) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ 
+            error: `Недостаточно товара для списания. Доступно: ${available}, запрошено: ${writeOffQtyInt}` 
+          });
+        }
+        
+        // Создаем движение типа WRITE_OFF
+        await client.query(
+          `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
+           VALUES ($1, 'WRITE_OFF', $2, $3, $4)`,
+          [currentSupply.product_id, writeOffQtyInt, id, comment || `Списание по поставке #${id}`]
+        );
+      }
+      
+      await client.query('COMMIT');
+      
+      // Возвращаем обновленную поставку
+      const updatedResult = await client.query(
+        `SELECT s.*, p.name as product_name
+         FROM supplies s
+         JOIN products p ON s.product_id = p.id
+         WHERE s.id = $1`,
+        [id]
+      );
+      
+      res.json(updatedResult.rows[0]);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления поставки:', error);
+    res.status(500).json({ error: 'Ошибка обновления поставки: ' + error.message });
+  }
+});
+
+// API: Получить остатки по складу (детальная статистика)
+app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT 
+          p.id as product_id,
+          p.name as product_name,
+          COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) as total_supplied,
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as total_sold,
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as total_written_off,
+          COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as stock,
+          COALESCE(p.min_stock, 10) as min_stock,
+          CASE 
+            WHEN COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
+                 COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
+                 COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) <= 0 THEN 'out_of_stock'
+            WHEN COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
+                 COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
+                 COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) <= COALESCE(p.min_stock, 10) THEN 'low_stock'
+            ELSE 'sufficient'
+          END as status
+        FROM products p
+        LEFT JOIN stock_movements sm ON p.id = sm.product_id
+        WHERE p.is_active = true
+        GROUP BY p.id, p.name, p.min_stock
+        ORDER BY p.name`
+      );
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения остатков:', error);
+    res.status(500).json({ error: 'Ошибка получения остатков' });
+  }
+});
+
 // API: Добавить поставку
 app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { product_id, quantity, purchase_price, delivery_date, supplier, invoice_number, comment } = req.body;
+  const { product_id, quantity, purchase_price, delivery_date, comment } = req.body;
   
-  if (!product_id || !quantity) {
-    return res.status(400).json({ error: 'Товар и количество обязательны' });
+  if (!product_id || !quantity || !purchase_price || !delivery_date) {
+    return res.status(400).json({ error: 'Товар, количество, цена закупки и дата поставки обязательны' });
+  }
+  
+  // Валидация
+  const quantityInt = parseInt(quantity);
+  const purchasePriceFloat = parseFloat(purchase_price);
+  
+  if (!Number.isInteger(quantityInt) || quantityInt <= 0) {
+    return res.status(400).json({ error: 'Количество должно быть целым числом больше 0' });
+  }
+  
+  if (isNaN(purchasePriceFloat) || purchasePriceFloat <= 0) {
+    return res.status(400).json({ error: 'Цена закупки должна быть числом больше 0' });
   }
   
   try {
@@ -2031,9 +2399,9 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
     try {
       await client.query('BEGIN');
       
-      // Обновляем остаток товара
+      // Проверяем существование товара
       const productResult = await client.query(
-        'SELECT stock FROM products WHERE id = $1',
+        'SELECT id FROM products WHERE id = $1',
         [product_id]
       );
       
@@ -2042,19 +2410,25 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Товар не найден' });
       }
       
-      const currentStock = productResult.rows[0].stock || 0;
-      const newStock = currentStock + parseInt(quantity);
-      
-      await client.query(
-        'UPDATE products SET stock = $1, updated_at = now() WHERE id = $2',
-        [newStock, product_id]
+      // Создаем поставку
+      const supplyResult = await client.query(
+        `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, comment)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [product_id, quantityInt, purchasePriceFloat, delivery_date, comment || null]
       );
       
-      // Здесь можно добавить таблицу поставок (deliveries) для истории
-      // Пока просто обновляем остаток
+      const supply = supplyResult.rows[0];
+      
+      // Создаем движение типа SUPPLY
+      await client.query(
+        `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
+         VALUES ($1, 'SUPPLY', $2, $3, $4)`,
+        [product_id, quantityInt, supply.id, comment || null]
+      );
       
       await client.query('COMMIT');
-      res.json({ success: true, newStock });
+      res.json(supply);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -2063,7 +2437,7 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
     }
   } catch (error) {
     console.error('Ошибка добавления поставки:', error);
-    res.status(500).json({ error: 'Ошибка добавления поставки' });
+    res.status(500).json({ error: 'Ошибка добавления поставки: ' + error.message });
   }
 });
 

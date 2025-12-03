@@ -15,8 +15,6 @@ export function WarehouseForm({ authToken }) {
     quantity: '',
     purchase_price: '',
     delivery_date: new Date().toISOString().split('T')[0],
-    supplier: '',
-    invoice_number: '',
     comment: '',
   });
 
@@ -41,8 +39,22 @@ export function WarehouseForm({ authToken }) {
   };
 
   const handleSaveDelivery = async () => {
-    if (!deliveryForm.product_id || !deliveryForm.quantity) {
-      toast.error('Заполните обязательные поля');
+    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date) {
+      toast.error('Заполните все обязательные поля');
+      return;
+    }
+
+    // Валидация
+    const quantityInt = parseInt(deliveryForm.quantity);
+    const purchasePriceFloat = parseFloat(deliveryForm.purchase_price);
+    
+    if (!Number.isInteger(quantityInt) || quantityInt <= 0) {
+      toast.error('Количество должно быть целым числом больше 0');
+      return;
+    }
+    
+    if (isNaN(purchasePriceFloat) || purchasePriceFloat <= 0) {
+      toast.error('Цена закупки должна быть числом больше 0');
       return;
     }
 
@@ -56,11 +68,9 @@ export function WarehouseForm({ authToken }) {
         },
         body: JSON.stringify({
           product_id: parseInt(deliveryForm.product_id),
-          quantity: parseInt(deliveryForm.quantity),
-          purchase_price: deliveryForm.purchase_price ? parseFloat(deliveryForm.purchase_price) : null,
-          delivery_date: deliveryForm.delivery_date || null,
-          supplier: deliveryForm.supplier || null,
-          invoice_number: deliveryForm.invoice_number || null,
+          quantity: quantityInt,
+          purchase_price: purchasePriceFloat,
+          delivery_date: deliveryForm.delivery_date,
           comment: deliveryForm.comment || null,
         }),
       });
@@ -154,26 +164,6 @@ export function WarehouseForm({ authToken }) {
               />
               <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Поставщик</label>
-            <input
-              type="text"
-              value={deliveryForm.supplier}
-              onChange={(e) => setDeliveryForm({ ...deliveryForm, supplier: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="Название компании"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Номер накладной</label>
-            <input
-              type="text"
-              value={deliveryForm.invoice_number}
-              onChange={(e) => setDeliveryForm({ ...deliveryForm, invoice_number: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="INV-2024-001"
-            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Комментарий</label>

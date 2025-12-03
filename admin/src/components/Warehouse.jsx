@@ -17,7 +17,7 @@ export function Warehouse({ authToken }) {
 
   const loadProducts = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/admin/warehouse`, {
+      const response = await fetch(`${API_BASE}/api/admin/warehouse/stock`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -27,8 +27,8 @@ export function Warehouse({ authToken }) {
         const data = await response.json();
         setProducts(data);
       } else {
-        // Fallback на products API
-        const fallbackResponse = await fetch(`${API_BASE}/api/admin/products`, {
+        // Fallback на обычный warehouse API
+        const fallbackResponse = await fetch(`${API_BASE}/api/admin/warehouse`, {
           headers: {
             'Authorization': `Bearer ${authToken}`,
           },
@@ -45,34 +45,26 @@ export function Warehouse({ authToken }) {
     }
   };
 
-  const updateStock = async (productId, newStock) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/products/${productId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ stock: newStock }),
-      });
-
-      if (response.ok) {
-        await loadProducts();
-      }
-    } catch (error) {
-      console.error('Ошибка обновления остатка:', error);
-      alert('Ошибка обновления остатка');
-    }
-  };
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = !filterLowStock || (product.stock !== null && product.stock < (product.min_stock || 10));
+    const matchesSearch = (product.product_name || product.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const stock = product.stock !== null && product.stock !== undefined ? product.stock : 0;
+    const minStock = product.min_stock || 10;
+    const matchesFilter = !filterLowStock || stock < minStock || stock <= 0;
     return matchesSearch && matchesFilter;
   });
 
-  const lowStockCount = products.filter(p => p.stock !== null && p.stock < (p.min_stock || 10)).length;
-  const totalStockValue = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0);
+  const lowStockCount = products.filter(p => {
+    const stock = p.stock !== null && p.stock !== undefined ? p.stock : 0;
+    const minStock = p.min_stock || 10;
+    return stock < minStock || stock <= 0;
+  }).length;
+  
+  const totalStockValue = products.reduce((sum, p) => {
+    const stock = p.stock !== null && p.stock !== undefined ? p.stock : 0;
+    const price = p.price || 0;
+    return sum + (stock * price);
+  }, 0);
 
   if (loading) {
     return <div className="p-6">Загрузка...</div>;
@@ -164,68 +156,63 @@ export function Warehouse({ authToken }) {
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4">ID</th>
                 <th className="text-left py-3 px-4">Товар</th>
+                <th className="text-left py-3 px-4">Поставлено</th>
+                <th className="text-left py-3 px-4">Продано</th>
+                <th className="text-left py-3 px-4">Списано</th>
                 <th className="text-left py-3 px-4">Остаток</th>
                 <th className="text-left py-3 px-4">Мин. остаток</th>
-                <th className="text-left py-3 px-4">Цена</th>
                 <th className="text-left py-3 px-4">Статус</th>
-                <th className="text-right py-3 px-4">Действия</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.map((product) => {
-                const stock = product.stock !== null ? product.stock : 'Не указан';
+                const productId = product.product_id || product.id;
+                const productName = product.product_name || product.name || 'Неизвестный товар';
+                const totalSupplied = product.total_supplied || 0;
+                const totalSold = product.total_sold || 0;
+                const totalWrittenOff = product.total_written_off || 0;
+                const stock = product.stock !== null && product.stock !== undefined ? product.stock : 0;
                 const minStock = product.min_stock || 10;
-                const isLowStock = product.stock !== null && product.stock < minStock;
+                const status = product.status || (stock <= 0 ? 'out_of_stock' : stock < minStock ? 'low_stock' : 'sufficient');
+                const isLowStock = stock < minStock || stock <= 0;
 
                 return (
-                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 text-gray-600">#{product.id}</td>
+                  <tr key={productId} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4 text-gray-600">#{productId}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {product.image_url && (
                           <img
                             src={product.image_url}
-                            alt={product.name}
+                            alt={productName}
                             className="w-12 h-12 rounded-lg object-cover"
                           />
                         )}
-                        <span>{product.name}</span>
+                        <span>{productName}</span>
                       </div>
                     </td>
+                    <td className="py-3 px-4 text-gray-600">{totalSupplied}</td>
+                    <td className="py-3 px-4 text-gray-600">{totalSold}</td>
+                    <td className="py-3 px-4 text-gray-600">{totalWrittenOff}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <span className={isLowStock ? 'text-orange-600 font-semibold' : ''}>
+                        <span className={isLowStock ? 'text-orange-600 font-semibold' : 'font-semibold'}>
                           {stock}
                         </span>
                         {isLowStock && <AlertTriangle className="w-4 h-4 text-orange-600" />}
                       </div>
                     </td>
                     <td className="py-3 px-4 text-gray-600">{minStock}</td>
-                    <td className="py-3 px-4">{product.price} ₽</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded text-xs ${
-                        product.is_active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
+                        status === 'out_of_stock' 
+                          ? 'bg-red-100 text-red-800'
+                          : status === 'low_stock'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-green-100 text-green-800'
                       }`}>
-                        {product.is_active ? 'Активен' : 'Скрыт'}
+                        {status === 'out_of_stock' ? 'Нет на складе' : status === 'low_stock' ? 'Низкий остаток' : 'Достаточно'}
                       </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => {
-                            const newStock = prompt(`Текущий остаток: ${stock}\nВведите новое значение:`, stock);
-                            if (newStock !== null && !isNaN(newStock)) {
-                              updateStock(product.id, parseInt(newStock));
-                            }
-                          }}
-                          className="p-2 hover:bg-gray-100 rounded text-blue-600"
-                          title="Изменить остаток"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 );
