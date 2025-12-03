@@ -60,12 +60,9 @@ export function Warehouse({ authToken }) {
   const filteredProducts = products.filter(product => {
     const matchesSearch = (product.product_name || product.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const stock = product.stock !== null && product.stock !== undefined ? product.stock : 0;
-    const totalSupplied = product.total_supplied || 0;
     const minStock = product.min_stock || 10;
-    // Показываем товар, если есть поставки или если он соответствует фильтру
     const matchesFilter = !filterLowStock || stock < minStock || stock <= 0;
-    // Показываем товар, если есть хотя бы одна поставка или он соответствует поиску
-    return matchesSearch && matchesFilter && (totalSupplied > 0 || searchQuery.length > 0);
+    return matchesSearch && matchesFilter;
   });
 
   const lowStockCount = products.filter(p => {
