@@ -101,9 +101,16 @@ async function loadProducts() {
     try {
         const response = await fetch('/api/products');
         products = await response.json();
-        // Инициализация количества для каждого товара
+        // Инициализация количества для каждого товара с учетом minStemQuantity
         products.forEach(p => {
-            productQuantities[p.id] = 1;
+            const minQty = (p.minStemQuantity && p.minStemQuantity > 0) 
+                ? p.minStemQuantity 
+                : (p.min_order_quantity && p.min_order_quantity > 0)
+                ? p.min_order_quantity
+                : (p.min_stem_quantity && p.min_stem_quantity > 0)
+                ? p.min_stem_quantity
+                : 1;
+            productQuantities[p.id] = minQty;
         });
         filteredProducts = [...products];
         renderProducts();
@@ -240,7 +247,14 @@ function changeProductQuantity(productId, delta) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    const minQty = product.minStemQuantity || product.min_order_quantity || product.min_stem_quantity || 1;
+    // Используем minStemQuantity, если оно задано и больше 0, иначе 1
+    const minQty = (product.minStemQuantity && product.minStemQuantity > 0)
+        ? product.minStemQuantity
+        : (product.min_order_quantity && product.min_order_quantity > 0)
+        ? product.min_order_quantity
+        : (product.min_stem_quantity && product.min_stem_quantity > 0)
+        ? product.min_stem_quantity
+        : 1;
     const currentQty = productQuantities[productId] || minQty;
     const newQty = Math.max(minQty, Math.min(500, currentQty + delta));
     productQuantities[productId] = newQty;
@@ -289,7 +303,14 @@ function addToCart(productId, quantity = 1) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    const minQty = product.min_order_quantity || 1;
+    // Используем minStemQuantity, если оно задано и больше 0, иначе 1
+    const minQty = (product.minStemQuantity && product.minStemQuantity > 0)
+        ? product.minStemQuantity
+        : (product.min_order_quantity && product.min_order_quantity > 0)
+        ? product.min_order_quantity
+        : (product.min_stem_quantity && product.min_stem_quantity > 0)
+        ? product.min_stem_quantity
+        : 1;
     const actualQty = Math.max(minQty, quantity);
 
     const existingItem = cart.find(item => item.id === productId);
