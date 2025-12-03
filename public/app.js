@@ -240,7 +240,7 @@ function changeProductQuantity(productId, delta) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    const minQty = product.min_order_quantity || 1;
+    const minQty = product.minStemQuantity || product.min_order_quantity || product.min_stem_quantity || 1;
     const currentQty = productQuantities[productId] || minQty;
     const newQty = Math.max(minQty, Math.min(500, currentQty + delta));
     productQuantities[productId] = newQty;
