@@ -71,9 +71,47 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// API endpoint для получения каталога
-app.get('/api/products', (req, res) => {
-  const products = [
+// API endpoint для получения каталога (использует БД или fallback)
+app.get('/api/products', async (req, res) => {
+  if (pool) {
+    // Используем БД
+    try {
+      const client = await pool.connect();
+      try {
+        const result = await client.query(
+          'SELECT * FROM products WHERE is_active = true ORDER BY created_at DESC'
+        );
+        
+        // Преобразуем в формат для фронтенда
+        const products = result.rows.map(row => ({
+          id: row.id,
+          name: row.name,
+          description: row.description || '',
+          price: row.price,
+          image: row.image_url || 'https://via.placeholder.com/300x300?text=Цветы',
+          type: row.type || '',
+          color: row.color || '',
+          features: row.features || []
+        }));
+        
+        res.json(products);
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Ошибка получения товаров из БД:', error);
+      // Fallback на хардкод при ошибке БД
+      res.json(getDefaultProducts());
+    }
+  } else {
+    // Fallback на хардкод если БД не подключена
+    res.json(getDefaultProducts());
+  }
+});
+
+// Функция с дефолтными товарами (fallback)
+function getDefaultProducts() {
+  return [
     {
       id: 1,
       name: 'Розы красные',
@@ -175,8 +213,7 @@ app.get('/api/products', (req, res) => {
       features: ['durable']
     }
   ];
-  res.json(products);
-});
+}
 
 // ==================== РАБОТА С БАЗОЙ ДАННЫХ ====================
 
@@ -677,10 +714,301 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
+// ==================== АДМИНКА ====================
+
+// Простая авторизация для админки (можно улучшить)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'flowbox-admin-secret';
+
+// Middleware для проверки авторизации админа
+function checkAdminAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (authHeader === `Bearer ${ADMIN_PASSWORD}`) {
+    req.isAdmin = true;
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+// API: Получить все товары (для админки)
+app.get('/api/admin/products', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT * FROM products ORDER BY created_at DESC'
+      );
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения товаров:', error);
+    res.status(500).json({ error: 'Ошибка получения товаров' });
+  }
+});
+
+// API: Создать товар
+app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name, description, price, image_url, type, color, features } = req.body;
+  
+  if (!name || !price) {
+    return res.status(400).json({ error: 'Название и цена обязательны' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `INSERT INTO products (name, description, price, image_url, type, color, features)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          name,
+          description || null,
+          price,
+          image_url || null,
+          type || null,
+          color || null,
+          features || []
+        ]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания товара:', error);
+    res.status(500).json({ error: 'Ошибка создания товара' });
+  }
+});
+
+// API: Обновить товар
+app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const { name, description, price, image_url, type, color, features, is_active } = req.body;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `UPDATE products 
+         SET name = COALESCE($1, name),
+             description = COALESCE($2, description),
+             price = COALESCE($3, price),
+             image_url = COALESCE($4, image_url),
+             type = COALESCE($5, type),
+             color = COALESCE($6, color),
+             features = COALESCE($7, features),
+             is_active = COALESCE($8, is_active),
+             updated_at = now()
+         WHERE id = $9
+         RETURNING *`,
+        [name, description, price, image_url, type, color, features, is_active, id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Товар не найден' });
+      }
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления товара:', error);
+    res.status(500).json({ error: 'Ошибка обновления товара' });
+  }
+});
+
+// API: Удалить товар
+app.delete('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('DELETE FROM products WHERE id = $1', [id]);
+      res.json({ success: true });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка удаления товара:', error);
+    res.status(500).json({ error: 'Ошибка удаления товара' });
+  }
+});
+
+// API: Получить все заказы (для админки)
+app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { status } = req.query; // Опциональный фильтр по статусу
+  
+  try {
+    const client = await pool.connect();
+    try {
+      let query = `
+        SELECT 
+          o.*,
+          u.first_name as customer_name,
+          u.phone as customer_phone,
+          u.email as customer_email,
+          json_agg(
+            json_build_object(
+              'id', oi.id,
+              'product_id', oi.product_id,
+              'name', oi.name,
+              'price', oi.price,
+              'quantity', oi.quantity
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL) as items
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+      `;
+      
+      const params = [];
+      if (status) {
+        query += ' WHERE o.status = $1';
+        params.push(status);
+      }
+      
+      query += ' GROUP BY o.id, u.id ORDER BY o.created_at DESC';
+      
+      const result = await client.query(query, params);
+      
+      // Преобразуем address_json из JSONB в объект
+      const orders = result.rows.map(row => ({
+        ...row,
+        address_data: row.address_json || {}
+      }));
+      
+      res.json(orders);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения заказов:', error);
+    res.status(500).json({ error: 'Ошибка получения заказов' });
+  }
+});
+
+// API: Получить один заказ по ID
+app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT 
+          o.*,
+          u.first_name as customer_name,
+          u.last_name as customer_last_name,
+          u.phone as customer_phone,
+          u.email as customer_email,
+          json_agg(
+            json_build_object(
+              'id', oi.id,
+              'product_id', oi.product_id,
+              'name', oi.name,
+              'price', oi.price,
+              'quantity', oi.quantity
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL) as items
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.id = $1
+        GROUP BY o.id, u.id`,
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      const order = result.rows[0];
+      res.json({
+        ...order,
+        address_data: order.address_json || {}
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения заказа:', error);
+    res.status(500).json({ error: 'Ошибка получения заказа' });
+  }
+});
+
+// API: Обновить статус заказа
+app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  if (!['active', 'completed', 'cancelled'].includes(status)) {
+    return res.status(400).json({ error: 'Неверный статус' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'UPDATE orders SET status = $1, updated_at = now() WHERE id = $2 RETURNING *',
+        [status, id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления статуса заказа:', error);
+    res.status(500).json({ error: 'Ошибка обновления статуса заказа' });
+  }
+});
+
+// Статические файлы для админки
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
 // Запуск Express сервера
 const server = app.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);
   console.log(`📱 MiniApp доступен по адресу: ${process.env.WEBAPP_URL || `http://localhost:${PORT}`}`);
+  console.log(`🔐 Админка доступна по адресу: ${process.env.WEBAPP_URL || `http://localhost:${PORT}`}/admin`);
 });
 
 // Для Render.com и других платформ
