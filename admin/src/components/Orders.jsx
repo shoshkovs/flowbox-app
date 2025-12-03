@@ -205,12 +205,14 @@ export function Orders({ authToken }) {
                           <div className="text-sm text-gray-500">{order.customer_phone || '-'}</div>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div>
-                          <div>{order.recipient_name || '-'}</div>
-                          <div className="text-sm text-gray-500">{order.recipient_phone || '-'}</div>
-                        </div>
-                      </td>
+                  <td className="py-3 px-4">
+                    <div>
+                      <div>{order.recipient_name || order.customer_name || '-'}</div>
+                      <div className="text-sm text-gray-500">
+                        {order.recipient_phone || order.customer_phone || '-'}
+                      </div>
+                    </div>
+                  </td>
                       <td className="py-3 px-4 font-semibold">
                         {parseFloat(order.total || 0).toLocaleString()} ₽
                       </td>
