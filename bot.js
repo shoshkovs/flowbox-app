@@ -194,6 +194,7 @@ if (process.env.DATABASE_URL) {
       // Игнорируем ошибки при миграции
     }
   }, 5000); // Ждем 5 секунд после подключения
+  }); // Закрываем первый setTimeout
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
   console.log('💡 Для использования БД добавь переменную DATABASE_URL в Environment Render.com');
@@ -324,7 +325,7 @@ app.get('/api/products', async (req, res) => {
             pricePerStem: row.price_per_stem || row.price || 0,
             minStemQuantity: row.min_stem_quantity || row.min_order_quantity || 1
           };
-        });
+        }));
         
         res.json(products);
       } finally {
