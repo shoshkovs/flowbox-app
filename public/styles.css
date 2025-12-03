@@ -1501,10 +1501,24 @@ h1, h2, h3, .font-bold {
     cursor: pointer;
     padding: 0;
     line-height: 1;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .help-icon-btn:active {
     background: #f5f5f5;
+    transform: scale(0.95);
+}
+
+.total-detail-label-with-help {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: auto;
+    position: relative;
 }
 
 .total-detail-value {
