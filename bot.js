@@ -2,11 +2,57 @@ const { Telegraf } = require('telegraf');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { Pool } = require('pg');
 require('dotenv').config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Подключение к базе данных (если DATABASE_URL установлен)
+let pool = null;
+
+// Диагностика: проверяем наличие DATABASE_URL
+console.log('🔍 Проверка DATABASE_URL:', process.env.DATABASE_URL ? '✅ Установлен' : '❌ НЕ УСТАНОВЛЕН');
+if (process.env.DATABASE_URL) {
+  console.log('📝 DATABASE_URL начинается с:', process.env.DATABASE_URL.substring(0, 30) + '...');
+}
+
+if (process.env.DATABASE_URL) {
+  // Определяем, нужен ли SSL (для Render.com, Supabase, Neon и других облачных БД)
+  const needsSSL = process.env.DATABASE_URL.includes('render.com') || 
+                    process.env.DATABASE_URL.includes('supabase') || 
+                    process.env.DATABASE_URL.includes('neon') ||
+                    process.env.DATABASE_URL.includes('railway.app');
+  
+  console.log('🔐 SSL требуется:', needsSSL ? 'Да' : 'Нет');
+  
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: needsSSL ? { rejectUnauthorized: false } : false,
+    max: 10, // Максимум соединений в пуле
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
+  });
+  
+  pool.on('error', (err) => {
+    console.error('❌ Ошибка подключения к БД:', err);
+  });
+  
+  // Тестовое подключение
+  pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+      console.error('❌ Ошибка тестового подключения к БД:', err.message);
+      console.error('Детали ошибки:', err);
+    } else {
+      console.log('✅ Подключение к базе данных установлено и протестировано');
+      console.log('📅 Время БД:', res.rows[0].now);
+    }
+  });
+} else {
+  console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
+  console.log('💡 Для использования БД добавь переменную DATABASE_URL в Environment Render.com');
+}
 
 // Статические файлы для MiniApp с заголовками против кеширования
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -132,11 +178,315 @@ app.get('/api/products', (req, res) => {
   res.json(products);
 });
 
-// Путь к файлу для постоянного хранения данных
+// ==================== РАБОТА С БАЗОЙ ДАННЫХ ====================
+
+// Получить или создать пользователя в БД
+async function getOrCreateUser(telegramId, telegramUser = null, profile = null) {
+  if (!pool) return null;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Ищем пользователя
+      let result = await client.query(
+        'SELECT * FROM users WHERE telegram_id = $1',
+        [telegramId]
+      );
+      
+      if (result.rows.length === 0) {
+        // Создаем нового пользователя
+        result = await client.query(
+          `INSERT INTO users (telegram_id, username, first_name, last_name, phone, email, bonuses)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [
+            telegramId,
+            telegramUser?.username || profile?.username || null,
+            telegramUser?.first_name || profile?.name || null,
+            telegramUser?.last_name || null,
+            profile?.phone || null,
+            profile?.email || null,
+            500 // Начальные бонусы
+          ]
+        );
+      } else {
+        // Обновляем данные пользователя, если они изменились
+        const user = result.rows[0];
+        if (telegramUser || profile) {
+          result = await client.query(
+            `UPDATE users 
+             SET username = COALESCE($1, username),
+                 first_name = COALESCE($2, first_name),
+                 last_name = COALESCE($3, last_name),
+                 phone = COALESCE($4, phone),
+                 email = COALESCE($5, email),
+                 updated_at = now()
+             WHERE telegram_id = $6
+             RETURNING *`,
+            [
+              telegramUser?.username || profile?.username || null,
+              telegramUser?.first_name || profile?.name || null,
+              telegramUser?.last_name || null,
+              profile?.phone || null,
+              profile?.email || null,
+              telegramId
+            ]
+          );
+        }
+      }
+      
+      return result.rows[0];
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка getOrCreateUser:', error);
+    return null;
+  }
+}
+
+// Сохранение адресов пользователя
+async function saveUserAddresses(userId, addresses) {
+  if (!pool) return false;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Удаляем старые адреса
+      await client.query('DELETE FROM addresses WHERE user_id = $1', [userId]);
+      
+      // Добавляем новые адреса
+      for (const addr of addresses || []) {
+        await client.query(
+          `INSERT INTO addresses 
+           (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            userId,
+            addr.name || 'Новый адрес',
+            addr.city || '',
+            addr.street || '',
+            addr.house || '',
+            addr.entrance || null,
+            addr.apartment || null,
+            addr.floor || null,
+            addr.intercom || null,
+            addr.comment || null,
+            addr.isDefault || false
+          ]
+        );
+      }
+      
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка saveUserAddresses:', error);
+    return false;
+  }
+}
+
+// Загрузка адресов пользователя
+async function loadUserAddresses(userId) {
+  if (!pool) return [];
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT * FROM addresses WHERE user_id = $1 ORDER BY created_at DESC',
+        [userId]
+      );
+      
+      return result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        city: row.city,
+        street: row.street,
+        house: row.house,
+        entrance: row.entrance,
+        apartment: row.apartment,
+        floor: row.floor,
+        intercom: row.intercom,
+        comment: row.comment,
+        isDefault: row.is_default
+      }));
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка loadUserAddresses:', error);
+    return [];
+  }
+}
+
+// Сохранение заказа в БД
+async function createOrderInDb(orderData) {
+  if (!pool) {
+    console.log('⚠️  pool не инициализирован, проверь DATABASE_URL');
+    return null;
+  }
+  
+  try {
+    console.log('📦 Создание заказа в БД:', {
+      userId: orderData.userId,
+      total: orderData.total,
+      itemsCount: orderData.items?.length || 0
+    });
+    
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Получаем user_id по telegram_id
+      let userId = null;
+      if (orderData.userId) {
+        const userResult = await client.query(
+          'SELECT id FROM users WHERE telegram_id = $1',
+          [orderData.userId]
+        );
+        if (userResult.rows.length > 0) {
+          userId = userResult.rows[0].id;
+          console.log('✅ Найден пользователь в БД, user_id:', userId);
+        } else {
+          console.log('⚠️  Пользователь не найден в БД, создаем заказ без user_id');
+        }
+      }
+      
+      // Создаем заказ
+      const orderResult = await client.query(
+        `INSERT INTO orders 
+         (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
+          recipient_name, recipient_phone, address_string, address_json, delivery_date, delivery_time, comment, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active')
+         RETURNING *`,
+        [
+          userId,
+          orderData.total,
+          orderData.flowersTotal,
+          orderData.serviceFee || 450,
+          orderData.deliveryPrice || 0,
+          orderData.bonusUsed || 0,
+          orderData.bonusEarned || 0,
+          orderData.recipientName || null,
+          orderData.recipientPhone || null,
+          orderData.address,
+          JSON.stringify(orderData.addressData || {}),
+          orderData.deliveryDate || null,
+          orderData.deliveryTime || null,
+          orderData.comment || null
+        ]
+      );
+      
+      const order = orderResult.rows[0];
+      console.log('✅ Заказ создан в БД, order_id:', order.id);
+      
+      // Добавляем позиции заказа
+      for (const item of orderData.items || []) {
+        await client.query(
+          `INSERT INTO order_items (order_id, product_id, name, price, quantity)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [order.id, item.id, item.name, item.price, item.quantity]
+        );
+      }
+      console.log('✅ Позиции заказа добавлены, количество:', orderData.items?.length || 0);
+      
+      // Обновляем бонусы пользователя
+      if (userId) {
+        await client.query(
+          `UPDATE users 
+           SET bonuses = bonuses - $1 + $2
+           WHERE id = $3`,
+          [orderData.bonusUsed || 0, orderData.bonusEarned || 0, userId]
+        );
+        console.log('✅ Бонусы пользователя обновлены');
+      }
+      
+      await client.query('COMMIT');
+      console.log('✅ Транзакция завершена успешно');
+      
+      return {
+        orderId: order.id,
+        telegramOrderId: Date.now() // Для совместимости с фронтендом
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('❌ Ошибка в транзакции, откат:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('❌ Ошибка createOrderInDb:', error.message);
+    console.error('Детали ошибки:', error);
+    return null;
+  }
+}
+
+// Загрузка заказов пользователя
+async function loadUserOrders(userId, status = null) {
+  if (!pool) return [];
+  
+  try {
+    const client = await pool.connect();
+    try {
+      let query = `
+        SELECT o.*, 
+               json_agg(json_build_object(
+                 'id', oi.product_id,
+                 'name', oi.name,
+                 'price', oi.price,
+                 'quantity', oi.quantity
+               )) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.user_id = $1
+      `;
+      
+      const params = [userId];
+      if (status) {
+        query += ' AND o.status = $2';
+        params.push(status);
+      }
+      
+      query += ' GROUP BY o.id ORDER BY o.created_at DESC';
+      
+      const result = await client.query(query, params);
+      
+      return result.rows.map(row => ({
+        id: row.id,
+        date: new Date(row.created_at).toLocaleDateString('ru-RU'),
+        items: row.items.filter(item => item.id !== null),
+        total: row.total,
+        address: row.address_string,
+        deliveryDate: row.delivery_date ? new Date(row.delivery_date).toISOString().split('T')[0] : null,
+        deliveryTime: row.delivery_time,
+        status: row.status,
+        createdAt: row.created_at
+      }));
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка loadUserOrders:', error);
+    return [];
+  }
+}
+
+// ==================== FALLBACK: ФАЙЛОВОЕ ХРАНИЛИЩЕ ====================
+
+// Путь к файлу для постоянного хранения данных (fallback)
 const DATA_FILE = path.join(__dirname, 'user-data.json');
 
 // Функция загрузки данных из файла
-function loadUserData() {
+function loadUserDataFromFile() {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const data = fs.readFileSync(DATA_FILE, 'utf8');
@@ -149,7 +499,7 @@ function loadUserData() {
 }
 
 // Функция сохранения данных в файл
-function saveUserData(data) {
+function saveUserDataToFile(data) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
@@ -157,67 +507,174 @@ function saveUserData(data) {
   }
 }
 
-// Загружаем данные при старте сервера
-const userDataStore = loadUserData();
-console.log(`📦 Загружены данные для ${Object.keys(userDataStore).length} пользователей`);
+// Загружаем данные при старте сервера (только для fallback)
+const userDataStore = pool ? {} : loadUserDataFromFile();
+if (!pool) {
+  console.log(`📦 Загружены данные для ${Object.keys(userDataStore).length} пользователей (файловое хранилище)`);
+}
 
 // API endpoint для сохранения данных пользователя
-app.post('/api/user-data', (req, res) => {
+app.post('/api/user-data', async (req, res) => {
   const { userId, cart, addresses, profile, activeOrders, completedOrders, bonuses } = req.body;
   
   if (!userId) {
     return res.status(400).json({ error: 'userId required' });
   }
   
-  // Сохраняем существующие данные, если они есть, чтобы не потерять их
-  const existingData = userDataStore[userId] || {};
-  
-  userDataStore[userId] = {
-    cart: cart !== undefined ? cart : (existingData.cart || []),
-    addresses: addresses !== undefined ? addresses : (existingData.addresses || []),
-    profile: profile !== undefined ? profile : (existingData.profile || null),
-    activeOrders: activeOrders !== undefined ? activeOrders : (existingData.activeOrders || []),
-    completedOrders: completedOrders !== undefined ? completedOrders : (existingData.completedOrders || []),
-    bonuses: bonuses !== undefined ? bonuses : (existingData.bonuses !== undefined ? existingData.bonuses : 500),
-    updatedAt: new Date().toISOString()
-  };
-  
-  // Сохраняем данные в файл для постоянного хранения
-  saveUserData(userDataStore);
-  
-  console.log(`💾 Сохранены данные для пользователя ${userId}: адресов=${userDataStore[userId].addresses.length}, заказов=${userDataStore[userId].activeOrders.length}`);
-  
-  res.json({ success: true });
+  try {
+    if (pool) {
+      // Работа с БД
+      const user = await getOrCreateUser(userId, null, profile);
+      if (!user) {
+        return res.status(500).json({ error: 'Не удалось создать/найти пользователя' });
+      }
+      
+      // Сохраняем адреса
+      if (addresses !== undefined) {
+        await saveUserAddresses(user.id, addresses);
+      }
+      
+      // Обновляем бонусы
+      if (bonuses !== undefined) {
+        const client = await pool.connect();
+        try {
+          await client.query(
+            'UPDATE users SET bonuses = $1 WHERE id = $2',
+            [bonuses, user.id]
+          );
+        } finally {
+          client.release();
+        }
+      }
+      
+      console.log(`💾 Сохранены данные для пользователя ${userId} (БД)`);
+    } else {
+      // Fallback: файловое хранилище
+      const existingData = userDataStore[userId] || {};
+      
+      userDataStore[userId] = {
+        cart: cart !== undefined ? cart : (existingData.cart || []),
+        addresses: addresses !== undefined ? addresses : (existingData.addresses || []),
+        profile: profile !== undefined ? profile : (existingData.profile || null),
+        activeOrders: activeOrders !== undefined ? activeOrders : (existingData.activeOrders || []),
+        completedOrders: completedOrders !== undefined ? completedOrders : (existingData.completedOrders || []),
+        bonuses: bonuses !== undefined ? bonuses : (existingData.bonuses !== undefined ? existingData.bonuses : 500),
+        updatedAt: new Date().toISOString()
+      };
+      
+      saveUserDataToFile(userDataStore);
+      
+      console.log(`💾 Сохранены данные для пользователя ${userId} (файл): адресов=${userDataStore[userId].addresses.length}, заказов=${userDataStore[userId].activeOrders.length}`);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка сохранения данных:', error);
+    res.status(500).json({ error: 'Ошибка сохранения данных' });
+  }
 });
 
 // API endpoint для загрузки данных пользователя
-app.get('/api/user-data/:userId', (req, res) => {
+app.get('/api/user-data/:userId', async (req, res) => {
   const { userId } = req.params;
-  const userData = userDataStore[userId] || {
-    cart: [],
-    addresses: [],
-    profile: null,
-    activeOrders: [],
-    completedOrders: [],
-    bonuses: 500
-  };
   
-  console.log(`📥 Загружены данные для пользователя ${userId}: адресов=${userData.addresses.length}, заказов=${userData.activeOrders.length}`);
-  
-  res.json(userData);
+  try {
+    if (pool) {
+      // Работа с БД
+      const user = await getOrCreateUser(userId);
+      if (!user) {
+        return res.json({
+          cart: [],
+          addresses: [],
+          profile: null,
+          activeOrders: [],
+          completedOrders: [],
+          bonuses: 500
+        });
+      }
+      
+      const addresses = await loadUserAddresses(user.id);
+      const activeOrders = await loadUserOrders(user.id, 'active');
+      const completedOrders = await loadUserOrders(user.id, 'completed');
+      
+      const userData = {
+        cart: [], // Корзина хранится на клиенте
+        addresses: addresses,
+        profile: {
+          name: user.first_name || '',
+          phone: user.phone || '',
+          email: user.email || ''
+        },
+        activeOrders: activeOrders,
+        completedOrders: completedOrders,
+        bonuses: user.bonuses || 500
+      };
+      
+      console.log(`📥 Загружены данные для пользователя ${userId} (БД): адресов=${addresses.length}, активных заказов=${activeOrders.length}`);
+      
+      res.json(userData);
+    } else {
+      // Fallback: файловое хранилище
+      const userData = userDataStore[userId] || {
+        cart: [],
+        addresses: [],
+        profile: null,
+        activeOrders: [],
+        completedOrders: [],
+        bonuses: 500
+      };
+      
+      console.log(`📥 Загружены данные для пользователя ${userId} (файл): адресов=${userData.addresses.length}, заказов=${userData.activeOrders.length}`);
+      
+      res.json(userData);
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки данных:', error);
+    res.status(500).json({ error: 'Ошибка загрузки данных' });
+  }
 });
 
 // API endpoint для создания заказа
-app.post('/api/orders', (req, res) => {
-  const { items, total, address, phone, name, userId } = req.body;
+app.post('/api/orders', async (req, res) => {
+  const orderData = req.body;
   
-  // Здесь можно добавить сохранение в базу данных
-  console.log('Новый заказ:', { items, total, address, phone, name, userId });
-  
-  // Отправляем уведомление в Telegram (опционально)
-  // bot.telegram.sendMessage(ADMIN_CHAT_ID, `Новый заказ на сумму ${total}₽`);
-  
-  res.json({ success: true, orderId: Date.now() });
+  try {
+    if (pool) {
+      // Сохраняем заказ в БД
+      const result = await createOrderInDb(orderData);
+      
+      if (result) {
+        console.log(`✅ Заказ создан в БД: ID=${result.orderId}, сумма=${orderData.total}₽`);
+        
+        // Отправляем уведомление в Telegram (если нужно)
+        // const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+        // if (ADMIN_CHAT_ID) {
+        //   bot.telegram.sendMessage(ADMIN_CHAT_ID, 
+        //     `🛍️ Новый заказ #${result.orderId}\n` +
+        //     `Сумма: ${orderData.total}₽\n` +
+        //     `Адрес: ${orderData.address}`
+        //   );
+        // }
+        
+        res.json({ success: true, orderId: result.telegramOrderId });
+      } else {
+        throw new Error('Не удалось создать заказ в БД');
+      }
+    } else {
+      // Fallback: просто логируем
+      console.log('📦 Новый заказ (файловое хранилище):', {
+        items: orderData.items?.length || 0,
+        total: orderData.total,
+        address: orderData.address,
+        userId: orderData.userId
+      });
+      
+      res.json({ success: true, orderId: Date.now() });
+    }
+  } catch (error) {
+    console.error('Ошибка создания заказа:', error);
+    res.status(500).json({ error: 'Ошибка создания заказа', success: false });
+  }
 });
 
 // Запуск Express сервера
