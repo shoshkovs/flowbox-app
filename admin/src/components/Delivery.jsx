@@ -165,9 +165,11 @@ export function Delivery({ authToken }) {
                             <Phone className="w-4 h-4" />
                           </a>
                         )}
-                        {delivery.telegram_id && (
+                        {(delivery.telegram_id || delivery.telegram_username) && (
                           <a
-                            href={`tg://user?id=${delivery.telegram_id}`}
+                            href={delivery.telegram_username 
+                              ? `https://t.me/${delivery.telegram_username.replace('@', '')}`
+                              : `tg://user?id=${delivery.telegram_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 hover:bg-gray-100 rounded text-blue-600"
