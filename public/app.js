@@ -429,9 +429,12 @@ async function loadUserData() {
                 userCompletedOrders = data.completedOrders;
                 localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
             }
-            if (data.bonuses !== undefined) accumulatedBonuses = data.bonuses;
+            if (data.bonuses !== undefined) {
+                accumulatedBonuses = data.bonuses;
+                updateBonusesDisplay(); // Обновляем отображение бонусов
+            }
             
-            console.log(`✅ Загружены данные с сервера: адресов=${savedAddresses.length}, заказов=${userActiveOrders.length}`);
+            console.log(`✅ Загружены данные с сервера: адресов=${savedAddresses.length}, заказов=${userActiveOrders.length}, бонусов=${accumulatedBonuses}`);
             
             // Обновляем UI
             updateCartUI();
@@ -1489,6 +1492,9 @@ async function validateAndSubmitOrder(e) {
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = flowersTotal + serviceFee + deliveryPrice - bonusUsed;
     
+    // Расчет начисляемых бонусов (1% от суммы цветов, если не использованы бонусы)
+    const bonusEarned = bonusUsed > 0 ? 0 : Math.floor(flowersTotal * 0.01);
+    
     const orderData = {
         items: cart.map(item => ({
             id: item.id,
@@ -1501,6 +1507,7 @@ async function validateAndSubmitOrder(e) {
         serviceFee: serviceFee,
         deliveryPrice: deliveryPrice,
         bonusUsed: bonusUsed,
+        bonusEarned: bonusEarned, // Начисляемые бонусы
         name: name,
         phone: phone,
         email: email,
@@ -1529,6 +1536,11 @@ async function validateAndSubmitOrder(e) {
         if (result.success) {
             tg.sendData(JSON.stringify(orderData));
             
+            // Обновление бонусов: списываем использованные и начисляем новые
+            accumulatedBonuses = accumulatedBonuses - bonusUsed + bonusEarned;
+            // Обновляем отображение бонусов
+            updateBonusesDisplay();
+            
             // Сохранение заказа в активные
             const order = {
                 id: result.orderId || Date.now(),
@@ -1543,7 +1555,12 @@ async function validateAndSubmitOrder(e) {
             };
             
             userActiveOrders.push(order);
-            saveUserData(); // Сохраняем на сервер
+            
+            // Сбрасываем использованные бонусы
+            bonusUsed = 0;
+            if (bonusToggle) bonusToggle.checked = false;
+            
+            saveUserData(); // Сохраняем на сервер (включая обновленные бонусы)
             
             successOverlay.classList.add('active');
             // Скрыть форму заказа
@@ -1627,9 +1644,7 @@ function loadProfile() {
     }
     
     // Обновление бонусов внизу профиля
-    if (profileBonusesAmount) {
-        profileBonusesAmount.textContent = accumulatedBonuses;
-    }
+    updateBonusesDisplay();
 }
 
 // Страница адреса
@@ -1651,6 +1666,23 @@ const closeSupportModal = document.getElementById('closeSupportModal');
 const supportBtn = document.getElementById('supportBtn');
 
 const profileBonusesAmount = document.getElementById('profileBonusesAmount');
+const accumulatedBonusesElement = document.getElementById('accumulatedBonuses'); // Элемент в корзине
+
+// Обновление отображения бонусов в корзине и профиле
+function updateBonusesDisplay() {
+    // Обновляем в корзине (на кнопке списать баллы)
+    if (accumulatedBonusesElement) {
+        accumulatedBonusesElement.textContent = accumulatedBonuses;
+    }
+    
+    // Обновляем в профиле
+    if (profileBonusesAmount) {
+        profileBonusesAmount.textContent = accumulatedBonuses;
+    }
+    
+    // Сохраняем бонусы на сервер
+    saveUserData();
+}
 
 function resetAddressFormState() {
     if (!addressForm) return;
