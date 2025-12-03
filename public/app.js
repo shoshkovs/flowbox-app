@@ -1556,11 +1556,41 @@ async function validateAndSubmitOrder(e) {
             
             userActiveOrders.push(order);
             
+            // Сохранение адреса из заказа в сохраненные адреса (если это новый адрес и его еще нет)
+            if (addressData && shouldUseForm) {
+                // Проверяем, не является ли это дубликатом существующего адреса
+                const isDuplicate = savedAddresses.some(existingAddr => {
+                    const sameCity = (existingAddr.city || '').toLowerCase().trim() === (addressData.city || '').toLowerCase().trim();
+                    const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (addressData.street || '').toLowerCase().trim();
+                    const sameHouse = (existingAddr.house || '').toLowerCase().trim() === (addressData.house || '').toLowerCase().trim();
+                    const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (addressData.apartment || '').toLowerCase().trim();
+                    return sameCity && sameStreet && sameHouse && sameApartment;
+                });
+                
+                if (!isDuplicate && addressData.street && addressData.house) {
+                    // Создаем адрес с именем на основе улицы и дома
+                    const addressName = addressData.name || `${addressData.street}, ${addressData.house}`;
+                    const newAddress = {
+                        id: Date.now(),
+                        name: addressName,
+                        city: addressData.city || 'Санкт-Петербург',
+                        street: addressData.street,
+                        house: addressData.house,
+                        entrance: addressData.entrance || '',
+                        apartment: addressData.apartment || '',
+                        floor: addressData.floor || '',
+                        intercom: addressData.intercom || '',
+                        comment: addressData.comment || ''
+                    };
+                    savedAddresses.push(newAddress);
+                }
+            }
+            
             // Сбрасываем использованные бонусы
             bonusUsed = 0;
             if (bonusToggle) bonusToggle.checked = false;
             
-            saveUserData(); // Сохраняем на сервер (включая обновленные бонусы)
+            saveUserData(); // Сохраняем на сервер (включая обновленные бонусы и адреса)
             
             successOverlay.classList.add('active');
             // Скрыть форму заказа
@@ -2175,8 +2205,19 @@ addressForm.addEventListener('submit', (e) => {
         }
         editingAddressId = null;
     } else {
-        // Добавление нового адреса
-        savedAddresses.push(address);
+        // Проверка на дубликаты перед добавлением нового адреса
+        // Сравниваем по основным полям: город, улица, дом, квартира
+        const isDuplicate = savedAddresses.some(existingAddr => {
+            const sameCity = (existingAddr.city || '').toLowerCase().trim() === (address.city || '').toLowerCase().trim();
+            const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (address.street || '').toLowerCase().trim();
+            const sameHouse = (existingAddr.house || '').toLowerCase().trim() === (address.house || '').toLowerCase().trim();
+            const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (address.apartment || '').toLowerCase().trim();
+            return sameCity && sameStreet && sameHouse && sameApartment;
+        });
+        
+        if (!isDuplicate) {
+            savedAddresses.push(address);
+        }
     }
     
     saveUserData(); // Сохраняем на сервер
