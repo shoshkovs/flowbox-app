@@ -1129,6 +1129,11 @@ app.get('/api/user-data/:userId', async (req, res) => {
       const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING']);
       const completedOrders = await loadUserOrders(user.id, ['COMPLETED']);
       
+      console.log(`📥 Загружено заказов для пользователя ${userId} (user_id=${user.id}): активных=${activeOrders.length}, завершенных=${completedOrders.length}`);
+      if (activeOrders.length > 0) {
+        console.log('📥 ID активных заказов:', activeOrders.map(o => o.id).join(', '));
+      }
+      
       const userData = {
         cart: [], // Корзина хранится на клиенте
         addresses: addresses,

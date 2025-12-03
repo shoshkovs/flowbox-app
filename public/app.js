@@ -510,8 +510,11 @@ async function loadUserData() {
                 localStorage.setItem('userProfile', JSON.stringify(data.profile));
             }
             if (data.activeOrders && Array.isArray(data.activeOrders)) {
+                console.log('📥 Загружено активных заказов с сервера:', data.activeOrders.length, data.activeOrders);
                 userActiveOrders = data.activeOrders;
                 localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+            } else {
+                console.log('📥 Активные заказы не получены или не массив:', data.activeOrders);
             }
             if (data.completedOrders && Array.isArray(data.completedOrders)) {
                 userCompletedOrders = data.completedOrders;
