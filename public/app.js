@@ -2654,18 +2654,67 @@ function initFilters() {
     applyFilters();
 }
 
-// Модальное окно объяснения сборов (инициализация через делегирование событий)
-document.addEventListener('click', (e) => {
-    // Обработчик для кнопки знака вопроса (проверяем разные варианты)
-    const helpBtn = e.target.closest('#serviceFeeHelpBtn') || 
-                     (e.target.id === 'serviceFeeHelpBtn' ? e.target : null) ||
-                     (e.target.classList.contains('help-icon-btn') ? e.target : null);
+// Модальное окно объяснения сборов
+function initServiceFeeHelpModal() {
+    const modal = document.getElementById('serviceFeeHelpModal');
+    const helpBtn = document.getElementById('serviceFeeHelpBtn');
+    const closeBtn = document.getElementById('closeServiceFeeHelpModal');
     
-    if (helpBtn) {
+    if (!modal || !helpBtn || !closeBtn) {
+        console.warn('Элементы модального окна сборов не найдены');
+        return;
+    }
+    
+    // Прямой обработчик на кнопку помощи
+    helpBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modal.style.display = 'flex';
+        lockBodyScroll();
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            closeBtn.click();
+        });
+        tg.HapticFeedback.impactOccurred('light');
+    });
+    
+    // Обработчик закрытия
+    closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modal.style.display = 'none';
+        tg.BackButton.hide();
+        unlockBodyScroll();
+        tg.HapticFeedback.impactOccurred('light');
+    });
+    
+    // Закрытие при клике на overlay
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            tg.BackButton.hide();
+            unlockBodyScroll();
+        }
+    });
+}
+
+// Инициализация при загрузке DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initServiceFeeHelpModal);
+} else {
+    initServiceFeeHelpModal();
+}
+
+// Также используем делегирование событий для динамически созданных элементов
+document.addEventListener('click', (e) => {
+    // Обработчик для кнопки знака вопроса (fallback)
+    if (e.target.closest('#serviceFeeHelpBtn') || 
+        e.target.id === 'serviceFeeHelpBtn' || 
+        e.target.classList.contains('help-icon-btn')) {
         e.preventDefault();
         e.stopPropagation();
         const modal = document.getElementById('serviceFeeHelpModal');
-        if (modal) {
+        if (modal && modal.style.display !== 'flex') {
             modal.style.display = 'flex';
             lockBodyScroll();
             tg.BackButton.show();
@@ -2675,37 +2724,6 @@ document.addEventListener('click', (e) => {
             });
             tg.HapticFeedback.impactOccurred('light');
         }
-        return;
-    }
-    
-    // Обработчик для закрытия модального окна
-    const closeBtn = e.target.closest('#closeServiceFeeHelpModal') || 
-                     (e.target.id === 'closeServiceFeeHelpModal' ? e.target : null);
-    
-    if (closeBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const modal = document.getElementById('serviceFeeHelpModal');
-        if (modal) {
-            modal.style.display = 'none';
-            tg.BackButton.hide();
-            unlockBodyScroll();
-            tg.HapticFeedback.impactOccurred('light');
-        }
-        return;
-    }
-    
-    // Закрытие при клике на overlay
-    if (e.target.id === 'serviceFeeHelpModal') {
-        e.preventDefault();
-        e.stopPropagation();
-        const modal = document.getElementById('serviceFeeHelpModal');
-        if (modal) {
-            modal.style.display = 'none';
-            tg.BackButton.hide();
-            unlockBodyScroll();
-        }
-        return;
     }
 });
 
