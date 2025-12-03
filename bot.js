@@ -101,6 +101,43 @@ if (process.env.DATABASE_URL) {
       // Игнорируем ошибки при миграции
     }
     
+    // Миграция справочников товаров
+    setTimeout(async () => {
+      try {
+        const client = await pool.connect();
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const migrationSQL = fs.readFileSync(
+            path.join(__dirname, 'database', 'create-product-dictionaries.sql'),
+            'utf8'
+          );
+          
+          // Выполняем миграцию построчно
+          const statements = migrationSQL.split(';').filter(s => s.trim());
+          for (const statement of statements) {
+            if (statement.trim()) {
+              try {
+                await client.query(statement);
+              } catch (err) {
+                // Игнорируем ошибки "уже существует"
+                if (!err.message.includes('already exists') && !err.message.includes('duplicate')) {
+                  console.log('⚠️  Ошибка миграции справочников:', err.message);
+                }
+              }
+            }
+          }
+          console.log('✅ Миграция справочников товаров завершена');
+        } catch (migrationError) {
+          console.log('⚠️  Миграция справочников:', migrationError.message);
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибки при миграции
+      }
+    }, 2000);
+    
     // Выполняем миграцию features в JSONB (если нужно)
     setTimeout(async () => {
     try {
@@ -256,7 +293,7 @@ app.get('/api/products', async (req, res) => {
         );
         
         // Преобразуем в формат для фронтенда
-        const products = result.rows.map(row => {
+        const products = await Promise.all(result.rows.map(async (row) => {
           // Обрабатываем features: может быть JSONB объект, массив или null
           let features = {};
           if (row.features_json) {
@@ -996,6 +1033,342 @@ function checkAdminAuth(req, res, next) {
   }
 }
 
+// API: Получить категории товаров
+app.get('/api/admin/product-categories', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM product_categories ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения категорий:', error);
+    res.status(500).json({ error: 'Ошибка получения категорий' });
+  }
+});
+
+// API: Создать категорию
+app.post('/api/admin/product-categories', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Название категории обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO product_categories (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING *',
+        [name.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания категории:', error);
+    res.status(500).json({ error: 'Ошибка создания категории' });
+  }
+});
+
+// API: Получить цвета
+app.get('/api/admin/colors', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM product_colors ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения цветов:', error);
+    res.status(500).json({ error: 'Ошибка получения цветов' });
+  }
+});
+
+// API: Создать цвет
+app.post('/api/admin/colors', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Название цвета обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO product_colors (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING *',
+        [name.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания цвета:', error);
+    res.status(500).json({ error: 'Ошибка создания цвета' });
+  }
+});
+
+// API: Получить качества
+app.get('/api/admin/product-qualities', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM product_qualities ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения качеств:', error);
+    res.status(500).json({ error: 'Ошибка получения качеств' });
+  }
+});
+
+// API: Создать качество
+app.post('/api/admin/product-qualities', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Название качества обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO product_qualities (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING *',
+        [name.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания качества:', error);
+    res.status(500).json({ error: 'Ошибка создания качества' });
+  }
+});
+
+// API: Получить длины стеблей
+app.get('/api/admin/stem-lengths', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM stem_lengths ORDER BY value');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения длин стеблей:', error);
+    res.status(500).json({ error: 'Ошибка получения длин стеблей' });
+  }
+});
+
+// API: Создать длину стебля
+app.post('/api/admin/stem-lengths', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { value } = req.body;
+  if (!value) {
+    return res.status(400).json({ error: 'Значение длины обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO stem_lengths (value) VALUES ($1) ON CONFLICT (value) DO UPDATE SET value = EXCLUDED.value RETURNING *',
+        [value.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания длины стебля:', error);
+    res.status(500).json({ error: 'Ошибка создания длины стебля' });
+  }
+});
+
+// API: Получить страны
+app.get('/api/admin/countries', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM countries ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения стран:', error);
+    res.status(500).json({ error: 'Ошибка получения стран' });
+  }
+});
+
+// API: Создать страну
+app.post('/api/admin/countries', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Название страны обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO countries (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING *',
+        [name.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания страны:', error);
+    res.status(500).json({ error: 'Ошибка создания страны' });
+  }
+});
+
+// API: Получить сорта
+app.get('/api/admin/varieties', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM varieties ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения сортов:', error);
+    res.status(500).json({ error: 'Ошибка получения сортов' });
+  }
+});
+
+// API: Создать сорт
+app.post('/api/admin/varieties', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Название сорта обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO varieties (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING *',
+        [name.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания сорта:', error);
+    res.status(500).json({ error: 'Ошибка создания сорта' });
+  }
+});
+
+// API: Получить теги
+app.get('/api/admin/product-tags', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM product_tags ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения тегов:', error);
+    res.status(500).json({ error: 'Ошибка получения тегов' });
+  }
+});
+
+// API: Создать тег
+app.post('/api/admin/product-tags', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Название тега обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO product_tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING *',
+        [name.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания тега:', error);
+    res.status(500).json({ error: 'Ошибка создания тега' });
+  }
+});
+
 // API: Получить все товары (для админки)
 app.get('/api/admin/products', checkAdminAuth, async (req, res) => {
   if (!pool) {
@@ -1005,9 +1378,36 @@ app.get('/api/admin/products', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query(
-        'SELECT * FROM products ORDER BY created_at DESC'
-      );
+      const result = await client.query(`
+        SELECT 
+          p.*,
+          pc.name as category_name,
+          pcol.name as color_name,
+          sl.value as stem_length_value,
+          c.name as country_name,
+          v.name as variety_name,
+          COALESCE(
+            (SELECT json_agg(json_build_object('id', pq.id, 'name', pq.name))
+             FROM product_qualities pq
+             JOIN product_qualities_map pqm ON pq.id = pqm.quality_id
+             WHERE pqm.product_id = p.id),
+            '[]'::json
+          ) as qualities,
+          COALESCE(
+            (SELECT json_agg(json_build_object('id', pt.id, 'name', pt.name))
+             FROM product_tags pt
+             JOIN product_tags_map ptm ON pt.id = ptm.tag_id
+             WHERE ptm.product_id = p.id),
+            '[]'::json
+          ) as tags
+        FROM products p
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
+        LEFT JOIN product_colors pcol ON p.color_id = pcol.id
+        LEFT JOIN stem_lengths sl ON p.stem_length_id = sl.id
+        LEFT JOIN countries c ON p.country_id = c.id
+        LEFT JOIN varieties v ON p.variety_id = v.id
+        ORDER BY p.created_at DESC
+      `);
       res.json(result.rows);
     } finally {
       client.release();
@@ -1062,6 +1462,9 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
         ]
       );
       res.json(result.rows[0]);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }
