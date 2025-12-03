@@ -1231,8 +1231,37 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Статические файлы для админки
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
+// Статические файлы для админки (собранная React версия)
+const adminBuildPath = path.join(__dirname, 'admin-build');
+const adminSourcePath = path.join(__dirname, 'admin');
+
+// Проверяем, существует ли собранная версия
+if (fs.existsSync(adminBuildPath)) {
+  // Используем собранную версию
+  // Сначала раздаем статические файлы (assets)
+  app.use('/admin', express.static(adminBuildPath, {
+    setHeaders: (res, filePath) => {
+      // Кеширование для статических файлов
+      if (filePath.includes('/assets/')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    }
+  }));
+  // Затем обрабатываем все остальные запросы как SPA
+  app.get('/admin/*', (req, res) => {
+    // Пропускаем запросы к статическим файлам
+    if (req.path.startsWith('/admin/assets/')) {
+      return res.status(404).send('Not found');
+    }
+    res.sendFile(path.join(adminBuildPath, 'index.html'));
+  });
+} else {
+  // Fallback на старую версию
+  app.use('/admin', express.static(adminSourcePath));
+  app.get('/admin', (req, res) => {
+    res.sendFile(path.join(adminSourcePath, 'index.html'));
+  });
+}
 
 // Запуск Express сервера
 const server = app.listen(PORT, () => {

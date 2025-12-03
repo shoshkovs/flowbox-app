@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node bot.js",
     "dev": "nodemon bot.js",
+    "build": "cd admin && npm install && npm run build",
+    "build:admin": "cd admin && npm install && npm run build",
+    "postinstall": "cd admin && npm install",
     "tunnel": "npx localtunnel --port 3000",
     "tunnel:ngrok": "npx ngrok http 3000",
     "get-url": "node get-ngrok-url.js"

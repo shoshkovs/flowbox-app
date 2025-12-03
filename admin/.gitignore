@@ -1,0 +1,6 @@
+node_modules
+dist
+admin-build
+.DS_Store
+*.log
+

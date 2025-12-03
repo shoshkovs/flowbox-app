@@ -4,3 +4,5 @@ node_modules/
 *.log
 
 user-data.json
+admin-build/
+admin/node_modules/

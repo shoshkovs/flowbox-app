@@ -2,11 +2,16 @@ services:
   - type: web
     name: flowbox-app
     env: node
-    buildCommand: npm install
+    buildCommand: npm install && npm run build:admin
     startCommand: npm start
     envVars:
       - key: BOT_TOKEN
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+        value: admin123
       - key: WEBAPP_URL
         fromService:
           type: web
