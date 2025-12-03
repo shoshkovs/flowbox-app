@@ -29,27 +29,26 @@ export function CustomerDetail({ authToken, customerId }) {
 
   const loadCustomer = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/admin/customers`, {
+      const response = await fetch(`${API_BASE}/api/admin/customers/${customerId}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
       if (response.ok) {
-        const customers = await response.json();
-        const foundCustomer = customers.find(c => c.id === parseInt(customerId));
-        if (foundCustomer) {
-          setCustomer(foundCustomer);
-          setCustomerForm({
-            name: foundCustomer.name || '',
-            phone: foundCustomer.phone || '',
-            email: foundCustomer.email || '',
-            telegram: foundCustomer.telegram_id ? `@${foundCustomer.telegram_id}` : '',
-            address: '',
-            comments: '',
-            tags: [],
-          });
-        }
+        const foundCustomer = await response.json();
+        setCustomer(foundCustomer);
+        setCustomerForm({
+          name: foundCustomer.name || '',
+          phone: foundCustomer.phone || '',
+          email: foundCustomer.email || '',
+          telegram: foundCustomer.telegram_id ? `@${foundCustomer.telegram_id}` : '',
+          address: '',
+          comments: '',
+          tags: [],
+        });
+      } else {
+        toast.error('Ошибка загрузки данных клиента');
       }
     } catch (error) {
       console.error('Ошибка загрузки клиента:', error);
@@ -67,10 +66,27 @@ export function CustomerDetail({ authToken, customerId }) {
 
     setSaving(true);
     try {
-      // Здесь должен быть PUT запрос для обновления клиента
-      // Пока что просто показываем успешное сообщение
-      toast.success('Данные клиента сохранены');
-      navigate('/customers');
+      const response = await fetch(`${API_BASE}/api/admin/customers/${customerId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: customerForm.name,
+          phone: customerForm.phone,
+          email: customerForm.email || null,
+          telegram: customerForm.telegram || null,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Данные клиента сохранены');
+        navigate('/customers');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка сохранения данных');
+      }
     } catch (error) {
       console.error('Ошибка сохранения клиента:', error);
       toast.error('Ошибка сохранения данных');

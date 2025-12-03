@@ -17,7 +17,7 @@ export function Warehouse({ authToken }) {
 
   const loadProducts = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/admin/products`, {
+      const response = await fetch(`${API_BASE}/api/admin/warehouse`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -26,6 +26,17 @@ export function Warehouse({ authToken }) {
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
+      } else {
+        // Fallback на products API
+        const fallbackResponse = await fetch(`${API_BASE}/api/admin/products`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        });
+        if (fallbackResponse.ok) {
+          const data = await fallbackResponse.json();
+          setProducts(data);
+        }
       }
     } catch (error) {
       console.error('Ошибка загрузки товаров:', error);

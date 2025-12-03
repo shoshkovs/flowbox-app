@@ -60,6 +60,7 @@ export function Products({ authToken }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
         },
       });
 
@@ -67,7 +68,8 @@ export function Products({ authToken }) {
         await loadProducts();
         toast.success('Информация о товаре обновлена');
       } else {
-        toast.error('Ошибка обновления товара');
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка обновления товара');
       }
     } catch (error) {
       console.error('Ошибка обновления товара:', error);
@@ -83,6 +85,7 @@ export function Products({ authToken }) {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
         },
       });
 
@@ -90,7 +93,8 @@ export function Products({ authToken }) {
         await loadProducts();
         toast.success('Товар удален');
       } else {
-        toast.error('Ошибка удаления товара');
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка удаления товара');
       }
     } catch (error) {
       console.error('Ошибка удаления товара:', error);

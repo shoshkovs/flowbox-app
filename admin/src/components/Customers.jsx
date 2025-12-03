@@ -88,6 +88,7 @@ export function Customers({ authToken }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
         },
       });
 
@@ -95,7 +96,8 @@ export function Customers({ authToken }) {
         await loadCustomers();
         toast.success('Информация о клиенте обновлена');
       } else {
-        toast.error('Ошибка обновления клиента');
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка обновления клиента');
       }
     } catch (error) {
       console.error('Ошибка обновления клиента:', error);

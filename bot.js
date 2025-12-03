@@ -1122,6 +1122,46 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Получить товар по ID
+app.get('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT *, features::text as features_json FROM products WHERE id = $1', [id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Товар не найден' });
+      }
+      
+      const product = result.rows[0];
+      // Обрабатываем features
+      let features = {};
+      if (product.features_json) {
+        try {
+          features = JSON.parse(product.features_json);
+        } catch (e) {
+          features = {};
+        }
+      }
+      
+      res.json({
+        ...product,
+        features: features
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения товара:', error);
+    res.status(500).json({ error: 'Ошибка получения товара' });
+  }
+});
+
 // API: Удалить товар
 app.delete('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   if (!pool) {
@@ -1141,6 +1181,209 @@ app.delete('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('Ошибка удаления товара:', error);
     res.status(500).json({ error: 'Ошибка удаления товара' });
+  }
+});
+
+// API: Обновить информацию о товаре (refresh)
+app.post('/api/admin/products/:id/refresh', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Просто обновляем updated_at (можно расширить логику позже)
+      const result = await client.query(
+        'UPDATE products SET updated_at = now() WHERE id = $1 RETURNING *',
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Товар не найден' });
+      }
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления информации о товаре:', error);
+    res.status(500).json({ error: 'Ошибка обновления информации' });
+  }
+});
+
+// API: Обновить заказ
+app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const { status, recipient_name, recipient_phone, delivery_date, delivery_time, comment, address_json } = req.body;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      let updateQuery = 'UPDATE orders SET updated_at = now()';
+      const params = [];
+      let paramIndex = 1;
+      
+      if (status !== undefined) {
+        updateQuery += `, status = $${paramIndex}`;
+        params.push(status);
+        paramIndex++;
+      }
+      if (recipient_name !== undefined) {
+        updateQuery += `, recipient_name = $${paramIndex}`;
+        params.push(recipient_name);
+        paramIndex++;
+      }
+      if (recipient_phone !== undefined) {
+        updateQuery += `, recipient_phone = $${paramIndex}`;
+        params.push(recipient_phone);
+        paramIndex++;
+      }
+      if (delivery_date !== undefined) {
+        updateQuery += `, delivery_date = $${paramIndex}`;
+        params.push(delivery_date);
+        paramIndex++;
+      }
+      if (delivery_time !== undefined) {
+        updateQuery += `, delivery_time = $${paramIndex}`;
+        params.push(delivery_time);
+        paramIndex++;
+      }
+      if (comment !== undefined) {
+        updateQuery += `, comment = $${paramIndex}`;
+        params.push(comment);
+        paramIndex++;
+      }
+      if (address_json !== undefined) {
+        updateQuery += `, address_json = $${paramIndex}::jsonb`;
+        params.push(JSON.stringify(address_json));
+        paramIndex++;
+      }
+      
+      updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
+      params.push(id);
+      
+      const result = await client.query(updateQuery, params);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      const order = result.rows[0];
+      // Загружаем items
+      const itemsResult = await client.query(
+        'SELECT * FROM order_items WHERE order_id = $1',
+        [id]
+      );
+      
+      res.json({
+        ...order,
+        items: itemsResult.rows,
+        address_data: order.address_json ? JSON.parse(order.address_json) : {}
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления заказа:', error);
+    res.status(500).json({ error: 'Ошибка обновления заказа' });
+  }
+});
+
+// API: Обновить список заказов (refresh)
+app.post('/api/admin/orders/refresh', checkAdminAuth, async (req, res) => {
+  // По сути это тот же GET /api/admin/orders
+  // Просто редиректим на GET
+  req.url = '/api/admin/orders';
+  req.method = 'GET';
+  return app._router.handle(req, res);
+});
+
+// API: Получить склад (остатки товаров)
+app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT 
+          id, name, type, color, price, image_url,
+          COALESCE(stock, 0) as stock,
+          COALESCE(min_stock, 0) as min_stock,
+          is_active
+        FROM products 
+        ORDER BY name`
+      );
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения данных склада:', error);
+    res.status(500).json({ error: 'Ошибка получения данных склада' });
+  }
+});
+
+// API: Добавить поставку
+app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { product_id, quantity, purchase_price, delivery_date, supplier, invoice_number, comment } = req.body;
+  
+  if (!product_id || !quantity) {
+    return res.status(400).json({ error: 'Товар и количество обязательны' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Обновляем остаток товара
+      const productResult = await client.query(
+        'SELECT stock FROM products WHERE id = $1',
+        [product_id]
+      );
+      
+      if (productResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Товар не найден' });
+      }
+      
+      const currentStock = productResult.rows[0].stock || 0;
+      const newStock = currentStock + parseInt(quantity);
+      
+      await client.query(
+        'UPDATE products SET stock = $1, updated_at = now() WHERE id = $2',
+        [newStock, product_id]
+      );
+      
+      // Здесь можно добавить таблицу поставок (deliveries) для истории
+      // Пока просто обновляем остаток
+      
+      await client.query('COMMIT');
+      res.json({ success: true, newStock });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка добавления поставки:', error);
+    res.status(500).json({ error: 'Ошибка добавления поставки' });
   }
 });
 

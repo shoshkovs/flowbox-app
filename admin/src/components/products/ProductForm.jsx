@@ -37,34 +37,33 @@ export function ProductForm({ authToken, productId }) {
 
   const loadProduct = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/admin/products`, {
+      const response = await fetch(`${API_BASE}/api/admin/products/${productId}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
       if (response.ok) {
-        const products = await response.json();
-        const product = products.find(p => p.id === parseInt(productId));
-        if (product) {
-          setProductForm({
-            name: product.name || '',
-            category: product.type || '',
-            color: product.color || '',
-            type: product.type || '',
-            price: product.price || '',
-            description: product.description || '',
-            stem_length: product.features?.stem_length || '',
-            variety: product.features?.variety || '',
-            country: product.features?.country || '',
-            stems_count: product.features?.stems_count || '',
-            tags: product.features?.tags || [],
-            image_url: product.image_url || '',
-            is_active: product.is_active !== false,
-            is_bestseller: product.features?.is_bestseller || false,
-            is_new: product.features?.is_new || false,
-          });
-        }
+        const product = await response.json();
+        setProductForm({
+          name: product.name || '',
+          category: product.type || '',
+          color: product.color || '',
+          type: product.type || '',
+          price: product.price || '',
+          description: product.description || '',
+          stem_length: product.features?.stem_length || '',
+          variety: product.features?.variety || '',
+          country: product.features?.country || '',
+          stems_count: product.features?.stems_count || '',
+          tags: product.features?.tags || [],
+          image_url: product.image_url || '',
+          is_active: product.is_active !== false,
+          is_bestseller: product.features?.is_bestseller || false,
+          is_new: product.features?.is_new || false,
+        });
+      } else {
+        toast.error('Ошибка загрузки товара');
       }
     } catch (error) {
       console.error('Ошибка загрузки товара:', error);

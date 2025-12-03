@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Phone, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
@@ -15,7 +16,26 @@ export function Orders({ authToken }) {
   }, [filterStatus]);
 
   const handleRefreshOrders = async () => {
-    await loadOrders();
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/orders/refresh`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      if (response.ok) {
+        await loadOrders();
+        toast.success('Список заказов обновлен');
+      } else {
+        // Если refresh не работает, просто перезагружаем
+        await loadOrders();
+      }
+    } catch (error) {
+      console.error('Ошибка обновления заказов:', error);
+      // В случае ошибки просто перезагружаем список
+      await loadOrders();
+    }
   };
 
   const loadOrders = async () => {

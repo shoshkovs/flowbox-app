@@ -48,25 +48,29 @@ export function WarehouseForm({ authToken }) {
 
     setLoading(true);
     try {
-      // Обновляем остаток товара
-      const product = products.find(p => p.id === parseInt(deliveryForm.product_id));
-      if (product) {
-        const newStock = (product.stock || 0) + parseInt(deliveryForm.quantity);
-        const response = await fetch(`${API_BASE}/api/admin/products/${product.id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ stock: newStock }),
-        });
+      const response = await fetch(`${API_BASE}/api/admin/warehouse`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          product_id: parseInt(deliveryForm.product_id),
+          quantity: parseInt(deliveryForm.quantity),
+          purchase_price: deliveryForm.purchase_price ? parseFloat(deliveryForm.purchase_price) : null,
+          delivery_date: deliveryForm.delivery_date || null,
+          supplier: deliveryForm.supplier || null,
+          invoice_number: deliveryForm.invoice_number || null,
+          comment: deliveryForm.comment || null,
+        }),
+      });
 
-        if (response.ok) {
-          toast.success('Поставка успешно добавлена');
-          navigate('/warehouse');
-        } else {
-          toast.error('Ошибка сохранения поставки');
-        }
+      if (response.ok) {
+        toast.success('Поставка успешно добавлена');
+        navigate('/warehouse');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка сохранения поставки');
       }
     } catch (error) {
       console.error('Ошибка сохранения поставки:', error);

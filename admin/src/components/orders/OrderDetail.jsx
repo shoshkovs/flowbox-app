@@ -71,7 +71,7 @@ export function OrderDetail({ authToken, orderId }) {
 
     setSaving(true);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}/status`, {
+      const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -79,7 +79,12 @@ export function OrderDetail({ authToken, orderId }) {
         },
         body: JSON.stringify({
           status: order.status,
-          comment: statusComment || null,
+          recipient_name: order.recipient_name,
+          recipient_phone: order.recipient_phone,
+          delivery_date: order.delivery_date,
+          delivery_time: order.delivery_time,
+          comment: order.comment || statusComment || null,
+          address_json: order.address_data || null,
         }),
       });
 
@@ -88,7 +93,8 @@ export function OrderDetail({ authToken, orderId }) {
         setStatusComment('');
         toast.success('Изменения сохранены');
       } else {
-        toast.error('Ошибка сохранения изменений');
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка сохранения изменений');
       }
     } catch (error) {
       console.error('Ошибка обновления статуса:', error);
