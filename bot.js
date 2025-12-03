@@ -966,22 +966,25 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
   }
 });
 
-// API: Обновить статус заказа
+// API: Обновить статус заказа (расширенный)
 app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, comment } = req.body;
   
-  if (!['active', 'completed', 'cancelled'].includes(status)) {
+  // Расширенные статусы
+  const validStatuses = ['new', 'confirmed', 'preparing', 'assigned', 'in_transit', 'delivered', 'cancelled', 'active', 'completed'];
+  if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: 'Неверный статус' });
   }
   
   try {
     const client = await pool.connect();
     try {
+      // Обновляем статус заказа
       const result = await client.query(
         'UPDATE orders SET status = $1, updated_at = now() WHERE id = $2 RETURNING *',
         [status, id]
@@ -991,6 +994,12 @@ app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Заказ не найден' });
       }
       
+      // Записываем в историю статусов
+      await client.query(
+        'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
+        [id, status, 'admin', comment || null]
+      );
+      
       res.json(result.rows[0]);
     } finally {
       client.release();
@@ -998,6 +1007,227 @@ app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('Ошибка обновления статуса заказа:', error);
     res.status(500).json({ error: 'Ошибка обновления статуса заказа' });
+  }
+});
+
+// API: Назначить курьера на заказ
+app.post('/api/admin/orders/:id/assign-courier', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const { courier_id } = req.body;
+  
+  if (!courier_id) {
+    return res.status(400).json({ error: 'courier_id обязателен' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Проверяем существование курьера
+      const courierCheck = await client.query('SELECT id, is_active FROM couriers WHERE id = $1', [courier_id]);
+      if (courierCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Курьер не найден' });
+      }
+      if (!courierCheck.rows[0].is_active) {
+        return res.status(400).json({ error: 'Курьер неактивен' });
+      }
+      
+      // Назначаем курьера и меняем статус
+      const result = await client.query(
+        'UPDATE orders SET courier_id = $1, status = $2, updated_at = now() WHERE id = $3 RETURNING *',
+        [courier_id, 'assigned', id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      // Записываем в историю
+      await client.query(
+        'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
+        [id, 'assigned', 'admin', `Назначен курьер ID: ${courier_id}`]
+      );
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка назначения курьера:', error);
+    res.status(500).json({ error: 'Ошибка назначения курьера' });
+  }
+});
+
+// API: Получить всех курьеров
+app.get('/api/admin/couriers', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT c.*, dz.name as zone_name
+        FROM couriers c
+        LEFT JOIN delivery_zones dz ON c.zone_id = dz.id
+        ORDER BY c.created_at DESC
+      `);
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения курьеров:', error);
+    res.status(500).json({ error: 'Ошибка получения курьеров' });
+  }
+});
+
+// API: Создать курьера
+app.post('/api/admin/couriers', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name, phone, pin_code, zone_id, is_active } = req.body;
+  
+  if (!name || !phone || !pin_code) {
+    return res.status(400).json({ error: 'Имя, телефон и PIN-код обязательны' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `INSERT INTO couriers (name, phone, pin_code, zone_id, is_active)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [name, phone, pin_code, zone_id || null, is_active !== undefined ? is_active : true]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    if (error.code === '23505') { // Unique violation
+      return res.status(400).json({ error: 'Курьер с таким телефоном уже существует' });
+    }
+    console.error('Ошибка создания курьера:', error);
+    res.status(500).json({ error: 'Ошибка создания курьера' });
+  }
+});
+
+// API: Обновить курьера
+app.put('/api/admin/couriers/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const { name, phone, pin_code, zone_id, is_active } = req.body;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `UPDATE couriers 
+         SET name = COALESCE($1, name),
+             phone = COALESCE($2, phone),
+             pin_code = COALESCE($3, pin_code),
+             zone_id = $4,
+             is_active = COALESCE($5, is_active),
+             updated_at = now()
+         WHERE id = $6
+         RETURNING *`,
+        [name, phone, pin_code, zone_id, is_active, id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Курьер не найден' });
+      }
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления курьера:', error);
+    res.status(500).json({ error: 'Ошибка обновления курьера' });
+  }
+});
+
+// API: Удалить курьера
+app.delete('/api/admin/couriers/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('DELETE FROM couriers WHERE id = $1 RETURNING *', [id]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Курьер не найден' });
+      }
+      
+      res.json({ success: true });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка удаления курьера:', error);
+    res.status(500).json({ error: 'Ошибка удаления курьера' });
+  }
+});
+
+// API: Получить зоны доставки
+app.get('/api/admin/delivery/zones', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM delivery_zones ORDER BY price ASC');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения зон доставки:', error);
+    res.status(500).json({ error: 'Ошибка получения зон доставки' });
+  }
+});
+
+// API: Получить историю статусов заказа
+app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC',
+        [id]
+      );
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения истории заказа:', error);
+    res.status(500).json({ error: 'Ошибка получения истории заказа' });
   }
 });
 

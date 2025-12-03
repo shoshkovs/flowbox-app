@@ -64,6 +64,12 @@ function initEventListeners() {
             loadOrders(status);
         });
     });
+
+    // Курьеры
+    const addCourierBtn = document.getElementById('addCourierBtn');
+    if (addCourierBtn) {
+        addCourierBtn.addEventListener('click', () => openCourierModal());
+    }
 }
 
 // Обработка авторизации
@@ -334,7 +340,7 @@ function renderOrders(orders) {
         const items = order.items || [];
         
         return `
-            <div class="order-card" onclick="showOrderDetails(${order.id})">
+            <div class="order-card">
                 <div class="order-header">
                     <div class="order-id">Заказ #${order.id}</div>
                     <div class="order-status ${order.status}">${getStatusText(order.status)}</div>
@@ -362,6 +368,18 @@ function renderOrders(orders) {
                     </div>
                 </div>
                 <div class="order-total">Итого: ${order.total} ₽</div>
+                <div class="order-actions">
+                    <button class="btn-small btn-primary" onclick="showOrderDetails(${order.id})">Открыть</button>
+                    ${order.status === 'active' || order.status === 'new' ? `
+                        <button class="btn-small btn-success" onclick="updateOrderStatus(${order.id}, 'confirmed')">Подтвердить</button>
+                    ` : ''}
+                    ${order.status === 'confirmed' ? `
+                        <button class="btn-small btn-info" onclick="showAssignCourierModal(${order.id})">Назначить курьера</button>
+                    ` : ''}
+                    ${order.status !== 'cancelled' && order.status !== 'delivered' ? `
+                        <button class="btn-small btn-danger" onclick="cancelOrder(${order.id})">Отменить</button>
+                    ` : ''}
+                </div>
             </div>
         `;
     }).join('');
@@ -370,11 +388,171 @@ function renderOrders(orders) {
 // Получить текст статуса
 function getStatusText(status) {
     const statuses = {
+        'new': 'Новый',
         'active': 'Активный',
+        'confirmed': 'Подтвержден',
+        'preparing': 'В сборке',
+        'assigned': 'Назначен курьеру',
+        'in_transit': 'В пути',
+        'delivered': 'Доставлен',
         'completed': 'Завершен',
         'cancelled': 'Отменен'
     };
     return statuses[status] || status;
+}
+
+// Обновить статус заказа
+async function updateOrderStatus(orderId, status) {
+    if (!confirm(`Изменить статус заказа на "${getStatusText(status)}"?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ status })
+        });
+
+        if (!response.ok) {
+            throw new Error('Ошибка обновления статуса');
+        }
+
+        loadOrders(document.querySelector('.filter-btn.active')?.dataset.status || '');
+        if (document.getElementById('orderModal').style.display === 'flex') {
+            showOrderDetails(orderId);
+        }
+    } catch (error) {
+        console.error('Ошибка обновления статуса:', error);
+        alert('Ошибка обновления статуса заказа');
+    }
+}
+
+// Отменить заказ
+async function cancelOrder(orderId) {
+    const reason = prompt('Укажите причину отмены:');
+    if (!reason) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ status: 'cancelled', comment: reason })
+        });
+
+        if (!response.ok) {
+            throw new Error('Ошибка отмены заказа');
+        }
+
+        loadOrders(document.querySelector('.filter-btn.active')?.dataset.status || '');
+        if (document.getElementById('orderModal').style.display === 'flex') {
+            showOrderDetails(orderId);
+        }
+    } catch (error) {
+        console.error('Ошибка отмены заказа:', error);
+        alert('Ошибка отмены заказа');
+    }
+}
+
+// Показать модальное окно назначения курьера
+async function showAssignCourierModal(orderId) {
+    try {
+        // Загружаем список курьеров
+        const couriersResponse = await fetch(`${API_BASE}/api/admin/couriers`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (!couriersResponse.ok) {
+            throw new Error('Ошибка загрузки курьеров');
+        }
+
+        const couriers = await couriersResponse.json();
+        const activeCouriers = couriers.filter(c => c.is_active);
+
+        if (activeCouriers.length === 0) {
+            alert('Нет активных курьеров. Сначала добавьте курьера.');
+            return;
+        }
+
+        // Создаем модальное окно
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Назначить курьера</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
+                </div>
+                <div class="form-group">
+                    <label>Выберите курьера:</label>
+                    <select id="courierSelect" class="form-control">
+                        <option value="">-- Выберите курьера --</option>
+                        ${activeCouriers.map(c => `
+                            <option value="${c.id}">${c.name} (${c.phone})${c.zone_name ? ' - ' + c.zone_name : ''}</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick="assignCourier(${orderId})">Назначить</button>
+                    <button class="btn-secondary" onclick="this.closest('.modal').remove()">Отмена</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Ошибка загрузки курьеров:', error);
+        alert('Ошибка загрузки курьеров');
+    }
+}
+
+// Назначить курьера на заказ
+async function assignCourier(orderId) {
+    const courierId = document.getElementById('courierSelect').value;
+    
+    if (!courierId) {
+        alert('Выберите курьера');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}/assign-courier`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ courier_id: parseInt(courierId) })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Ошибка назначения курьера');
+        }
+
+        // Закрываем модальное окно
+        document.querySelector('.modal:last-child').remove();
+        
+        loadOrders(document.querySelector('.filter-btn.active')?.dataset.status || '');
+        if (document.getElementById('orderModal').style.display === 'flex') {
+            showOrderDetails(orderId);
+        }
+        
+        alert('Курьер успешно назначен');
+    } catch (error) {
+        console.error('Ошибка назначения курьера:', error);
+        alert(error.message || 'Ошибка назначения курьера');
+    }
 }
 
 // Показать детали заказа
@@ -497,12 +675,31 @@ function renderOrderDetails(order) {
 
         <div class="order-section">
             <h4>Статус заказа</h4>
-            <select id="orderStatusSelect" class="form-group" style="margin-top: 10px;">
+            <select id="orderStatusSelect" class="form-control" style="margin-top: 10px;">
+                <option value="new" ${order.status === 'new' ? 'selected' : ''}>Новый</option>
+                <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>Подтвержден</option>
+                <option value="preparing" ${order.status === 'preparing' ? 'selected' : ''}>В сборке</option>
+                <option value="assigned" ${order.status === 'assigned' ? 'selected' : ''}>Назначен курьеру</option>
+                <option value="in_transit" ${order.status === 'in_transit' ? 'selected' : ''}>В пути</option>
+                <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Доставлен</option>
                 <option value="active" ${order.status === 'active' ? 'selected' : ''}>Активный</option>
                 <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Завершен</option>
                 <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Отменен</option>
             </select>
-            <button class="btn-primary" onclick="updateOrderStatus(${order.id})" style="margin-top: 10px;">Обновить статус</button>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn-primary" onclick="updateOrderStatusFromModal(${order.id})">Обновить статус</button>
+                ${order.status === 'confirmed' ? `
+                    <button class="btn-info" onclick="showAssignCourierModal(${order.id})">Назначить курьера</button>
+                ` : ''}
+                ${order.status !== 'cancelled' && order.status !== 'delivered' ? `
+                    <button class="btn-danger" onclick="cancelOrder(${order.id})">Отменить</button>
+                ` : ''}
+            </div>
+            ${order.courier_id ? `
+                <div style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-radius: 6px;">
+                    <strong>Курьер:</strong> ID ${order.courier_id}
+                </div>
+            ` : ''}
         </div>
     `;
 }

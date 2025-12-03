@@ -34,6 +34,7 @@
             <nav class="admin-nav">
                 <button class="nav-btn active" data-page="products">📦 Товары</button>
                 <button class="nav-btn" data-page="orders">🛍️ Заказы</button>
+                <button class="nav-btn" data-page="couriers">🚚 Курьеры</button>
             </nav>
 
             <!-- Страница товаров -->
@@ -62,6 +63,18 @@
                 
                 <div id="ordersList" class="orders-list">
                     <!-- Заказы будут загружены динамически -->
+                </div>
+            </div>
+
+            <!-- Страница курьеров -->
+            <div id="couriersPage" class="page">
+                <div class="page-header">
+                    <h2>Управление курьерами</h2>
+                    <button id="addCourierBtn" class="btn-primary">+ Добавить курьера</button>
+                </div>
+                
+                <div id="couriersList" class="couriers-list">
+                    <!-- Курьеры будут загружены динамически -->
                 </div>
             </div>
         </div>
