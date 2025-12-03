@@ -2457,7 +2457,15 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
       );
       
       await client.query('COMMIT');
-      res.json(supply);
+      
+      // Возвращаем поставку с правильным форматом цены
+      const finalSupply = supplyResult.rows[0];
+      // Убеждаемся, что цена возвращается как число, а не строка
+      if (finalSupply.unit_purchase_price) {
+        finalSupply.unit_purchase_price = parseFloat(finalSupply.unit_purchase_price);
+      }
+      
+      res.json(finalSupply);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
