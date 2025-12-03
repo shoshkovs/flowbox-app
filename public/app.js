@@ -34,27 +34,6 @@ let activeFilters = {
     feature: []
 };
 let productQuantities = {}; // Количество для каждого товара в карточке
-
-// Утилита для получения минимального количества товара
-function getMinQty(product) {
-    return (product.minStemQuantity && product.minStemQuantity > 0)
-        ? product.minStemQuantity
-        : (product.min_order_quantity && product.min_order_quantity > 0)
-        ? product.min_order_quantity
-        : (product.min_stem_quantity && product.min_stem_quantity > 0)
-        ? product.min_stem_quantity
-        : 1;
-}
-
-// Округление количества до ближайшего кратного minQty (вверх)
-function roundUpToStep(quantity, step) {
-    return Math.ceil(quantity / step) * step;
-}
-
-// Округление количества до ближайшего кратного minQty (вниз)
-function roundDownToStep(quantity, step) {
-    return Math.floor(quantity / step) * step;
-}
 let deliveryPrice = 500; // По умолчанию "В пределах КАД"
 let serviceFee = 450;
 let bonusUsed = 0;
@@ -124,7 +103,13 @@ async function loadProducts() {
         products = await response.json();
         // Инициализация количества для каждого товара с учетом minStemQuantity
         products.forEach(p => {
-            const minQty = getMinQty(p);
+            const minQty = (p.minStemQuantity && p.minStemQuantity > 0) 
+                ? p.minStemQuantity 
+                : (p.min_order_quantity && p.min_order_quantity > 0)
+                ? p.min_order_quantity
+                : (p.min_stem_quantity && p.min_stem_quantity > 0)
+                ? p.min_stem_quantity
+                : 1;
             productQuantities[p.id] = minQty;
         });
         filteredProducts = [...products];
@@ -225,10 +210,16 @@ function renderProducts() {
     }
 
     productsContainer.innerHTML = filteredProducts.map(product => {
-        const minQty = getMinQty(product);
-        // Используем сохраненное количество или minQty, округляем до кратного minQty
-        const savedQty = productQuantities[product.id];
-        const quantity = savedQty ? roundUpToStep(savedQty, minQty) : minQty;
+        // Используем minStemQuantity, если оно задано и больше 0, иначе 1
+        const minQty = (product.minStemQuantity && product.minStemQuantity > 0)
+            ? product.minStemQuantity
+            : (product.min_order_quantity && product.min_order_quantity > 0)
+            ? product.min_order_quantity
+            : (product.min_stem_quantity && product.min_stem_quantity > 0)
+            ? product.min_stem_quantity
+            : 1;
+        // Используем сохраненное количество или minQty
+        const quantity = productQuantities[product.id] || minQty;
         const totalPrice = product.price * quantity;
         const isMinQty = quantity <= minQty;
         
@@ -264,31 +255,16 @@ function changeProductQuantity(productId, delta) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    const minQty = getMinQty(product);
+    // Используем minStemQuantity, если оно задано и больше 0, иначе 1
+    const minQty = (product.minStemQuantity && product.minStemQuantity > 0)
+        ? product.minStemQuantity
+        : (product.min_order_quantity && product.min_order_quantity > 0)
+        ? product.min_order_quantity
+        : (product.min_stem_quantity && product.min_stem_quantity > 0)
+        ? product.min_stem_quantity
+        : 1;
     const currentQty = productQuantities[productId] || minQty;
-    
-    // Изменяем количество с шагом minQty
-    let newQty;
-    if (delta > 0) {
-        // Увеличиваем: округляем вверх до следующего кратного minQty
-        newQty = roundUpToStep(currentQty + delta, minQty);
-    } else {
-        // Уменьшаем: округляем вниз до предыдущего кратного minQty
-        const decreasedQty = currentQty + delta; // delta отрицательный
-        if (decreasedQty < minQty) {
-            // Не позволяем уменьшить ниже минимума
-            tg.HapticFeedback.notificationOccurred('error');
-            return;
-        }
-        newQty = roundDownToStep(decreasedQty, minQty);
-        // Если получилось меньше минимума, оставляем минимум
-        if (newQty < minQty) {
-            newQty = minQty;
-        }
-    }
-    
-    // Ограничиваем максимум 500
-    newQty = Math.min(500, newQty);
+    const newQty = Math.max(minQty, Math.min(500, currentQty + delta));
     productQuantities[productId] = newQty;
     
     const newTotalPrice = product.price * newQty;
@@ -319,8 +295,6 @@ function changeProductQuantity(productId, delta) {
         if (plusBtn) plusBtn.disabled = newQty >= 500;
     }
     
-    tg.HapticFeedback.impactOccurred('light');
-    
     // Обновляем корзину, если товар уже в корзине
     const cartItem = cart.find(item => item.id === productId);
     if (cartItem) {
@@ -337,28 +311,24 @@ function addToCart(productId, quantity = 1) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    const minQty = getMinQty(product);
-    // Округляем количество до ближайшего кратного minQty (вверх)
-    const actualQty = roundUpToStep(Math.max(minQty, quantity), minQty);
+    // Используем minStemQuantity, если оно задано и больше 0, иначе 1
+    const minQty = (product.minStemQuantity && product.minStemQuantity > 0)
+        ? product.minStemQuantity
+        : (product.min_order_quantity && product.min_order_quantity > 0)
+        ? product.min_order_quantity
+        : (product.min_stem_quantity && product.min_stem_quantity > 0)
+        ? product.min_stem_quantity
+        : 1;
+    const actualQty = Math.max(minQty, quantity);
 
     const existingItem = cart.find(item => item.id === productId);
     
     if (existingItem) {
         existingItem.quantity += actualQty;
-        // Обновляем minStemQuantity, если его еще нет
-        if (!existingItem.minStemQuantity) {
-            existingItem.minStemQuantity = minQty;
-            existingItem.min_order_quantity = product.min_order_quantity || minQty;
-            existingItem.min_stem_quantity = product.min_stem_quantity || minQty;
-        }
     } else {
-        // Сохраняем minStemQuantity в объекте товара в корзине
         cart.push({
             ...product,
-            quantity: actualQty,
-            minStemQuantity: minQty, // Сохраняем для использования в корзине
-            min_order_quantity: product.min_order_quantity || minQty,
-            min_stem_quantity: product.min_stem_quantity || minQty
+            quantity: actualQty
         });
     }
     
@@ -399,31 +369,7 @@ function changeQuantity(productId, delta) {
     const item = cart.find(item => item.id === productId);
     if (!item) return;
 
-    const minQty = getMinQty(item);
-    
-    // Изменяем количество с шагом minQty
-    let newQuantity;
-    if (delta > 0) {
-        // Увеличиваем: округляем вверх до следующего кратного minQty
-        newQuantity = roundUpToStep(item.quantity + delta, minQty);
-    } else {
-        // Уменьшаем: округляем вниз до предыдущего кратного minQty
-        const decreasedQty = item.quantity + delta; // delta отрицательный
-        if (decreasedQty < minQty) {
-            // Не позволяем уменьшить ниже минимума
-            tg.HapticFeedback.notificationOccurred('error');
-            return;
-        }
-        newQuantity = roundDownToStep(decreasedQty, minQty);
-        // Если получилось меньше минимума, оставляем минимум
-        if (newQuantity < minQty) {
-            newQuantity = minQty;
-        }
-    }
-    
-    // Ограничиваем максимум 500
-    newQuantity = Math.min(500, newQuantity);
-    item.quantity = newQuantity;
+    item.quantity = Math.max(1, Math.min(500, item.quantity + delta));
     
     if (item.quantity <= 0) {
         removeFromCart(productId);
@@ -635,16 +581,7 @@ function updateCartUI() {
         cartWithItems.style.display = 'block';
         
         // Рендер товаров в корзине
-        cartItemsList.innerHTML = cart.map(item => {
-            const minQty = getMinQty(item);
-            // Округляем количество до кратного minQty (на случай, если было изменено вручную)
-            const roundedQty = roundUpToStep(item.quantity, minQty);
-            if (roundedQty !== item.quantity) {
-                item.quantity = roundedQty;
-            }
-            const isMinQty = item.quantity <= minQty;
-            
-            return `
+        cartItemsList.innerHTML = cart.map(item => `
             <div class="cart-item-new">
                 <img src="${item.image}" alt="${item.name}" class="cart-item-new-image">
                 <div class="cart-item-new-info">
@@ -653,7 +590,7 @@ function updateCartUI() {
                 </div>
                     <div class="cart-item-new-controls">
                         <div class="cart-item-new-quantity">
-                            <button class="quantity-btn-small ${isMinQty ? 'disabled' : ''}" onclick="changeQuantity(${item.id}, -1)" ${isMinQty ? 'disabled' : ''}>−</button>
+                            <button class="quantity-btn-small ${item.quantity <= 1 ? 'disabled' : ''}" onclick="changeQuantity(${item.id}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>−</button>
                             <span class="quantity-value">${item.quantity}</span>
                             <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, 1)">+</button>
                         </div>
