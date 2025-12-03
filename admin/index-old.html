@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowBox - Админ-панель</title>
+    <link rel="stylesheet" href="/admin/admin.css?v=1.0">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Экран авторизации -->
+        <div id="loginScreen" class="login-screen">
+            <div class="login-box">
+                <h1>🌸 FlowBox</h1>
+                <h2>Админ-панель</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" id="password" required placeholder="Введите пароль">
+                    </div>
+                    <button type="submit" class="btn-primary">Войти</button>
+                    <div id="loginError" class="error-message" style="display: none;"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Основной интерфейс -->
+        <div id="adminPanel" class="admin-panel" style="display: none;">
+            <header class="admin-header">
+                <h1>🌸 FlowBox - Админ-панель</h1>
+                <button id="logoutBtn" class="btn-secondary">Выйти</button>
+            </header>
+
+            <nav class="admin-nav">
+                <button class="nav-btn active" data-page="products">📦 Товары</button>
+                <button class="nav-btn" data-page="orders">🛍️ Заказы</button>
+                <button class="nav-btn" data-page="couriers">🚚 Курьеры</button>
+            </nav>
+
+            <!-- Страница товаров -->
+            <div id="productsPage" class="page active">
+                <div class="page-header">
+                    <h2>Управление товарами</h2>
+                    <button id="addProductBtn" class="btn-primary">+ Добавить товар</button>
+                </div>
+                
+                <div id="productsList" class="products-list">
+                    <!-- Товары будут загружены динамически -->
+                </div>
+            </div>
+
+            <!-- Страница заказов -->
+            <div id="ordersPage" class="page">
+                <div class="page-header">
+                    <h2>Заказы</h2>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-status="">Все</button>
+                        <button class="filter-btn" data-status="active">Активные</button>
+                        <button class="filter-btn" data-status="completed">Завершенные</button>
+                        <button class="filter-btn" data-status="cancelled">Отмененные</button>
+                    </div>
+                </div>
+                
+                <div id="ordersList" class="orders-list">
+                    <!-- Заказы будут загружены динамически -->
+                </div>
+            </div>
+
+            <!-- Страница курьеров -->
+            <div id="couriersPage" class="page">
+                <div class="page-header">
+                    <h2>Управление курьерами</h2>
+                    <button id="addCourierBtn" class="btn-primary">+ Добавить курьера</button>
+                </div>
+                
+                <div id="couriersList" class="couriers-list">
+                    <!-- Курьеры будут загружены динамически -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для товара -->
+    <div id="productModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Добавить товар</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label>Название <span class="required">*</span></label>
+                    <input type="text" id="productName" required>
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="productDescription" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Цена (₽) <span class="required">*</span></label>
+                        <input type="number" id="productPrice" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>URL изображения</label>
+                        <input type="url" id="productImage">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Тип</label>
+                        <select id="productType">
+                            <option value="">Выберите тип</option>
+                            <option value="roses">Розы</option>
+                            <option value="tulips">Тюльпаны</option>
+                            <option value="chrysanthemums">Хризантемы</option>
+                            <option value="ranunculus">Ранункулюсы</option>
+                            <option value="bush-roses">Кустовые розы</option>
+                            <option value="carnations">Гвоздики</option>
+                            <option value="exotic">Экзотика</option>
+                            <option value="greenery">Зелень</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Цвет</label>
+                        <select id="productColor">
+                            <option value="">Выберите цвет</option>
+                            <option value="red">Красный</option>
+                            <option value="pink">Розовый</option>
+                            <option value="white">Белый</option>
+                            <option value="green">Зеленый</option>
+                            <option value="orange">Оранжевый</option>
+                            <option value="purple">Фиолетовый</option>
+                            <option value="brown">Коричневый</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Особенности (через запятую)</label>
+                    <input type="text" id="productFeatures" placeholder="ароматные, стойкие, высокие">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="productActive" checked>
+                        Активен (отображается в каталоге)
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary modal-close">Отмена</button>
+                    <button type="submit" class="btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно для заказа -->
+    <div id="orderModal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Заказ #<span id="orderNumber"></span></h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div id="orderDetails" class="order-details">
+                <!-- Детали заказа будут загружены динамически -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/admin/admin.js?v=1.0"></script>
+</body>
+</html>
+
