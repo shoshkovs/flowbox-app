@@ -376,29 +376,68 @@ async function saveUserAddresses(userId, addresses) {
     try {
       await client.query('BEGIN');
       
+      // Получаем существующие адреса для проверки дубликатов
+      const existingAddresses = await client.query(
+        'SELECT city, street, house, apartment FROM addresses WHERE user_id = $1',
+        [userId]
+      );
+      
+      // Функция для проверки дубликата
+      const isDuplicate = (newAddr) => {
+        return existingAddresses.rows.some(existing => {
+          const newCity = (newAddr.city || '').toLowerCase().trim();
+          const newStreet = (newAddr.street || '').toLowerCase().trim();
+          const newHouse = (newAddr.house || '').toLowerCase().trim();
+          const newApartment = (newAddr.apartment || '').toLowerCase().trim();
+          
+          const existingCity = (existing.city || '').toLowerCase().trim();
+          const existingStreet = (existing.street || '').toLowerCase().trim();
+          const existingHouse = (existing.house || '').toLowerCase().trim();
+          const existingApartment = (existing.apartment || '').toLowerCase().trim();
+          
+          return newCity === existingCity &&
+                 newStreet === existingStreet &&
+                 newHouse === existingHouse &&
+                 newApartment === existingApartment;
+        });
+      };
+      
       // Удаляем старые адреса
       await client.query('DELETE FROM addresses WHERE user_id = $1', [userId]);
       
-      // Добавляем новые адреса
+      // Добавляем новые адреса, пропуская дубликаты
+      let addedCount = 0;
+      let skippedCount = 0;
+      
       for (const addr of addresses || []) {
-        await client.query(
-          `INSERT INTO addresses 
-           (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          [
-            userId,
-            addr.name || 'Новый адрес',
-            addr.city || '',
-            addr.street || '',
-            addr.house || '',
-            addr.entrance || null,
-            addr.apartment || null,
-            addr.floor || null,
-            addr.intercom || null,
-            addr.comment || null,
-            addr.isDefault || false
-          ]
-        );
+        // Проверяем на дубликат перед добавлением
+        if (!isDuplicate(addr)) {
+          await client.query(
+            `INSERT INTO addresses 
+             (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+              userId,
+              addr.name || 'Новый адрес',
+              addr.city || '',
+              addr.street || '',
+              addr.house || '',
+              addr.entrance || null,
+              addr.apartment || null,
+              addr.floor || null,
+              addr.intercom || null,
+              addr.comment || null,
+              addr.isDefault || false
+            ]
+          );
+          addedCount++;
+        } else {
+          skippedCount++;
+        }
+      }
+      
+      if (skippedCount > 0) {
+        console.log(`⚠️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
       }
       
       await client.query('COMMIT');
@@ -656,14 +695,26 @@ app.post('/api/user-data', async (req, res) => {
         await saveUserAddresses(user.id, addresses);
       }
       
-      // Обновляем бонусы
-      if (bonuses !== undefined) {
+      // Обновляем бонусы ТОЛЬКО если они явно переданы и не равны undefined
+      // Это предотвращает перезапись реальных бонусов из БД значениями по умолчанию
+      if (bonuses !== undefined && bonuses !== null) {
         const client = await pool.connect();
         try {
-          await client.query(
-            'UPDATE users SET bonuses = $1 WHERE id = $2',
-            [bonuses, user.id]
+          // Проверяем текущие бонусы в БД перед обновлением
+          const currentBonuses = await client.query(
+            'SELECT bonuses FROM users WHERE id = $1',
+            [user.id]
           );
+          
+          // Обновляем только если переданное значение отличается от текущего
+          // или если текущее значение NULL (первая инициализация)
+          const currentBonusValue = currentBonuses.rows[0]?.bonuses;
+          if (currentBonusValue === null || currentBonusValue === undefined || currentBonusValue !== bonuses) {
+            await client.query(
+              'UPDATE users SET bonuses = $1 WHERE id = $2',
+              [bonuses, user.id]
+            );
+          }
         } finally {
           client.release();
         }
@@ -737,7 +788,8 @@ app.get('/api/user-data/:userId', async (req, res) => {
         },
         activeOrders: activeOrders,
         completedOrders: completedOrders,
-        bonuses: user.bonuses || 500
+        // Используем реальные бонусы из БД, если они есть, иначе 0 (не 500!)
+        bonuses: user.bonuses !== null && user.bonuses !== undefined ? user.bonuses : 0
       };
       
       // Логируем загрузку данных только если есть что загружать
@@ -754,7 +806,7 @@ app.get('/api/user-data/:userId', async (req, res) => {
         profile: null,
         activeOrders: [],
         completedOrders: [],
-        bonuses: 500
+        bonuses: 0 // Не 500, чтобы не начислять бонусы при каждом деплое
       };
       
       console.log(`📥 Загружены данные для пользователя ${userId} (файл): адресов=${userData.addresses.length}, заказов=${userData.activeOrders.length}`);
