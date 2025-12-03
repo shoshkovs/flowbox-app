@@ -1556,6 +1556,12 @@ async function validateAndSubmitOrder(e) {
             updateCartUI();
             orderForm.reset();
             
+            // Устанавливаем город по умолчанию после reset
+            const cityField = document.getElementById('orderAddressCity');
+            if (cityField) {
+                cityField.value = 'Санкт-Петербург';
+            }
+            
             // Обновление активных заказов
             loadActiveOrders();
             
@@ -1649,6 +1655,13 @@ const profileBonusesAmount = document.getElementById('profileBonusesAmount');
 function resetAddressFormState() {
     if (!addressForm) return;
     addressForm.reset();
+    
+    // Устанавливаем город по умолчанию
+    const cityField = document.getElementById('addressCity');
+    if (cityField) {
+        cityField.value = 'Санкт-Петербург';
+    }
+    
     if (addressError) addressError.style.display = 'none';
     
     const errorFields = addressForm.querySelectorAll('.error');
@@ -1658,7 +1671,7 @@ function resetAddressFormState() {
 function setAddressFormValues(address) {
     if (!address) return;
     document.getElementById('addressName').value = address.name || '';
-    document.getElementById('addressCity').value = address.city || '';
+    document.getElementById('addressCity').value = address.city || 'Санкт-Петербург';
     document.getElementById('addressStreet').value = address.street || '';
     const addressHouseField = document.getElementById('addressHouse');
     if (addressHouseField) addressHouseField.value = address.house || '';
@@ -2223,7 +2236,7 @@ function fillOrderFormWithAddress(address) {
     const intercomField = document.getElementById('orderAddressIntercom');
     const commentField = document.getElementById('orderAddressComment');
     
-    if (cityField) cityField.value = address.city || '';
+    if (cityField) cityField.value = address.city || 'Санкт-Петербург';
     if (streetField) streetField.value = address.street || '';
     if (houseField) houseField.value = address.house || '';
     if (entranceField) entranceField.value = address.entrance || '';
@@ -2253,8 +2266,14 @@ function clearOrderAddressErrors() {
 }
 
 function clearOrderAddressFields() {
+    // Очищаем все поля, кроме города (он остается "Санкт-Петербург")
+    const cityField = document.getElementById('orderAddressCity');
+    if (cityField) {
+        cityField.value = 'Санкт-Петербург';
+        cityField.classList.remove('error');
+    }
+    
     const fields = [
-        'orderAddressCity',
         'orderAddressStreet',
         'orderAddressHouse',
         'orderAddressEntrance',
