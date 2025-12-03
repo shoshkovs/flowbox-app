@@ -2506,7 +2506,7 @@ function loadActiveOrders() {
                 <div class="order-item">
                     <div class="order-item-header">
                         <h4>Заказ #${order.id}</h4>
-                        <span class="order-status active">Активный</span>
+                        <span class="order-status ${getOrderStatusClass(order.status)}">${getOrderStatusText(order.status)}</span>
                     </div>
                     <p class="order-date">Дата: ${order.date}</p>
                     <p class="order-address">Адрес: ${order.address}</p>
