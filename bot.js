@@ -54,6 +54,61 @@ if (process.env.DATABASE_URL) {
   console.log('💡 Для использования БД добавь переменную DATABASE_URL в Environment Render.com');
 }
 
+app.use(express.json());
+
+// ВАЖНО: Маршруты админки должны быть ДО статических файлов MiniApp
+// Статические файлы для админки (собранная React версия)
+const adminBuildPath = path.join(__dirname, 'admin-build');
+const adminSourcePath = path.join(__dirname, 'admin');
+
+// Диагностика: проверяем наличие папок
+console.log('🔍 Проверка админ-панели:');
+console.log('  admin-build существует:', fs.existsSync(adminBuildPath));
+console.log('  admin исходники существуют:', fs.existsSync(adminSourcePath));
+
+if (fs.existsSync(adminBuildPath)) {
+  const indexPath = path.join(adminBuildPath, 'index.html');
+  console.log('  admin-build/index.html существует:', fs.existsSync(indexPath));
+  
+  // Используем собранную версию
+  // Сначала раздаем статические файлы (assets) - важно до маршрута /admin/*
+  app.use('/admin', express.static(adminBuildPath, {
+    setHeaders: (res, filePath) => {
+      // Кеширование для статических файлов
+      if (filePath.includes('/assets/')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    }
+  }));
+  
+  // Затем обрабатываем все остальные запросы как SPA
+  app.get('/admin', (req, res) => {
+    console.log('📄 Запрос к /admin - отдаем index.html');
+    res.sendFile(path.join(adminBuildPath, 'index.html'));
+  });
+  
+  app.get('/admin/*', (req, res) => {
+    // Пропускаем запросы к статическим файлам (они уже обработаны выше)
+    if (req.path.startsWith('/admin/assets/')) {
+      return res.status(404).send('Not found');
+    }
+    console.log('📄 Запрос к /admin/* - отдаем index.html для SPA роутинга');
+    res.sendFile(path.join(adminBuildPath, 'index.html'));
+  });
+  
+  console.log('✅ Используется собранная React админ-панель из admin-build/');
+} else {
+  console.log('⚠️  admin-build не найден, используем старую версию');
+  // Fallback на старую версию
+  app.use('/admin', express.static(adminSourcePath));
+  app.get('/admin', (req, res) => {
+    res.sendFile(path.join(adminSourcePath, 'index.html'));
+  });
+  app.get('/admin/*', (req, res) => {
+    res.sendFile(path.join(adminSourcePath, 'index.html'));
+  });
+}
+
 // Статические файлы для MiniApp с заголовками против кеширования
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, path) => {
@@ -64,7 +119,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
   }
 }));
-app.use(express.json());
 
 // Главная страница MiniApp
 app.get('/', (req, res) => {
@@ -1235,10 +1289,17 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
 const adminBuildPath = path.join(__dirname, 'admin-build');
 const adminSourcePath = path.join(__dirname, 'admin');
 
-// Проверяем, существует ли собранная версия
+// Диагностика: проверяем наличие папок
+console.log('🔍 Проверка админ-панели:');
+console.log('  admin-build существует:', fs.existsSync(adminBuildPath));
+console.log('  admin исходники существуют:', fs.existsSync(adminSourcePath));
+
 if (fs.existsSync(adminBuildPath)) {
+  const indexPath = path.join(adminBuildPath, 'index.html');
+  console.log('  admin-build/index.html существует:', fs.existsSync(indexPath));
+  
   // Используем собранную версию
-  // Сначала раздаем статические файлы (assets)
+  // Сначала раздаем статические файлы (assets) - важно до маршрута /admin/*
   app.use('/admin', express.static(adminBuildPath, {
     setHeaders: (res, filePath) => {
       // Кеширование для статических файлов
@@ -1247,18 +1308,31 @@ if (fs.existsSync(adminBuildPath)) {
       }
     }
   }));
+  
   // Затем обрабатываем все остальные запросы как SPA
+  app.get('/admin', (req, res) => {
+    console.log('📄 Запрос к /admin - отдаем index.html');
+    res.sendFile(path.join(adminBuildPath, 'index.html'));
+  });
+  
   app.get('/admin/*', (req, res) => {
-    // Пропускаем запросы к статическим файлам
+    // Пропускаем запросы к статическим файлам (они уже обработаны выше)
     if (req.path.startsWith('/admin/assets/')) {
       return res.status(404).send('Not found');
     }
+    console.log('📄 Запрос к /admin/* - отдаем index.html для SPA роутинга');
     res.sendFile(path.join(adminBuildPath, 'index.html'));
   });
+  
+  console.log('✅ Используется собранная React админ-панель из admin-build/');
 } else {
+  console.log('⚠️  admin-build не найден, используем старую версию');
   // Fallback на старую версию
   app.use('/admin', express.static(adminSourcePath));
   app.get('/admin', (req, res) => {
+    res.sendFile(path.join(adminSourcePath, 'index.html'));
+  });
+  app.get('/admin/*', (req, res) => {
     res.sendFile(path.join(adminSourcePath, 'index.html'));
   });
 }
