@@ -534,6 +534,7 @@ async function loadUserData() {
             updateCartUI();
             updateGoToCartButton();
             loadSavedAddresses();
+            console.log('📦 Вызываем loadActiveOrders после загрузки данных, активных заказов:', userActiveOrders.length);
             loadActiveOrders();
             loadProfile();
             
@@ -2584,23 +2585,30 @@ function clearOrderAddressFields() {
 // Загрузка активных заказов
 function loadActiveOrders() {
     // Данные уже загружены в loadUserData, просто обновляем отображение
+    console.log('📦 loadActiveOrders вызвана, активных заказов:', userActiveOrders.length);
+    console.log('📦 Заказы:', userActiveOrders);
     
     if (activeOrdersElement) {
         if (userActiveOrders.length === 0) {
             activeOrdersElement.innerHTML = '<p class="no-orders">У вас нет активных заказов</p>';
         } else {
-            activeOrdersElement.innerHTML = userActiveOrders.map(order => `
+            activeOrdersElement.innerHTML = userActiveOrders.map(order => {
+                const statusText = getOrderStatusText(order.status);
+                const statusClass = getOrderStatusClass(order.status);
+                console.log(`📦 Заказ #${order.id}, статус: ${order.status} -> "${statusText}"`);
+                return `
                 <div class="order-item">
                     <div class="order-item-header">
                         <h4>Заказ #${order.id}</h4>
-                        <span class="order-status ${getOrderStatusClass(order.status)}">${getOrderStatusText(order.status)}</span>
+                        <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
                     <p class="order-date">Дата: ${order.date}</p>
-                    <p class="order-address">Адрес: ${order.address}</p>
-                    <p class="order-delivery">Доставка: ${order.deliveryDate} ${order.deliveryTime}</p>
+                    <p class="order-address">Адрес: ${order.address || 'Не указан'}</p>
+                    ${order.deliveryDate ? `<p class="order-delivery">Доставка: ${order.deliveryDate} ${order.deliveryTime || ''}</p>` : ''}
                     <p class="order-total">Сумма: ${order.total} ₽</p>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
     }
 }
