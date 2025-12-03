@@ -2811,6 +2811,114 @@ app.delete('/api/admin/couriers/:id', checkAdminAuth, async (req, res) => {
 });
 
 // API: Получить зоны доставки
+// API: Получить список доставок
+app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Получаем заказы с доставкой (где есть delivery_date или статус delivery)
+      const result = await client.query(`
+        SELECT 
+          o.id as order_id,
+          o.recipient_name,
+          o.recipient_phone,
+          o.address_string,
+          o.address_json,
+          o.delivery_date,
+          o.delivery_time,
+          o.status,
+          o.comment,
+          u.telegram_username
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        WHERE o.delivery_date IS NOT NULL
+           OR o.status IN ('delivery', 'active', 'paid', 'assembly')
+        ORDER BY 
+          CASE 
+            WHEN o.delivery_date IS NOT NULL THEN o.delivery_date
+            ELSE o.created_at
+          END ASC,
+          o.delivery_time ASC
+      `);
+      
+      const deliveries = result.rows.map(row => ({
+        order_id: row.order_id,
+        recipient_name: row.recipient_name,
+        recipient_phone: row.recipient_phone,
+        address_string: row.address_string,
+        address: row.address_string || (row.address_json ? JSON.stringify(row.address_json) : null),
+        delivery_date: row.delivery_date,
+        delivery_time: row.delivery_time,
+        delivery_status: row.status, // Используем status заказа как статус доставки
+        status: row.status,
+        comment: row.comment,
+        telegram_username: row.telegram_username
+      }));
+      
+      res.json(deliveries);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения доставок:', error);
+    res.status(500).json({ error: 'Ошибка получения доставок' });
+  }
+});
+
+// API: Обновить статус доставки
+app.put('/api/admin/delivery/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  if (!status) {
+    return res.status(400).json({ error: 'Статус обязателен' });
+  }
+  
+  // Маппинг статусов доставки на статусы заказа
+  const statusMap = {
+    'pending': 'active',
+    'in_transit': 'delivery',
+    'delivered': 'completed',
+    'cancelled': 'cancelled'
+  };
+  
+  const orderStatus = statusMap[status] || status;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'UPDATE orders SET status = $1, updated_at = now() WHERE id = $2 RETURNING *',
+        [orderStatus, id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      res.json({ 
+        success: true,
+        order_id: result.rows[0].id,
+        status: result.rows[0].status,
+        delivery_status: status
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления статуса доставки:', error);
+    res.status(500).json({ error: 'Ошибка обновления статуса доставки' });
+  }
+});
+
 app.get('/api/admin/delivery/zones', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
