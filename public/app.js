@@ -319,6 +319,8 @@ function changeProductQuantity(productId, delta) {
         if (plusBtn) plusBtn.disabled = newQty >= 500;
     }
     
+    tg.HapticFeedback.impactOccurred('light');
+    
     // Обновляем корзину, если товар уже в корзине
     const cartItem = cart.find(item => item.id === productId);
     if (cartItem) {
