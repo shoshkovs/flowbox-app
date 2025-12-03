@@ -1743,8 +1743,7 @@ async function validateAndSubmitOrder(e) {
             bonusUsed = 0;
             if (bonusToggle) bonusToggle.checked = false;
             
-            saveUserData(); // Сохраняем на сервер (включая обновленные бонусы и адреса)
-            
+            // Показываем экран успеха СРАЗУ, до сохранения данных
             successOverlay.classList.add('active');
             // Скрыть форму заказа
             const orderTab = document.getElementById('orderTab');
@@ -1820,9 +1819,15 @@ async function validateAndSubmitOrder(e) {
             throw new Error(result.error || 'Заказ не был создан. Неожиданный формат ответа от сервера');
         }
     } catch (error) {
-        console.error('Ошибка отправки заказа:', error);
+        console.error('❌ Ошибка отправки заказа:', error);
         console.error('Детали ошибки:', error.message, error.stack);
-        alert('Произошла ошибка при оформлении заказа. Попробуйте еще раз.');
+        
+        // Показываем ошибку только если экран успеха еще не показан
+        if (!successOverlay.classList.contains('active')) {
+            alert('Произошла ошибка при оформлении заказа. Попробуйте еще раз.');
+        } else {
+            console.warn('⚠️ Ошибка произошла, но экран успеха уже показан. Возможно, заказ был создан.');
+        }
     }
     
     return true;

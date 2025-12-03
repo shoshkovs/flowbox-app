@@ -743,8 +743,9 @@ async function saveUserAddresses(userId, addresses) {
         }
       }
       
-      if (skippedCount > 0) {
-        console.log(`⚠️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
+      // Логируем дубликаты только если их много (не критично)
+      if (skippedCount > 0 && skippedCount > 3) {
+        console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
       }
       
       await client.query('COMMIT');
