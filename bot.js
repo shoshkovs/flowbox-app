@@ -176,7 +176,7 @@ app.get('/api/products', async (req, res) => {
           image: row.image_url || 'https://via.placeholder.com/300x300?text=Цветы',
           type: row.type || '',
           color: row.color || '',
-          features: row.features || []
+          features: row.features ? (typeof row.features === 'string' ? JSON.parse(row.features) : row.features) : {}
         }));
         
         res.json(products);
@@ -916,9 +916,22 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
+      // Преобразуем features в JSONB, если это объект
+      let featuresValue = null;
+      if (features) {
+        if (typeof features === 'object' && !Array.isArray(features)) {
+          featuresValue = JSON.stringify(features);
+        } else if (Array.isArray(features)) {
+          // Если это массив, конвертируем в JSONB массив
+          featuresValue = JSON.stringify(features);
+        } else {
+          featuresValue = features;
+        }
+      }
+      
       const result = await client.query(
         `INSERT INTO products (name, description, price, image_url, type, color, features)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
          RETURNING *`,
         [
           name,
@@ -927,7 +940,7 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
           image_url || null,
           type || null,
           color || null,
-          features || []
+          featuresValue
         ]
       );
       res.json(result.rows[0]);
@@ -936,7 +949,7 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     }
   } catch (error) {
     console.error('Ошибка создания товара:', error);
-    res.status(500).json({ error: 'Ошибка создания товара' });
+    res.status(500).json({ error: 'Ошибка создания товара: ' + error.message });
   }
 });
 
@@ -962,6 +975,20 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
       const hasStock = columnsCheck.rows.some(r => r.column_name === 'stock');
       const hasMinStock = columnsCheck.rows.some(r => r.column_name === 'min_stock');
       
+      // Преобразуем features в JSONB, если это объект
+      let featuresValue = null;
+      if (features !== undefined) {
+        if (features === null) {
+          featuresValue = null;
+        } else if (typeof features === 'object' && !Array.isArray(features)) {
+          featuresValue = JSON.stringify(features);
+        } else if (Array.isArray(features)) {
+          featuresValue = JSON.stringify(features);
+        } else {
+          featuresValue = features;
+        }
+      }
+      
       let updateQuery = `
         UPDATE products 
         SET name = COALESCE($1, name),
@@ -970,12 +997,12 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
             image_url = COALESCE($4, image_url),
             type = COALESCE($5, type),
             color = COALESCE($6, color),
-            features = COALESCE($7, features),
+            features = COALESCE($7::jsonb, features),
             is_active = COALESCE($8, is_active),
             updated_at = now()
       `;
       
-      const params = [name, description, price, image_url, type, color, features, is_active];
+      const params = [name, description, price, image_url, type, color, featuresValue, is_active];
       let paramIndex = 9;
       
       if (hasStock && stock !== undefined) {
