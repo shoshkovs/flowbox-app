@@ -239,14 +239,21 @@ export function ProductForm({ authToken, productId }) {
       toast.error('Выберите цвет');
       return;
     }
-    if (!productForm.price_per_stem || parseFloat(productForm.price_per_stem) <= 0) {
-      toast.error('Укажите корректную цену за стебель (больше 0)');
+    
+    // Валидация цены: должно быть целым числом >= 1
+    const pricePerStemInt = parseInt(productForm.price_per_stem);
+    if (!productForm.price_per_stem || !Number.isInteger(pricePerStemInt) || pricePerStemInt < 1) {
+      toast.error('Цена за стебель должна быть целым числом не менее 1 рубля');
       return;
     }
-    if (!productForm.min_stem_quantity || parseInt(productForm.min_stem_quantity) < 1) {
-      toast.error('Минимальное количество стеблей должно быть не менее 1');
+    
+    // Валидация минимального количества: должно быть целым числом >= 1
+    const minStemQtyInt = parseInt(productForm.min_stem_quantity);
+    if (!productForm.min_stem_quantity || !Number.isInteger(minStemQtyInt) || minStemQtyInt < 1) {
+      toast.error('Минимальное количество стеблей должно быть целым числом не менее 1');
       return;
     }
+    
     if (!productForm.quality_ids || productForm.quality_ids.length === 0) {
       toast.error('Выберите хотя бы одно отличительное качество');
       return;
@@ -258,8 +265,8 @@ export function ProductForm({ authToken, productId }) {
         name: productForm.name,
         category_id: productForm.category_id,
         color_id: productForm.color_id,
-        price_per_stem: parseFloat(productForm.price_per_stem),
-        min_stem_quantity: parseInt(productForm.min_stem_quantity),
+        price_per_stem: pricePerStemInt, // Используем проверенное целое число
+        min_stem_quantity: minStemQtyInt, // Используем проверенное целое число
         quality_ids: productForm.quality_ids,
         stem_length_id: productForm.stem_length_id,
         country_id: productForm.country_id,
@@ -376,14 +383,21 @@ export function ProductForm({ authToken, productId }) {
                   Цена за стебель (₽) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={productForm.price_per_stem}
-                  onChange={(e) => setProductForm({ ...productForm, price_per_stem: e.target.value })}
+                  onChange={(e) => {
+                    // Разрешаем только целые числа
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    if (value === '' || (parseInt(value) >= 1)) {
+                      setProductForm({ ...productForm, price_per_stem: value });
+                    }
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   placeholder="250"
                 />
+                <p className="text-xs text-gray-500 mt-1">Только целые числа в рублях (без копеек)</p>
               </div>
 
               <div>

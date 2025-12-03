@@ -138,6 +138,45 @@ if (process.env.DATABASE_URL) {
       }
     }, 2000);
     
+    // Миграция price -> price_per_stem
+    setTimeout(async () => {
+      try {
+        const client = await pool.connect();
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const migrationSQL = fs.readFileSync(
+            path.join(__dirname, 'database', 'migrate-price-to-price-per-stem.sql'),
+            'utf8'
+          );
+          
+          // Выполняем миграцию построчно
+          const statements = migrationSQL.split(';').filter(s => s.trim());
+          for (const statement of statements) {
+            if (statement.trim()) {
+              try {
+                await client.query(statement);
+              } catch (err) {
+                // Игнорируем ошибки "уже существует" и "не существует"
+                if (!err.message.includes('already exists') && 
+                    !err.message.includes('duplicate') && 
+                    !err.message.includes('does not exist')) {
+                  console.log('⚠️  Ошибка миграции price:', err.message);
+                }
+              }
+            }
+          }
+          console.log('✅ Миграция price -> price_per_stem завершена');
+        } catch (migrationError) {
+          console.log('⚠️  Миграция price:', migrationError.message);
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибки при миграции
+      }
+    }, 3000);
+    
     // Выполняем миграцию features в JSONB (если нужно)
     setTimeout(async () => {
     try {
@@ -1437,6 +1476,18 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     return res.status(400).json({ error: 'Название, категория, цвет, цена за стебель и минимальное количество обязательны' });
   }
   
+  // Валидация price_per_stem: должно быть целым числом >= 1
+  const pricePerStemInt = parseInt(price_per_stem);
+  if (!Number.isInteger(pricePerStemInt) || pricePerStemInt < 1) {
+    return res.status(400).json({ error: 'Цена за стебель должна быть целым числом не менее 1 рубля' });
+  }
+  
+  // Валидация min_stem_quantity: должно быть целым числом >= 1
+  const minStemQtyInt = parseInt(min_stem_quantity);
+  if (!Number.isInteger(minStemQtyInt) || minStemQtyInt < 1) {
+    return res.status(400).json({ error: 'Минимальное количество стеблей должно быть целым числом не менее 1' });
+  }
+  
   if (!quality_ids || !Array.isArray(quality_ids) || quality_ids.length === 0) {
     return res.status(400).json({ error: 'Необходимо выбрать хотя бы одно отличительное качество' });
   }
@@ -1466,8 +1517,8 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
           name,
           category_id,
           color_id,
-          price_per_stem,
-          min_stem_quantity,
+          pricePerStemInt, // Используем проверенное целое число
+          minStemQtyInt, // Используем проверенное целое число
           stem_length_id || null,
           country_id || null,
           variety_id || null,
