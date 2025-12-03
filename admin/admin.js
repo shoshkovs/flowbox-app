@@ -204,17 +204,41 @@ function loadPage(pageName) {
 async function loadDashboard() {
     try {
         // Загружаем статистику
-        const ordersRes = await fetch(`${API_BASE}/api/admin/orders?status=active&limit=10`);
+        const ordersRes = await fetch(`${API_BASE}/api/admin/orders`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!ordersRes.ok) {
+            throw new Error(`HTTP error! status: ${ordersRes.status}`);
+        }
+        
         const orders = await ordersRes.json();
         
         // Обновляем статистику
-        updateStat('statOrdersToday', orders.length || 0);
+        const todayOrders = orders.filter(o => {
+            const orderDate = new Date(o.created_at);
+            const today = new Date();
+            return orderDate.toDateString() === today.toDateString();
+        });
+        
+        updateStat('statOrdersToday', todayOrders.length || 0);
         
         // Загружаем последние заказы
         renderRecentOrders(orders.slice(0, 5));
         
         // Загружаем популярные товары
-        const productsRes = await fetch(`${API_BASE}/api/admin/products`);
+        const productsRes = await fetch(`${API_BASE}/api/admin/products`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!productsRes.ok) {
+            throw new Error(`HTTP error! status: ${productsRes.status}`);
+        }
+        
         const products = await productsRes.json();
         renderPopularProducts(products.slice(0, 5));
         
@@ -266,7 +290,16 @@ function renderPopularProducts(products) {
 
 async function loadProducts() {
     try {
-        const response = await fetch(`${API_BASE}/api/admin/products`);
+        const response = await fetch(`${API_BASE}/api/admin/products`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const products = await response.json();
         
         // Применяем фильтры
@@ -337,9 +370,150 @@ function renderProductsTable(products) {
     }).join('');
 }
 
-function openProductModal(productId = null) {
-    // TODO: Реализовать модальное окно для товара
-    alert('Модальное окно товара будет реализовано');
+function openProductModal(product = null) {
+    // Создаем или находим модальное окно
+    let modal = document.getElementById('productModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'productModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="productModalTitle">Добавить товар</h3>
+                    <button class="modal-close" onclick="closeProductModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <input type="hidden" id="productId">
+                        <div class="form-group">
+                            <label>Название <span class="required">*</span></label>
+                            <input type="text" id="productName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Описание</label>
+                            <textarea id="productDescription" rows="3"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Цена (₽) <span class="required">*</span></label>
+                                <input type="number" id="productPrice" required min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>URL изображения</label>
+                                <input type="url" id="productImage">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Тип</label>
+                                <select id="productType">
+                                    <option value="">Выберите тип</option>
+                                    <option value="roses">Розы</option>
+                                    <option value="tulips">Тюльпаны</option>
+                                    <option value="chrysanthemums">Хризантемы</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Цвет</label>
+                                <select id="productColor">
+                                    <option value="">Выберите цвет</option>
+                                    <option value="red">Красный</option>
+                                    <option value="pink">Розовый</option>
+                                    <option value="white">Белый</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="productActive" checked>
+                                Активен (отображается в каталоге)
+                            </label>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-secondary" onclick="closeProductModal()">Отмена</button>
+                            <button type="submit" class="btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Обработчик формы
+        document.getElementById('productForm').addEventListener('submit', handleProductSubmit);
+    }
+    
+    // Заполняем форму
+    if (product) {
+        document.getElementById('productModalTitle').textContent = 'Редактировать товар';
+        document.getElementById('productId').value = product.id;
+        document.getElementById('productName').value = product.name || '';
+        document.getElementById('productDescription').value = product.description || '';
+        document.getElementById('productPrice').value = product.price || '';
+        document.getElementById('productImage').value = product.image_url || '';
+        document.getElementById('productType').value = product.type || '';
+        document.getElementById('productColor').value = product.color || '';
+        document.getElementById('productActive').checked = !product.is_hidden;
+    } else {
+        document.getElementById('productModalTitle').textContent = 'Добавить товар';
+        document.getElementById('productForm').reset();
+        document.getElementById('productId').value = '';
+        document.getElementById('productActive').checked = true;
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeProductModal() {
+    const modal = document.getElementById('productModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function handleProductSubmit(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('productId').value;
+    const productData = {
+        name: document.getElementById('productName').value,
+        description: document.getElementById('productDescription').value,
+        price: parseInt(document.getElementById('productPrice').value),
+        image_url: document.getElementById('productImage').value || null,
+        type: document.getElementById('productType').value || null,
+        color: document.getElementById('productColor').value || null,
+        is_active: document.getElementById('productActive').checked
+    };
+    
+    try {
+        const url = id 
+            ? `${API_BASE}/api/admin/products/${id}`
+            : `${API_BASE}/api/admin/products`;
+        
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(productData)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Ошибка сохранения товара');
+        }
+        
+        closeProductModal();
+        loadProducts();
+        alert('Товар сохранен');
+    } catch (error) {
+        console.error('Ошибка сохранения товара:', error);
+        alert('Ошибка сохранения товара: ' + error.message);
+    }
 }
 
 function editProduct(id) {
@@ -421,12 +595,25 @@ async function loadOrders() {
             ? `${API_BASE}/api/admin/orders?status=${statusFilter}`
             : `${API_BASE}/api/admin/orders`;
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const orders = await response.json();
         
         renderOrdersTable(orders);
     } catch (error) {
         console.error('Ошибка загрузки заказов:', error);
+        const tbody = document.getElementById('ordersTableBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">Ошибка загрузки: ${error.message}</td></tr>`;
+        }
     }
 }
 
@@ -453,7 +640,7 @@ function renderOrdersTable(orders) {
                 <td>${order.total} ₽</td>
                 <td>${order.delivery_date || '-'} ${order.delivery_time || ''}</td>
                 <td>
-                    <button class="btn-icon" onclick="viewOrder(${order.id})">👁️</button>
+                    <button class="btn-icon" onclick="viewOrder(${order.id})" type="button">👁️</button>
                 </td>
             </tr>
         `;
@@ -486,8 +673,96 @@ function getOrderStatusClass(status) {
     return classMap[status] || '';
 }
 
-function viewOrder(id) {
-    alert('Детали заказа будут показаны в модальном окне');
+async function viewOrder(id) {
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/orders/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки заказа');
+        }
+        
+        const order = await response.json();
+        
+        // Создаем модальное окно для заказа
+        let modal = document.getElementById('orderModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'orderModal';
+            modal.className = 'modal';
+            document.body.appendChild(modal);
+        }
+        
+        const addressData = order.address_json || {};
+        
+        modal.innerHTML = `
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3>Заказ #${order.id}</h3>
+                    <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="order-section">
+                        <h4>Клиент</h4>
+                        <p><strong>Имя:</strong> ${order.customer_name || '-'}</p>
+                        <p><strong>Телефон:</strong> ${order.customer_phone || '-'}</p>
+                    </div>
+                    <div class="order-section">
+                        <h4>Получатель</h4>
+                        <p><strong>Имя:</strong> ${order.recipient_name || order.customer_name || '-'}</p>
+                        <p><strong>Телефон:</strong> ${order.recipient_phone || order.customer_phone || '-'}</p>
+                    </div>
+                    <div class="order-section">
+                        <h4>Адрес</h4>
+                        <p>${order.address_string || '-'}</p>
+                    </div>
+                    <div class="order-section">
+                        <h4>Доставка</h4>
+                        <p><strong>Дата:</strong> ${order.delivery_date || '-'}</p>
+                        <p><strong>Время:</strong> ${order.delivery_time || '-'}</p>
+                    </div>
+                    <div class="order-section">
+                        <h4>Состав заказа</h4>
+                        <div id="orderItemsList"></div>
+                    </div>
+                    <div class="order-section">
+                        <h4>Итого: ${order.total} ₽</h4>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Загружаем позиции заказа
+        const itemsResponse = await fetch(`${API_BASE}/api/admin/orders/${id}/items`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        if (itemsResponse.ok) {
+            const items = await itemsResponse.json();
+            const itemsList = modal.querySelector('#orderItemsList');
+            if (itemsList) {
+                itemsList.innerHTML = items.map(item => `
+                    <p>${item.name} × ${item.quantity} = ${item.price * item.quantity} ₽</p>
+                `).join('');
+            }
+        }
+        
+        modal.style.display = 'flex';
+    } catch (error) {
+        console.error('Ошибка загрузки заказа:', error);
+        alert('Ошибка загрузки заказа: ' + error.message);
+    }
+}
+
+function closeOrderModal() {
+    const modal = document.getElementById('orderModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 // ==================== ДОСТАВКА ====================
@@ -615,12 +890,45 @@ async function loadWarehouseAnalytics() {
 
 async function loadCustomers() {
     try {
-        const response = await fetch(`${API_BASE}/api/admin/customers`);
-        const customers = await response.json();
+        // Используем существующий endpoint для получения пользователей через заказы
+        // или создадим новый endpoint
+        const response = await fetch(`${API_BASE}/api/admin/orders`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
         
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const orders = await response.json();
+        
+        // Извлекаем уникальных клиентов из заказов
+        const customersMap = new Map();
+        orders.forEach(order => {
+            if (order.user_id && !customersMap.has(order.user_id)) {
+                customersMap.set(order.user_id, {
+                    id: order.user_id,
+                    telegram_id: order.user_id,
+                    first_name: order.customer_name || '',
+                    phone: order.customer_phone || '',
+                    orders_count: orders.filter(o => o.user_id === order.user_id).length,
+                    total_spent: orders.filter(o => o.user_id === order.user_id).reduce((sum, o) => sum + (o.total || 0), 0),
+                    bonuses: 0,
+                    created_at: order.created_at
+                });
+            }
+        });
+        
+        const customers = Array.from(customersMap.values());
         renderCustomersTable(customers);
     } catch (error) {
         console.error('Ошибка загрузки клиентов:', error);
+        const tbody = document.getElementById('customersTableBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">Ошибка загрузки: ${error.message}</td></tr>`;
+        }
     }
 }
 
