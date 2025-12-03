@@ -2654,29 +2654,48 @@ function initFilters() {
     applyFilters();
 }
 
-// Модальное окно объяснения сборов
-const serviceFeeHelpModal = document.getElementById('serviceFeeHelpModal');
-const serviceFeeHelpBtn = document.getElementById('serviceFeeHelpBtn');
-const closeServiceFeeHelpModal = document.getElementById('closeServiceFeeHelpModal');
-
-if (serviceFeeHelpBtn) {
-    serviceFeeHelpBtn.addEventListener('click', () => {
-        serviceFeeHelpModal.style.display = 'flex';
-        lockBodyScroll();
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            closeServiceFeeHelpModal.click();
-        });
-    });
-}
-
-if (closeServiceFeeHelpModal) {
-    closeServiceFeeHelpModal.addEventListener('click', () => {
-        serviceFeeHelpModal.style.display = 'none';
-        tg.BackButton.hide();
-        unlockBodyScroll();
-    });
-}
+// Модальное окно объяснения сборов (инициализация через делегирование событий)
+document.addEventListener('click', (e) => {
+    // Обработчик для кнопки знака вопроса
+    if (e.target.closest('#serviceFeeHelpBtn') || e.target.id === 'serviceFeeHelpBtn') {
+        e.preventDefault();
+        e.stopPropagation();
+        const modal = document.getElementById('serviceFeeHelpModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            lockBodyScroll();
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                const closeBtn = document.getElementById('closeServiceFeeHelpModal');
+                if (closeBtn) closeBtn.click();
+            });
+        }
+    }
+    
+    // Обработчик для закрытия модального окна
+    if (e.target.closest('#closeServiceFeeHelpModal') || e.target.id === 'closeServiceFeeHelpModal') {
+        e.preventDefault();
+        e.stopPropagation();
+        const modal = document.getElementById('serviceFeeHelpModal');
+        if (modal) {
+            modal.style.display = 'none';
+            tg.BackButton.hide();
+            unlockBodyScroll();
+        }
+    }
+    
+    // Закрытие при клике на overlay
+    if (e.target.id === 'serviceFeeHelpModal') {
+        e.preventDefault();
+        e.stopPropagation();
+        const modal = document.getElementById('serviceFeeHelpModal');
+        if (modal) {
+            modal.style.display = 'none';
+            tg.BackButton.hide();
+            unlockBodyScroll();
+        }
+    }
+});
 
 // Скрытие нижнего меню при открытии клавиатуры
 function initKeyboardHandling() {
