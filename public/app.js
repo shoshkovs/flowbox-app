@@ -2656,8 +2656,12 @@ function initFilters() {
 
 // Модальное окно объяснения сборов (инициализация через делегирование событий)
 document.addEventListener('click', (e) => {
-    // Обработчик для кнопки знака вопроса
-    if (e.target.closest('#serviceFeeHelpBtn') || e.target.id === 'serviceFeeHelpBtn') {
+    // Обработчик для кнопки знака вопроса (проверяем разные варианты)
+    const helpBtn = e.target.closest('#serviceFeeHelpBtn') || 
+                     (e.target.id === 'serviceFeeHelpBtn' ? e.target : null) ||
+                     (e.target.classList.contains('help-icon-btn') ? e.target : null);
+    
+    if (helpBtn) {
         e.preventDefault();
         e.stopPropagation();
         const modal = document.getElementById('serviceFeeHelpModal');
@@ -2669,11 +2673,16 @@ document.addEventListener('click', (e) => {
                 const closeBtn = document.getElementById('closeServiceFeeHelpModal');
                 if (closeBtn) closeBtn.click();
             });
+            tg.HapticFeedback.impactOccurred('light');
         }
+        return;
     }
     
     // Обработчик для закрытия модального окна
-    if (e.target.closest('#closeServiceFeeHelpModal') || e.target.id === 'closeServiceFeeHelpModal') {
+    const closeBtn = e.target.closest('#closeServiceFeeHelpModal') || 
+                     (e.target.id === 'closeServiceFeeHelpModal' ? e.target : null);
+    
+    if (closeBtn) {
         e.preventDefault();
         e.stopPropagation();
         const modal = document.getElementById('serviceFeeHelpModal');
@@ -2681,7 +2690,9 @@ document.addEventListener('click', (e) => {
             modal.style.display = 'none';
             tg.BackButton.hide();
             unlockBodyScroll();
+            tg.HapticFeedback.impactOccurred('light');
         }
+        return;
     }
     
     // Закрытие при клике на overlay
@@ -2694,6 +2705,7 @@ document.addEventListener('click', (e) => {
             tg.BackButton.hide();
             unlockBodyScroll();
         }
+        return;
     }
 });
 
