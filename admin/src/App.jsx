@@ -1,21 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
-import { Dashboard } from './components/Dashboard';
-import { Products } from './components/Products';
-import { Warehouse } from './components/Warehouse';
-import { Orders } from './components/Orders';
-import { Delivery } from './components/Delivery';
-import { Analytics } from './components/Analytics';
-import { Customers } from './components/Customers';
-import { Settings } from './components/Settings';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { Layout } from './app/layout';
+import HomePage from './app/page';
+import DashboardPage from './app/dashboard/page';
+import ProductsPage from './app/products/page';
+import NewProductPage from './app/products/new/page';
+import EditProductPage from './app/products/[id]/page';
+import WarehousePage from './app/warehouse/page';
+import NewWarehousePage from './app/warehouse/new/page';
+import OrdersPage from './app/orders/page';
+import OrderDetailPage from './app/orders/[id]/page';
+import DeliveryPage from './app/delivery/page';
+import AnalyticsPage from './app/analytics/page';
+import CustomersPage from './app/customers/page';
+import CustomerDetailPage from './app/customers/[id]/page';
+import SettingsPage from './app/settings/page';
 
 const API_BASE = window.location.origin;
 const ADMIN_PASSWORD = 'admin123';
-
-// Проверка загрузки
-console.log('🚀 React App загружается...');
-console.log('📍 API_BASE:', API_BASE);
 
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
@@ -24,7 +27,6 @@ function LoginScreen({ onLogin }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD) {
-      // Сохраняем пароль для использования в Authorization header
       localStorage.setItem('admin_token', ADMIN_PASSWORD);
       onLogin(ADMIN_PASSWORD);
     } else {
@@ -62,71 +64,70 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+function ProtectedRoute({ children }) {
+  const [authToken, setAuthToken] = useState(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    setAuthToken(token);
+    setChecking(false);
+  }, []);
+
+  if (checking) {
+    return <div className="flex items-center justify-center min-h-screen">Загрузка...</div>;
+  }
+
+  if (!authToken) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
 export default function App() {
   const [authToken, setAuthToken] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedCity, setSelectedCity] = useState('spb');
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (token) {
       setAuthToken(token);
     }
+    setChecking(false);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    setAuthToken(null);
-  };
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard authToken={authToken} />;
-      case 'products':
-        return <Products authToken={authToken} />;
-      case 'warehouse':
-        return <Warehouse authToken={authToken} />;
-      case 'orders':
-        return <Orders authToken={authToken} />;
-      case 'delivery':
-        return <Delivery authToken={authToken} />;
-      case 'analytics':
-        return <Analytics authToken={authToken} />;
-      case 'customers':
-        return <Customers authToken={authToken} />;
-      case 'settings':
-        return <Settings authToken={authToken} />;
-      default:
-        return <Dashboard authToken={authToken} />;
-    }
-  };
-
-  if (!authToken) {
-    return <LoginScreen onLogin={setAuthToken} />;
+  if (checking) {
+    return <div className="flex items-center justify-center min-h-screen">Загрузка...</div>;
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header selectedCity={selectedCity} onCityChange={setSelectedCity} onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
+    <BrowserRouter basename="/admin">
+      <Toaster position="top-right" />
+      {!authToken ? (
+        <LoginScreen onLogin={setAuthToken} />
+      ) : (
+        <ProtectedRoute>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<HomePage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="products/new" element={<NewProductPage />} />
+              <Route path="products/:id" element={<EditProductPage />} />
+              <Route path="warehouse" element={<WarehousePage />} />
+              <Route path="warehouse/new" element={<NewWarehousePage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="orders/:id" element={<OrderDetailPage />} />
+              <Route path="delivery" element={<DeliveryPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route path="customers/:id" element={<CustomerDetailPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+          </Routes>
+        </ProtectedRoute>
+      )}
+    </BrowserRouter>
   );
 }
-
-// Добавляем обработку ошибок для отладки
-if (typeof window !== 'undefined') {
-  window.addEventListener('error', (event) => {
-    console.error('React Error:', event.error);
-  });
-  
-  window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled Promise Rejection:', event.reason);
-  });
-}
-

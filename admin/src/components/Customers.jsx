@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { User, Phone, Mail, ShoppingBag, Calendar, Eye, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Phone, Mail, ShoppingBag, Calendar, Eye, Search, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
 export function Customers({ authToken }) {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubscription, setFilterSubscription] = useState('all');
 
@@ -77,6 +79,27 @@ export function Customers({ authToken }) {
       }
     } catch (error) {
       console.error('Ошибка загрузки клиентов из заказов:', error);
+    }
+  };
+
+  const handleRefreshCustomer = async (customerId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/customers/${customerId}/refresh`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        await loadCustomers();
+        toast.success('Информация о клиенте обновлена');
+      } else {
+        toast.error('Ошибка обновления клиента');
+      }
+    } catch (error) {
+      console.error('Ошибка обновления клиента:', error);
+      toast.error('Ошибка обновления клиента');
     }
   };
 
@@ -237,18 +260,27 @@ export function Customers({ authToken }) {
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => setSelectedCustomer(customer)}
+                        onClick={() => navigate(`/customers/${customer.id}`)}
                         className="p-2 hover:bg-gray-100 rounded text-gray-600"
-                        title="Просмотр"
+                        title="Редактировать"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      {customer.telegram_id && (
+                        <a
+                          href={`tg://resolve?domain=${customer.telegram_id}`}
+                          className="p-2 hover:bg-gray-100 rounded text-gray-600"
+                          title="Telegram"
+                        >
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      )}
                       <button
-                        onClick={() => window.open(`tel:${customer.phone}`)}
+                        onClick={() => handleRefreshCustomer(customer.id)}
                         className="p-2 hover:bg-gray-100 rounded text-gray-600"
-                        title="Позвонить"
+                        title="Обновить информацию"
                       >
-                        <Phone className="w-4 h-4" />
+                        <RefreshCw className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -264,102 +296,6 @@ export function Customers({ authToken }) {
           )}
         </div>
       </div>
-
-      {/* Модальное окно с деталями клиента */}
-      {selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Детали клиента</h2>
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              <div>
-                <h3 className="font-semibold mb-2">Информация</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-400" />
-                    <span>{selectedCustomer.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <span>{selectedCustomer.phone}</span>
-                  </div>
-                  {selectedCustomer.email && selectedCustomer.email !== '-' && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-gray-400" />
-                      <span>{selectedCustomer.email}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Статистика</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Всего заказов</div>
-                    <div className="text-2xl font-bold">{selectedCustomer.ordersCount || 0}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Потрачено</div>
-                    <div className="text-2xl font-bold">{(selectedCustomer.totalSpent || 0).toLocaleString()} ₽</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Бонусы</div>
-                    <div className="text-2xl font-bold text-pink-600">{(selectedCustomer.bonuses || 0).toLocaleString()} ₽</div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-4">История заказов</h3>
-                <div className="space-y-3">
-                  {selectedCustomer.orders && selectedCustomer.orders.length > 0 ? (
-                    selectedCustomer.orders.slice(0, 10).map((order) => (
-                      <div
-                        key={order.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span className="font-medium">Заказ #{order.id}</span>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              order.status === 'paid' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {order.status === 'completed' ? 'Завершен' :
-                               order.status === 'paid' ? 'Оплачен' : order.status}
-                            </span>
-                          </div>
-                          <span className="font-semibold">{parseFloat(order.total || 0).toLocaleString()} ₽</span>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {new Date(order.created_at).toLocaleString('ru-RU')}
-                        </div>
-                        {order.address_string && (
-                          <div className="text-sm text-gray-600 mt-1">
-                            Адрес: {order.address_string}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500">Нет заказов</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

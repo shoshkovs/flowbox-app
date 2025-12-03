@@ -1,15 +1,16 @@
+import { NavLink } from 'react-router-dom';
 import { Home, Flower2, Package, FileText, Truck, BarChart3, Users, Settings } from 'lucide-react';
 
-export function Sidebar({ activeTab, onTabChange }) {
+export function Sidebar() {
   const menuItems = [
-    { id: 'dashboard', label: 'Главная', icon: Home },
-    { id: 'products', label: 'Товары', icon: Flower2 },
-    { id: 'warehouse', label: 'Склад', icon: Package },
-    { id: 'orders', label: 'Заказы', icon: FileText },
-    { id: 'delivery', label: 'Доставка', icon: Truck },
-    { id: 'analytics', label: 'Аналитика', icon: BarChart3 },
-    { id: 'customers', label: 'Клиенты', icon: Users },
-    { id: 'settings', label: 'Настройки', icon: Settings },
+    { id: 'dashboard', label: 'Главная', icon: Home, path: '/dashboard' },
+    { id: 'products', label: 'Товары', icon: Flower2, path: '/products' },
+    { id: 'warehouse', label: 'Склад', icon: Package, path: '/warehouse' },
+    { id: 'orders', label: 'Заказы', icon: FileText, path: '/orders' },
+    { id: 'delivery', label: 'Доставка', icon: Truck, path: '/delivery' },
+    { id: 'analytics', label: 'Аналитика', icon: BarChart3, path: '/analytics' },
+    { id: 'customers', label: 'Клиенты', icon: Users, path: '/customers' },
+    { id: 'settings', label: 'Настройки', icon: Settings, path: '/settings' },
   ];
 
   return (
@@ -24,22 +25,23 @@ export function Sidebar({ activeTab, onTabChange }) {
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (
-            <button
+            <NavLink
               key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-                activeTab === item.id
-                  ? 'bg-pink-50 text-pink-600'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
+              to={item.path}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
+                  isActive
+                    ? 'bg-pink-50 text-pink-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
             >
               <Icon className="w-5 h-5" />
               <span>{item.label}</span>
-            </button>
+            </NavLink>
           );
         })}
       </nav>
     </div>
   );
 }
-

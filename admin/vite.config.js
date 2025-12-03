@@ -19,5 +19,9 @@ export default defineConfig({
       },
     },
   },
+  // Для поддержки React Router в production
+  preview: {
+    port: 5173,
+  },
 });
 
