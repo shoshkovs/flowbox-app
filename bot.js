@@ -1178,7 +1178,7 @@ app.post('/api/orders', async (req, res) => {
       // Сохраняем заказ в БД
       const result = await createOrderInDb(orderData);
       
-      if (result) {
+      if (result && result.orderId) {
         console.log(`✅ Заказ создан в БД: ID=${result.orderId}, сумма=${orderData.total}₽`);
         
         // Отправляем уведомление в Telegram (если нужно)
@@ -1191,8 +1191,13 @@ app.post('/api/orders', async (req, res) => {
         //   );
         // }
         
-        res.json({ success: true, orderId: result.orderId || result.telegramOrderId });
+        // Возвращаем явный успешный ответ
+        res.status(200).json({ 
+          success: true, 
+          orderId: result.orderId 
+        });
       } else {
+        console.error('❌ createOrderInDb вернул null или не содержит orderId');
         throw new Error('Не удалось создать заказ в БД');
       }
     } else {
@@ -1207,8 +1212,12 @@ app.post('/api/orders', async (req, res) => {
       res.json({ success: true, orderId: Date.now() });
     }
   } catch (error) {
-    console.error('Ошибка создания заказа:', error);
-    res.status(500).json({ error: 'Ошибка создания заказа', success: false });
+    console.error('❌ Ошибка создания заказа:', error);
+    console.error('Детали ошибки:', error.message, error.stack);
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Ошибка создания заказа' 
+    });
   }
 });
 

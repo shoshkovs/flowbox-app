@@ -1659,18 +1659,16 @@ async function validateAndSubmitOrder(e) {
         // Проверяем статус ответа
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Ошибка сервера' }));
+            console.error('❌ HTTP ошибка при создании заказа:', response.status, errorData);
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
+        console.log('📦 Ответ от сервера при создании заказа:', result);
         
-        // Проверяем успешность операции
-        if (!result.success && !result.orderId) {
-            throw new Error(result.error || 'Заказ не был создан');
-        }
-        
-        // Если успешно, обрабатываем заказ
-        if (result.success || result.orderId) {
+        // Проверяем успешность операции - явная проверка
+        if (result.success === true && result.orderId) {
+            // Успешный ответ - обрабатываем заказ
             tg.sendData(JSON.stringify(orderData));
             
             // Обновление бонусов: списываем использованные и начисляем новые
@@ -1762,8 +1760,9 @@ async function validateAndSubmitOrder(e) {
             
             tg.HapticFeedback.notificationOccurred('success');
         } else {
-            // Если ответ не содержит success или orderId, считаем это ошибкой
-            throw new Error('Неожиданный формат ответа от сервера');
+            // Если ответ не содержит success: true и orderId, считаем это ошибкой
+            console.error('❌ Неожиданный формат ответа от сервера:', result);
+            throw new Error(result.error || 'Заказ не был создан. Неожиданный формат ответа от сервера');
         }
     } catch (error) {
         console.error('Ошибка отправки заказа:', error);
