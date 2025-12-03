@@ -115,3 +115,14 @@ export default function App() {
   );
 }
 
+// Добавляем обработку ошибок для отладки
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    console.error('React Error:', event.error);
+  });
+  
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled Promise Rejection:', event.reason);
+  });
+}
+
