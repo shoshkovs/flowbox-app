@@ -72,6 +72,27 @@ console.log('  admin исходники существуют:', fs.existsSync(ad
 try {
   const files = fs.readdirSync(__dirname);
   console.log('  Файлы в корне:', files.filter(f => f.includes('admin')).join(', '));
+  
+  // Если admin-build не существует, но admin существует, попробуем собрать
+  if (!fs.existsSync(adminBuildPath) && fs.existsSync(adminSourcePath)) {
+    console.log('⚠️  admin-build не найден, пытаемся собрать...');
+    try {
+      const { execSync } = require('child_process');
+      const adminDir = path.join(__dirname, 'admin');
+      if (fs.existsSync(path.join(adminDir, 'package.json'))) {
+        console.log('  Выполняем сборку админ-панели...');
+        execSync('cd admin && npm install && npm run build', { 
+          cwd: __dirname,
+          stdio: 'inherit',
+          timeout: 120000 // 2 минуты
+        });
+        console.log('  ✅ Сборка завершена');
+      }
+    } catch (buildError) {
+      console.error('  ❌ Ошибка сборки админ-панели:', buildError.message);
+      console.log('  ⚠️  Используем исходники как fallback');
+    }
+  }
 } catch (e) {
   console.log('  Ошибка чтения директории:', e.message);
 }
