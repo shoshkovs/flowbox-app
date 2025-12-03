@@ -21,7 +21,8 @@
   "dependencies": {
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "telegraf": "^4.15.6"
+    "telegraf": "^4.15.6",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "localtunnel": "^2.0.2",
