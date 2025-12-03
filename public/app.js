@@ -225,16 +225,10 @@ function renderProducts() {
     }
 
     productsContainer.innerHTML = filteredProducts.map(product => {
-        // Используем minStemQuantity, если оно задано и больше 0, иначе 1
-        const minQty = (product.minStemQuantity && product.minStemQuantity > 0)
-            ? product.minStemQuantity
-            : (product.min_order_quantity && product.min_order_quantity > 0)
-            ? product.min_order_quantity
-            : (product.min_stem_quantity && product.min_stem_quantity > 0)
-            ? product.min_stem_quantity
-            : 1;
-        // Используем сохраненное количество или minQty
-        const quantity = productQuantities[product.id] || minQty;
+        const minQty = getMinQty(product);
+        // Используем сохраненное количество или minQty, округляем до кратного minQty
+        const savedQty = productQuantities[product.id];
+        const quantity = savedQty ? roundUpToStep(savedQty, minQty) : minQty;
         const totalPrice = product.price * quantity;
         const isMinQty = quantity <= minQty;
         
