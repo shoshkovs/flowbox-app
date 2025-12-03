@@ -11,10 +11,33 @@ export function Orders({ authToken }) {
   const [orderHistory, setOrderHistory] = useState([]);
   const [statusHistoryLoading, setStatusHistoryLoading] = useState(false);
   const [statusComment, setStatusComment] = useState('');
+  const [products, setProducts] = useState([]);
 
   useEffect(() => {
     loadOrders();
+    loadProducts();
   }, [filterStatus]);
+
+  const loadProducts = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/products`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки товаров:', error);
+    }
+  };
+
+  const getProductImage = (productId) => {
+    const product = products.find(p => p.id === productId);
+    return product?.image_url || null;
+  };
 
   const loadOrders = async () => {
     try {
@@ -385,43 +408,66 @@ export function Orders({ authToken }) {
                 </div>
               </div>
 
+              {/* Комментарий к доставке */}
+              {selectedOrder.comment && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                  <h2 className="text-xl font-semibold mb-4">Комментарий к доставке</h2>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-gray-700">{selectedOrder.comment}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Состав заказа */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-xl font-semibold mb-4">Состав заказа</h2>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {selectedOrder.items && Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
-                    selectedOrder.items.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Package className="w-4 h-4 text-gray-400" />
-                          <div>
+                    selectedOrder.items.map((item, index) => {
+                      const productImage = getProductImage(item.product_id);
+                      return (
+                        <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                          {productImage ? (
+                            <img
+                              src={productImage}
+                              alt={item.name}
+                              className="w-16 h-16 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                              <Package className="w-8 h-8 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="flex-1">
                             <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-gray-600">Количество: {item.quantity}</div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {item.price} ₽ × {item.quantity}
+                            </div>
+                          </div>
+                          <div className="font-semibold text-lg">
+                            {(parseFloat(item.price || 0) * parseInt(item.quantity || 1)).toLocaleString()} ₽
                           </div>
                         </div>
-                        <div className="font-semibold">
-                          {(parseFloat(item.price || 0) * parseInt(item.quantity || 1)).toLocaleString()} ₽
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-gray-500">Товары не найдены</p>
                   )}
-                  <div className="border-t pt-3 mt-3">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Стоимость товаров:</span>
+                  <div className="border-t pt-4 mt-4 space-y-2">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Товары:</span>
                       <span>{parseFloat(selectedOrder.flowers_total || 0).toLocaleString()} ₽</span>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Сервисный сбор:</span>
-                      <span>{parseFloat(selectedOrder.service_fee || 0).toLocaleString()} ₽</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <div className="flex justify-between text-sm text-gray-600">
                       <span>Доставка:</span>
                       <span>{parseFloat(selectedOrder.delivery_price || 0).toLocaleString()} ₽</span>
                     </div>
-                    <div className="flex justify-between font-semibold text-lg mt-2 pt-2 border-t">
-                      <span>Итого:</span>
+                    <div className="flex justify-between text-sm text-pink-600 pt-2 border-t">
+                      <span>Начислено бонусов:</span>
+                      <span>+{parseFloat(selectedOrder.bonus_earned || 0).toLocaleString()} ₽</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-xl pt-2 border-t">
+                      <span>Итого к оплате:</span>
                       <span className="text-pink-600">
                         {parseFloat(selectedOrder.total || 0).toLocaleString()} ₽
                       </span>

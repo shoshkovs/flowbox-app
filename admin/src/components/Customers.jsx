@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Phone, Mail, ShoppingBag, Calendar } from 'lucide-react';
+import { User, Phone, Mail, ShoppingBag, Calendar, Eye, Search } from 'lucide-react';
 
 const API_BASE = window.location.origin;
 
@@ -8,6 +8,7 @@ export function Customers({ authToken }) {
   const [loading, setLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterSubscription, setFilterSubscription] = useState('all');
 
   useEffect(() => {
     loadCustomers();
@@ -25,7 +26,6 @@ export function Customers({ authToken }) {
         const data = await response.json();
         setCustomers(data);
       } else if (response.status === 404) {
-        // Если endpoint не существует, получаем из заказов
         await loadCustomersFromOrders();
       }
     } catch (error) {
@@ -46,7 +46,6 @@ export function Customers({ authToken }) {
 
       if (response.ok) {
         const orders = await response.json();
-        // Группируем заказы по пользователям
         const customersMap = {};
         orders.forEach(order => {
           if (order.user_id) {
@@ -56,14 +55,17 @@ export function Customers({ authToken }) {
                 name: order.customer_name || 'Не указано',
                 phone: order.customer_phone || '-',
                 email: order.customer_email || '-',
+                telegram_id: order.user_id,
                 ordersCount: 0,
                 totalSpent: 0,
+                bonuses: 0,
                 lastOrderDate: null,
                 orders: [],
+                subscription: false, // По умолчанию нет подписки
               };
             }
             customersMap[order.user_id].ordersCount++;
-            customersMap[order.user_id].totalSpent += parseFloat(order.total_amount) || 0;
+            customersMap[order.user_id].totalSpent += parseFloat(order.total || 0);
             const orderDate = new Date(order.created_at);
             if (!customersMap[order.user_id].lastOrderDate || orderDate > customersMap[order.user_id].lastOrderDate) {
               customersMap[order.user_id].lastOrderDate = orderDate;
@@ -80,12 +82,30 @@ export function Customers({ authToken }) {
 
   const filteredCustomers = customers.filter(customer => {
     const query = searchQuery.toLowerCase();
-    return (
-      customer.name.toLowerCase().includes(query) ||
-      customer.phone.includes(query) ||
-      customer.email.toLowerCase().includes(query)
-    );
+    const matchesSearch = 
+      customer.name?.toLowerCase().includes(query) ||
+      customer.phone?.includes(query) ||
+      customer.email?.toLowerCase().includes(query);
+    
+    const matchesFilter = filterSubscription === 'all' || 
+      (filterSubscription === 'subscribed' && customer.subscription) ||
+      (filterSubscription === 'not_subscribed' && !customer.subscription);
+    
+    return matchesSearch && matchesFilter;
   });
+
+  // Статистика
+  const totalCustomers = customers.length;
+  const subscribedCount = customers.filter(c => c.subscription).length;
+  const avgCheck = customers.length > 0 
+    ? customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / customers.length 
+    : 0;
+  const newThisMonth = customers.filter(c => {
+    if (!c.lastOrderDate) return false;
+    const orderDate = new Date(c.lastOrderDate);
+    const now = new Date();
+    return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+  }).length;
 
   if (loading) {
     return <div className="p-6">Загрузка...</div>;
@@ -98,28 +118,62 @@ export function Customers({ authToken }) {
         <p className="text-gray-600 mt-1">База клиентов и история покупок</p>
       </div>
 
+      {/* Статистика */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <p className="text-sm text-gray-600">Всего клиентов</p>
+          <p className="text-2xl font-bold mt-2">{totalCustomers}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <p className="text-sm text-gray-600">На подписке</p>
+          <p className="text-2xl font-bold mt-2">{subscribedCount}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <p className="text-sm text-gray-600">Средний чек</p>
+          <p className="text-2xl font-bold mt-2">{avgCheck.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <p className="text-sm text-gray-600">Новых за месяц</p>
+          <p className="text-2xl font-bold mt-2">{newThisMonth}</p>
+        </div>
+      </div>
+
+      {/* Фильтры и поиск */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Поиск по имени, телефону или email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-          />
+        <div className="flex gap-4 mb-6">
+          <select
+            value={filterSubscription}
+            onChange={(e) => setFilterSubscription(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg"
+          >
+            <option value="all">Все клиенты</option>
+            <option value="subscribed">На подписке</option>
+            <option value="not_subscribed">Без подписки</option>
+          </select>
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Поиск по имени или телефону..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
         </div>
 
+        {/* Таблица клиентов */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4">ID</th>
-                <th className="text-left py-3 px-4">Имя</th>
-                <th className="text-left py-3 px-4">Телефон</th>
-                <th className="text-left py-3 px-4">Email</th>
+                <th className="text-left py-3 px-4">Клиент</th>
+                <th className="text-left py-3 px-4">Контакты</th>
                 <th className="text-left py-3 px-4">Заказов</th>
-                <th className="text-left py-3 px-4">Потрачено</th>
+                <th className="text-left py-3 px-4">Сумма покупок</th>
+                <th className="text-left py-3 px-4">Бонусы</th>
                 <th className="text-left py-3 px-4">Последний заказ</th>
+                <th className="text-left py-3 px-4">Подписка</th>
                 <th className="text-right py-3 px-4">Действия</th>
               </tr>
             </thead>
@@ -127,36 +181,44 @@ export function Customers({ authToken }) {
               {filteredCustomers.map((customer) => (
                 <tr
                   key={customer.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => setSelectedCustomer(customer)}
+                  className="border-b border-gray-100 hover:bg-gray-50"
                 >
-                  <td className="py-3 px-4 text-gray-600">#{customer.id}</td>
                   <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-gray-400" />
-                      {customer.name}
-                    </div>
+                    <div className="font-medium">{customer.name}</div>
+                    {customer.telegram_id && (
+                      <div className="text-sm text-gray-500">@{customer.telegram_id}</div>
+                    )}
                   </td>
                   <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      {customer.phone}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-gray-400" />
-                      {customer.email}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        {customer.phone}
+                      </div>
+                      {customer.email && customer.email !== '-' && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Mail className="w-3 h-3 text-gray-400" />
+                          {customer.email}
+                        </div>
+                      )}
+                      {customer.id && (
+                        <div className="text-xs text-gray-500">ID: {customer.id}</div>
+                      )}
                     </div>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
                       <ShoppingBag className="w-4 h-4 text-gray-400" />
-                      {customer.ordersCount}
+                      {customer.ordersCount || 0}
                     </div>
                   </td>
                   <td className="py-3 px-4 font-semibold">
-                    {customer.totalSpent.toLocaleString()} ₽
+                    {(customer.totalSpent || 0).toLocaleString()} ₽
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-pink-600 font-medium">
+                      {(customer.bonuses || 0).toLocaleString()} ₽
+                    </span>
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600">
                     {customer.lastOrderDate
@@ -164,15 +226,31 @@ export function Customers({ authToken }) {
                       : '-'}
                   </td>
                   <td className="py-3 px-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCustomer(customer);
-                      }}
-                      className="text-pink-600 hover:text-pink-700 text-sm font-medium"
-                    >
-                      Подробнее
-                    </button>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      customer.subscription 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {customer.subscription ? 'Активна' : 'Нет'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedCustomer(customer)}
+                        className="p-2 hover:bg-gray-100 rounded text-gray-600"
+                        title="Просмотр"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => window.open(`tel:${customer.phone}`)}
+                        className="p-2 hover:bg-gray-100 rounded text-gray-600"
+                        title="Позвонить"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -181,7 +259,7 @@ export function Customers({ authToken }) {
 
           {filteredCustomers.length === 0 && (
             <div className="text-center py-12 text-gray-500">
-              {searchQuery ? 'Клиенты не найдены' : 'Нет клиентов'}
+              {searchQuery || filterSubscription !== 'all' ? 'Клиенты не найдены' : 'Нет клиентов'}
             </div>
           )}
         </div>
@@ -212,10 +290,12 @@ export function Customers({ authToken }) {
                     <Phone className="w-4 h-4 text-gray-400" />
                     <span>{selectedCustomer.phone}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <span>{selectedCustomer.email}</span>
-                  </div>
+                  {selectedCustomer.email && selectedCustomer.email !== '-' && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-gray-400" />
+                      <span>{selectedCustomer.email}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -224,11 +304,15 @@ export function Customers({ authToken }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-600">Всего заказов</div>
-                    <div className="text-2xl font-bold">{selectedCustomer.ordersCount}</div>
+                    <div className="text-2xl font-bold">{selectedCustomer.ordersCount || 0}</div>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-600">Потрачено</div>
-                    <div className="text-2xl font-bold">{selectedCustomer.totalSpent.toLocaleString()} ₽</div>
+                    <div className="text-2xl font-bold">{(selectedCustomer.totalSpent || 0).toLocaleString()} ₽</div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-600">Бонусы</div>
+                    <div className="text-2xl font-bold text-pink-600">{(selectedCustomer.bonuses || 0).toLocaleString()} ₽</div>
                   </div>
                 </div>
               </div>
@@ -255,7 +339,7 @@ export function Customers({ authToken }) {
                                order.status === 'paid' ? 'Оплачен' : order.status}
                             </span>
                           </div>
-                          <span className="font-semibold">{parseFloat(order.total_amount || 0).toLocaleString()} ₽</span>
+                          <span className="font-semibold">{parseFloat(order.total || 0).toLocaleString()} ₽</span>
                         </div>
                         <div className="text-sm text-gray-600">
                           {new Date(order.created_at).toLocaleString('ru-RU')}
