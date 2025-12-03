@@ -2697,11 +2697,18 @@ app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Заказ не найден' });
       }
       
-      // Записываем в историю статусов
-      await client.query(
-        'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
-        [id, status, 'admin', comment || null]
-      );
+      // Записываем в историю статусов (если таблица существует)
+      try {
+        await client.query(
+          'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
+          [id, status, 'admin', comment || null]
+        );
+      } catch (historyError) {
+        // Игнорируем ошибку, если таблица не существует
+        if (!historyError.message.includes('does not exist')) {
+          console.error('Ошибка записи в историю статусов:', historyError);
+        }
+      }
       
       res.json(result.rows[0]);
     } finally {
