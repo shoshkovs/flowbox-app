@@ -48,15 +48,21 @@ if (process.env.DATABASE_URL) {
     pool.query('SELECT NOW()', (err, res) => {
       if (err) {
         if (connectionAttempts < maxAttempts) {
-          console.log(`⚠️  Попытка подключения к БД ${connectionAttempts}/${maxAttempts}...`);
+          // Логируем только если это не первая попытка
+          if (connectionAttempts > 1) {
+            console.log(`⚠️  Повторная попытка подключения к БД ${connectionAttempts}/${maxAttempts}...`);
+          }
           setTimeout(testConnection, 2000); // Повтор через 2 секунды
         } else {
           console.error('❌ Ошибка подключения к БД после', maxAttempts, 'попыток:', err.message);
           console.log('💡 БД может быть еще не готова. Приложение продолжит работу, но некоторые функции могут быть недоступны.');
         }
       } else {
-        console.log('✅ Подключение к базе данных установлено и протестировано');
-        console.log('📅 Время БД:', res.rows[0].now);
+        if (connectionAttempts === 1) {
+          console.log('✅ Подключение к базе данных установлено');
+        } else {
+          console.log(`✅ Подключение к базе данных установлено (попытка ${connectionAttempts})`);
+        }
       }
     });
   }
@@ -116,9 +122,6 @@ try {
 }
 
 if (fs.existsSync(adminBuildPath)) {
-  const indexPath = path.join(adminBuildPath, 'index.html');
-  console.log('  admin-build/index.html существует:', fs.existsSync(indexPath));
-  
   // Используем собранную версию
   // Сначала раздаем статические файлы (assets) - важно до маршрута /admin/*
   app.use('/admin', express.static(adminBuildPath, {
@@ -132,7 +135,6 @@ if (fs.existsSync(adminBuildPath)) {
   
   // Затем обрабатываем все остальные запросы как SPA
   app.get('/admin', (req, res) => {
-    console.log('📄 Запрос к /admin - отдаем index.html');
     res.sendFile(path.join(adminBuildPath, 'index.html'));
   });
   
@@ -141,13 +143,12 @@ if (fs.existsSync(adminBuildPath)) {
     if (req.path.startsWith('/admin/assets/')) {
       return res.status(404).send('Not found');
     }
-    console.log('📄 Запрос к /admin/* - отдаем index.html для SPA роутинга');
     res.sendFile(path.join(adminBuildPath, 'index.html'));
   });
   
-  console.log('✅ Используется собранная React админ-панель из admin-build/');
+  console.log('✅ Админ-панель: React версия из admin-build/');
 } else {
-  console.log('⚠️  admin-build не найден, используем старую версию');
+  console.log('⚠️  Админ-панель: используем исходники (fallback)');
   // Fallback на старую версию
   app.use('/admin', express.static(adminSourcePath));
   app.get('/admin', (req, res) => {
