@@ -1072,10 +1072,11 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
       
       const result = await client.query(query, params);
       
-      // Преобразуем address_json из JSONB в объект
+      // Преобразуем address_json из JSONB в объект и исправляем поле total
       const orders = result.rows.map(row => ({
         ...row,
-        address_data: row.address_json || {}
+        total: row.total || 0, // Используем total вместо total_amount
+        address_data: typeof row.address_json === 'object' ? row.address_json : (row.address_json ? JSON.parse(row.address_json) : {})
       }));
       
       res.json(orders);
@@ -1130,7 +1131,8 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
       const order = result.rows[0];
       res.json({
         ...order,
-        address_data: order.address_json || {}
+        total: order.total || 0, // Используем total вместо total_amount
+        address_data: typeof order.address_json === 'object' ? order.address_json : (order.address_json ? JSON.parse(order.address_json) : {})
       });
     } finally {
       client.release();

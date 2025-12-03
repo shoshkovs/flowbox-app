@@ -1235,13 +1235,16 @@ async function validateAndSubmitOrder(e) {
     
     // Проверка получателя, если выбран "Другой получатель"
     const recipientRadio = document.querySelector('input[name="recipient"]:checked');
+    let recipientName = '';
+    let recipientPhone = '';
+    
     if (recipientRadio && recipientRadio.value === 'other') {
         const recipientNameField = document.getElementById('recipientName');
         const recipientNameAnchor = document.getElementById('anchor-recipientName');
         const recipientPhoneField = document.getElementById('recipientPhone');
         const recipientPhoneAnchor = document.getElementById('anchor-recipientPhone');
-        const recipientName = recipientNameField ? recipientNameField.value.trim() : '';
-        const recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
+        recipientName = recipientNameField ? recipientNameField.value.trim() : '';
+        recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
         
         // Валидация имени получателя (минимум 2 символа)
         if (recipientName && recipientName.length >= 2) {
@@ -1260,6 +1263,27 @@ async function validateAndSubmitOrder(e) {
             validateField(recipientPhoneField, false);
             if (!firstErrorField) firstErrorField = recipientPhoneAnchor || recipientPhoneField;
             hasErrors = true;
+        }
+    } else if (recipientRadio && recipientRadio.value === 'self') {
+        // Если выбран "Я получу заказ", используем данные из профиля
+        const user = tg.initDataUnsafe?.user;
+        const savedProfile = localStorage.getItem('userProfile');
+        let profileData = null;
+        
+        if (savedProfile) {
+            try {
+                profileData = JSON.parse(savedProfile);
+            } catch (e) {
+                console.error('Ошибка парсинга профиля:', e);
+            }
+        }
+        
+        if (profileData) {
+            recipientName = profileData.name || '';
+            recipientPhone = profileData.phone || '';
+        } else if (user) {
+            recipientName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            recipientPhone = '';
         }
     }
     
