@@ -190,9 +190,9 @@ export function Delivery({ authToken }) {
                             <Phone className="w-4 h-4" />
                           </a>
                         )}
-                        {delivery.telegram_username && (
+                        {delivery.telegram_id && (
                           <a
-                            href={`tg://resolve?domain=${delivery.telegram_username}`}
+                            href={`tg://user?id=${delivery.telegram_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 hover:bg-gray-100 rounded text-blue-600"
@@ -205,7 +205,7 @@ export function Delivery({ authToken }) {
                     </td>
                     <td className="py-3 px-4">
                       <select
-                        value={delivery.delivery_status || delivery.status || 'pending'}
+                        value={getDeliveryStatusFromOrderStatus(delivery.delivery_status || delivery.status)}
                         onChange={(e) => updateDeliveryStatus(delivery.order_id, e.target.value)}
                         disabled={isUpdating}
                         className={`px-3 py-1 rounded text-sm border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent ${

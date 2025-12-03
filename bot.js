@@ -2832,7 +2832,7 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
           o.delivery_time,
           o.status,
           o.comment,
-          u.telegram_username
+          u.telegram_id
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         WHERE o.delivery_date IS NOT NULL
@@ -2845,19 +2845,37 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
           o.delivery_time ASC
       `);
       
-      const deliveries = result.rows.map(row => ({
-        order_id: row.order_id,
-        recipient_name: row.recipient_name,
-        recipient_phone: row.recipient_phone,
-        address_string: row.address_string,
-        address: row.address_string || (row.address_json ? JSON.stringify(row.address_json) : null),
-        delivery_date: row.delivery_date,
-        delivery_time: row.delivery_time,
-        delivery_status: row.status, // Используем status заказа как статус доставки
-        status: row.status,
-        comment: row.comment,
-        telegram_username: row.telegram_username
-      }));
+      const deliveries = result.rows.map(row => {
+        // Формируем адрес из address_string или address_json
+        let address = row.address_string;
+        if (!address && row.address_json) {
+          const addrData = typeof row.address_json === 'object' 
+            ? row.address_json 
+            : JSON.parse(row.address_json);
+          if (addrData) {
+            const parts = [];
+            if (addrData.city) parts.push(addrData.city);
+            if (addrData.street) parts.push(addrData.street);
+            if (addrData.house) parts.push(`д. ${addrData.house}`);
+            if (addrData.apartment) parts.push(`кв. ${addrData.apartment}`);
+            address = parts.join(', ');
+          }
+        }
+        
+        return {
+          order_id: row.order_id,
+          recipient_name: row.recipient_name,
+          recipient_phone: row.recipient_phone,
+          address_string: address || row.address_string,
+          address: address || row.address_string,
+          delivery_date: row.delivery_date,
+          delivery_time: row.delivery_time,
+          delivery_status: row.status, // Используем status заказа как статус доставки
+          status: row.status,
+          comment: row.comment,
+          telegram_id: row.telegram_id // Используем telegram_id для связи
+        };
+      });
       
       res.json(deliveries);
     } finally {
