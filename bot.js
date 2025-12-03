@@ -739,7 +739,7 @@ app.post('/api/user-data', async (req, res) => {
         profile: profile !== undefined ? profile : (existingData.profile || null),
         activeOrders: activeOrders !== undefined ? activeOrders : (existingData.activeOrders || []),
         completedOrders: completedOrders !== undefined ? completedOrders : (existingData.completedOrders || []),
-        bonuses: bonuses !== undefined ? bonuses : (existingData.bonuses !== undefined ? existingData.bonuses : 500),
+        bonuses: bonuses !== undefined ? bonuses : (existingData.bonuses !== undefined ? existingData.bonuses : 0),
         updatedAt: new Date().toISOString()
       };
       
@@ -770,7 +770,7 @@ app.get('/api/user-data/:userId', async (req, res) => {
           profile: null,
           activeOrders: [],
           completedOrders: [],
-          bonuses: 500
+          bonuses: 0
         });
       }
       
