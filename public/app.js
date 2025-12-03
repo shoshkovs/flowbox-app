@@ -328,7 +328,10 @@ function addToCart(productId, quantity = 1) {
     } else {
         cart.push({
             ...product,
-            quantity: actualQty
+            quantity: actualQty,
+            minStemQuantity: product.minStemQuantity, // Сохраняем minStemQuantity в элементе корзины
+            min_order_quantity: product.min_order_quantity,
+            min_stem_quantity: product.min_stem_quantity
         });
     }
     
@@ -369,7 +372,23 @@ function changeQuantity(productId, delta) {
     const item = cart.find(item => item.id === productId);
     if (!item) return;
 
-    item.quantity = Math.max(1, Math.min(500, item.quantity + delta));
+    // Определяем минимальное количество для этого товара
+    const minQty = (item.minStemQuantity && item.minStemQuantity > 0)
+        ? item.minStemQuantity
+        : (item.min_order_quantity && item.min_order_quantity > 0)
+        ? item.min_order_quantity
+        : (item.min_stem_quantity && item.min_stem_quantity > 0)
+        ? item.min_stem_quantity
+        : 1;
+
+    // Если пытаемся уменьшить и уже на минимуме - не позволяем
+    if (delta < 0 && item.quantity <= minQty) {
+        tg.HapticFeedback.notificationOccurred('error');
+        return; // Не изменяем количество
+    }
+
+    const newQuantity = Math.max(minQty, Math.min(500, item.quantity + delta));
+    item.quantity = newQuantity;
     
     if (item.quantity <= 0) {
         removeFromCart(productId);
@@ -581,7 +600,18 @@ function updateCartUI() {
         cartWithItems.style.display = 'block';
         
         // Рендер товаров в корзине
-        cartItemsList.innerHTML = cart.map(item => `
+        cartItemsList.innerHTML = cart.map(item => {
+            // Определяем минимальное количество для этого товара
+            const minQty = (item.minStemQuantity && item.minStemQuantity > 0)
+                ? item.minStemQuantity
+                : (item.min_order_quantity && item.min_order_quantity > 0)
+                ? item.min_order_quantity
+                : (item.min_stem_quantity && item.min_stem_quantity > 0)
+                ? item.min_stem_quantity
+                : 1;
+            const isMinQty = item.quantity <= minQty;
+            
+            return `
             <div class="cart-item-new">
                 <img src="${item.image}" alt="${item.name}" class="cart-item-new-image">
                 <div class="cart-item-new-info">
@@ -590,9 +620,9 @@ function updateCartUI() {
                 </div>
                     <div class="cart-item-new-controls">
                         <div class="cart-item-new-quantity">
-                            <button class="quantity-btn-small ${item.quantity <= 1 ? 'disabled' : ''}" onclick="changeQuantity(${item.id}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>−</button>
+                            <button class="quantity-btn-small ${isMinQty ? 'disabled' : ''}" onclick="changeQuantity(${item.id}, -1)" ${isMinQty ? 'disabled' : ''}>−</button>
                             <span class="quantity-value">${item.quantity}</span>
-                            <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, 1)">+</button>
+                            <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, 1)" ${item.quantity >= 500 ? 'disabled' : ''}>+</button>
                         </div>
                     <button class="cart-item-delete-btn" onclick="removeFromCart(${item.id})" title="Удалить">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2">
@@ -603,7 +633,8 @@ function updateCartUI() {
                     </button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
         
         // Расчет итоговой суммы
         calculateFinalTotal();
