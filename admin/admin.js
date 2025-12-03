@@ -334,6 +334,10 @@ async function loadProducts() {
         renderProductsTable(filtered);
     } catch (error) {
         console.error('Ошибка загрузки товаров:', error);
+        const tbody = document.getElementById('productsTableBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">Ошибка загрузки: ${error.message || 'Неизвестная ошибка'}</td></tr>`;
+        }
     }
 }
 
