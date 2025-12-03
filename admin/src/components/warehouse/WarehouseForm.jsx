@@ -77,10 +77,8 @@ export function WarehouseForm({ authToken }) {
 
           if (response.ok) {
             toast.success('Поставка успешно добавлена');
-            // Небольшая задержка перед переходом, чтобы данные успели сохраниться
-            setTimeout(() => {
-              navigate('/warehouse');
-            }, 500);
+            // Переходим на страницу склада - там будет автоматическое обновление
+            navigate('/warehouse');
           } else {
         const error = await response.json();
         toast.error(error.error || 'Ошибка сохранения поставки');
