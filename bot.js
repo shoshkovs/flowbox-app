@@ -895,26 +895,53 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   }
   
   const { id } = req.params;
-  const { name, description, price, image_url, type, color, features, is_active } = req.body;
+  const { name, description, price, image_url, type, color, features, is_active, stock, min_stock } = req.body;
   
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query(
-        `UPDATE products 
-         SET name = COALESCE($1, name),
-             description = COALESCE($2, description),
-             price = COALESCE($3, price),
-             image_url = COALESCE($4, image_url),
-             type = COALESCE($5, type),
-             color = COALESCE($6, color),
-             features = COALESCE($7, features),
-             is_active = COALESCE($8, is_active),
-             updated_at = now()
-         WHERE id = $9
-         RETURNING *`,
-        [name, description, price, image_url, type, color, features, is_active, id]
-      );
+      // Проверяем наличие колонок stock и min_stock
+      const columnsCheck = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'products' AND column_name IN ('stock', 'min_stock')
+      `);
+      
+      const hasStock = columnsCheck.rows.some(r => r.column_name === 'stock');
+      const hasMinStock = columnsCheck.rows.some(r => r.column_name === 'min_stock');
+      
+      let updateQuery = `
+        UPDATE products 
+        SET name = COALESCE($1, name),
+            description = COALESCE($2, description),
+            price = COALESCE($3, price),
+            image_url = COALESCE($4, image_url),
+            type = COALESCE($5, type),
+            color = COALESCE($6, color),
+            features = COALESCE($7, features),
+            is_active = COALESCE($8, is_active),
+            updated_at = now()
+      `;
+      
+      const params = [name, description, price, image_url, type, color, features, is_active];
+      let paramIndex = 9;
+      
+      if (hasStock && stock !== undefined) {
+        updateQuery += `, stock = $${paramIndex}`;
+        params.push(stock);
+        paramIndex++;
+      }
+      
+      if (hasMinStock && min_stock !== undefined) {
+        updateQuery += `, min_stock = $${paramIndex}`;
+        params.push(min_stock);
+        paramIndex++;
+      }
+      
+      updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
+      params.push(id);
+      
+      const result = await client.query(updateQuery, params);
       
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Товар не найден' });
@@ -1324,6 +1351,194 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('Ошибка получения истории заказа:', error);
     res.status(500).json({ error: 'Ошибка получения истории заказа' });
+  }
+});
+
+// API: Получить всех клиентов
+app.get('/api/admin/customers', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          u.id,
+          u.first_name as name,
+          u.phone,
+          u.email,
+          u.bonuses,
+          COUNT(DISTINCT o.id) as orders_count,
+          COALESCE(SUM(o.total), 0) as total_spent,
+          MAX(o.created_at) as last_order_date
+        FROM users u
+        LEFT JOIN orders o ON u.id = o.user_id
+        GROUP BY u.id
+        ORDER BY last_order_date DESC NULLS LAST
+      `);
+      
+      // Получаем заказы для каждого клиента
+      const customers = await Promise.all(result.rows.map(async (customer) => {
+        const ordersResult = await client.query(
+          'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
+          [customer.id]
+        );
+        return {
+          ...customer,
+          orders: ordersResult.rows,
+        };
+      }));
+      
+      res.json(customers);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения клиентов:', error);
+    res.status(500).json({ error: 'Ошибка получения клиентов' });
+  }
+});
+
+// API: Получить настройки
+app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    // Возвращаем настройки по умолчанию
+    return res.json({
+      serviceFee: 450,
+      bonusPercent: 1,
+      minOrderAmount: 0,
+      deliveryEnabled: true,
+      notificationsEnabled: true,
+    });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Проверяем существование таблицы settings
+      const tableCheck = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'settings'
+        )
+      `);
+      
+      if (!tableCheck.rows[0].exists) {
+        // Таблица не существует, возвращаем настройки по умолчанию
+        return res.json({
+          serviceFee: 450,
+          bonusPercent: 1,
+          minOrderAmount: 0,
+          deliveryEnabled: true,
+          notificationsEnabled: true,
+        });
+      }
+      
+      const result = await client.query('SELECT * FROM settings LIMIT 1');
+      if (result.rows.length > 0) {
+        res.json(result.rows[0]);
+      } else {
+        res.json({
+          serviceFee: 450,
+          bonusPercent: 1,
+          minOrderAmount: 0,
+          deliveryEnabled: true,
+          notificationsEnabled: true,
+        });
+      }
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения настроек:', error);
+    // Возвращаем настройки по умолчанию при ошибке
+    res.json({
+      serviceFee: 450,
+      bonusPercent: 1,
+      minOrderAmount: 0,
+      deliveryEnabled: true,
+      notificationsEnabled: true,
+    });
+  }
+});
+
+// API: Сохранить настройки
+app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { serviceFee, bonusPercent, minOrderAmount, deliveryEnabled, notificationsEnabled } = req.body;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Проверяем существование таблицы settings
+      const tableCheck = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'settings'
+        )
+      `);
+      
+      if (!tableCheck.rows[0].exists) {
+        // Создаем таблицу settings если её нет
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS settings (
+            id SERIAL PRIMARY KEY,
+            service_fee INTEGER DEFAULT 450,
+            bonus_percent DECIMAL(5,2) DEFAULT 1,
+            min_order_amount INTEGER DEFAULT 0,
+            delivery_enabled BOOLEAN DEFAULT true,
+            notifications_enabled BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+      }
+      
+      // Обновляем или создаем настройки
+      const existing = await client.query('SELECT id FROM settings LIMIT 1');
+      if (existing.rows.length > 0) {
+        await client.query(`
+          UPDATE settings 
+          SET service_fee = $1,
+              bonus_percent = $2,
+              min_order_amount = $3,
+              delivery_enabled = $4,
+              notifications_enabled = $5,
+              updated_at = NOW()
+          WHERE id = $6
+        `, [
+          serviceFee || 450,
+          bonusPercent || 1,
+          minOrderAmount || 0,
+          deliveryEnabled !== undefined ? deliveryEnabled : true,
+          notificationsEnabled !== undefined ? notificationsEnabled : true,
+          existing.rows[0].id
+        ]);
+      } else {
+        await client.query(`
+          INSERT INTO settings (service_fee, bonus_percent, min_order_amount, delivery_enabled, notifications_enabled)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [
+          serviceFee || 450,
+          bonusPercent || 1,
+          minOrderAmount || 0,
+          deliveryEnabled !== undefined ? deliveryEnabled : true,
+          notificationsEnabled !== undefined ? notificationsEnabled : true,
+        ]);
+      }
+      
+      res.json({ success: true });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка сохранения настроек:', error);
+    res.status(500).json({ error: 'Ошибка сохранения настроек' });
   }
 });
 
