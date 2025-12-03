@@ -704,9 +704,10 @@ function renderOrderDetails(order) {
     `;
 }
 
-// Обновить статус заказа
-async function updateOrderStatus(orderId) {
-    const status = document.getElementById('orderStatusSelect').value;
+// Обновить статус заказа (из модального окна)
+async function updateOrderStatusFromModal(orderId) {
+    const status = document.getElementById('orderStatusSelect')?.value;
+    if (!status) return;
     
     try {
         const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}/status`, {
@@ -724,7 +725,7 @@ async function updateOrderStatus(orderId) {
 
         alert('Статус обновлен');
         closeModals();
-        loadOrders();
+        loadOrders(document.querySelector('.filter-btn.active')?.dataset.status || '');
     } catch (error) {
         console.error('Ошибка обновления статуса:', error);
         alert('Ошибка обновления статуса');
