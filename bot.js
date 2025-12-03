@@ -294,42 +294,35 @@ app.get('/api/products', async (req, res) => {
         
         // Преобразуем в формат для фронтенда
         const products = await Promise.all(result.rows.map(async (row) => {
-          // Обрабатываем features: может быть JSONB объект, массив или null
-          let features = {};
-          if (row.features_json) {
-            try {
-              features = JSON.parse(row.features_json);
-            } catch (e) {
-              features = {};
-            }
-          } else if (row.features) {
-            // Fallback для старого формата
-            if (typeof row.features === 'string') {
-              try {
-                features = JSON.parse(row.features);
-              } catch (e) {
-                features = {};
-              }
-            } else if (Array.isArray(row.features)) {
-              features = row.features;
-            } else {
-              features = row.features;
-            }
-          }
+          // Получаем связанные данные
+          const categoryResult = row.category_id ? await client.query('SELECT name FROM product_categories WHERE id = $1', [row.category_id]) : { rows: [] };
+          const colorResult = row.color_id ? await client.query('SELECT name FROM product_colors WHERE id = $1', [row.color_id]) : { rows: [] };
+          const qualitiesResult = await client.query(`
+            SELECT pq.name 
+            FROM product_qualities pq
+            JOIN product_qualities_map pqm ON pq.id = pqm.quality_id
+            WHERE pqm.product_id = $1
+          `, [row.id]);
+          
+          // Формируем массив качеств
+          const features = qualitiesResult.rows.map(r => r.name);
           
           return {
             id: row.id,
             name: row.name,
-            description: row.description || '',
-            price: row.price,
+            price: row.price_per_stem || row.price || 0,
             image: row.image_url || 'https://via.placeholder.com/300x300?text=Цветы',
             image_url: row.image_url,
-            type: row.type || '',
-            color: row.color || '',
+            type: categoryResult.rows[0]?.name || row.type || '',
+            category: categoryResult.rows[0]?.name || row.type || '',
+            color: colorResult.rows[0]?.name || row.color || '',
             features: features,
             is_active: row.is_active !== false,
             stock: row.stock,
-            min_stock: row.min_stock
+            min_stock: row.min_stock,
+            min_order_quantity: row.min_stem_quantity || row.min_order_quantity || 1,
+            pricePerStem: row.price_per_stem || row.price || 0,
+            minStemQuantity: row.min_stem_quantity || row.min_order_quantity || 1
           };
         });
         
