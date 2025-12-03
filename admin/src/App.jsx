@@ -13,6 +13,10 @@ import { Settings } from './components/Settings';
 const API_BASE = window.location.origin;
 const ADMIN_PASSWORD = 'admin123';
 
+// Проверка загрузки
+console.log('🚀 React App загружается...');
+console.log('📍 API_BASE:', API_BASE);
+
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
