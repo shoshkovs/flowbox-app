@@ -2524,6 +2524,8 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
       
       await client.query('COMMIT');
       
+      console.log(`✅ Поставка создана: ID=${supply.id}, товар=${product_id}, количество=${quantityInt}`);
+      
       // Возвращаем поставку с правильным форматом цены
       const finalSupply = supplyResult.rows[0];
       // Убеждаемся, что цена возвращается как число, а не строка
@@ -2534,12 +2536,14 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
       res.json(finalSupply);
     } catch (error) {
       await client.query('ROLLBACK');
+      console.error('❌ Ошибка в транзакции создания поставки:', error);
       throw error;
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Ошибка добавления поставки:', error);
+    console.error('❌ Ошибка добавления поставки:', error);
+    console.error('Детали ошибки:', error.message, error.stack);
     res.status(500).json({ error: 'Ошибка добавления поставки: ' + error.message });
   }
 });
