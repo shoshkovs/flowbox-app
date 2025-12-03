@@ -2959,11 +2959,12 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
           o.delivery_time,
           o.status,
           o.comment,
-          u.telegram_id
+          u.telegram_id,
+          u.username
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         WHERE o.delivery_date IS NOT NULL
-           OR o.status IN ('DELIVERING', 'NEW', 'PROCESSING', 'COLLECTING', 'delivery', 'active', 'paid', 'assembly')
+           OR o.status IN ('DELIVERING', 'NEW', 'PROCESSING', 'COLLECTING')
         ORDER BY 
           CASE 
             WHEN o.delivery_date IS NOT NULL THEN o.delivery_date
