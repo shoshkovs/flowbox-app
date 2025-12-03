@@ -339,9 +339,12 @@ async function loadProducts() {
 
 function renderProductsTable(products) {
     const tbody = document.getElementById('productsTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('Элемент productsTableBody не найден');
+        return;
+    }
     
-    if (products.length === 0) {
+    if (!products || products.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Нет товаров</td></tr>';
         return;
     }
@@ -353,16 +356,16 @@ function renderProductsTable(products) {
         return `
             <tr>
                 <td>${product.id}</td>
-                <td><img src="${product.image_url || '/placeholder.jpg'}" alt="${product.name}" style="width: 50px; height: 50px; object-fit: cover;"></td>
-                <td>${product.name}</td>
+                <td><img src="${product.image_url || '/placeholder.jpg'}" alt="${product.name || ''}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" onerror="this.src='/placeholder.jpg'"></td>
+                <td>${product.name || '-'}</td>
                 <td>${product.type || '-'}</td>
                 <td>${product.color || '-'}</td>
-                <td>${product.price} ₽</td>
+                <td>${product.price || 0} ₽</td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-icon edit" onclick="editProduct(${product.id})">✏️</button>
-                        <button class="btn-icon delete" onclick="deleteProduct(${product.id})">🗑️</button>
+                        <button class="btn-icon edit" onclick="editProduct(${product.id})" type="button" title="Редактировать">✏️</button>
+                        <button class="btn-icon delete" onclick="deleteProduct(${product.id})" type="button" title="Удалить">🗑️</button>
                     </div>
                 </td>
             </tr>
