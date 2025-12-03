@@ -377,9 +377,7 @@ async function saveUserData() {
         }
         
         const result = await response.json();
-        if (result.success) {
-            console.log(`💾 Данные сохранены на сервер: адресов=${savedAddresses.length}, заказов=${userActiveOrders.length}`);
-        }
+        // Убрали избыточное логирование - данные сохраняются автоматически
         
         // Также сохраняем локально как резервную копию
         localStorage.setItem('cart', JSON.stringify(cart));
@@ -434,7 +432,10 @@ async function loadUserData() {
                 updateBonusesDisplay(); // Обновляем отображение бонусов
             }
             
-            console.log(`✅ Загружены данные с сервера: адресов=${savedAddresses.length}, заказов=${userActiveOrders.length}, бонусов=${accumulatedBonuses}`);
+            // Логируем только если есть что загружать
+            if (savedAddresses.length > 0 || userActiveOrders.length > 0) {
+                console.log(`✅ Загружены данные с сервера: адресов=${savedAddresses.length}, заказов=${userActiveOrders.length}, бонусов=${accumulatedBonuses}`);
+            }
             
             // Обновляем UI
             updateCartUI();

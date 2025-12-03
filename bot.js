@@ -39,16 +39,30 @@ if (process.env.DATABASE_URL) {
     console.error('❌ Ошибка подключения к БД:', err);
   });
   
-  // Тестовое подключение
-  pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-      console.error('❌ Ошибка тестового подключения к БД:', err.message);
-      console.error('Детали ошибки:', err);
-    } else {
-      console.log('✅ Подключение к базе данных установлено и протестировано');
-      console.log('📅 Время БД:', res.rows[0].now);
-    }
-  });
+  // Тестовое подключение с повторными попытками
+  let connectionAttempts = 0;
+  const maxAttempts = 3;
+  
+  function testConnection() {
+    connectionAttempts++;
+    pool.query('SELECT NOW()', (err, res) => {
+      if (err) {
+        if (connectionAttempts < maxAttempts) {
+          console.log(`⚠️  Попытка подключения к БД ${connectionAttempts}/${maxAttempts}...`);
+          setTimeout(testConnection, 2000); // Повтор через 2 секунды
+        } else {
+          console.error('❌ Ошибка подключения к БД после', maxAttempts, 'попыток:', err.message);
+          console.log('💡 БД может быть еще не готова. Приложение продолжит работу, но некоторые функции могут быть недоступны.');
+        }
+      } else {
+        console.log('✅ Подключение к базе данных установлено и протестировано');
+        console.log('📅 Время БД:', res.rows[0].now);
+      }
+    });
+  }
+  
+  // Запускаем тест подключения
+  testConnection();
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
   console.log('💡 Для использования БД добавь переменную DATABASE_URL в Environment Render.com');
@@ -673,7 +687,15 @@ app.post('/api/user-data', async (req, res) => {
         }
       }
       
-      console.log(`💾 Сохранены данные для пользователя ${userId} (БД)`);
+      // Логируем только при значительных изменениях (новые адреса, заказы, изменения бонусов)
+      const hasSignificantChanges = 
+        (addresses !== undefined && addresses.length > 0) ||
+        (activeOrders !== undefined && activeOrders.length > 0) ||
+        (bonuses !== undefined);
+      
+      if (hasSignificantChanges) {
+        console.log(`💾 Сохранены данные для пользователя ${userId} (БД): адресов=${addresses?.length || 0}, заказов=${activeOrders?.length || 0}, бонусов=${bonuses || 0}`);
+      }
     } else {
       // Fallback: файловое хранилище
       const existingData = userDataStore[userId] || {};
@@ -736,7 +758,10 @@ app.get('/api/user-data/:userId', async (req, res) => {
         bonuses: user.bonuses || 500
       };
       
-      console.log(`📥 Загружены данные для пользователя ${userId} (БД): адресов=${addresses.length}, активных заказов=${activeOrders.length}`);
+      // Логируем загрузку данных только если есть что загружать
+      if (addresses.length > 0 || activeOrders.length > 0) {
+        console.log(`📥 Загружены данные для пользователя ${userId} (БД): адресов=${addresses.length}, активных заказов=${activeOrders.length}`);
+      }
       
       res.json(userData);
     } else {
