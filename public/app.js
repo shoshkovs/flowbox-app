@@ -203,7 +203,7 @@ function renderProducts() {
     }
 
     productsContainer.innerHTML = filteredProducts.map(product => {
-        const minQty = product.min_order_quantity || 1;
+        const minQty = product.minStemQuantity || product.min_order_quantity || product.min_stem_quantity || 1;
         const quantity = productQuantities[product.id] || minQty;
         const totalPrice = product.price * quantity;
         const isMinQty = quantity <= minQty;

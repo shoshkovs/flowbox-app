@@ -30,7 +30,10 @@ export function Products({ authToken }) {
         let filtered = data;
 
         if (filterType !== 'all') {
-          filtered = filtered.filter(p => p.type === filterType);
+          filtered = filtered.filter(p => 
+            (p.category_name || p.category || '').toLowerCase() === filterType.toLowerCase() ||
+            (p.type || '').toLowerCase() === filterType.toLowerCase()
+          );
         }
         if (filterStatus !== 'all') {
           if (filterStatus === 'active') {
@@ -177,9 +180,9 @@ export function Products({ authToken }) {
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4">ID</th>
                 <th className="text-left py-3 px-4">Товар</th>
-                <th className="text-left py-3 px-4">Тип</th>
+                <th className="text-left py-3 px-4">Категория</th>
                 <th className="text-left py-3 px-4">Цвет</th>
-                <th className="text-left py-3 px-4">Цена</th>
+                <th className="text-left py-3 px-4">Цена за стебель</th>
                 <th className="text-left py-3 px-4">Статус</th>
                 <th className="text-right py-3 px-4">Действия</th>
               </tr>
@@ -200,9 +203,9 @@ export function Products({ authToken }) {
                       <span>{product.name}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4">{product.type || '-'}</td>
-                  <td className="py-3 px-4">{product.color || '-'}</td>
-                  <td className="py-3 px-4">{product.price} ₽</td>
+                  <td className="py-3 px-4">{product.category_name || product.category || '-'}</td>
+                  <td className="py-3 px-4">{product.color_name || product.color || '-'}</td>
+                  <td className="py-3 px-4">{product.price_per_stem || product.pricePerStem || product.price || 0} ₽</td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded text-xs ${
                       product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'

@@ -1717,6 +1717,24 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
     min_stock
   } = req.body;
   
+  // Валидация price_per_stem, если передано
+  let pricePerStemInt = null;
+  if (price_per_stem !== undefined) {
+    pricePerStemInt = parseInt(price_per_stem);
+    if (!Number.isInteger(pricePerStemInt) || pricePerStemInt < 1) {
+      return res.status(400).json({ error: 'Цена за стебель должна быть целым числом не менее 1 рубля' });
+    }
+  }
+  
+  // Валидация min_stem_quantity, если передано
+  let minStemQtyInt = null;
+  if (min_stem_quantity !== undefined) {
+    minStemQtyInt = parseInt(min_stem_quantity);
+    if (!Number.isInteger(minStemQtyInt) || minStemQtyInt < 1) {
+      return res.status(400).json({ error: 'Минимальное количество стеблей должно быть целым числом не менее 1' });
+    }
+  }
+  
   try {
     const client = await pool.connect();
     try {
