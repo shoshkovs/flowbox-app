@@ -971,6 +971,11 @@ async function loadUserOrders(userId, status = null) {
       
       const result = await client.query(query, params);
       
+      console.log(`📦 loadUserOrders: найдено ${result.rows.length} заказов для user_id=${userId}, статусы=${JSON.stringify(status)}`);
+      if (result.rows.length > 0) {
+        console.log(`📦 loadUserOrders: ID заказов: ${result.rows.map(r => r.id).join(', ')}`);
+      }
+      
       return result.rows.map(row => ({
         id: row.id,
         date: new Date(row.created_at).toLocaleDateString('ru-RU'),
