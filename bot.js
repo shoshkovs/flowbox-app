@@ -2378,6 +2378,8 @@ app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
         `SELECT 
           p.id as product_id,
           p.name as product_name,
+          p.image_url,
+          p.price_per_stem,
           COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) as total_supplied,
           COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as total_sold,
           COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as total_written_off,
