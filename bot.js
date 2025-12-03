@@ -2260,8 +2260,15 @@ app.put('/api/admin/warehouse/:id', checkAdminAuth, async (req, res) => {
         paramIndex++;
       }
       if (purchase_price !== undefined) {
+        const purchasePriceFloat = parseFloat(purchase_price);
+        if (isNaN(purchasePriceFloat) || purchasePriceFloat <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Цена закупки должна быть числом больше 0' });
+        }
+        // Округляем до 2 знаков после запятой для DECIMAL(10,2)
+        const purchasePriceRounded = Math.round(purchasePriceFloat * 100) / 100;
         updates.push(`unit_purchase_price = $${paramIndex}`);
-        params.push(purchase_price);
+        params.push(purchasePriceRounded);
         paramIndex++;
       }
       if (delivery_date !== undefined) {
@@ -2402,6 +2409,7 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   
   // Валидация
   const quantityInt = parseInt(quantity);
+  // Используем parseFloat и округляем до 2 знаков для DECIMAL(10,2)
   const purchasePriceFloat = parseFloat(purchase_price);
   
   if (!Number.isInteger(quantityInt) || quantityInt <= 0) {
@@ -2411,6 +2419,9 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   if (isNaN(purchasePriceFloat) || purchasePriceFloat <= 0) {
     return res.status(400).json({ error: 'Цена закупки должна быть числом больше 0' });
   }
+  
+  // Округляем до 2 знаков после запятой для DECIMAL(10,2)
+  const purchasePriceRounded = Math.round(purchasePriceFloat * 100) / 100;
   
   try {
     const client = await pool.connect();
@@ -2433,7 +2444,7 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
         `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, comment)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [product_id, quantityInt, purchasePriceFloat, delivery_date, comment || null]
+        [product_id, quantityInt, purchasePriceRounded, delivery_date, comment || null]
       );
       
       const supply = supplyResult.rows[0];

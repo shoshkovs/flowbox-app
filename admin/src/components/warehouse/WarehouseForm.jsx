@@ -144,11 +144,26 @@ export function WarehouseForm({ authToken }) {
               Цена закупки за шт (₽) <span className="text-red-500">*</span>
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={deliveryForm.purchase_price}
-              onChange={(e) => setDeliveryForm({ ...deliveryForm, purchase_price: e.target.value })}
+              onChange={(e) => {
+                // Разрешаем только цифры и одну точку/запятую
+                const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                // Убираем лишние точки
+                const parts = value.split('.');
+                const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                setDeliveryForm({ ...deliveryForm, purchase_price: cleanedValue });
+              }}
+              onBlur={(e) => {
+                // При потере фокуса округляем до 2 знаков после запятой
+                const numValue = parseFloat(e.target.value);
+                if (!isNaN(numValue) && numValue > 0) {
+                  setDeliveryForm({ ...deliveryForm, purchase_price: numValue.toFixed(2) });
+                }
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="180"
+              placeholder="180.00"
             />
           </div>
           <div>
