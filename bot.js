@@ -2577,7 +2577,7 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
           u.last_name as customer_last_name,
           u.phone as customer_phone,
           u.email as customer_email,
-          u.telegram_username as customer_telegram_username,
+          u.username as customer_telegram_username,
           u.telegram_id as customer_telegram_id
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
@@ -2748,11 +2748,18 @@ app.post('/api/admin/orders/:id/assign-courier', checkAdminAuth, async (req, res
         return res.status(404).json({ error: 'Заказ не найден' });
       }
       
-      // Записываем в историю
-      await client.query(
-        'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
-        [id, 'assigned', 'admin', `Назначен курьер ID: ${courier_id}`]
-      );
+      // Записываем в историю (если таблица существует)
+      try {
+        await client.query(
+          'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
+          [id, 'assigned', 'admin', `Назначен курьер ID: ${courier_id}`]
+        );
+      } catch (historyError) {
+        // Игнорируем ошибку, если таблица не существует
+        if (!historyError.message.includes('does not exist')) {
+          console.error('Ошибка записи в историю статусов:', historyError);
+        }
+      }
       
       res.json(result.rows[0]);
     } finally {
@@ -3046,17 +3053,32 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query(
-        'SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC',
-        [id]
-      );
-      res.json(result.rows);
+      // Проверяем существование таблицы
+      const tableCheck = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'order_status_history'
+        )
+      `);
+      
+      if (tableCheck.rows[0].exists) {
+        const result = await client.query(
+          'SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC',
+          [id]
+        );
+        res.json(result.rows);
+      } else {
+        // Таблица не существует, возвращаем пустой массив
+        res.json([]);
+      }
     } finally {
       client.release();
     }
   } catch (error) {
     console.error('Ошибка получения истории заказа:', error);
-    res.status(500).json({ error: 'Ошибка получения истории заказа' });
+    // В случае ошибки возвращаем пустой массив вместо ошибки
+    res.json([]);
   }
 });
 

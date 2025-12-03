@@ -75,10 +75,13 @@ export function WarehouseForm({ authToken }) {
         }),
       });
 
-      if (response.ok) {
-        toast.success('Поставка успешно добавлена');
-        navigate('/warehouse');
-      } else {
+          if (response.ok) {
+            toast.success('Поставка успешно добавлена');
+            // Небольшая задержка перед переходом, чтобы данные успели сохраниться
+            setTimeout(() => {
+              navigate('/warehouse');
+            }, 500);
+          } else {
         const error = await response.json();
         toast.error(error.error || 'Ошибка сохранения поставки');
       }
