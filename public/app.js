@@ -1675,7 +1675,7 @@ async function validateAndSubmitOrder(e) {
                 address: orderData.address,
                 deliveryDate: orderData.deliveryDate,
                 deliveryTime: orderData.deliveryTime,
-                status: 'active',
+                status: 'NEW',
                 createdAt: new Date().toISOString()
             };
             
