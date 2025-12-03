@@ -1424,44 +1424,88 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { name, description, price, image_url, type, color, features, min_order_quantity } = req.body;
+  const { 
+    name, 
+    category_id, 
+    color_id, 
+    price_per_stem, 
+    min_stem_quantity,
+    quality_ids,
+    stem_length_id,
+    country_id,
+    variety_id,
+    tag_ids,
+    image_url,
+    is_active
+  } = req.body;
   
-  if (!name || !price) {
-    return res.status(400).json({ error: 'Название и цена обязательны' });
+  if (!name || !category_id || !color_id || !price_per_stem || !min_stem_quantity) {
+    return res.status(400).json({ error: 'Название, категория, цвет, цена за стебель и минимальное количество обязательны' });
+  }
+  
+  if (!quality_ids || !Array.isArray(quality_ids) || quality_ids.length === 0) {
+    return res.status(400).json({ error: 'Необходимо выбрать хотя бы одно отличительное качество' });
   }
   
   try {
     const client = await pool.connect();
     try {
-      // Преобразуем features в JSONB, если это объект
-      let featuresValue = null;
-      if (features) {
-        if (typeof features === 'object' && !Array.isArray(features)) {
-          featuresValue = JSON.stringify(features);
-        } else if (Array.isArray(features)) {
-          // Если это массив, конвертируем в JSONB массив
-          featuresValue = JSON.stringify(features);
-        } else {
-          featuresValue = features;
-        }
-      }
+      await client.query('BEGIN');
       
+      // Создаем товар
       const result = await client.query(
-        `INSERT INTO products (name, description, price, image_url, type, color, features, min_order_quantity)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+        `INSERT INTO products (
+          name, 
+          category_id, 
+          color_id, 
+          price_per_stem, 
+          min_stem_quantity,
+          stem_length_id,
+          country_id,
+          variety_id,
+          image_url,
+          is_active
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING *`,
         [
           name,
-          description || null,
-          price,
+          category_id,
+          color_id,
+          price_per_stem,
+          min_stem_quantity,
+          stem_length_id || null,
+          country_id || null,
+          variety_id || null,
           image_url || null,
-          type || null,
-          color || null,
-          featuresValue,
-          min_order_quantity || 1
+          is_active !== false
         ]
       );
-      res.json(result.rows[0]);
+      
+      const product = result.rows[0];
+      
+      // Связываем качества
+      if (quality_ids && quality_ids.length > 0) {
+        for (const qualityId of quality_ids) {
+          await client.query(
+            'INSERT INTO product_qualities_map (product_id, quality_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [product.id, qualityId]
+          );
+        }
+      }
+      
+      // Связываем теги
+      if (tag_ids && tag_ids.length > 0) {
+        for (const tagId of tag_ids) {
+          await client.query(
+            'INSERT INTO product_tags_map (product_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [product.id, tagId]
+          );
+        }
+      }
+      
+      await client.query('COMMIT');
+      res.json(product);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -1481,11 +1525,28 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   }
   
   const { id } = req.params;
-  const { name, description, price, image_url, type, color, features, is_active, stock, min_stock, min_order_quantity } = req.body;
+  const { 
+    name, 
+    category_id, 
+    color_id, 
+    price_per_stem, 
+    min_stem_quantity,
+    quality_ids,
+    stem_length_id,
+    country_id,
+    variety_id,
+    tag_ids,
+    image_url,
+    is_active,
+    stock,
+    min_stock
+  } = req.body;
   
   try {
     const client = await pool.connect();
     try {
+      await client.query('BEGIN');
+      
       // Проверяем наличие колонок stock и min_stock
       const columnsCheck = await client.query(`
         SELECT column_name 
@@ -1496,36 +1557,34 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
       const hasStock = columnsCheck.rows.some(r => r.column_name === 'stock');
       const hasMinStock = columnsCheck.rows.some(r => r.column_name === 'min_stock');
       
-      // Преобразуем features в JSONB, если это объект
-      let featuresValue = null;
-      if (features !== undefined) {
-        if (features === null) {
-          featuresValue = null;
-        } else if (typeof features === 'object' && !Array.isArray(features)) {
-          featuresValue = JSON.stringify(features);
-        } else if (Array.isArray(features)) {
-          featuresValue = JSON.stringify(features);
-        } else {
-          featuresValue = features;
-        }
-      }
-      
       let updateQuery = `
         UPDATE products 
         SET name = COALESCE($1, name),
-            description = COALESCE($2, description),
-            price = COALESCE($3, price),
-            image_url = COALESCE($4, image_url),
-            type = COALESCE($5, type),
-            color = COALESCE($6, color),
-            features = COALESCE($7::jsonb, features),
-            is_active = COALESCE($8, is_active),
-            min_order_quantity = COALESCE($9, min_order_quantity),
+            category_id = COALESCE($2, category_id),
+            color_id = COALESCE($3, color_id),
+            price_per_stem = COALESCE($4, price_per_stem),
+            min_stem_quantity = COALESCE($5, min_stem_quantity),
+            stem_length_id = COALESCE($6, stem_length_id),
+            country_id = COALESCE($7, country_id),
+            variety_id = COALESCE($8, variety_id),
+            image_url = COALESCE($9, image_url),
+            is_active = COALESCE($10, is_active),
             updated_at = now()
       `;
       
-      const params = [name, description, price, image_url, type, color, featuresValue, is_active, min_order_quantity];
-      let paramIndex = 10;
+      const params = [
+        name, 
+        category_id, 
+        color_id, 
+        price_per_stem, 
+        min_stem_quantity,
+        stem_length_id,
+        country_id,
+        variety_id,
+        image_url,
+        is_active
+      ];
+      let paramIndex = 11;
       
       if (hasStock && stock !== undefined) {
         updateQuery += `, stock = $${paramIndex}`;
@@ -1545,16 +1604,51 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
       const result = await client.query(updateQuery, params);
       
       if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Товар не найден' });
       }
       
+      // Обновляем связи с качествами
+      if (quality_ids !== undefined) {
+        // Удаляем старые связи
+        await client.query('DELETE FROM product_qualities_map WHERE product_id = $1', [id]);
+        // Добавляем новые
+        if (Array.isArray(quality_ids) && quality_ids.length > 0) {
+          for (const qualityId of quality_ids) {
+            await client.query(
+              'INSERT INTO product_qualities_map (product_id, quality_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [id, qualityId]
+            );
+          }
+        }
+      }
+      
+      // Обновляем связи с тегами
+      if (tag_ids !== undefined) {
+        // Удаляем старые связи
+        await client.query('DELETE FROM product_tags_map WHERE product_id = $1', [id]);
+        // Добавляем новые
+        if (Array.isArray(tag_ids) && tag_ids.length > 0) {
+          for (const tagId of tag_ids) {
+            await client.query(
+              'INSERT INTO product_tags_map (product_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [id, tagId]
+            );
+          }
+        }
+      }
+      
+      await client.query('COMMIT');
       res.json(result.rows[0]);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }
   } catch (error) {
     console.error('Ошибка обновления товара:', error);
-    res.status(500).json({ error: 'Ошибка обновления товара' });
+    res.status(500).json({ error: 'Ошибка обновления товара: ' + error.message });
   }
 });
 
@@ -1569,25 +1663,47 @@ app.get('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query('SELECT *, features::text as features_json FROM products WHERE id = $1', [id]);
+      const result = await client.query(`
+        SELECT 
+          p.*,
+          pc.name as category_name,
+          pcol.name as color_name,
+          sl.value as stem_length_value,
+          c.name as country_name,
+          v.name as variety_name,
+          COALESCE(
+            (SELECT json_agg(json_build_object('id', pq.id, 'name', pq.name))
+             FROM product_qualities pq
+             JOIN product_qualities_map pqm ON pq.id = pqm.quality_id
+             WHERE pqm.product_id = p.id),
+            '[]'::json
+          ) as qualities,
+          COALESCE(
+            (SELECT json_agg(json_build_object('id', pt.id, 'name', pt.name))
+             FROM product_tags pt
+             JOIN product_tags_map ptm ON pt.id = ptm.tag_id
+             WHERE ptm.product_id = p.id),
+            '[]'::json
+          ) as tags
+        FROM products p
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
+        LEFT JOIN product_colors pcol ON p.color_id = pcol.id
+        LEFT JOIN stem_lengths sl ON p.stem_length_id = sl.id
+        LEFT JOIN countries c ON p.country_id = c.id
+        LEFT JOIN varieties v ON p.variety_id = v.id
+        WHERE p.id = $1
+      `, [id]);
+      
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Товар не найден' });
       }
       
       const product = result.rows[0];
-      // Обрабатываем features
-      let features = {};
-      if (product.features_json) {
-        try {
-          features = JSON.parse(product.features_json);
-        } catch (e) {
-          features = {};
-        }
-      }
       
       res.json({
         ...product,
-        features: features
+        quality_ids: product.qualities ? product.qualities.map(q => q.id) : [],
+        tag_ids: product.tags ? product.tags.map(t => t.id) : []
       });
     } finally {
       client.release();
