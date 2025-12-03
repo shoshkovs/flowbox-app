@@ -81,15 +81,19 @@ try {
       const adminDir = path.join(__dirname, 'admin');
       if (fs.existsSync(path.join(adminDir, 'package.json'))) {
         console.log('  Выполняем сборку админ-панели...');
-        execSync('cd admin && npm install && npm run build', { 
+        // Используем npx для запуска vite, если он не в PATH
+        execSync('cd admin && npm install --production=false && npx vite build', { 
           cwd: __dirname,
           stdio: 'inherit',
-          timeout: 120000 // 2 минуты
+          timeout: 180000, // 3 минуты
+          env: { ...process.env, PATH: process.env.PATH }
         });
         console.log('  ✅ Сборка завершена');
       }
     } catch (buildError) {
       console.error('  ❌ Ошибка сборки админ-панели:', buildError.message);
+      if (buildError.stdout) console.error('  stdout:', buildError.stdout.toString());
+      if (buildError.stderr) console.error('  stderr:', buildError.stderr.toString());
       console.log('  ⚠️  Используем исходники как fallback');
     }
   }
