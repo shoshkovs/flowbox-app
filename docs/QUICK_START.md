@@ -37,7 +37,7 @@ psql "postgresql://flowbox_db_user:password@dpg-xxxxx-a.oregon-postgres.render.c
 
 ```bash
 # Запусти скрипт (он попросит ввести строку подключения)
-./database/execute-schema.sh
+# SQL миграции выполняются автоматически при запуске сервера
 ```
 
 ### Шаг 3: Проверь, что таблицы созданы
