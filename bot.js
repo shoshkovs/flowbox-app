@@ -1602,48 +1602,83 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
       const hasStock = columnsCheck.rows.some(r => r.column_name === 'stock');
       const hasMinStock = columnsCheck.rows.some(r => r.column_name === 'min_stock');
       
-      let updateQuery = `
-        UPDATE products 
-        SET name = COALESCE($1, name),
-            category_id = COALESCE($2, category_id),
-            color_id = COALESCE($3, color_id),
-            price_per_stem = COALESCE($4, price_per_stem),
-            min_stem_quantity = COALESCE($5, min_stem_quantity),
-            stem_length_id = COALESCE($6, stem_length_id),
-            country_id = COALESCE($7, country_id),
-            variety_id = COALESCE($8, variety_id),
-            image_url = COALESCE($9, image_url),
-            is_active = COALESCE($10, is_active),
-            updated_at = now()
-      `;
+      // Строим динамический UPDATE запрос только для переданных полей
+      const updates = [];
+      const params = [];
+      let paramIndex = 1;
       
-      const params = [
-        name, 
-        category_id, 
-        color_id, 
-        price_per_stem, 
-        min_stem_quantity,
-        stem_length_id,
-        country_id,
-        variety_id,
-        image_url,
-        is_active
-      ];
-      let paramIndex = 11;
+      if (name !== undefined) {
+        updates.push(`name = $${paramIndex}`);
+        params.push(name);
+        paramIndex++;
+      }
+      if (category_id !== undefined) {
+        updates.push(`category_id = $${paramIndex}`);
+        params.push(category_id);
+        paramIndex++;
+      }
+      if (color_id !== undefined) {
+        updates.push(`color_id = $${paramIndex}`);
+        params.push(color_id);
+        paramIndex++;
+      }
+      if (pricePerStemInt !== null) {
+        updates.push(`price_per_stem = $${paramIndex}`);
+        params.push(pricePerStemInt);
+        paramIndex++;
+      }
+      if (minStemQtyInt !== null) {
+        updates.push(`min_stem_quantity = $${paramIndex}`);
+        params.push(minStemQtyInt);
+        paramIndex++;
+      }
+      if (stem_length_id !== undefined) {
+        updates.push(`stem_length_id = $${paramIndex}`);
+        params.push(stem_length_id);
+        paramIndex++;
+      }
+      if (country_id !== undefined) {
+        updates.push(`country_id = $${paramIndex}`);
+        params.push(country_id);
+        paramIndex++;
+      }
+      if (variety_id !== undefined) {
+        updates.push(`variety_id = $${paramIndex}`);
+        params.push(variety_id);
+        paramIndex++;
+      }
+      if (image_url !== undefined) {
+        updates.push(`image_url = $${paramIndex}`);
+        params.push(image_url);
+        paramIndex++;
+      }
+      if (is_active !== undefined) {
+        updates.push(`is_active = $${paramIndex}`);
+        params.push(is_active);
+        paramIndex++;
+      }
       
+      if (updates.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Нет полей для обновления' });
+      }
+      
+      // Добавляем stock и min_stock, если они переданы
       if (hasStock && stock !== undefined) {
-        updateQuery += `, stock = $${paramIndex}`;
+        updates.push(`stock = $${paramIndex}`);
         params.push(stock);
         paramIndex++;
       }
       
       if (hasMinStock && min_stock !== undefined) {
-        updateQuery += `, min_stock = $${paramIndex}`;
+        updates.push(`min_stock = $${paramIndex}`);
         params.push(min_stock);
         paramIndex++;
       }
       
-      updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
+      updates.push(`updated_at = now()`);
+      
+      let updateQuery = `UPDATE products SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
       params.push(id);
       
       const result = await client.query(updateQuery, params);
