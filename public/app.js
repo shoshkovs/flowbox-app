@@ -1680,8 +1680,11 @@ function updateBonusesDisplay() {
         profileBonusesAmount.textContent = accumulatedBonuses;
     }
     
-    // Сохраняем бонусы на сервер
-    saveUserData();
+    // Сохраняем бонусы на сервер (только если есть userId)
+    const userId = getUserId();
+    if (userId) {
+        saveUserData();
+    }
 }
 
 function resetAddressFormState() {
