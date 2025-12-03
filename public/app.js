@@ -2531,11 +2531,11 @@ function loadOrderHistory() {
             <div class="order-history-item">
                 <div class="order-item-header">
                     <h4>Заказ #${order.id}</h4>
-                    <span class="order-status ${order.status}">${order.status === 'completed' ? 'Завершен' : 'Активный'}</span>
+                    <span class="order-status ${getOrderStatusClass(order.status)}">${getOrderStatusText(order.status)}</span>
                 </div>
                 <p>Дата: ${order.date}</p>
                 <p>Сумма: ${order.total} ₽</p>
-                ${order.status === 'active' ? '<button class="pay-btn">Оплатить</button>' : ''}
+                ${order.status === 'UNPAID' || order.status === 'unpaid' ? '<button class="pay-btn">Оплатить</button>' : ''}
             </div>
         `).join('');
     }

@@ -27,6 +27,7 @@ export function Warehouse({ authToken }) {
   }, []);
 
   const loadProducts = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/api/admin/warehouse/stock`, {
         headers: {
@@ -38,6 +39,8 @@ export function Warehouse({ authToken }) {
         const data = await response.json();
         setProducts(data);
       } else {
+        const errorData = await response.json().catch(() => ({ error: 'Ошибка загрузки данных склада' }));
+        console.error('Ошибка загрузки данных склада:', errorData);
         // Fallback на обычный warehouse API
         const fallbackResponse = await fetch(`${API_BASE}/api/admin/warehouse`, {
           headers: {
@@ -47,10 +50,13 @@ export function Warehouse({ authToken }) {
         if (fallbackResponse.ok) {
           const data = await fallbackResponse.json();
           setProducts(data);
+        } else {
+          setProducts([]);
         }
       }
     } catch (error) {
       console.error('Ошибка загрузки товаров:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }

@@ -120,20 +120,36 @@ export function OrderDetail({ authToken, orderId }) {
 
   const getStatusLabel = (status) => {
     const labels = {
+      UNPAID: 'Не оплачен',
+      NEW: 'Новый',
+      PROCESSING: 'В обработке',
+      COLLECTING: 'Собирается',
+      DELIVERING: 'В пути',
+      COMPLETED: 'Доставлен',
+      CANCELED: 'Отменён',
+      // Старые статусы для обратной совместимости
       new: 'Новый',
-      active: 'Активный',
+      active: 'В обработке',
       paid: 'Оплачен',
       purchase: 'Закупка',
       assembly: 'Сборка',
-      delivery: 'Доставка',
-      completed: 'Завершен',
-      cancelled: 'Отменен',
+      delivery: 'В пути',
+      completed: 'Доставлен',
+      cancelled: 'Отменён',
     };
     return labels[status] || status;
   };
 
   const getStatusColor = (status) => {
     const colors = {
+      UNPAID: 'bg-gray-100 text-gray-800',
+      NEW: 'bg-yellow-100 text-yellow-800',
+      PROCESSING: 'bg-blue-100 text-blue-800',
+      COLLECTING: 'bg-purple-100 text-purple-800',
+      DELIVERING: 'bg-blue-100 text-blue-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      CANCELED: 'bg-red-100 text-red-800',
+      // Старые статусы для обратной совместимости
       new: 'bg-yellow-100 text-yellow-800',
       active: 'bg-green-100 text-green-800',
       paid: 'bg-green-100 text-green-800',
@@ -226,16 +242,17 @@ export function OrderDetail({ authToken, orderId }) {
               <div>
                 <span className="text-gray-600">Текущий статус:</span>
                 <select
-                  value={order.status || 'new'}
+                  value={order.status || 'NEW'}
                   onChange={(e) => setOrder({ ...order, status: e.target.value })}
                   className="ml-2 px-3 py-1 border border-gray-300 rounded-lg"
                 >
-                  <option value="new">Новый</option>
-                  <option value="paid">Оплачен</option>
-                  <option value="assembly">Сборка</option>
-                  <option value="delivery">Доставка</option>
-                  <option value="completed">Завершен</option>
-                  <option value="cancelled">Отменен</option>
+                  <option value="UNPAID">Не оплачен</option>
+                  <option value="NEW">Новый</option>
+                  <option value="PROCESSING">В обработке</option>
+                  <option value="COLLECTING">Собирается</option>
+                  <option value="DELIVERING">В пути</option>
+                  <option value="COMPLETED">Доставлен</option>
+                  <option value="CANCELED">Отменён</option>
                 </select>
               </div>
               <div>

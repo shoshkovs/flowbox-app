@@ -807,7 +807,7 @@ async function createOrderInDb(orderData) {
         `INSERT INTO orders 
          (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
           recipient_name, recipient_phone, address_string, address_json, delivery_date, delivery_time, comment, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active')
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'NEW')
          RETURNING *`,
         [
           userId,
@@ -1092,8 +1092,9 @@ app.get('/api/user-data/:userId', async (req, res) => {
       }
       
       const addresses = await loadUserAddresses(user.id);
-      const activeOrders = await loadUserOrders(user.id, 'active');
-      const completedOrders = await loadUserOrders(user.id, 'completed');
+      // Загружаем активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING)
+      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING']);
+      const completedOrders = await loadUserOrders(user.id, ['COMPLETED']);
       
       const userData = {
         cart: [], // Корзина хранится на клиенте
@@ -2386,20 +2387,20 @@ app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
           COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
           COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
           COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as stock,
-          COALESCE(p.min_stock, 10) as min_stock,
+          20 as min_stock,
           CASE 
             WHEN COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
                  COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
                  COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) <= 0 THEN 'out_of_stock'
             WHEN COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
                  COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
-                 COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) <= COALESCE(p.min_stock, 10) THEN 'low_stock'
+                 COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) <= 20 THEN 'low_stock'
             ELSE 'sufficient'
           END as status
         FROM products p
         LEFT JOIN stock_movements sm ON p.id = sm.product_id
         WHERE p.is_active = true
-        GROUP BY p.id, p.name, p.image_url, p.price_per_stem, p.min_stock
+        GROUP BY p.id, p.name, p.image_url, p.price_per_stem
         ORDER BY p.name`
       );
       res.json(result.rows);
@@ -2679,7 +2680,8 @@ app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   const { status, comment } = req.body;
   
   // Расширенные статусы
-  const validStatuses = ['new', 'confirmed', 'preparing', 'assigned', 'in_transit', 'delivered', 'cancelled', 'active', 'completed'];
+  const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED',
+                         'new', 'confirmed', 'preparing', 'assigned', 'in_transit', 'delivered', 'cancelled', 'active', 'completed', 'paid', 'assembly', 'delivery'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: 'Неверный статус' });
   }
@@ -2929,7 +2931,7 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         WHERE o.delivery_date IS NOT NULL
-           OR o.status IN ('delivery', 'active', 'paid', 'assembly')
+           OR o.status IN ('DELIVERING', 'NEW', 'PROCESSING', 'COLLECTING', 'delivery', 'active', 'paid', 'assembly')
         ORDER BY 
           CASE 
             WHEN o.delivery_date IS NOT NULL THEN o.delivery_date

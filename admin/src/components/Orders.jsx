@@ -8,6 +8,7 @@ const API_BASE = window.location.origin;
 export function Orders({ authToken }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
+  const [allOrders, setAllOrders] = useState([]); // Храним все заказы для правильного подсчета
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
 
@@ -40,19 +41,24 @@ export function Orders({ authToken }) {
 
   const loadOrders = async () => {
     try {
-      const url = filterStatus !== 'all' 
-        ? `${API_BASE}/api/admin/orders?status=${filterStatus}`
-        : `${API_BASE}/api/admin/orders`;
-        
-      const response = await fetch(url, {
+      // Всегда загружаем все заказы для правильного подсчета
+      const allResponse = await fetch(`${API_BASE}/api/admin/orders`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data);
+      if (allResponse.ok) {
+        const allData = await allResponse.json();
+        setAllOrders(allData);
+        
+        // Фильтруем локально
+        if (filterStatus === 'all') {
+          setOrders(allData);
+        } else {
+          const filtered = allData.filter(order => order.status === filterStatus);
+          setOrders(filtered);
+        }
       }
     } catch (error) {
       console.error('Ошибка загрузки заказов:', error);
@@ -64,20 +70,36 @@ export function Orders({ authToken }) {
 
   const getStatusLabel = (status) => {
     const labels = {
+      UNPAID: 'Не оплачен',
+      NEW: 'Новый',
+      PROCESSING: 'В обработке',
+      COLLECTING: 'Собирается',
+      DELIVERING: 'В пути',
+      COMPLETED: 'Доставлен',
+      CANCELED: 'Отменён',
+      // Старые статусы для обратной совместимости
       new: 'Новый',
-      active: 'Активный',
+      active: 'В обработке',
       paid: 'Оплачен',
       purchase: 'Закупка',
       assembly: 'Сборка',
-      delivery: 'Доставка',
-      completed: 'Завершен',
-      cancelled: 'Отменен',
+      delivery: 'В пути',
+      completed: 'Доставлен',
+      cancelled: 'Отменён',
     };
     return labels[status] || status;
   };
 
   const getStatusColor = (status) => {
     const colors = {
+      UNPAID: 'bg-gray-100 text-gray-800',
+      NEW: 'bg-yellow-100 text-yellow-800',
+      PROCESSING: 'bg-blue-100 text-blue-800',
+      COLLECTING: 'bg-purple-100 text-purple-800',
+      DELIVERING: 'bg-blue-100 text-blue-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      CANCELED: 'bg-red-100 text-red-800',
+      // Старые статусы для обратной совместимости
       new: 'bg-yellow-100 text-yellow-800',
       active: 'bg-green-100 text-green-800',
       paid: 'bg-green-100 text-green-800',
@@ -102,7 +124,7 @@ export function Orders({ authToken }) {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {['all', 'new', 'paid', 'assembly', 'delivery', 'completed'].map((status) => (
+        {['all', 'new', 'assembly', 'delivery', 'completed'].map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
@@ -112,7 +134,7 @@ export function Orders({ authToken }) {
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            {getStatusLabel(status)} ({orders.filter(o => status === 'all' || o.status === status).length})
+            {getStatusLabel(status)} ({status === 'all' ? allOrders.length : allOrders.filter(o => o.status === status).length})
           </button>
         ))}
       </div>
