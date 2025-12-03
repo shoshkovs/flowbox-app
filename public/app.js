@@ -1656,9 +1656,14 @@ async function validateAndSubmitOrder(e) {
             body: JSON.stringify(orderData)
         });
 
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Ошибка сервера' }));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
         
-        if (result.success) {
+        if (result.success || result.orderId) {
             tg.sendData(JSON.stringify(orderData));
             
             // Обновление бонусов: списываем использованные и начисляем новые

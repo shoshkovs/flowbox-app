@@ -180,7 +180,7 @@ export function Delivery({ authToken }) {
                     </td>
                     <td className="py-3 px-4">
                       <select
-                        value={getDeliveryStatusFromOrderStatus(delivery.delivery_status || delivery.status)}
+                        value={delivery.delivery_status || delivery.status || 'pending'}
                         onChange={(e) => updateDeliveryStatus(delivery.order_id, e.target.value)}
                         disabled={isUpdating}
                         className={`px-3 py-1 rounded text-sm border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent ${

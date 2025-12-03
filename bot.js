@@ -233,6 +233,32 @@ if (process.env.DATABASE_URL) {
       }
     }, 3000);
     
+    // Миграция комментариев заказов
+    setTimeout(async () => {
+      try {
+        const client = await pool.connect();
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const migrationSQL = fs.readFileSync(
+            path.join(__dirname, 'database', 'add-order-comments.sql'),
+            'utf8'
+          );
+          
+          await client.query(migrationSQL);
+          console.log('✅ Миграция комментариев заказов завершена');
+        } catch (migrationError) {
+          if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
+            console.log('⚠️  Ошибка миграции комментариев:', migrationError.message);
+          }
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибки при миграции
+      }
+    }, 4000);
+    
     // Миграция таблиц склада
     setTimeout(async () => {
       try {
@@ -2974,7 +3000,8 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
           delivery_status: row.status, // Используем status заказа как статус доставки
           status: row.status,
           comment: row.comment,
-          telegram_id: row.telegram_id // Используем telegram_id для связи
+          telegram_id: row.telegram_id, // Используем telegram_id для связи
+          telegram_username: row.username // Используем username для связи в Telegram
         };
       });
       
@@ -3003,10 +3030,10 @@ app.put('/api/admin/delivery/:id', checkAdminAuth, async (req, res) => {
   
   // Маппинг статусов доставки на статусы заказа
   const statusMap = {
-    'pending': 'active',
-    'in_transit': 'delivery',
-    'delivered': 'completed',
-    'cancelled': 'cancelled'
+    'pending': 'NEW',
+    'in_transit': 'DELIVERING',
+    'delivered': 'COMPLETED',
+    'cancelled': 'CANCELED'
   };
   
   const orderStatus = statusMap[status] || status;
