@@ -1299,11 +1299,59 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
 
 // API: Обновить список заказов (refresh)
 app.post('/api/admin/orders/refresh', checkAdminAuth, async (req, res) => {
-  // По сути это тот же GET /api/admin/orders
-  // Просто редиректим на GET
-  req.url = '/api/admin/orders';
-  req.method = 'GET';
-  return app._router.handle(req, res);
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { status } = req.query;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      let query = `
+        SELECT 
+          o.*,
+          u.first_name as customer_name,
+          u.phone as customer_phone,
+          u.email as customer_email,
+          json_agg(
+            json_build_object(
+              'id', oi.id,
+              'product_id', oi.product_id,
+              'name', oi.name,
+              'price', oi.price,
+              'quantity', oi.quantity
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL) as items
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+      `;
+      
+      const params = [];
+      if (status) {
+        query += ' WHERE o.status = $1';
+        params.push(status);
+      }
+      
+      query += ' GROUP BY o.id, u.id ORDER BY o.created_at DESC';
+      
+      const result = await client.query(query, params);
+      
+      const orders = result.rows.map(row => ({
+        ...row,
+        total: row.total || 0,
+        address_data: typeof row.address_json === 'object' ? row.address_json : (row.address_json ? JSON.parse(row.address_json) : {})
+      }));
+      
+      res.json(orders);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения заказов:', error);
+    res.status(500).json({ error: 'Ошибка получения заказов' });
+  }
 });
 
 // API: Получить склад (остатки товаров)
