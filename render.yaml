@@ -2,7 +2,7 @@ services:
   - type: web
     name: flowbox-app
     env: node
-    buildCommand: npm install && npm run build:admin
+    buildCommand: npm install && npm run build:admin && ls -la admin-build/ || echo "⚠️ admin-build не найден после сборки"
     startCommand: npm start
     envVars:
       - key: BOT_TOKEN

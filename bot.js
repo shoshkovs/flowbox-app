@@ -63,8 +63,18 @@ const adminSourcePath = path.join(__dirname, 'admin');
 
 // Диагностика: проверяем наличие папок
 console.log('🔍 Проверка админ-панели:');
+console.log('  __dirname:', __dirname);
+console.log('  admin-build путь:', adminBuildPath);
 console.log('  admin-build существует:', fs.existsSync(adminBuildPath));
 console.log('  admin исходники существуют:', fs.existsSync(adminSourcePath));
+
+// Проверяем содержимое директории
+try {
+  const files = fs.readdirSync(__dirname);
+  console.log('  Файлы в корне:', files.filter(f => f.includes('admin')).join(', '));
+} catch (e) {
+  console.log('  Ошибка чтения директории:', e.message);
+}
 
 if (fs.existsSync(adminBuildPath)) {
   const indexPath = path.join(adminBuildPath, 'index.html');
