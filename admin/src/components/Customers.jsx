@@ -12,6 +12,9 @@ export function Customers({ authToken }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubscription, setFilterSubscription] = useState('all');
+  const [sortByOrders, setSortByOrders] = useState('none');
+  const [sortByTotalSpent, setSortByTotalSpent] = useState('none');
+  const [sortByAvgCheck, setSortByAvgCheck] = useState('none');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   useEffect(() => {
