@@ -2696,25 +2696,6 @@ app.post('/api/admin/warehouse/write-off', checkAdminAuth, async (req, res) => {
     res.status(500).json({ error: 'Ошибка подключения к базе данных' });
   }
 });
-      // Убеждаемся, что цена возвращается как число, а не строка
-      if (finalSupply.unit_purchase_price) {
-        finalSupply.unit_purchase_price = parseFloat(finalSupply.unit_purchase_price);
-      }
-      
-      res.json(finalSupply);
-    } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('❌ Ошибка в транзакции создания поставки:', error);
-      throw error;
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('❌ Ошибка добавления поставки:', error);
-    console.error('Детали ошибки:', error.message, error.stack);
-    res.status(500).json({ error: 'Ошибка добавления поставки: ' + error.message });
-  }
-});
 
 // API: Получить все заказы (для админки)
 app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
