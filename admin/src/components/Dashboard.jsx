@@ -8,6 +8,8 @@ export function Dashboard({ authToken }) {
     revenueToday: 0,
     ordersToday: 0,
     avgOrder: 0,
+    totalStock: 0,
+    productCount: 0,
     lowStock: 0,
   });
   const [recentOrders, setRecentOrders] = useState([]);
@@ -19,8 +21,15 @@ export function Dashboard({ authToken }) {
 
   const loadDashboard = async () => {
     try {
-      // Загружаем статистику
+      // Загружаем заказы
       const ordersRes = await fetch(`${API_BASE}/api/admin/orders`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      // Загружаем склад
+      const warehouseRes = await fetch(`${API_BASE}/api/admin/warehouse`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -29,15 +38,46 @@ export function Dashboard({ authToken }) {
       if (ordersRes.ok) {
         const orders = await ordersRes.json();
         const today = new Date().toISOString().split('T')[0];
-        const todayOrders = orders.filter(o => o.created_at?.startsWith(today));
         
-        const revenue = todayOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-        const avgOrder = todayOrders.length > 0 ? revenue / todayOrders.length : 0;
+        // Выручка за сегодня: сумма всех заказов за сегодня (независимо от статуса)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(today);
+        todayEnd.setHours(23, 59, 59, 999);
+        
+        const todayOrders = orders.filter(o => {
+          if (!o.created_at) return false;
+          const orderDate = new Date(o.created_at);
+          return orderDate >= today && orderDate <= todayEnd;
+        });
+        
+        // Используем поле total вместо total_amount
+        const revenue = todayOrders.reduce((sum, o) => sum + (parseInt(o.total) || 0), 0);
+        
+        // Новых заказов: все заказы со статусом NEW (нормализуем статус)
+        const newOrders = orders.filter(o => {
+          const status = (o.status || '').toUpperCase();
+          return status === 'NEW';
+        });
+        
+        // Загружаем данные склада
+        let totalStock = 0;
+        let productCount = 0;
+        
+        if (warehouseRes.ok) {
+          const warehouseData = await warehouseRes.json();
+          // Сумма всех остатков на складе
+          totalStock = warehouseData.reduce((sum, item) => sum + (parseInt(item.stock) || 0), 0);
+          // Количество позиций (товаров) на складе
+          productCount = warehouseData.length;
+        }
         
         setStats({
           revenueToday: revenue,
-          ordersToday: todayOrders.length,
-          avgOrder: avgOrder,
+          ordersToday: newOrders.length,
+          avgOrder: todayOrders.length > 0 ? revenue / todayOrders.length : 0,
+          totalStock: totalStock,
+          productCount: productCount,
           lowStock: 0, // TODO: загрузить из API склада
         });
         
@@ -54,7 +94,7 @@ export function Dashboard({ authToken }) {
     {
       title: 'Выручка за сегодня',
       value: `${stats.revenueToday.toLocaleString()} ₽`,
-      change: '+12%',
+      change: null, // Убрали '+12%'
       icon: TrendingUp,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -62,15 +102,15 @@ export function Dashboard({ authToken }) {
     {
       title: 'Новых заказов',
       value: stats.ordersToday.toString(),
-      change: '+5',
+      change: null, // Убрали '+5'
       icon: ShoppingCart,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
     {
-      title: 'На складе позиций',
-      value: '48',
-      change: '12 товаров',
+      title: 'Позиций на складе',
+      value: stats.totalStock.toLocaleString(),
+      change: `${stats.productCount} товаров`,
       icon: Package,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -105,7 +145,9 @@ export function Dashboard({ authToken }) {
                 <div>
                   <p className="text-sm text-gray-600">{stat.title}</p>
                   <p className="text-2xl font-bold mt-2">{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
+                  {stat.change && (
+                    <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
+                  )}
                 </div>
                 <div className={`${stat.bgColor} p-3 rounded-lg`}>
                   <Icon className={`w-6 h-6 ${stat.color}`} />
