@@ -818,20 +818,34 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
         const newPhone = profile?.phone || null;
         const newEmail = profile?.email || null;
         
-        // Обновляем, если переданы новые данные или если username отсутствует
-        if (telegramUser || profile || (!user.username && newUsername)) {
+        // Обновляем username, если:
+        // 1. Передан новый username и он отличается от текущего
+        // 2. Или текущий username отсутствует и мы можем его получить
+        const shouldUpdateUsername = newUsername && (newUsername !== user.username || !user.username);
+        // Обновляем другие поля, если переданы новые данные
+        const shouldUpdateOther = (telegramUser || profile) && (
+          (newFirstName && newFirstName !== user.first_name) ||
+          (newLastName && newLastName !== user.last_name) ||
+          (newPhone && newPhone !== user.phone) ||
+          (newEmail && newEmail !== user.email)
+        );
+        
+        if (shouldUpdateUsername || shouldUpdateOther) {
           result = await client.query(
             `UPDATE users 
-             SET username = COALESCE($1, username),
-                 first_name = COALESCE($2, first_name),
-                 last_name = COALESCE($3, last_name),
-                 phone = COALESCE($4, phone),
-                 email = COALESCE($5, email),
-                 updated_at = now()
+             SET username = CASE 
+                 WHEN $1 IS NOT NULL THEN $1 
+                 ELSE username 
+               END,
+               first_name = COALESCE($2, first_name),
+               last_name = COALESCE($3, last_name),
+               phone = COALESCE($4, phone),
+               email = COALESCE($5, email),
+               updated_at = now()
              WHERE telegram_id = $6
              RETURNING *`,
             [
-              newUsername,
+              shouldUpdateUsername ? newUsername : null,
               newFirstName,
               newLastName,
               newPhone,
@@ -1025,9 +1039,20 @@ async function createOrderInDb(orderData) {
       await client.query('BEGIN');
       
       // Получаем user_id и данные пользователя по telegram_id
+      // Также обновляем username, если он передан в orderData
       let userId = null;
       let userData = null;
       if (orderData.userId) {
+        // Если передан username, обновляем его в БД
+        if (orderData.username) {
+          await client.query(
+            `UPDATE users 
+             SET username = $1, updated_at = now()
+             WHERE telegram_id = $2 AND (username IS NULL OR username != $1)`,
+            [orderData.username, orderData.userId]
+          );
+        }
+        
         const userResult = await client.query(
           'SELECT id, first_name, last_name, phone, email FROM users WHERE telegram_id = $1',
           [orderData.userId]
