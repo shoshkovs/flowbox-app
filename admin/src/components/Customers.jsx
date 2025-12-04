@@ -183,24 +183,68 @@ export function Customers({ authToken }) {
 
       {/* Фильтры и поиск */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex gap-4 mb-6">
+        <div className="flex gap-4 mb-6 items-center">
           <select
             value={filterSubscription}
             onChange={(e) => setFilterSubscription(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
           >
             <option value="all">Все клиенты</option>
             <option value="subscribed">На подписке</option>
             <option value="not_subscribed">Без подписки</option>
           </select>
-          <div className="flex-1 relative">
+          <select
+            value={sortByOrders}
+            onChange={(e) => {
+              setSortByOrders(e.target.value);
+              setSortByTotalSpent('none');
+              setSortByAvgCheck('none');
+            }}
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
+          >
+            <option value="none">По заказам</option>
+            <option value="asc">По возрастанию</option>
+            <option value="desc">По убыванию</option>
+          </select>
+          <select
+            value={sortByTotalSpent}
+            onChange={(e) => {
+              setSortByTotalSpent(e.target.value);
+              setSortByOrders('none');
+              setSortByAvgCheck('none');
+            }}
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
+          >
+            <option value="none">По сумме покупок</option>
+            <option value="asc">По возрастанию</option>
+            <option value="desc">По убыванию</option>
+          </select>
+          <select
+            value={sortByAvgCheck}
+            onChange={(e) => {
+              setSortByAvgCheck(e.target.value);
+              setSortByOrders('none');
+              setSortByTotalSpent('none');
+            }}
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
+          >
+            <option value="none">По среднему чеку</option>
+            <option value="asc">По возрастанию</option>
+            <option value="desc">По убыванию</option>
+          </select>
+          <div className="flex-1"></div>
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
               placeholder="Поиск по имени или телефону..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+              className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -214,6 +258,7 @@ export function Customers({ authToken }) {
                 <th className="text-left py-3 px-4">Контакты</th>
                 <th className="text-left py-3 px-4">Заказов</th>
                 <th className="text-left py-3 px-4">Сумма покупок</th>
+                <th className="text-left py-3 px-4">Средний чек</th>
                 <th className="text-left py-3 px-4">Бонусы</th>
                 <th className="text-left py-3 px-4">Последний заказ</th>
                 <th className="text-left py-3 px-4">Подписка</th>
@@ -257,6 +302,11 @@ export function Customers({ authToken }) {
                   </td>
                   <td className="py-3 px-4 font-semibold">
                     {(customer.totalSpent || 0).toLocaleString()} ₽
+                  </td>
+                  <td className="py-3 px-4">
+                    {customer.ordersCount && customer.ordersCount > 0 
+                      ? Math.round((customer.totalSpent || 0) / customer.ordersCount).toLocaleString() + ' ₽'
+                      : '0 ₽'}
                   </td>
                   <td className="py-3 px-4">
                     <span className="text-pink-600 font-medium">
