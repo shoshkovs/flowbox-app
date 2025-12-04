@@ -136,6 +136,40 @@ if (process.env.DATABASE_URL) {
       } catch (error) {
         // Игнорируем ошибки при миграции
       }
+      
+      // Миграция: добавление статуса PURCHASE в constraint
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            // Проверяем, есть ли constraint
+            const constraintCheck = await client.query(`
+              SELECT conname 
+              FROM pg_constraint 
+              WHERE conname = 'orders_status_check' AND conrelid = 'orders'::regclass
+            `);
+            
+            if (constraintCheck.rows.length > 0) {
+              console.log('🔄 Обновляем constraint orders_status_check: добавляем PURCHASE...');
+              // Удаляем старый constraint
+              await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check`);
+              // Добавляем новый с PURCHASE
+              await client.query(`
+                ALTER TABLE orders
+                ADD CONSTRAINT orders_status_check
+                CHECK (status IN ('UNPAID','NEW','PROCESSING','PURCHASE','COLLECTING','DELIVERING','COMPLETED','CANCELED'))
+              `);
+              console.log('✅ Constraint orders_status_check обновлен (добавлен PURCHASE)');
+            }
+          } catch (migrationError) {
+            console.log('⚠️  Миграция constraint:', migrationError.message);
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      }, 3000);
     }, 2000);
     
     // Миграция price -> price_per_stem
@@ -1595,9 +1629,10 @@ app.post('/api/user-data/:userId', async (req, res) => {
       
       const addresses = await loadUserAddresses(user.id);
       console.log(`📦 Загружено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
-      // Загружаем активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING)
+      // Загружаем активные заказы (NEW, PROCESSING, PURCHASE, COLLECTING, DELIVERING)
+      // PURCHASE будет маппиться в COLLECTING для пользователя через getStatusForUser
       // CANCELED и COMPLETED не показываются в активных - они идут в историю
-      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING']);
+      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING']);
       // История заказов - только доставленные (COMPLETED) и отмененные (CANCELED)
       const completedOrders = await loadUserOrders(user.id, ['COMPLETED', 'CANCELED']);
       
@@ -1672,9 +1707,10 @@ app.get('/api/user-data/:userId', async (req, res) => {
       
       const addresses = await loadUserAddresses(user.id);
       console.log(`📦 Загружено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
-      // Загружаем активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING)
+      // Загружаем активные заказы (NEW, PROCESSING, PURCHASE, COLLECTING, DELIVERING)
+      // PURCHASE будет маппиться в COLLECTING для пользователя через getStatusForUser
       // CANCELED и COMPLETED не показываются в активных - они идут в историю
-      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING']);
+      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING']);
       // История заказов - только доставленные (COMPLETED) и отмененные (CANCELED)
       const completedOrders = await loadUserOrders(user.id, ['COMPLETED', 'CANCELED']);
       

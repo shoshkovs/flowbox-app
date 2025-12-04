@@ -77,7 +77,7 @@ BEGIN
     -- Добавляем новый constraint
     ALTER TABLE orders
         ADD CONSTRAINT orders_status_check
-            CHECK (status IN ('UNPAID','NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED','CANCELED'));
+            CHECK (status IN ('UNPAID','NEW','PROCESSING','PURCHASE','COLLECTING','DELIVERING','COMPLETED','CANCELED'));
 EXCEPTION
     WHEN others THEN
         -- Игнорируем ошибки, если constraint уже существует
