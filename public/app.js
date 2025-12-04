@@ -502,9 +502,13 @@ async function loadUserData() {
             // Загружаем данные с сервера, если они есть
             if (data.cart && Array.isArray(data.cart)) cart = data.cart;
             if (data.addresses && Array.isArray(data.addresses)) {
+                console.log('📦 Загружены адреса с сервера:', data.addresses.length);
                 savedAddresses = data.addresses;
                 // Синхронизируем с localStorage
                 localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+                console.log('📦 Адреса сохранены в localStorage:', savedAddresses.length);
+            } else {
+                console.log('📦 Адреса не получены с сервера или не массив');
             }
             if (data.profile) {
                 localStorage.setItem('userProfile', JSON.stringify(data.profile));

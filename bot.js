@@ -1046,8 +1046,13 @@ app.post('/api/user-data', async (req, res) => {
       }
       
       // Сохраняем адреса
-      if (addresses !== undefined) {
-        await saveUserAddresses(user.id, addresses);
+      if (addresses !== undefined && Array.isArray(addresses)) {
+        const saved = await saveUserAddresses(user.id, addresses);
+        if (saved) {
+          console.log(`✅ Сохранено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
+        } else {
+          console.error(`❌ Ошибка сохранения адресов для пользователя ${userId}`);
+        }
       }
       
       // Обновляем бонусы ТОЛЬКО если они явно переданы и не равны undefined
@@ -1130,6 +1135,7 @@ app.get('/api/user-data/:userId', async (req, res) => {
       }
       
       const addresses = await loadUserAddresses(user.id);
+      console.log(`📦 Загружено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
       // Загружаем активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING)
       const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING']);
       const completedOrders = await loadUserOrders(user.id, ['COMPLETED']);
