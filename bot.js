@@ -4094,7 +4094,7 @@ app.patch('/api/admin/orders/:orderId/status', checkAdminAuth, async (req, res) 
   }
   
   // Валидация статуса
-  const validStatuses = ['PROCESSING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
+  const validStatuses = ['PROCESSING', 'DELIVERING', 'IN_TRANSIT', 'COMPLETED', 'CANCELED'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: 'Неверный статус' });
   }
