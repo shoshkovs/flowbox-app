@@ -485,7 +485,7 @@ export function Orders({ authToken }) {
                     <td className="py-3 px-4">
                       <span className="text-blue-600 font-medium">#{order.id}</span>
                     </td>
-                    <td className="py-3 px-4 text-sm">
+                    <td className="py-3 px-2 text-sm">
                       {displayItems.length > 0 ? (
                         <div className="text-gray-900 space-y-1">
                           {displayItems.map((item, idx) => (
