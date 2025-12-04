@@ -53,7 +53,7 @@ export function Delivery({ authToken }) {
   const [stats, setStats] = useState({
     total: 0,
     waiting: 0,
-    delivering: 0,
+    inTransit: 0,
     delivered: 0
   });
   const [deliveries, setDeliveries] = useState([]);
@@ -75,7 +75,7 @@ export function Delivery({ authToken }) {
 
       if (response.ok) {
         const data = await response.json();
-        setStats(data.stats || { total: 0, waiting: 0, delivering: 0, delivered: 0 });
+        setStats(data.stats || { total: 0, waiting: 0, inTransit: 0, delivered: 0 });
         setDeliveries(data.deliveries || []);
       } else {
         const error = await response.json();
@@ -151,10 +151,12 @@ export function Delivery({ authToken }) {
       
       // Убираем из старого статуса
       if (oldStatus === 'DELIVERING') newStats.waiting = Math.max(0, newStats.waiting - 1);
+      else if (oldStatus === 'IN_TRANSIT') newStats.inTransit = Math.max(0, newStats.inTransit - 1);
       else if (oldStatus === 'COMPLETED') newStats.delivered = Math.max(0, newStats.delivered - 1);
       
       // Добавляем в новый статус
       if (newStatus === 'DELIVERING') newStats.waiting++;
+      else if (newStatus === 'IN_TRANSIT') newStats.inTransit++;
       else if (newStatus === 'COMPLETED') newStats.delivered++;
       
       return newStats;
@@ -180,7 +182,8 @@ export function Delivery({ authToken }) {
 
   const getStatusLabel = (status) => {
     const labels = {
-      'DELIVERING': 'Ожидает доставки',
+      'DELIVERING': 'Ожидает',
+      'IN_TRANSIT': 'В пути',
       'COMPLETED': 'Доставлено'
     };
     return labels[status] || status;
@@ -189,9 +192,33 @@ export function Delivery({ authToken }) {
   const getStatusColor = (status) => {
     const colors = {
       'DELIVERING': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'IN_TRANSIT': 'bg-blue-100 text-blue-800 border-blue-300',
       'COMPLETED': 'bg-green-100 text-green-800 border-green-300'
     };
     return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+  
+  // Функция для получения относительной даты
+  const getRelativeDate = (dateString) => {
+    if (!dateString) return '';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const targetDate = new Date(dateString);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = targetDate - today;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Сегодня';
+    if (diffDays === 1) return 'Завтра';
+    if (diffDays === -1) return 'Вчера';
+    if (diffDays === 2) return 'Послезавтра';
+    if (diffDays === -2) return 'Позавчера';
+    
+    // Если больше 2 дней, показываем дату
+    return formatDateForDisplay(dateString);
   };
 
   if (loading) {
@@ -234,7 +261,7 @@ export function Delivery({ authToken }) {
       </div>
 
       {/* Статистика (KPI карточки) */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="text-sm text-gray-600 mb-2">Всего доставок</div>
           <div className="text-3xl font-bold">{stats.total}</div>
@@ -242,6 +269,10 @@ export function Delivery({ authToken }) {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="text-sm text-gray-600 mb-2">Ожидают доставки</div>
           <div className="text-3xl font-bold text-yellow-600">{stats.waiting}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-2">В пути</div>
+          <div className="text-3xl font-bold text-blue-600">{stats.inTransit}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="text-sm text-gray-600 mb-2">Доставлено</div>
@@ -253,7 +284,7 @@ export function Delivery({ authToken }) {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">
-            Доставки на {formatDateForDisplay(selectedDate)}
+            Доставки на {getRelativeDate(selectedDate)}
           </h2>
         </div>
 
@@ -344,13 +375,21 @@ export function Delivery({ authToken }) {
                             value={delivery.status}
                             onChange={(e) => updateOrderStatus(delivery.orderId, e.target.value)}
                             disabled={updatingStatus[delivery.orderId]}
-                            className={`w-full px-2 py-1 text-sm border rounded ${
+                            className={`w-full px-2 py-1 text-xs border rounded font-medium ${
                               updatingStatus[delivery.orderId] 
                                 ? 'opacity-50 cursor-not-allowed' 
                                 : 'cursor-pointer'
                             } ${getStatusColor(delivery.status)}`}
+                            style={{ 
+                              appearance: 'none',
+                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23374151' d='M5 7L1 3h8z'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'right 0.25rem center',
+                              paddingRight: '1.5rem'
+                            }}
                           >
-                            <option value="DELIVERING">Ожидает доставки</option>
+                            <option value="DELIVERING">Ожидает</option>
+                            <option value="IN_TRANSIT">В пути</option>
                             <option value="COMPLETED">Доставлено</option>
                           </select>
                         </div>

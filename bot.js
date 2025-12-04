@@ -4013,8 +4013,7 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
     const client = await pool.connect();
     try {
         // Получаем заказы с доставкой на указанную дату
-        // Показываем только заказы со статусом DELIVERING (когда заказ переходит в доставку)
-        // Также показываем COMPLETED для статистики
+        // Показываем заказы со статусами DELIVERING (ожидает), IN_TRANSIT (в пути), COMPLETED (доставлено)
       const result = await client.query(
         `SELECT 
           o.id as order_id,
@@ -4029,7 +4028,7 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
         WHERE o.delivery_date = $1
-          AND o.status IN ('DELIVERING', 'COMPLETED')
+          AND o.status IN ('DELIVERING', 'IN_TRANSIT', 'COMPLETED')
         GROUP BY o.id, o.status, o.recipient_name, o.recipient_phone, o.address_string, 
                  o.delivery_date, o.delivery_time, o.total
         ORDER BY o.delivery_time ASC, o.id ASC`,
@@ -4040,15 +4039,17 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
       const stats = {
         total: 0,
         waiting: 0,    // DELIVERING (ожидает доставки)
-        delivering: 0, // DELIVERING (в пути) - используем тот же статус
-        delivered: 0   // COMPLETED
+        inTransit: 0,  // IN_TRANSIT (в пути)
+        delivered: 0   // COMPLETED (доставлено)
       };
       
       const deliveries = result.rows.map(row => {
         // Обновляем статистику
         stats.total++;
         if (row.status === 'DELIVERING') {
-          stats.waiting++; // Все DELIVERING считаются как "ожидает доставки"
+          stats.waiting++;
+        } else if (row.status === 'IN_TRANSIT') {
+          stats.inTransit++;
         } else if (row.status === 'COMPLETED') {
           stats.delivered++;
         }
