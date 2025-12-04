@@ -849,25 +849,32 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
 async function saveUserAddresses(userId, addresses) {
   if (!pool) return false;
   
+  // Защита от случайной очистки: если передан пустой массив, не удаляем адреса
+  if (!addresses || addresses.length === 0) {
+    console.log(`⚠️  saveUserAddresses: передан пустой массив адресов для user_id=${userId}, пропускаем сохранение`);
+    return true; // Возвращаем true, чтобы не ломать логику сохранения других данных
+  }
+  
   try {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       
-      // Получаем существующие адреса для проверки дубликатов
-      const existingAddresses = await client.query(
+      // Получаем существующие адреса для проверки дубликатов (ДО удаления!)
+      const existingAddressesResult = await client.query(
         'SELECT city, street, house, apartment FROM addresses WHERE user_id = $1',
         [userId]
       );
+      const existingAddresses = existingAddressesResult.rows;
       
-      // Функция для проверки дубликата
+      // Функция для проверки дубликата среди существующих адресов
       const isDuplicate = (newAddr) => {
-        return existingAddresses.rows.some(existing => {
-          const newCity = (newAddr.city || '').toLowerCase().trim();
-          const newStreet = (newAddr.street || '').toLowerCase().trim();
-          const newHouse = (newAddr.house || '').toLowerCase().trim();
-          const newApartment = (newAddr.apartment || '').toLowerCase().trim();
-          
+        const newCity = (newAddr.city || '').toLowerCase().trim();
+        const newStreet = (newAddr.street || '').toLowerCase().trim();
+        const newHouse = (newAddr.house || '').toLowerCase().trim();
+        const newApartment = (newAddr.apartment || '').toLowerCase().trim();
+        
+        return existingAddresses.some(existing => {
           const existingCity = (existing.city || '').toLowerCase().trim();
           const existingStreet = (existing.street || '').toLowerCase().trim();
           const existingHouse = (existing.house || '').toLowerCase().trim();
@@ -880,6 +887,27 @@ async function saveUserAddresses(userId, addresses) {
         });
       };
       
+      // Функция для проверки дубликата среди новых адресов (внутри массива)
+      const isDuplicateInNew = (newAddr, index, allAddresses) => {
+        const newCity = (newAddr.city || '').toLowerCase().trim();
+        const newStreet = (newAddr.street || '').toLowerCase().trim();
+        const newHouse = (newAddr.house || '').toLowerCase().trim();
+        const newApartment = (newAddr.apartment || '').toLowerCase().trim();
+        
+        return allAddresses.some((addr, idx) => {
+          if (idx === index) return false;
+          const addrCity = (addr.city || '').toLowerCase().trim();
+          const addrStreet = (addr.street || '').toLowerCase().trim();
+          const addrHouse = (addr.house || '').toLowerCase().trim();
+          const addrApartment = (addr.apartment || '').toLowerCase().trim();
+          
+          return addrCity === newCity &&
+                 addrStreet === newStreet &&
+                 addrHouse === newHouse &&
+                 addrApartment === newApartment;
+        });
+      };
+      
       // Удаляем старые адреса
       await client.query('DELETE FROM addresses WHERE user_id = $1', [userId]);
       
@@ -887,9 +915,11 @@ async function saveUserAddresses(userId, addresses) {
       let addedCount = 0;
       let skippedCount = 0;
       
-      for (const addr of addresses || []) {
-        // Проверяем на дубликат перед добавлением
-        if (!isDuplicate(addr)) {
+      for (let i = 0; i < addresses.length; i++) {
+        const addr = addresses[i];
+        
+        // Пропускаем дубликаты: как среди существующих (уже удаленных), так и внутри нового массива
+        if (!isDuplicate(addr) && !isDuplicateInNew(addr, i, addresses)) {
           await client.query(
             `INSERT INTO addresses 
              (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
@@ -918,6 +948,8 @@ async function saveUserAddresses(userId, addresses) {
       if (skippedCount > 0 && skippedCount > 3) {
         console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
       }
+      
+      console.log(`✅ saveUserAddresses: добавлено ${addedCount} адресов для user_id=${userId}, пропущено дубликатов=${skippedCount}`);
       
       await client.query('COMMIT');
       return true;
