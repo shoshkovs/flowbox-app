@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { ArrowLeft, Calendar, Search, ChevronDown, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
@@ -9,6 +9,9 @@ export function WarehouseForm({ authToken }) {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const productDropdownRef = useRef(null);
   
   const [deliveryForm, setDeliveryForm] = useState({
     product_id: '',
@@ -20,6 +23,20 @@ export function WarehouseForm({ authToken }) {
 
   useEffect(() => {
     loadProducts();
+  }, []);
+
+  // Закрываем dropdown при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target)) {
+        setIsProductDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const loadProducts = async () => {
@@ -115,18 +132,64 @@ export function WarehouseForm({ authToken }) {
             <label className="block text-sm font-medium mb-1">
               Товар <span className="text-red-500">*</span>
             </label>
-            <select
-              value={deliveryForm.product_id}
-              onChange={(e) => setDeliveryForm({ ...deliveryForm, product_id: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            >
-              <option value="">Выберите товар</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative" ref={productDropdownRef}>
+              <div
+                onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent cursor-pointer flex items-center justify-between bg-white"
+              >
+                <span className={deliveryForm.product_id ? 'text-gray-900' : 'text-gray-500'}>
+                  {deliveryForm.product_id
+                    ? products.find(p => p.id === parseInt(deliveryForm.product_id))?.name || 'Выберите товар'
+                    : 'Выберите товар'}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isProductDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+              
+              {isProductDropdownOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+                  <div className="p-2 border-b border-gray-200">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder="Поиск товара..."
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {products
+                      .filter(product => 
+                        product.name.toLowerCase().includes(productSearch.toLowerCase())
+                      )
+                      .map((product) => (
+                        <div
+                          key={product.id}
+                          onClick={() => {
+                            setDeliveryForm({ ...deliveryForm, product_id: product.id.toString() });
+                            setProductSearch('');
+                            setIsProductDropdownOpen(false);
+                          }}
+                          className={`px-4 py-2 hover:bg-gray-50 cursor-pointer ${
+                            deliveryForm.product_id === product.id.toString() ? 'bg-pink-50' : ''
+                          }`}
+                        >
+                          {product.name}
+                        </div>
+                      ))}
+                    {products.filter(product => 
+                      product.name.toLowerCase().includes(productSearch.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-4 py-2 text-gray-500 text-sm">Товары не найдены</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
@@ -176,9 +239,18 @@ export function WarehouseForm({ authToken }) {
                 type="date"
                 value={deliveryForm.delivery_date}
                 onChange={(e) => setDeliveryForm({ ...deliveryForm, delivery_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
               />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.querySelector('input[type="date"]');
+                  if (input) input.showPicker?.();
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <Calendar className="w-5 h-5" />
+              </button>
             </div>
           </div>
           <div>
