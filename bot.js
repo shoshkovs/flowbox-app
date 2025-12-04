@@ -539,25 +539,13 @@ app.use(express.json());
 const adminBuildPath = path.join(__dirname, 'admin-build');
 const adminSourcePath = path.join(__dirname, 'admin');
 
-// Проверка и сборка админ-панели
-if (!fs.existsSync(adminBuildPath) && fs.existsSync(adminSourcePath)) {
-  console.log('⚠️  admin-build не найден, выполняем сборку...');
-  try {
-    const { execSync } = require('child_process');
-    const adminDir = path.join(__dirname, 'admin');
-    if (fs.existsSync(path.join(adminDir, 'package.json'))) {
-      execSync('cd admin && npm install --production=false && npx vite build', { 
-        cwd: __dirname,
-        stdio: 'inherit',
-        timeout: 180000, // 3 минуты
-        env: { ...process.env, PATH: process.env.PATH }
-      });
-      console.log('✅ Админ-панель собрана успешно');
-    }
-  } catch (buildError) {
-    console.error('❌ Ошибка сборки админ-панели:', buildError.message);
-    console.log('⚠️  Используем исходники как fallback');
-  }
+// Проверка админ-панели
+// На Render.com сборка должна выполняться через npm run build перед запуском
+// Здесь только проверяем наличие собранной версии
+if (!fs.existsSync(adminBuildPath)) {
+  console.log('⚠️  admin-build не найден');
+  console.log('💡 На Render.com убедитесь, что build команда включает: npm run build');
+  console.log('💡 Для локальной разработки выполните: npm run build:admin');
 }
 
 if (fs.existsSync(adminBuildPath)) {
