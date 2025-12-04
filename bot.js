@@ -4377,7 +4377,8 @@ app.put('/api/admin/customers/:id/manager-comment', checkAdminAuth, async (req, 
   
   const { id } = req.params;
   const userId = parseInt(id);
-  const { manager_comment } = req.body;
+  const { comment, manager_comment } = req.body;
+  const commentText = comment || manager_comment || null;
   
   if (isNaN(userId)) {
     return res.status(400).json({ error: 'Неверный ID клиента' });
