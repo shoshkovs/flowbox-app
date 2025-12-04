@@ -3368,12 +3368,15 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Инициализация при загрузке
-loadProducts();
-loadUserData(); // Загружаем все данные пользователя с сервера
-loadProfile();
-loadSavedAddresses();
-loadActiveOrders();
-initFilters(); // Инициализируем фильтры
+// Загружаем фильтры, затем товары
+loadFilters().then(() => {
+    loadProducts();
+    loadUserData(); // Загружаем все данные пользователя с сервера
+    loadProfile();
+    loadSavedAddresses();
+    loadActiveOrders();
+});
+
 initKeyboardHandling(); // Инициализируем обработку клавиатуры
 
 // Запускаем автоматическое обновление заказов
