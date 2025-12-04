@@ -353,6 +353,47 @@ if (process.env.DATABASE_URL) {
       // Игнорируем ошибки при миграции
     }
   }, 5000); // Ждем 5 секунд после подключения
+    
+    // Миграция структуры БД к согласованному виду
+    setTimeout(async () => {
+      try {
+        const client = await pool.connect();
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const migrationSQL = fs.readFileSync(
+            path.join(__dirname, 'database', 'migrate-database-structure.sql'),
+            'utf8'
+          );
+          
+          // Выполняем миграцию построчно
+          const statements = migrationSQL.split(';').filter(s => s.trim());
+          for (const statement of statements) {
+            if (statement.trim() && !statement.trim().startsWith('--')) {
+              try {
+                await client.query(statement);
+              } catch (err) {
+                // Игнорируем ошибки "уже существует" и constraint уже существует
+                if (!err.message.includes('already exists') && 
+                    !err.message.includes('duplicate') &&
+                    !err.message.includes('constraint') &&
+                    err.code !== '42P16' &&
+                    err.code !== '42710') {
+                  console.log('⚠️  Ошибка миграции структуры БД:', err.message);
+                }
+              }
+            }
+          }
+          console.log('✅ Миграция структуры БД завершена');
+        } catch (migrationError) {
+          console.log('⚠️  Миграция структуры БД:', migrationError.message);
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибки при миграции
+      }
+    }, 6000); // Ждем 6 секунд после подключения
   }); // Закрываем первый setTimeout
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
@@ -814,27 +855,80 @@ async function createOrderInDb(orderData) {
     try {
       await client.query('BEGIN');
       
-      // Получаем user_id по telegram_id
+      // Получаем user_id и данные пользователя по telegram_id
       let userId = null;
+      let userData = null;
       if (orderData.userId) {
         const userResult = await client.query(
-          'SELECT id FROM users WHERE telegram_id = $1',
+          'SELECT id, first_name, last_name, phone, email FROM users WHERE telegram_id = $1',
           [orderData.userId]
         );
         if (userResult.rows.length > 0) {
           userId = userResult.rows[0].id;
+          userData = userResult.rows[0];
           console.log('✅ Найден пользователь в БД, user_id:', userId);
         } else {
           console.log('⚠️  Пользователь не найден в БД, создаем заказ без user_id');
         }
       }
       
+      // Определяем address_id, если выбран сохраненный адрес
+      let addressId = null;
+      if (orderData.addressId && userId) {
+        // Проверяем, что адрес принадлежит пользователю
+        const addressCheck = await client.query(
+          'SELECT id FROM addresses WHERE id = $1 AND user_id = $2',
+          [orderData.addressId, userId]
+        );
+        if (addressCheck.rows.length > 0) {
+          addressId = orderData.addressId;
+        }
+      }
+      
+      // Парсим время доставки для delivery_time_from/to
+      let deliveryTimeFrom = null;
+      let deliveryTimeTo = null;
+      if (orderData.deliveryTime) {
+        // Формат: "10:00-12:00" или "10:00 - 12:00"
+        const timeMatch = orderData.deliveryTime.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/);
+        if (timeMatch) {
+          deliveryTimeFrom = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+          deliveryTimeTo = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
+        }
+      }
+      
+      // Определяем delivery_type из deliveryPrice или orderData
+      let deliveryType = null;
+      if (orderData.deliveryType) {
+        deliveryType = orderData.deliveryType;
+      } else if (orderData.deliveryPrice === 0) {
+        deliveryType = 'PICKUP';
+      } else if (orderData.deliveryPrice === 500) {
+        deliveryType = 'INSIDE_KAD';
+      } else if (orderData.deliveryPrice === 900) {
+        deliveryType = 'OUTSIDE_KAD_10';
+      } else if (orderData.deliveryPrice === 1300) {
+        deliveryType = 'OUTSIDE_KAD_20';
+      }
+      
+      // Данные клиента на момент заказа (из профиля или из формы)
+      const clientName = orderData.name || (userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() : null);
+      const clientPhone = orderData.phone || userData?.phone || null;
+      const clientEmail = orderData.email || userData?.email || null;
+      
+      // Комментарий для флориста (отдельно от общего комментария)
+      const floristComment = orderData.floristComment || orderData.comment || null;
+      
       // Создаем заказ
       const orderResult = await client.query(
         `INSERT INTO orders 
          (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
-          recipient_name, recipient_phone, address_string, address_json, delivery_date, delivery_time, comment, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'NEW')
+          client_name, client_phone, client_email,
+          recipient_name, recipient_phone, 
+          address_id, address_string, address_json, 
+          delivery_type, delivery_date, delivery_time, delivery_time_from, delivery_time_to,
+          comment, florist_comment, promocode_code, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, 'NEW')
          RETURNING *`,
         [
           userId,
@@ -844,13 +938,22 @@ async function createOrderInDb(orderData) {
           orderData.deliveryPrice || 0,
           orderData.bonusUsed || 0,
           orderData.bonusEarned || 0,
+          clientName,
+          clientPhone,
+          clientEmail,
           orderData.recipientName || null,
           orderData.recipientPhone || null,
+          addressId,
           orderData.address,
           JSON.stringify(orderData.addressData || {}),
+          deliveryType,
           orderData.deliveryDate || null,
           orderData.deliveryTime || null,
-          orderData.comment || null
+          deliveryTimeFrom,
+          deliveryTimeTo,
+          orderData.comment || null,
+          floristComment,
+          orderData.promocodeCode || null
         ]
       );
       
@@ -887,11 +990,12 @@ async function createOrderInDb(orderData) {
         const productId = item.id;
         const quantity = item.quantity || 0;
         
-        // Добавляем позицию заказа
+        // Добавляем позицию заказа с total_price
+        const totalPrice = item.price * quantity;
         await client.query(
-          `INSERT INTO order_items (order_id, product_id, name, price, quantity)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [order.id, productId, item.name, item.price, quantity]
+          `INSERT INTO order_items (order_id, product_id, name, price, quantity, total_price)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [order.id, productId, item.name, item.price, quantity, totalPrice]
         );
         
         // Создаем движение типа SALE
@@ -903,15 +1007,34 @@ async function createOrderInDb(orderData) {
       }
       console.log('✅ Позиции заказа добавлены и движения созданы, количество:', orderData.items?.length || 0);
       
-      // Обновляем бонусы пользователя
+      // Обновляем бонусы пользователя и создаем транзакции
       if (userId) {
+        // Списание бонусов (если использованы)
+        if (orderData.bonusUsed > 0) {
+          await client.query(
+            `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
+             VALUES ($1, $2, 'redeem', -$3, $4)`,
+            [userId, order.id, orderData.bonusUsed, `Списание бонусов за заказ #${order.id}`]
+          );
+        }
+        
+        // Начисление бонусов (если начислены)
+        if (orderData.bonusEarned > 0) {
+          await client.query(
+            `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
+             VALUES ($1, $2, 'accrual', $3, $4)`,
+            [userId, order.id, orderData.bonusEarned, `Начисление бонусов за заказ #${order.id}`]
+          );
+        }
+        
+        // Обновляем баланс бонусов пользователя
         await client.query(
           `UPDATE users 
            SET bonuses = bonuses - $1 + $2
            WHERE id = $3`,
           [orderData.bonusUsed || 0, orderData.bonusEarned || 0, userId]
         );
-        console.log('✅ Бонусы пользователя обновлены');
+        console.log('✅ Бонусы пользователя обновлены, транзакции созданы');
       }
       
       await client.query('COMMIT');
