@@ -1789,11 +1789,12 @@ app.post('/api/user-data/:userId', async (req, res) => {
       
       const addresses = await loadUserAddresses(user.id);
       console.log(`📦 Загружено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
-      // Загружаем активные заказы (NEW, PROCESSING, PURCHASE, COLLECTING, DELIVERING)
-      // PURCHASE будет маппиться в COLLECTING для пользователя через getStatusForUser
-      // CANCELED и COMPLETED не показываются в активных - они идут в историю
-      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING']);
+      // Загружаем активные заказы (NEW, PROCESSING, PURCHASE, COLLECTING, DELIVERING, COMPLETED, CANCELED)
+      // COMPLETED и CANCELED включаем в активные, чтобы пользователь увидел изменение статуса
+      // При следующем открытии бота они будут перемещены в историю на фронтенде
+      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED']);
       // История заказов - только доставленные (COMPLETED) и отмененные (CANCELED)
+      // На фронтенде они будут добавлены в историю из активных при следующей загрузке
       const completedOrders = await loadUserOrders(user.id, ['COMPLETED', 'CANCELED']);
       
       console.log(`📥 Загружено заказов для пользователя ${userId} (user_id=${user.id}): активных=${activeOrders.length}, завершенных=${completedOrders.length}`);
@@ -1867,11 +1868,12 @@ app.get('/api/user-data/:userId', async (req, res) => {
       
       const addresses = await loadUserAddresses(user.id);
       console.log(`📦 Загружено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
-      // Загружаем активные заказы (NEW, PROCESSING, PURCHASE, COLLECTING, DELIVERING)
-      // PURCHASE будет маппиться в COLLECTING для пользователя через getStatusForUser
-      // CANCELED и COMPLETED не показываются в активных - они идут в историю
-      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING']);
+      // Загружаем активные заказы (NEW, PROCESSING, PURCHASE, COLLECTING, DELIVERING, COMPLETED, CANCELED)
+      // COMPLETED и CANCELED включаем в активные, чтобы пользователь увидел изменение статуса
+      // При следующем открытии бота они будут перемещены в историю на фронтенде
+      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED']);
       // История заказов - только доставленные (COMPLETED) и отмененные (CANCELED)
+      // На фронтенде они будут добавлены в историю из активных при следующей загрузке
       const completedOrders = await loadUserOrders(user.id, ['COMPLETED', 'CANCELED']);
       
       console.log(`📥 Загружено заказов для пользователя ${userId} (user_id=${user.id}): активных=${activeOrders.length}, завершенных=${completedOrders.length}`);
