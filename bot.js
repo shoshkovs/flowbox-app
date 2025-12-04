@@ -3464,10 +3464,12 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         address_data: addressData, // Для обратной совместимости
         recipient_name: order.recipient_name,
         recipient_phone: order.recipient_phone,
-        customer_name: order.customer_name || order.recipient_name,
+        customer_name: order.client_name || order.customer_name || order.recipient_name,
         customer_last_name: order.customer_last_name || '',
-        customer_phone: order.customer_phone || order.recipient_phone,
-        customer_email: order.customer_email,
+        customer_phone: order.client_phone || order.customer_phone || order.recipient_phone,
+        customer_email: order.client_email || order.customer_email,
+        user_comment: order.user_comment || null,
+        status_comment: order.status_comment || null,
         customer_telegram_username: order.customer_telegram_username,
         customer_telegram_id: order.customer_telegram_id,
         items: itemsResult.rows.map(row => ({

@@ -334,21 +334,49 @@ export function OrderDetail({ authToken, orderId }) {
                   <div className="text-sm text-gray-600">{order.delivery_time || '-'}</div>
                 </div>
               </div>
-              {order.comment && (
-                <div>
-                  <span className="font-medium">Комментарий:</span>
-                  <div className="mt-1 text-gray-700">{order.comment}</div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Комментарий к доставке */}
-          {order.comment && (
+          {/* Комментарии */}
+          {(order.user_comment || order.courier_comment || order.status_comment) && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold mb-4">Комментарий к доставке</h2>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-gray-700">{order.comment}</p>
+              <h2 className="text-xl font-semibold mb-4">Комментарии</h2>
+              <div className="space-y-4">
+                {/* Комментарий для флориста (из формы заказа) */}
+                {order.user_comment && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium text-gray-700">Для флориста:</span>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-700">{order.user_comment}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Комментарий для курьера */}
+                {order.courier_comment && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium text-gray-700">Инструкции для курьера:</span>
+                    </div>
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <p className="text-gray-700">{order.courier_comment}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Комментарий к изменению статуса */}
+                {order.status_comment && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium text-gray-700">Комментарий к изменению статуса:</span>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                      <p className="text-gray-700">{order.status_comment}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
