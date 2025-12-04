@@ -97,7 +97,7 @@ export function Warehouse({ authToken }) {
     return activeBatch?.id;
   };
 
-  const handleWriteOff = async (productId: string, batchId: string, data: { quantity: number; comment: string }) => {
+  const handleWriteOff = async (productId, batchId, data) => {
     try {
       const response = await fetch(`${API_BASE}/api/admin/stock-movements/write-off`, {
         method: 'POST',
@@ -127,12 +127,12 @@ export function Warehouse({ authToken }) {
     }
   };
 
-  const handleEditBatch = (productId: string, batchId: string) => {
+  const handleEditBatch = (productId, batchId) => {
     console.log('Edit batch:', { productId, batchId });
     // TODO: Open edit form
   };
 
-  const handleSaveSupply = async (data: any) => {
+  const handleSaveSupply = async (data) => {
     try {
       const response = await fetch(`${API_BASE}/api/admin/supplies`, {
         method: 'POST',
