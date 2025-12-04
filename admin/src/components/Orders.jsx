@@ -460,9 +460,10 @@ export function Orders({ authToken }) {
                 console.log('📅 Parsed date:', orderDate, 'isValid:', orderDate && !isNaN(orderDate.getTime()));
                 
                 const dateStr = orderDate ? formatHumanDate(order.created_at) : '-';
-                console.log('📝 Formatted date string:', dateStr);
+                console.log('📝 Formatted date string:', dateStr, 'length:', dateStr?.length);
                 
                 const timeStr = orderDate ? orderDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
+                console.log('⏰ Formatted time string:', timeStr);
                 
                 // Формируем список товаров для отображения
                 const orderItems = order.items && Array.isArray(order.items) ? order.items : [];
