@@ -1148,8 +1148,8 @@ async function createOrderInDb(orderData) {
           recipient_name, recipient_phone, 
           address_id, address_string, address_json, 
           delivery_zone, delivery_date, delivery_time,
-          user_comment, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'NEW')
+          user_comment, courier_comment, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'NEW')
          RETURNING *`,
         [
           userId,
@@ -1170,7 +1170,8 @@ async function createOrderInDb(orderData) {
           deliveryZone,
           orderData.deliveryDate || null,
           orderData.deliveryTime || null,
-          userComment
+          userComment,
+          courierComment
         ]
       );
       
