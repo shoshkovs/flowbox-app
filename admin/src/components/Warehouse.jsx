@@ -13,45 +13,15 @@ import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
-interface Batch {
-  id: string;
-  deliveryDate: string;
-  batchNumber: string;
-  initialQuantity: number;
-  sold: number;
-  writeOff: number;
-  remaining: number;
-  purchasePrice: number;
-  supplier: string;
-}
-
-interface WarehouseProduct {
-  id: string;
-  productId: string;
-  productName: string;
-  category: string;
-  color: string;
-  image: string;
-  totalRemaining: number;
-  batches: Batch[];
-}
-
 export function Warehouse({ authToken }) {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
-  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  const [expandedProducts, setExpandedProducts] = useState(new Set());
   const [showOnlyInStock, setShowOnlyInStock] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [warehouseProducts, setWarehouseProducts] = useState<WarehouseProduct[]>([]);
+  const [warehouseProducts, setWarehouseProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [writeOffDialog, setWriteOffDialog] = useState<{
-    open: boolean;
-    productId: string;
-    batchId: string;
-    productName: string;
-    batchNumber: string;
-    availableQuantity: number;
-  } | null>(null);
+  const [writeOffDialog, setWriteOffDialog] = useState(null);
 
   useEffect(() => {
     loadWarehouseData();
@@ -121,7 +91,7 @@ export function Warehouse({ authToken }) {
     setExpandedProducts(newExpanded);
   };
 
-  const getCurrentBatchId = (batches: Batch[]) => {
+  const getCurrentBatchId = (batches) => {
     // FIFO logic - find first batch with remaining > 0
     const activeBatch = batches.find((batch) => batch.remaining > 0);
     return activeBatch?.id;

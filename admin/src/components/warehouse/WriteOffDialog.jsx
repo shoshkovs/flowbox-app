@@ -13,23 +13,12 @@ import {
   DialogDescription,
 } from '../ui/dialog';
 
-interface WriteOffDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (data: { quantity: number; comment: string }) => void;
-  batchInfo: {
-    productName: string;
-    batchNumber: string;
-    availableQuantity: number;
-  };
-}
-
 export function WriteOffDialog({
   open,
   onClose,
   onConfirm,
   batchInfo,
-}: WriteOffDialogProps) {
+}) {
   const [quantity, setQuantity] = useState('');
   const [comment, setComment] = useState('');
   const [error, setError] = useState('');
