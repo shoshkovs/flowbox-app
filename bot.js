@@ -1482,7 +1482,7 @@ function normalizeOrderStatus(status) {
     'CONFIRMED': 'PROCESSING',
     'PREPARING': 'PROCESSING',
     'ASSEMBLY': 'COLLECTING',
-    'IN_TRANSIT': 'DELIVERING',
+    'IN_TRANSIT': 'IN_TRANSIT', // Статус "В пути" для доставки
     'DELIVERED': 'COMPLETED',
     'CANCELLED': 'CANCELED'
   };
@@ -3775,7 +3775,7 @@ app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   status = normalizeOrderStatus(status);
   
   // Валидация: только правильные статусы
-  const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
+  const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'IN_TRANSIT', 'COMPLETED', 'CANCELED'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: `Неверный статус. Допустимые значения: ${validStatuses.join(', ')}` });
   }
