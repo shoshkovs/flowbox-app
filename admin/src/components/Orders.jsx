@@ -39,6 +39,34 @@ export function Orders({ authToken }) {
     }
   };
 
+  const handleStatusChange = async (orderId, newStatus, e) => {
+    e.stopPropagation(); // Предотвращаем переход на страницу заказа
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      if (response.ok) {
+        await loadOrders();
+        toast.success('Статус заказа обновлен');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Ошибка обновления статуса' }));
+        toast.error(errorData.error || 'Ошибка обновления статуса');
+      }
+    } catch (error) {
+      console.error('Ошибка обновления статуса:', error);
+      toast.error('Ошибка обновления статуса');
+    }
+  };
+
   const loadOrders = async () => {
     try {
       // Всегда загружаем все заказы для правильного подсчета
@@ -171,92 +199,111 @@ export function Orders({ authToken }) {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4">ID</th>
+                <th className="text-left py-3 px-4">Состав заказа</th>
                 <th className="text-left py-3 px-4">Дата</th>
                 <th className="text-left py-3 px-4">Статус</th>
                 <th className="text-left py-3 px-4">Клиент</th>
-                <th className="text-left py-3 px-4">Получатель</th>
                 <th className="text-left py-3 px-4">Сумма</th>
                 <th className="text-left py-3 px-4">Доставка</th>
                 <th className="text-right py-3 px-4">Действия</th>
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
-                <tr 
-                  key={order.id} 
-                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => navigate(`/orders/${order.id}`)}
-                >
-                  <td className="py-3 px-4">
-                    <span className="text-blue-600 font-medium">#{order.id}</span>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(order.status)}`}>
-                      {getStatusLabel(order.status)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div>
-                      <div>{order.customer_name || '-'}</div>
-                      <div className="text-sm text-gray-500">{order.customer_phone || '-'}</div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div>
-                      <div>{order.recipient_name || order.customer_name || '-'}</div>
-                      <div className="text-sm text-gray-500">
-                        {order.recipient_phone || order.customer_phone || '-'}
+              {orders.map((order) => {
+                const orderDate = order.created_at ? new Date(order.created_at) : null;
+                const dateStr = orderDate ? orderDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
+                const timeStr = orderDate ? orderDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
+                
+                // Формируем строку состава заказа
+                const orderItems = order.items && Array.isArray(order.items) ? order.items : [];
+                const itemsSummary = orderItems.length > 0 
+                  ? orderItems.slice(0, 2).map(item => `${item.name} × ${item.quantity}`).join(', ') + (orderItems.length > 2 ? '...' : '')
+                  : '-';
+                
+                return (
+                  <tr 
+                    key={order.id} 
+                    className="border-b border-gray-100 hover:bg-gray-50"
+                  >
+                    <td className="py-3 px-4">
+                      <span className="text-blue-600 font-medium">#{order.id}</span>
+                    </td>
+                    <td className="py-3 px-4 text-sm">
+                      <div className="text-gray-900">{itemsSummary}</div>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">
+                      <div>{dateStr}</div>
+                      <div>{timeStr}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <select
+                        value={order.status || 'NEW'}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value, e)}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`px-2 py-1 rounded text-xs border-0 ${getStatusColor(order.status)} cursor-pointer`}
+                      >
+                        <option value="UNPAID">Не оплачен</option>
+                        <option value="NEW">Новый</option>
+                        <option value="PROCESSING">В обработке</option>
+                        <option value="PURCHASE">Закупка</option>
+                        <option value="COLLECTING">Собирается</option>
+                        <option value="DELIVERING">В пути</option>
+                        <option value="COMPLETED">Доставлен</option>
+                        <option value="CANCELED">Отменён</option>
+                      </select>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <div>{order.customer_name || '-'}</div>
+                        <div className="text-sm text-gray-500">{order.customer_phone || '-'}</div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 font-semibold">
-                    {parseFloat(order.total || 0).toLocaleString()} ₽
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="text-sm">
-                      <div>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('ru-RU') : '-'}</div>
-                      <div className="text-gray-500">{order.delivery_time || '-'}</div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/orders/${order.id}`);
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded"
-                        title="Просмотр"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      {order.customer_phone && (
-                        <a
-                          href={`tel:${order.customer_phone}`}
-                          onClick={(e) => e.stopPropagation()}
+                    </td>
+                    <td className="py-3 px-4 font-semibold">
+                      {parseFloat(order.total || 0).toLocaleString()} ₽
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-sm">
+                        <div>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('ru-RU') : '-'}</div>
+                        <div className="text-gray-500">{order.delivery_time || '-'}</div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/orders/${order.id}`);
+                          }}
                           className="p-2 hover:bg-gray-100 rounded"
-                          title="Позвонить"
+                          title="Просмотр"
                         >
-                          <Phone className="w-4 h-4" />
-                        </a>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRefreshOrders();
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded"
-                        title="Обновить"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {order.customer_phone && (
+                          <a
+                            href={`tel:${order.customer_phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2 hover:bg-gray-100 rounded"
+                            title="Позвонить"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRefreshOrders();
+                          }}
+                          className="p-2 hover:bg-gray-100 rounded"
+                          title="Обновить"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

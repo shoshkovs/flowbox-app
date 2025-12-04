@@ -108,6 +108,10 @@ export function OrderDetail({ authToken, orderId }) {
         setOrder(updatedOrder);
         await loadOrderDetails();
         toast.success('Изменения сохранены');
+        // Автоматически возвращаемся на страницу заказов
+        setTimeout(() => {
+          navigate('/orders');
+        }, 500);
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Ошибка сохранения изменений' }));
         console.error('Ошибка сохранения заказа:', errorData);
