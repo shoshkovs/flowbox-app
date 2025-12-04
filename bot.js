@@ -2769,7 +2769,7 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         }
         
         // Если статус меняется на CANCELED, откатываем бонусы
-        if (status === 'CANCELED' && oldOrder.user_id) {
+        if (normalizedStatus === 'CANCELED' && oldOrder.user_id) {
           try {
             // Откатываем бонусы: возвращаем использованные, убираем начисленные
             await client.query(
