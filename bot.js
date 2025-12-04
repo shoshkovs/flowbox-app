@@ -3772,6 +3772,291 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Аналитика
+app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { period = 'month' } = req.query; // today, week, month, 3months, year, custom
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Определяем период
+      let dateFrom = new Date();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      switch (period) {
+        case 'today':
+          dateFrom = new Date(today);
+          break;
+        case 'week':
+          dateFrom = new Date(today);
+          dateFrom.setDate(dateFrom.getDate() - 7);
+          break;
+        case 'month':
+          dateFrom = new Date(today);
+          dateFrom.setMonth(dateFrom.getMonth() - 1);
+          break;
+        case '3months':
+          dateFrom = new Date(today);
+          dateFrom.setMonth(dateFrom.getMonth() - 3);
+          break;
+        case 'year':
+          dateFrom = new Date(today);
+          dateFrom.setFullYear(dateFrom.getFullYear() - 1);
+          break;
+        default:
+          dateFrom = new Date(today);
+          dateFrom.setMonth(dateFrom.getMonth() - 1);
+      }
+      
+      // Основные метрики
+      const metricsResult = await client.query(
+        `SELECT 
+          COUNT(*) FILTER (WHERE o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')) as total_orders,
+          COALESCE(SUM(o.total) FILTER (WHERE o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')), 0) as total_revenue,
+          COUNT(DISTINCT o.user_id) FILTER (WHERE o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')) as unique_customers
+        FROM orders o
+        WHERE o.created_at >= $1
+          AND o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')`,
+        [dateFrom]
+      );
+      
+      const metrics = metricsResult.rows[0];
+      const avgCheck = metrics.total_orders > 0 ? Math.round(metrics.total_revenue / metrics.total_orders) : 0;
+      
+      // Заказы по датам
+      const ordersByDateResult = await client.query(
+        `SELECT 
+          DATE(o.created_at) as date,
+          COUNT(*) as orders_count,
+          COALESCE(SUM(o.total), 0) as revenue
+        FROM orders o
+        WHERE o.created_at >= $1
+          AND o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')
+        GROUP BY DATE(o.created_at)
+        ORDER BY date DESC`,
+        [dateFrom]
+      );
+      
+      // Топ товаров
+      const topProductsResult = await client.query(
+        `SELECT 
+          oi.product_id,
+          oi.name as product_name,
+          SUM(oi.quantity) as total_sold,
+          SUM(oi.price * oi.quantity) as revenue
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.created_at >= $1
+          AND o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')
+        GROUP BY oi.product_id, oi.name
+        ORDER BY total_sold DESC
+        LIMIT 10`,
+        [dateFrom]
+      );
+      
+      res.json({
+        period,
+        dateFrom: dateFrom.toISOString(),
+        metrics: {
+          totalRevenue: parseInt(metrics.total_revenue || 0),
+          totalOrders: parseInt(metrics.total_orders || 0),
+          avgCheck,
+          uniqueCustomers: parseInt(metrics.unique_customers || 0)
+        },
+        ordersByDate: ordersByDateResult.rows.map(row => ({
+          date: row.date,
+          ordersCount: parseInt(row.orders_count),
+          revenue: parseInt(row.revenue)
+        })),
+        topProducts: topProductsResult.rows.map(row => ({
+          productId: row.product_id,
+          productName: row.product_name,
+          totalSold: parseInt(row.total_sold),
+          revenue: parseInt(row.revenue)
+        }))
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения аналитики:', error);
+    res.status(500).json({ error: 'Ошибка получения аналитики: ' + error.message });
+  }
+});
+
+// API: Получить клиента по ID
+app.get('/api/admin/customers/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const userId = parseInt(id);
+  
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: 'Неверный ID клиента' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Получаем данные клиента
+      const userResult = await client.query(
+        'SELECT * FROM users WHERE id = $1',
+        [userId]
+      );
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Клиент не найден' });
+      }
+      
+      const user = userResult.rows[0];
+      
+      // Получаем статистику по заказам
+      const ordersStatsResult = await client.query(
+        `SELECT 
+          COUNT(*) FILTER (WHERE status != 'CANCELED') as orders_count,
+          COALESCE(SUM(total) FILTER (WHERE status != 'CANCELED'), 0) as total_spent,
+          MAX(created_at) FILTER (WHERE status != 'CANCELED') as last_order_date
+        FROM orders
+        WHERE user_id = $1`,
+        [userId]
+      );
+      
+      const stats = ordersStatsResult.rows[0];
+      const avgCheck = stats.orders_count > 0 ? Math.round(stats.total_spent / stats.orders_count) : 0;
+      
+      // Получаем историю заказов
+      const ordersResult = await client.query(
+        `SELECT 
+          o.*,
+          json_agg(
+            json_build_object(
+              'id', oi.id,
+              'name', oi.name,
+              'quantity', oi.quantity,
+              'price', oi.price
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.user_id = $1
+        GROUP BY o.id
+        ORDER BY o.created_at DESC`,
+        [userId]
+      );
+      
+      // Получаем адреса
+      const addressesResult = await client.query(
+        'SELECT * FROM addresses WHERE user_id = $1 ORDER BY created_at DESC',
+        [userId]
+      );
+      
+      res.json({
+        ...user,
+        stats: {
+          ordersCount: parseInt(stats.orders_count || 0),
+          totalSpent: parseInt(stats.total_spent || 0),
+          avgCheck,
+          lastOrderDate: stats.last_order_date
+        },
+        orders: ordersResult.rows,
+        addresses: addressesResult.rows
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения клиента:', error);
+    res.status(500).json({ error: 'Ошибка получения клиента: ' + error.message });
+  }
+});
+
+// API: Обновить бонусы клиента
+app.put('/api/admin/customers/:id/bonuses', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const userId = parseInt(id);
+  const { amount, description } = req.body;
+  
+  if (isNaN(userId) || amount === undefined) {
+    return res.status(400).json({ error: 'Неверные параметры' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Обновляем бонусы
+      await client.query(
+        'UPDATE users SET bonuses = bonuses + $1 WHERE id = $2',
+        [amount, userId]
+      );
+      
+      // Создаем транзакцию
+      await client.query(
+        `INSERT INTO bonus_transactions (user_id, type, amount, description)
+         VALUES ($1, 'adjustment', $2, $3)`,
+        [userId, amount, description || `Корректировка бонусов администратором`]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Получаем обновленные данные
+      const userResult = await client.query('SELECT bonuses FROM users WHERE id = $1', [userId]);
+      res.json({ success: true, bonuses: userResult.rows[0].bonuses });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления бонусов:', error);
+    res.status(500).json({ error: 'Ошибка обновления бонусов: ' + error.message });
+  }
+});
+
+// API: Обновить комментарий менеджера
+app.put('/api/admin/customers/:id/manager-comment', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const userId = parseInt(id);
+  const { manager_comment } = req.body;
+  
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: 'Неверный ID клиента' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query(
+        'UPDATE users SET manager_comment = $1 WHERE id = $2',
+        [manager_comment || null, userId]
+      );
+      res.json({ success: true });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления комментария:', error);
+    res.status(500).json({ error: 'Ошибка обновления комментария: ' + error.message });
+  }
+});
+
 // Запуск Express сервера
 const server = app.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);

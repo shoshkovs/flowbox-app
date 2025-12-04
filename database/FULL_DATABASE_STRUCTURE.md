@@ -603,6 +603,7 @@ CREATE TABLE subscriptions (
 **Статусы:**
 - `active` - Активная подписка
 - `canceled` - Отменена вручную
+
 - `expired` - Истекла
 - `trial` - Пробный период
 
