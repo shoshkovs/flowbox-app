@@ -4111,39 +4111,49 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { period = 'month' } = req.query; // today, week, month, 3months, year, custom
+  const { period = 'week', dateFrom: customDateFrom, dateTo: customDateTo } = req.query;
   
   try {
     const client = await pool.connect();
     try {
       // Определяем период
       let dateFrom = new Date();
+      let dateTo = new Date();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      dateTo.setHours(23, 59, 59, 999);
       
-      switch (period) {
-        case 'today':
-          dateFrom = new Date(today);
-          break;
-        case 'week':
-          dateFrom = new Date(today);
-          dateFrom.setDate(dateFrom.getDate() - 7);
-          break;
-        case 'month':
-          dateFrom = new Date(today);
-          dateFrom.setMonth(dateFrom.getMonth() - 1);
-          break;
-        case '3months':
-          dateFrom = new Date(today);
-          dateFrom.setMonth(dateFrom.getMonth() - 3);
-          break;
-        case 'year':
-          dateFrom = new Date(today);
-          dateFrom.setFullYear(dateFrom.getFullYear() - 1);
-          break;
-        default:
-          dateFrom = new Date(today);
-          dateFrom.setMonth(dateFrom.getMonth() - 1);
+      if (period === 'custom' && customDateFrom && customDateTo) {
+        dateFrom = new Date(customDateFrom);
+        dateFrom.setHours(0, 0, 0, 0);
+        dateTo = new Date(customDateTo);
+        dateTo.setHours(23, 59, 59, 999);
+      } else {
+        switch (period) {
+          case 'week':
+            dateFrom = new Date(today);
+            dateFrom.setDate(dateFrom.getDate() - 7);
+            break;
+          case '2weeks':
+            dateFrom = new Date(today);
+            dateFrom.setDate(dateFrom.getDate() - 14);
+            break;
+          case 'month':
+            dateFrom = new Date(today);
+            dateFrom.setMonth(dateFrom.getMonth() - 1);
+            break;
+          case '3months':
+            dateFrom = new Date(today);
+            dateFrom.setMonth(dateFrom.getMonth() - 3);
+            break;
+          case 'year':
+            dateFrom = new Date(today);
+            dateFrom.setFullYear(dateFrom.getFullYear() - 1);
+            break;
+          default:
+            dateFrom = new Date(today);
+            dateFrom.setDate(dateFrom.getDate() - 7);
+        }
       }
       
       // Основные метрики
@@ -4153,9 +4163,9 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
           COALESCE(SUM(o.total) FILTER (WHERE o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')), 0) as total_revenue,
           COUNT(DISTINCT o.user_id) FILTER (WHERE o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')) as unique_customers
         FROM orders o
-        WHERE o.created_at >= $1
+        WHERE o.created_at >= $1 AND o.created_at <= $2
           AND o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')`,
-        [dateFrom]
+        [dateFrom, dateTo]
       );
       
       const metrics = metricsResult.rows[0];
@@ -4168,11 +4178,11 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
           COUNT(*) as orders_count,
           COALESCE(SUM(o.total), 0) as revenue
         FROM orders o
-        WHERE o.created_at >= $1
+        WHERE o.created_at >= $1 AND o.created_at <= $2
           AND o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')
         GROUP BY DATE(o.created_at)
         ORDER BY date DESC`,
-        [dateFrom]
+        [dateFrom, dateTo]
       );
       
       // Топ товаров
@@ -4184,12 +4194,12 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
           SUM(oi.price * oi.quantity) as revenue
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.id
-        WHERE o.created_at >= $1
+        WHERE o.created_at >= $1 AND o.created_at <= $2
           AND o.status IN ('NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED')
         GROUP BY oi.product_id, oi.name
         ORDER BY total_sold DESC
         LIMIT 10`,
-        [dateFrom]
+        [dateFrom, dateTo]
       );
       
       res.json({

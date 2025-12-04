@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, DollarSign, ShoppingCart, Users, Calendar } from 'lucide-react';
+import { TrendingUp, ShoppingCart, Users, Calendar } from 'lucide-react';
 
 const API_BASE = window.location.origin;
 
@@ -13,85 +13,51 @@ export function Analytics({ authToken }) {
   const [ordersByDate, setOrdersByDate] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [dateRange, setDateRange] = useState('week');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadAnalytics();
-  }, [dateRange]);
+  }, [dateRange, customDateFrom, customDateTo]);
 
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      // Загружаем заказы
-      const ordersRes = await fetch(`${API_BASE}/api/admin/orders`, {
+      // Формируем параметры запроса
+      const params = new URLSearchParams();
+      params.append('period', dateRange);
+      if (dateRange === 'custom' && customDateFrom && customDateTo) {
+        params.append('dateFrom', customDateFrom);
+        params.append('dateTo', customDateTo);
+      }
+
+      const response = await fetch(`${API_BASE}/api/admin/analytics?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
-      if (ordersRes.ok) {
-        const orders = await ordersRes.json();
-        
-        // Фильтруем по дате
-        const now = new Date();
-        const filterDate = new Date();
-        if (dateRange === 'week') {
-          filterDate.setDate(now.getDate() - 7);
-        } else if (dateRange === 'month') {
-          filterDate.setMonth(now.getMonth() - 1);
-        } else if (dateRange === 'year') {
-          filterDate.setFullYear(now.getFullYear() - 1);
-        }
-
-        const filteredOrders = orders.filter(order => {
-          const orderDate = new Date(order.created_at);
-          return orderDate >= filterDate;
-        });
-
-        // Вычисляем статистику
-        const revenue = filteredOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-        const avgOrder = filteredOrders.length > 0 ? revenue / filteredOrders.length : 0;
-        
-        // Уникальные клиенты
-        const uniqueCustomers = new Set(filteredOrders.map(o => o.user_id).filter(Boolean));
+      if (response.ok) {
+        const data = await response.json();
         
         setStats({
-          totalRevenue: revenue,
-          totalOrders: filteredOrders.length,
-          avgOrderValue: avgOrder,
-          totalCustomers: uniqueCustomers.size,
+          totalRevenue: data.metrics.totalRevenue || 0,
+          totalOrders: data.metrics.totalOrders || 0,
+          avgOrderValue: data.metrics.avgCheck || 0,
+          totalCustomers: data.metrics.uniqueCustomers || 0,
         });
 
-        // Группируем заказы по дате
-        const ordersByDateMap = {};
-        filteredOrders.forEach(order => {
-          const date = new Date(order.created_at).toLocaleDateString('ru-RU');
-          if (!ordersByDateMap[date]) {
-            ordersByDateMap[date] = { date, count: 0, revenue: 0 };
-          }
-          ordersByDateMap[date].count++;
-          ordersByDateMap[date].revenue += parseFloat(order.total_amount) || 0;
-        });
-        setOrdersByDate(Object.values(ordersByDateMap).sort((a, b) => 
-          new Date(a.date.split('.').reverse().join('-')) - new Date(b.date.split('.').reverse().join('-'))
-        ));
-
-        // Топ товаров (упрощенная версия)
-        const productCounts = {};
-        filteredOrders.forEach(order => {
-          if (order.items && Array.isArray(order.items)) {
-            order.items.forEach(item => {
-              if (!productCounts[item.name]) {
-                productCounts[item.name] = { name: item.name, count: 0, revenue: 0 };
-              }
-              productCounts[item.name].count += item.quantity || 0;
-              productCounts[item.name].revenue += (item.price || 0) * (item.quantity || 0);
-            });
-          }
-        });
-        setTopProducts(Object.values(productCounts)
-          .sort((a, b) => b.revenue - a.revenue)
-          .slice(0, 5));
+        // Форматируем даты и сортируем от ближайшего дня вниз
+        const formattedOrdersByDate = data.ordersByDate.map(item => ({
+          date: new Date(item.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+          count: item.ordersCount,
+          revenue: item.revenue,
+          dateObj: new Date(item.date)
+        })).sort((a, b) => b.dateObj - a.dateObj); // Сортировка от ближайшего дня вниз
+        
+        setOrdersByDate(formattedOrdersByDate);
+        setTopProducts(data.topProducts || []);
       }
     } catch (error) {
       console.error('Ошибка загрузки аналитики:', error);
@@ -111,15 +77,39 @@ export function Analytics({ authToken }) {
           <h1 className="text-3xl font-bold">Аналитика</h1>
           <p className="text-gray-600 mt-1">Статистика и отчеты по продажам</p>
         </div>
-        <select
-          value={dateRange}
-          onChange={(e) => setDateRange(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg"
-        >
-          <option value="week">Последняя неделя</option>
-          <option value="month">Последний месяц</option>
-          <option value="year">Последний год</option>
-        </select>
+        <div className="flex items-center gap-4">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg"
+          >
+            <option value="week">Неделя</option>
+            <option value="2weeks">2 недели</option>
+            <option value="month">Месяц</option>
+            <option value="3months">3 месяца</option>
+            <option value="year">Год</option>
+            <option value="custom">Кастомная дата</option>
+          </select>
+          {dateRange === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customDateFrom}
+                onChange={(e) => setCustomDateFrom(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg"
+                placeholder="С"
+              />
+              <span className="text-gray-600">по</span>
+              <input
+                type="date"
+                value={customDateTo}
+                onChange={(e) => setCustomDateTo(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg"
+                placeholder="По"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Статистика */}
@@ -131,7 +121,7 @@ export function Analytics({ authToken }) {
               <p className="text-2xl font-bold mt-2">{stats.totalRevenue.toLocaleString()} ₽</p>
             </div>
             <div className="bg-green-50 p-3 rounded-lg">
-              <DollarSign className="w-6 h-6 text-green-600" />
+              <span className="text-2xl font-bold text-green-600">₽</span>
             </div>
           </div>
         </div>
