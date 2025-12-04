@@ -394,6 +394,49 @@ if (process.env.DATABASE_URL) {
         // Игнорируем ошибки при миграции
       }
     }, 6000); // Ждем 6 секунд после подключения
+    
+    // Миграция к финальной структуре согласно ТЗ
+    setTimeout(async () => {
+      try {
+        const client = await pool.connect();
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const migrationSQL = fs.readFileSync(
+            path.join(__dirname, 'database', 'migrate-to-final-structure.sql'),
+            'utf8'
+          );
+          
+          // Выполняем миграцию построчно
+          const statements = migrationSQL.split(';').filter(s => s.trim());
+          for (const statement of statements) {
+            if (statement.trim() && !statement.trim().startsWith('--')) {
+              try {
+                await client.query(statement);
+              } catch (err) {
+                // Игнорируем ошибки "уже существует" и constraint уже существует
+                if (!err.message.includes('already exists') && 
+                    !err.message.includes('duplicate') &&
+                    !err.message.includes('constraint') &&
+                    !err.message.includes('does not exist') &&
+                    err.code !== '42P16' &&
+                    err.code !== '42710' &&
+                    err.code !== '42704') {
+                  console.log('⚠️  Ошибка финальной миграции БД:', err.message);
+                }
+              }
+            }
+          }
+          console.log('✅ Финальная миграция структуры БД завершена');
+        } catch (migrationError) {
+          console.log('⚠️  Финальная миграция структуры БД:', migrationError.message);
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибки при миграции
+      }
+    }, 7000); // Ждем 7 секунд после подключения
   }); // Закрываем первый setTimeout
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
@@ -505,8 +548,20 @@ app.get('/api/products', async (req, res) => {
             WHERE pqm.product_id = $1
           `, [row.id]);
           
-          // Формируем массив качеств
-          const features = qualitiesResult.rows.map(r => r.name);
+          // Формируем массив качеств из features (TEXT[]) или из связей
+          let features = [];
+          if (row.features && Array.isArray(row.features)) {
+            features = row.features;
+          } else if (row.features) {
+            // Если features в другом формате, пытаемся преобразовать
+            try {
+              features = typeof row.features === 'string' ? JSON.parse(row.features) : row.features;
+            } catch (e) {
+              features = qualitiesResult.rows.map(r => r.name);
+            }
+          } else {
+            features = qualitiesResult.rows.map(r => r.name);
+          }
           
           return {
             id: row.id,
@@ -519,8 +574,6 @@ app.get('/api/products', async (req, res) => {
             color: colorResult.rows[0]?.name || row.color || '',
             features: features,
             is_active: row.is_active !== false,
-            stock: row.stock,
-            min_stock: row.min_stock,
             min_order_quantity: row.min_stem_quantity || row.min_order_quantity || 1,
             pricePerStem: row.price_per_stem || row.price || 0,
             minStemQuantity: row.min_stem_quantity || row.min_order_quantity || 1
@@ -916,8 +969,20 @@ async function createOrderInDb(orderData) {
       const clientPhone = orderData.phone || userData?.phone || null;
       const clientEmail = orderData.email || userData?.email || null;
       
-      // Комментарий для флориста (отдельно от общего комментария)
-      const floristComment = orderData.floristComment || orderData.comment || null;
+      // Комментарий пользователя (для флориста/доставки)
+      const userComment = orderData.userComment || orderData.comment || null;
+      
+      // Определяем delivery_zone из deliveryPrice
+      let deliveryZone = null;
+      if (orderData.deliveryPrice === 0) {
+        deliveryZone = 'Самовывоз';
+      } else if (orderData.deliveryPrice === 500) {
+        deliveryZone = 'В пределах КАД';
+      } else if (orderData.deliveryPrice === 900) {
+        deliveryZone = 'До 10 км от КАД';
+      } else if (orderData.deliveryPrice === 1300) {
+        deliveryZone = 'До 20 км от КАД';
+      }
       
       // Создаем заказ
       const orderResult = await client.query(
@@ -926,9 +991,9 @@ async function createOrderInDb(orderData) {
           client_name, client_phone, client_email,
           recipient_name, recipient_phone, 
           address_id, address_string, address_json, 
-          delivery_type, delivery_date, delivery_time, delivery_time_from, delivery_time_to,
-          comment, florist_comment, promocode_code, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, 'NEW')
+          delivery_zone, delivery_date, delivery_time,
+          user_comment, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'NEW')
          RETURNING *`,
         [
           userId,
@@ -946,14 +1011,10 @@ async function createOrderInDb(orderData) {
           addressId,
           orderData.address,
           JSON.stringify(orderData.addressData || {}),
-          deliveryType,
+          deliveryZone,
           orderData.deliveryDate || null,
           orderData.deliveryTime || null,
-          deliveryTimeFrom,
-          deliveryTimeTo,
-          orderData.comment || null,
-          floristComment,
-          orderData.promocodeCode || null
+          userComment
         ]
       );
       
@@ -1035,6 +1096,18 @@ async function createOrderInDb(orderData) {
           [orderData.bonusUsed || 0, orderData.bonusEarned || 0, userId]
         );
         console.log('✅ Бонусы пользователя обновлены, транзакции созданы');
+      }
+      
+      // Создаем запись в order_status_history
+      try {
+        await client.query(
+          `INSERT INTO order_status_history (order_id, status, source, comment)
+           VALUES ($1, $2, $3, $4)`,
+          [order.id, 'NEW', 'system', 'Заказ создан через мини-апп']
+        );
+      } catch (historyError) {
+        // Игнорируем ошибки истории (таблица может не существовать)
+        console.log('⚠️  Не удалось создать запись в истории статусов:', historyError.message);
       }
       
       await client.query('COMMIT');
@@ -1817,10 +1890,12 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     price_per_stem, 
     min_stem_quantity,
     quality_ids,
+    features, // Массив строк качеств (TEXT[])
     stem_length_id,
     country_id,
     variety_id,
     tag_ids,
+    tags, // Массив строк тегов (TEXT[])
     image_url,
     is_active
   } = req.body;
@@ -1841,8 +1916,43 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     return res.status(400).json({ error: 'Минимальное количество стеблей должно быть целым числом не менее 1' });
   }
   
-  if (!quality_ids || !Array.isArray(quality_ids) || quality_ids.length === 0) {
+  // Формируем features как TEXT[] из quality_ids или из переданного features
+  let featuresArray = [];
+  if (features && Array.isArray(features)) {
+    featuresArray = features;
+  } else if (quality_ids && Array.isArray(quality_ids) && quality_ids.length > 0) {
+    // Получаем названия качеств по ID
+    const client = await pool.connect();
+    try {
+      const qualityNames = await client.query(
+        'SELECT name FROM product_qualities WHERE id = ANY($1::int[])',
+        [quality_ids]
+      );
+      featuresArray = qualityNames.rows.map(r => r.name);
+    } finally {
+      client.release();
+    }
+  }
+  
+  if (featuresArray.length === 0) {
     return res.status(400).json({ error: 'Необходимо выбрать хотя бы одно отличительное качество' });
+  }
+  
+  // Формируем tags как TEXT[]
+  let tagsArray = [];
+  if (tags && Array.isArray(tags)) {
+    tagsArray = tags;
+  } else if (tag_ids && Array.isArray(tag_ids) && tag_ids.length > 0) {
+    const client = await pool.connect();
+    try {
+      const tagNames = await client.query(
+        'SELECT name FROM product_tags WHERE id = ANY($1::int[])',
+        [tag_ids]
+      );
+      tagsArray = tagNames.rows.map(r => r.name);
+    } finally {
+      client.release();
+    }
   }
   
   try {
@@ -1850,7 +1960,7 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     try {
       await client.query('BEGIN');
       
-      // Создаем товар
+      // Создаем товар с features и tags как TEXT[]
       const result = await client.query(
         `INSERT INTO products (
           name, 
@@ -1858,20 +1968,24 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
           color_id, 
           price_per_stem, 
           min_stem_quantity,
+          features,
+          tags,
           stem_length_id,
           country_id,
           variety_id,
           image_url,
           is_active
         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING *`,
         [
           name,
           category_id,
           color_id,
-          pricePerStemInt, // Используем проверенное целое число
-          minStemQtyInt, // Используем проверенное целое число
+          pricePerStemInt,
+          minStemQtyInt,
+          featuresArray.length > 0 ? featuresArray : null,
+          tagsArray.length > 0 ? tagsArray : null,
           stem_length_id || null,
           country_id || null,
           variety_id || null,
@@ -1882,7 +1996,7 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
       
       const product = result.rows[0];
       
-      // Связываем качества
+      // Также сохраняем связи для обратной совместимости (опционально)
       if (quality_ids && quality_ids.length > 0) {
         for (const qualityId of quality_ids) {
           await client.query(
@@ -1892,7 +2006,6 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
         }
       }
       
-      // Связываем теги
       if (tag_ids && tag_ids.length > 0) {
         for (const tagId of tag_ids) {
           await client.query(
@@ -2230,7 +2343,7 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
     return res.status(400).json({ error: 'Неверный ID заказа' });
   }
   
-  const { status, recipient_name, recipient_phone, delivery_date, delivery_time, comment, address_json, internal_comment, courier_comment } = req.body;
+  const { status, recipient_name, recipient_phone, delivery_date, delivery_time, user_comment, comment, address_json, internal_comment, courier_comment, status_comment } = req.body;
   
   try {
     const client = await pool.connect();
@@ -2264,8 +2377,14 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         params.push(delivery_time);
         paramIndex++;
       }
+      if (user_comment !== undefined) {
+        updateQuery += `, user_comment = $${paramIndex}`;
+        params.push(user_comment);
+        paramIndex++;
+      }
       if (comment !== undefined) {
-        updateQuery += `, comment = $${paramIndex}`;
+        // Для обратной совместимости
+        updateQuery += `, user_comment = $${paramIndex}`;
         params.push(comment);
         paramIndex++;
       }
@@ -2277,6 +2396,11 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
       if (courier_comment !== undefined) {
         updateQuery += `, courier_comment = $${paramIndex}`;
         params.push(courier_comment);
+        paramIndex++;
+      }
+      if (status_comment !== undefined) {
+        updateQuery += `, status_comment = $${paramIndex}`;
+        params.push(status_comment);
         paramIndex++;
       }
       if (address_json !== undefined) {
@@ -2294,17 +2418,52 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Заказ не найден' });
       }
       
+      // Получаем старый статус для проверки изменений
+      const oldOrderResult = await client.query('SELECT status, bonus_used, bonus_earned, user_id FROM orders WHERE id = $1', [orderId]);
+      const oldOrder = oldOrderResult.rows[0];
+      
       // Записываем в историю статусов, если статус изменился
-      if (status !== undefined) {
+      if (status !== undefined && status !== oldOrder.status) {
         try {
           await client.query(
-            'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
-            [orderId, status, 'admin', internal_comment || null]
+            'INSERT INTO order_status_history (order_id, status, source, changed_by_id, comment) VALUES ($1, $2, $3, $4, $5)',
+            [orderId, status, 'admin', req.adminUserId || null, status_comment || null]
           );
         } catch (historyError) {
           // Игнорируем ошибку, если таблица не существует
           if (!historyError.message.includes('does not exist')) {
             console.error('Ошибка записи в историю статусов:', historyError);
+          }
+        }
+        
+        // Если статус меняется на CANCELED, откатываем бонусы
+        if (status === 'CANCELED' && oldOrder.user_id) {
+          try {
+            // Откатываем бонусы: возвращаем использованные, убираем начисленные
+            await client.query(
+              `UPDATE users 
+               SET bonuses = bonuses + $1 - $2
+               WHERE id = $3`,
+              [oldOrder.bonus_used || 0, oldOrder.bonus_earned || 0, oldOrder.user_id]
+            );
+            
+            // Создаем транзакции для отката бонусов
+            if (oldOrder.bonus_used > 0) {
+              await client.query(
+                `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
+                 VALUES ($1, $2, 'adjustment', $3, $4)`,
+                [oldOrder.user_id, orderId, oldOrder.bonus_used, `Возврат бонусов при отмене заказа #${orderId}`]
+              );
+            }
+            if (oldOrder.bonus_earned > 0) {
+              await client.query(
+                `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
+                 VALUES ($1, $2, 'adjustment', $3, $4)`,
+                [oldOrder.user_id, orderId, -oldOrder.bonus_earned, `Списание начисленных бонусов при отмене заказа #${orderId}`]
+              );
+            }
+          } catch (bonusError) {
+            console.error('Ошибка отката бонусов:', bonusError);
           }
         }
       }
@@ -2898,12 +3057,18 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
     try {
       // Получаем основной заказ с информацией о клиенте
       const orderResult = await client.query(
-        `SELECT 
+        `        SELECT 
           o.*,
-          u.first_name as customer_name,
-          u.last_name as customer_last_name,
-          u.phone as customer_phone,
-          u.email as customer_email,
+          o.client_name,
+          o.client_phone,
+          o.client_email,
+          o.recipient_name,
+          o.recipient_phone,
+          o.delivery_zone,
+          o.user_comment,
+          o.internal_comment,
+          o.courier_comment,
+          o.status_comment,
           u.username as customer_telegram_username,
           u.telegram_id as customer_telegram_id
         FROM orders o
