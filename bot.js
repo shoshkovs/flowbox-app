@@ -1174,6 +1174,41 @@ async function createOrderInDb(orderData) {
       const order = orderResult.rows[0];
       console.log('✅ Заказ создан в БД, order_id:', order.id, 'user_id в заказе:', order.user_id || 'NULL');
       
+      // Сохраняем телефон и почту из формы заказа в профиль пользователя, если они были заполнены
+      if (userId && (orderData.phone || orderData.email)) {
+        try {
+          const updateFields = [];
+          const updateValues = [];
+          let paramIndex = 1;
+          
+          if (orderData.phone) {
+            updateFields.push(`phone = $${paramIndex}`);
+            updateValues.push(orderData.phone);
+            paramIndex++;
+          }
+          
+          if (orderData.email) {
+            updateFields.push(`email = $${paramIndex}`);
+            updateValues.push(orderData.email);
+            paramIndex++;
+          }
+          
+          if (updateFields.length > 0) {
+            updateValues.push(userId);
+            await client.query(
+              `UPDATE users 
+               SET ${updateFields.join(', ')}, updated_at = now()
+               WHERE id = $${paramIndex}`,
+              updateValues
+            );
+            console.log('✅ Обновлен профиль пользователя: телефон и/или почта сохранены из формы заказа');
+          }
+        } catch (profileError) {
+          // Не критично, если не удалось обновить профиль
+          console.log('⚠️  Не удалось обновить профиль пользователя:', profileError.message);
+        }
+      }
+      
       // Проверяем остатки перед добавлением позиций
       for (const item of orderData.items || []) {
         const productId = item.id;

@@ -12,7 +12,6 @@ export function OrderDetail({ authToken, orderId }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [statusComment, setStatusComment] = useState('');
   const [internalComment, setInternalComment] = useState('');
   const [courierComment, setCourierComment] = useState('');
 
@@ -98,7 +97,6 @@ export function OrderDetail({ authToken, orderId }) {
           address_json: order.address_data || order.address_json || null,
           internal_comment: internalComment || null,
           courier_comment: courierComment || null,
-          status_comment: statusComment || null,
         }),
       });
 
@@ -106,7 +104,6 @@ export function OrderDetail({ authToken, orderId }) {
         const updatedOrder = await response.json();
         setOrder(updatedOrder);
         await loadOrderDetails();
-        setStatusComment('');
         toast.success('Изменения сохранены');
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Ошибка сохранения изменений' }));
@@ -338,7 +335,7 @@ export function OrderDetail({ authToken, orderId }) {
           </div>
 
           {/* Комментарии */}
-          {(order.user_comment || order.internal_comment || order.courier_comment || order.status_comment) && (
+          {(order.user_comment || order.internal_comment || order.courier_comment) && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-xl font-semibold mb-4">Комментарии</h2>
               <div className="space-y-4">
@@ -378,17 +375,6 @@ export function OrderDetail({ authToken, orderId }) {
                   </div>
                 )}
                 
-                {/* Комментарий к изменению статуса */}
-                {order.status_comment && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium text-gray-700">Комментарий к изменению статуса:</span>
-                    </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                      <p className="text-gray-700">{order.status_comment}</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -506,16 +492,6 @@ export function OrderDetail({ authToken, orderId }) {
                   placeholder="Инструкции для курьера..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none"
                   rows="4"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Комментарий к изменению статуса</label>
-                <textarea
-                  value={statusComment}
-                  onChange={(e) => setStatusComment(e.target.value)}
-                  placeholder="Добавить комментарий..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none"
-                  rows="3"
                 />
               </div>
             </div>
