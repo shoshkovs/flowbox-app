@@ -176,6 +176,35 @@ if (process.env.DATABASE_URL) {
         }
       }, 2500);
       
+      // Миграция: добавление поля supplier в таблицу supplies
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            const columnCheck = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'supplies' AND column_name = 'supplier'
+            `);
+            
+            if (columnCheck.rows.length === 0) {
+              console.log('🔄 Добавляем поле supplier в таблицу supplies...');
+              await client.query(`
+                ALTER TABLE supplies 
+                ADD COLUMN IF NOT EXISTS supplier TEXT
+              `);
+              console.log('✅ Поле supplier добавлено в таблицу supplies');
+            }
+          } catch (migrationError) {
+            console.log('⚠️  Миграция supplier:', migrationError.message);
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      }, 2800);
+      
       // Миграция: добавление статуса PURCHASE в constraint
       setTimeout(async () => {
         try {
