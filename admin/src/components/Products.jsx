@@ -20,6 +20,7 @@ export function Products({ authToken }) {
 
   useEffect(() => {
     loadColors();
+    loadQualities();
     loadProducts();
   }, []);
 
@@ -44,6 +45,25 @@ export function Products({ authToken }) {
     }
   };
 
+  const loadQualities = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/product-qualities`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Загружаем качества из API, а не из товаров
+        setFeatures(data.map(q => q.name).sort());
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки качеств:', error);
+      // Fallback: собираем из товаров, если API недоступен
+    }
+  };
+
   const loadProducts = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/admin/products`, {
@@ -55,18 +75,6 @@ export function Products({ authToken }) {
       if (response.ok) {
         const data = await response.json();
         setAllProducts(data);
-        
-        // Собираем уникальные качества из всех товаров
-        const uniqueFeatures = new Set();
-        data.forEach(product => {
-          if (product.features && Array.isArray(product.features)) {
-            product.features.forEach(feature => {
-              if (feature) uniqueFeatures.add(feature);
-            });
-          }
-        });
-        setFeatures(Array.from(uniqueFeatures).sort());
-        
         filterProducts(data);
       }
     } catch (error) {
@@ -104,7 +112,13 @@ export function Products({ authToken }) {
     if (filterFeature !== 'all') {
       filtered = filtered.filter(p => {
         if (!p.features || !Array.isArray(p.features)) return false;
-        return p.features.some(f => f && f.toLowerCase() === filterFeature.toLowerCase());
+        // Проверяем, содержит ли товар выбранное качество (без учета регистра)
+        return p.features.some(f => {
+          if (!f) return false;
+          const featureLower = String(f).toLowerCase().trim();
+          const filterLower = filterFeature.toLowerCase().trim();
+          return featureLower === filterLower;
+        });
       });
     }
     
@@ -267,8 +281,9 @@ export function Products({ authToken }) {
                 <th className="text-left py-3 px-4">Товар</th>
                 <th className="text-left py-3 px-4">Категория</th>
                 <th className="text-left py-3 px-4">Цвет</th>
-                <th className="text-left py-3 px-4">Цена за стебель</th>
-                <th className="text-left py-3 px-4">Статус</th>
+                <th className="text-left py-3 px-4">Цена за шт</th>
+                <th className="text-left py-3 px-4">Качества</th>
+                <th className="text-left py-3 px-4 pl-8">Статус</th>
                 <th className="text-right py-3 px-4">Действия</th>
               </tr>
             </thead>
@@ -292,6 +307,17 @@ export function Products({ authToken }) {
                   <td className="py-3 px-4">{product.color_name || product.color || '-'}</td>
                   <td className="py-3 px-4">{product.price_per_stem || product.pricePerStem || product.price || 0} ₽</td>
                   <td className="py-3 px-4">
+                    {product.features && Array.isArray(product.features) && product.features.length > 0 ? (
+                      <select className="px-2 py-1 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                        {product.features.map((feature, idx) => (
+                          <option key={idx} value={feature}>{feature}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 pl-8">
                     <span className={`px-2 py-1 rounded text-xs ${
                       product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
