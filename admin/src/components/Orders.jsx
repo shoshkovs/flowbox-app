@@ -7,28 +7,40 @@ const API_BASE = window.location.origin;
 
 // Функция для форматирования дат в человеко-понятный формат
 function formatHumanDate(dateInput) {
-  if (!dateInput) return '';
+  console.log('🔧 formatHumanDate called with:', dateInput, 'type:', typeof dateInput);
+  
+  if (!dateInput) {
+    console.log('⚠️ formatHumanDate: dateInput is empty');
+    return '';
+  }
   
   // Преобразуем входную дату в Date объект
   let date;
   if (dateInput instanceof Date) {
     date = dateInput;
+    console.log('📅 formatHumanDate: dateInput is Date object');
   } else if (typeof dateInput === 'string') {
     // Если это ISO строка (YYYY-MM-DD), парсим её
     if (dateInput.match(/^\d{4}-\d{2}-\d{2}/)) {
       const [year, month, day] = dateInput.split('-').map(Number);
       date = new Date(year, month - 1, day);
+      console.log('📅 formatHumanDate: parsed ISO string', { year, month, day, date });
     } else {
       date = new Date(dateInput);
+      console.log('📅 formatHumanDate: parsed string as Date', date);
     }
   } else {
     date = new Date(dateInput);
+    console.log('📅 formatHumanDate: converted to Date', date);
   }
   
   // Проверяем валидность даты
   if (isNaN(date.getTime())) {
+    console.log('❌ formatHumanDate: invalid date');
     return '';
   }
+  
+  console.log('✅ formatHumanDate: valid date', date);
   
   // Нормализуем даты (убираем время, оставляем только дату)
   const today = new Date();
