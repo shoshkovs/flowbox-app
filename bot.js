@@ -3676,7 +3676,7 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
       query += ` GROUP BY o.id, u.id 
                  ORDER BY 
                    COALESCE(o.delivery_date, '9999-12-31'::date) ASC,
-                   COALESCE(o.delivery_time, '00:00:00'::time) ASC,
+                   COALESCE(o.delivery_time::text, '00:00:00') ASC,
                    o.created_at DESC`;
       
       const result = await client.query(query, params);
