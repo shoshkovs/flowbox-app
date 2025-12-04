@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { WarehouseForm } from './warehouse/WarehouseForm';
 import { WriteOffDialog } from './warehouse/WriteOffDialog';
 import { toast } from 'sonner';
@@ -9,17 +9,25 @@ const API_BASE = window.location.origin;
 
 export function Warehouse({ authToken }) {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('products'); // 'products' или 'supplies'
   const [showForm, setShowForm] = useState(false);
   const [expandedProducts, setExpandedProducts] = useState(new Set());
+  const [expandedSupplies, setExpandedSupplies] = useState(new Set());
+  const [hiddenItems, setHiddenItems] = useState(new Set()); // Скрытые товары в поставках
   const [showOnlyInStock, setShowOnlyInStock] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [warehouseProducts, setWarehouseProducts] = useState([]);
+  const [supplies, setSupplies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [writeOffDialog, setWriteOffDialog] = useState(null);
 
   useEffect(() => {
-    loadWarehouseData();
-  }, []);
+    if (activeTab === 'products') {
+      loadWarehouseData();
+    } else {
+      loadSupplies();
+    }
+  }, [activeTab]);
 
   const loadWarehouseData = async () => {
     setLoading(true);
@@ -42,6 +50,32 @@ export function Warehouse({ authToken }) {
       console.error('Ошибка загрузки данных склада:', error);
       toast.error('Ошибка загрузки данных склада');
       setWarehouseProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSupplies = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/supplies`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSupplies(data);
+      } else {
+        const error = await response.json().catch(() => ({ error: 'Ошибка загрузки поставок' }));
+        toast.error(error.error || 'Ошибка загрузки поставок');
+        setSupplies([]);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки поставок:', error);
+      toast.error('Ошибка загрузки поставок');
+      setSupplies([]);
     } finally {
       setLoading(false);
     }
@@ -83,6 +117,26 @@ export function Warehouse({ authToken }) {
       newExpanded.add(productId);
     }
     setExpandedProducts(newExpanded);
+  };
+
+  const toggleSupply = (supplyId) => {
+    const newExpanded = new Set(expandedSupplies);
+    if (newExpanded.has(supplyId)) {
+      newExpanded.delete(supplyId);
+    } else {
+      newExpanded.add(supplyId);
+    }
+    setExpandedSupplies(newExpanded);
+  };
+
+  const toggleItemVisibility = (itemId) => {
+    const newHidden = new Set(hiddenItems);
+    if (newHidden.has(itemId)) {
+      newHidden.delete(itemId);
+    } else {
+      newHidden.add(itemId);
+    }
+    setHiddenItems(newHidden);
   };
 
   const getCurrentBatchId = (batches) => {
@@ -161,36 +215,7 @@ export function Warehouse({ authToken }) {
   };
 
   const handleSaveSupply = async (data) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/supplies`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          productId: data.productId,
-          quantity: data.quantity,
-          purchasePrice: data.purchasePrice,
-          deliveryDate: data.deliveryDate,
-          supplier: data.supplier,
-          invoiceNumber: data.invoiceNumber,
-          comment: data.comment,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success('Поставка успешно добавлена');
-        setShowForm(false);
-        await loadWarehouseData();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Ошибка создания поставки');
-      }
-    } catch (error) {
-      console.error('Ошибка создания поставки:', error);
-      toast.error('Ошибка создания поставки');
-    }
+    await loadSupplies();
   };
 
   if (loading) {
@@ -222,8 +247,37 @@ export function Warehouse({ authToken }) {
           Добавить поставку
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+
+      {/* Вкладки */}
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'products'
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Товары
+          </button>
+          <button
+            onClick={() => setActiveTab('supplies')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'supplies'
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Поставки
+          </button>
+        </nav>
+      </div>
+
+      {/* KPI карточки (только для вкладки Товары) */}
+      {activeTab === 'products' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600">Стоимость склада</p>
@@ -234,20 +288,20 @@ export function Warehouse({ authToken }) {
                 <PackageIcon className="w-6 h-6 text-purple-600" />
               </div>
             </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600">Низкие остатки</p>
                 <p className="text-2xl mt-2">{lowStockCount}</p>
-                <p className="text-sm text-gray-500 mt-1">Меньше 10 шт</p>
+                <p className="text-sm text-gray-500 mt-1">Меньше 20 шт</p>
               </div>
               <div className="bg-orange-50 p-3 rounded-lg">
                 <TrendingDown className="w-6 h-6 text-orange-600" />
               </div>
             </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600">Нулевые остатки</p>
@@ -258,281 +312,404 @@ export function Warehouse({ authToken }) {
                 <AlertCircle className="w-6 h-6 text-red-600" />
               </div>
             </div>
+          </div>
         </div>
-      </div>
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Товары на складе</h2>
-            <div className="flex gap-4 items-center">
-              <div className="flex items-center gap-2">
+      )}
+
+      {/* Контент вкладки Товары */}
+      {activeTab === 'products' && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Товары на складе</h2>
+              <div className="flex gap-4 items-center">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="onlyInStock"
+                    checked={showOnlyInStock}
+                    onChange={(e) => setShowOnlyInStock(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="onlyInStock" className="cursor-pointer text-sm">
+                    Только в наличии
+                  </label>
+                </div>
                 <input
-                  type="checkbox"
-                  id="onlyInStock"
-                  checked={showOnlyInStock}
-                  onChange={(e) => setShowOnlyInStock(e.target.checked)}
-                  className="w-4 h-4"
+                  type="text"
+                  placeholder="Поиск по товару..."
+                  className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <label htmlFor="onlyInStock" className="cursor-pointer text-sm">
-                  Только в наличии
-                </label>
               </div>
-              <input
-                type="text"
-                placeholder="Поиск по товару..."
-                className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              {filteredProducts.map((product) => {
+                const isExpanded = expandedProducts.has(product.id);
+                const currentBatchId = getCurrentBatchId(product.batches);
+                const totalSupplied = product.batches.reduce(
+                  (sum, b) => sum + b.initialQuantity,
+                  0
+                );
+                const totalSold = product.batches.reduce((sum, b) => sum + b.sold, 0);
+                const totalWriteOff = product.batches.reduce((sum, b) => sum + b.writeOff, 0);
+
+                return (
+                  <div
+                    key={product.id}
+                    className="border border-gray-200 rounded-lg overflow-hidden"
+                  >
+                    <div
+                      className="bg-white p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleProduct(product.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-16 text-sm font-medium text-gray-600">
+                            {product.batches.length > 0 && product.batches[0].id}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">{product.productName}</div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {product.category} • {product.color}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6 text-sm">
+                          <div className="text-right">
+                            <div className="text-gray-500">Поставлено</div>
+                            <div className="font-medium">{totalSupplied} шт</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-gray-500">Продано</div>
+                            <div className="font-medium">{totalSold} шт</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-gray-500">Списано</div>
+                            <div className="font-medium">{totalWriteOff} шт</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-gray-500">Остаток</div>
+                            <div className="font-medium">{product.totalRemaining} шт</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-gray-500">Стоимость</div>
+                            <div className="font-medium">
+                              {product.batches
+                                .reduce((sum, b) => sum + b.remaining * b.purchasePrice, 0)
+                                .toLocaleString()}{' '}
+                              ₽
+                            </div>
+                          </div>
+                          <button className="p-2 hover:bg-gray-100 rounded">
+                            {isExpanded ? (
+                              <ChevronUp className="w-5 h-5 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 bg-gray-50">
+                        <table className="w-full">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
+                                Партия
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
+                                Дата
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Привезено
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Продано
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Списано
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Остаток
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Цена закупки
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Стоимость
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Поставщик
+                              </th>
+                              <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">
+                                Действия
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {product.batches.map((batch) => {
+                              const isExhausted = batch.remaining === 0;
+                              const isCurrent = currentBatchId === batch.id;
+                              const totalCost = batch.remaining * batch.purchasePrice;
+
+                              return (
+                                <tr
+                                  key={batch.id}
+                                  className={`border-b border-gray-200 ${
+                                    isExhausted ? 'bg-gray-50' : 'bg-white'
+                                  }`}
+                                >
+                                  <td className="py-2 px-4 text-sm">
+                                    {batch.batchNumber}
+                                    {isCurrent && (
+                                      <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
+                                        Текущая
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-4 text-sm">
+                                    {new Date(batch.deliveryDate).toLocaleDateString('ru-RU')}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {batch.initialQuantity}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {batch.sold}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {batch.writeOff}
+                                  </td>
+                                  <td className="py-2 px-4 text-right">
+                                    <span
+                                      className={`text-sm font-medium ${
+                                        isExhausted
+                                          ? 'text-gray-400'
+                                          : batch.remaining < 5
+                                          ? 'text-orange-600'
+                                          : 'text-gray-900'
+                                      }`}
+                                    >
+                                      {batch.remaining}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {batch.purchasePrice} ₽
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {totalCost.toLocaleString()} ₽
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {batch.supplier}
+                                  </td>
+                                  <td className="py-2 px-4">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setWriteOffDialog({
+                                            open: true,
+                                            productId: product.id,
+                                            batchId: batch.id,
+                                            productName: product.productName,
+                                            batchNumber: batch.batchNumber,
+                                            availableQuantity: batch.remaining,
+                                          });
+                                        }}
+                                        disabled={batch.remaining === 0}
+                                        title="Списать"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        className="h-7 w-7 p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded flex items-center justify-center"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteBatch(product.id, batch.id);
+                                        }}
+                                        title="Удалить партию"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
-        <div className="p-6">
-          <div className="space-y-3">
-            {filteredProducts.map((product) => {
-              const isExpanded = expandedProducts.has(product.id);
-              const currentBatchId = getCurrentBatchId(product.batches);
-              const totalSupplied = product.batches.reduce(
-                (sum, b) => sum + b.initialQuantity,
-                0
-              );
-              const totalSold = product.batches.reduce((sum, b) => sum + b.sold, 0);
-              const totalWriteOff = product.batches.reduce(
-                (sum, b) => sum + b.writeOff,
-                0
-              );
-              return (
-                <div key={product.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      )}
+
+      {/* Контент вкладки Поставки */}
+      {activeTab === 'supplies' && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <div className="p-6">
+            <div className="space-y-3">
+              {supplies.map((supply) => {
+                const isExpanded = expandedSupplies.has(supply.id);
+
+                return (
                   <div
-                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => toggleProduct(product.id)}
+                    key={supply.id}
+                    className="border border-gray-200 rounded-lg overflow-hidden"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        <img
-                          src={product.image}
-                          alt={product.productName}
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
-                        <div className="flex-1">
-                          <h3 className="font-medium text-lg">
-                            {product.productName}
-                          </h3>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-sm text-gray-500">
-                              {product.category}
-                            </span>
-                            <span className="text-sm text-gray-400">•</span>
-                            <span className="text-sm text-gray-500">
-                              {product.color}
-                            </span>
+                    <div
+                      className="bg-white p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleSupply(supply.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-20 text-sm font-medium text-gray-600">
+                            #{supply.id}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">
+                              {new Date(supply.deliveryDate).toLocaleDateString('ru-RU')}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {supply.supplierName}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">Остаток</p>
-                          <p
-                            className={`text-2xl mt-1 ${
-                              product.totalRemaining === 0
-                                ? 'text-red-600'
-                                : product.totalRemaining < 10
-                                ? 'text-orange-600'
-                                : 'text-gray-900'
-                            }`}
-                          >
-                            {product.totalRemaining} шт
-                          </p>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="text-sm font-medium">
+                              {supply.totalAmount.toLocaleString()} ₽
+                            </div>
+                          </div>
+                          <button className="p-2 hover:bg-gray-100 rounded">
+                            {isExpanded ? (
+                              <ChevronUp className="w-5 h-5 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
                         </div>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg">
-                          {isExpanded ? (
-                            <ChevronUp className="w-5 h-5" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5" />
-                          )}
-                        </button>
                       </div>
                     </div>
-                  </div>
-                  {isExpanded && (
-                    <div className="border-t border-gray-200 bg-gray-50 p-4">
-                      {/* Summary block */}
-                      <div className="grid grid-cols-4 gap-4 mb-4 p-3 bg-white rounded-lg border border-gray-200">
-                        <div>
-                          <p className="text-xs text-gray-600">Всего поставлено</p>
-                          <p className="text-lg mt-1">{totalSupplied} шт</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-600">Продано</p>
-                          <p className="text-lg mt-1">{totalSold} шт</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-600">Списано</p>
-                          <p className="text-lg mt-1">{totalWriteOff} шт</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-600">Остаток</p>
-                          <p className="text-lg mt-1 font-medium">
-                            {product.totalRemaining} шт
-                          </p>
-                        </div>
-                      </div>
-                      {/* Batches table */}
-                      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="bg-gray-100 border-b border-gray-200">
-                                <th className="text-left py-2 px-3 text-xs">
-                                  Поставка
-                                </th>
-                                <th className="text-left py-2 px-3 text-xs">Дата</th>
-                                <th className="text-right py-2 px-3 text-xs">
-                                  Привезено
-                                </th>
-                                <th className="text-right py-2 px-3 text-xs">
-                                  Продано
-                                </th>
-                                <th className="text-right py-2 px-3 text-xs">
-                                  Списано
-                                </th>
-                                <th className="text-right py-2 px-3 text-xs">
-                                  Остаток
-                                </th>
-                                <th className="text-right py-2 px-3 text-xs">
-                                  Цена закупки
-                                </th>
-                                <th className="text-right py-2 px-3 text-xs">
-                                  Себестоимость
-                                </th>
-                                <th className="text-left py-2 px-3 text-xs">
-                                  Поставщик
-                                </th>
-                                <th className="text-right py-2 px-3 text-xs">
-                                  Действия
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {product.batches.map((batch) => {
-                                const isCurrentBatch = batch.id === currentBatchId;
-                                const isExhausted = batch.remaining === 0;
-                                const totalCost = batch.initialQuantity * batch.purchasePrice;
-                                return (
-                                  <tr
-                                    key={batch.id}
-                                    className={`border-b border-gray-100 ${
-                                      isExhausted
-                                        ? 'bg-gray-50 text-gray-400'
-                                        : 'hover:bg-gray-50'
-                                    }`}
-                                  >
-                                    <td className="py-2 px-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm">
-                                          {batch.batchNumber}
-                                        </span>
-                                        {isCurrentBatch && (
-                                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                            Текущая
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="py-2 px-3 text-sm">
-                                      {new Date(
-                                        batch.deliveryDate
-                                      ).toLocaleDateString('ru-RU')}
-                                    </td>
-                                    <td className="py-2 px-3 text-right text-sm">
-                                      {batch.initialQuantity}
-                                    </td>
-                                    <td className="py-2 px-3 text-right text-sm">
-                                      {batch.sold}
-                                    </td>
-                                    <td className="py-2 px-3 text-right text-sm">
-                                      {batch.writeOff}
-                                    </td>
-                                    <td className="py-2 px-3 text-right">
-                                      <span
-                                        className={`text-sm font-medium ${
-                                          isExhausted
-                                            ? 'text-gray-400'
-                                            : batch.remaining < 5
-                                            ? 'text-orange-600'
-                                            : 'text-gray-900'
-                                        }`}
+
+                    {isExpanded && supply.items.length > 0 && (
+                      <div className="border-t border-gray-200 bg-gray-50">
+                        <table className="w-full">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
+                                Товар
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Количество штук
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Продано
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Списано
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Остаток
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Цена за шт
+                              </th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                Цена общая
+                              </th>
+                              <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">
+                                Действия
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {supply.items.map((item) => {
+                              const isHidden = hiddenItems.has(item.id);
+
+                              return (
+                                <tr
+                                  key={item.id}
+                                  className={`border-b border-gray-200 ${
+                                    isHidden ? 'bg-gray-300 opacity-50' : 'bg-white'
+                                  }`}
+                                >
+                                  <td className="py-2 px-4 text-sm font-medium">
+                                    {item.productName}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {item.totalPieces}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {item.sold}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {item.writeOff}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm font-medium">
+                                    {item.remaining}
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {item.unitPrice.toFixed(2)} ₽
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm font-medium">
+                                    {item.totalPrice.toFixed(2)} ₽
+                                  </td>
+                                  <td className="py-2 px-4">
+                                    <div className="flex items-center justify-center">
+                                      <button
+                                        className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleItemVisibility(item.id);
+                                        }}
+                                        title={isHidden ? 'Показать' : 'Скрыть'}
                                       >
-                                        {batch.remaining}
-                                      </span>
-                                    </td>
-                                    <td className="py-2 px-3 text-right text-sm">
-                                      {batch.purchasePrice} ₽
-                                    </td>
-                                    <td className="py-2 px-3 text-right text-sm">
-                                      {totalCost.toLocaleString()} ₽
-                                    </td>
-                                    <td className="py-2 px-3 text-sm">
-                                      {batch.supplier}
-                                    </td>
-                                    <td className="py-2 px-3">
-                                      <div className="flex items-center justify-end gap-1">
-                                        <button
-                                          className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setWriteOffDialog({
-                                              open: true,
-                                              productId: product.id,
-                                              batchId: batch.id,
-                                              productName: product.productName,
-                                              batchNumber: batch.batchNumber,
-                                              availableQuantity: batch.remaining,
-                                            });
-                                          }}
-                                          disabled={batch.remaining === 0}
-                                          title="Списать"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          className="h-7 w-7 p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded flex items-center justify-center"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteBatch(product.id, batch.id);
-                                          }}
-                                          title="Удалить партию"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                                        {isHidden ? (
+                                          <EyeOff className="w-4 h-4 text-gray-400" />
+                                        ) : (
+                                          <Eye className="w-4 h-4 text-gray-400" />
+                                        )}
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Диалог списания */}
       {writeOffDialog && (
         <WriteOffDialog
           open={writeOffDialog.open}
+          productId={writeOffDialog.productId}
+          batchId={writeOffDialog.batchId}
+          productName={writeOffDialog.productName}
+          batchNumber={writeOffDialog.batchNumber}
+          availableQuantity={writeOffDialog.availableQuantity}
           onClose={() => setWriteOffDialog(null)}
-          onConfirm={(data) =>
-            handleWriteOff(writeOffDialog.productId, writeOffDialog.batchId, data)
-          }
-          batchInfo={{
-            productName: writeOffDialog.productName,
-            batchNumber: writeOffDialog.batchNumber,
-            availableQuantity: writeOffDialog.availableQuantity,
+          onConfirm={(data) => {
+            handleWriteOff(writeOffDialog.productId, writeOffDialog.batchId, data);
           }}
         />
       )}

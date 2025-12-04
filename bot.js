@@ -3385,6 +3385,117 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Получить все поставки с товарами
+app.get('/api/admin/supplies', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Получаем все поставки (новой структуры - с total_amount)
+      const suppliesResult = await client.query(`
+        SELECT 
+          s.id,
+          s.delivery_date,
+          s.total_amount,
+          s.delivery_price,
+          s.comment,
+          s.supplier_id,
+          sup.name as supplier_name
+        FROM supplies s
+        LEFT JOIN suppliers sup ON s.supplier_id = sup.id
+        WHERE s.total_amount IS NOT NULL
+        ORDER BY s.delivery_date DESC, s.id DESC
+      `);
+      
+      // Получаем все товары в поставках
+      const itemsResult = await client.query(`
+        SELECT 
+          si.id,
+          si.supply_id,
+          si.product_id,
+          si.batch_count,
+          si.pieces_per_batch,
+          si.batch_price,
+          si.unit_price,
+          si.total_pieces,
+          p.name as product_name
+        FROM supply_items si
+        LEFT JOIN products p ON si.product_id = p.id
+        ORDER BY si.supply_id, si.id
+      `);
+      
+      // Получаем движения по складу для расчета продано/списано/остаток
+      const movementsResult = await client.query(`
+        SELECT 
+          sm.supply_id,
+          sm.product_id,
+          sm.type,
+          SUM(sm.quantity) as quantity
+        FROM stock_movements sm
+        WHERE sm.supply_id IS NOT NULL
+        GROUP BY sm.supply_id, sm.product_id, sm.type
+      `);
+      
+      // Создаём мапу движений по supply_id и product_id
+      const movementsBySupplyProduct = {};
+      movementsResult.rows.forEach(m => {
+        const key = `${m.supply_id}_${m.product_id}_${m.type}`;
+        movementsBySupplyProduct[key] = parseInt(m.quantity || 0);
+      });
+      
+      // Группируем товары по поставкам
+      const itemsBySupply = {};
+      itemsResult.rows.forEach(item => {
+        if (!itemsBySupply[item.supply_id]) {
+          itemsBySupply[item.supply_id] = [];
+        }
+        
+        // Рассчитываем продано, списано, остаток для каждого товара
+        const sold = movementsBySupplyProduct[`${item.supply_id}_${item.product_id}_SALE`] || 0;
+        const writeOff = movementsBySupplyProduct[`${item.supply_id}_${item.product_id}_WRITE_OFF`] || 0;
+        const remaining = item.total_pieces - sold - writeOff;
+        const totalPrice = item.total_pieces * item.unit_price;
+        
+        itemsBySupply[item.supply_id].push({
+          id: item.id,
+          productId: item.product_id,
+          productName: item.product_name || 'Неизвестный товар',
+          batchCount: item.batch_count,
+          piecesPerBatch: item.pieces_per_batch,
+          batchPrice: parseFloat(item.batch_price),
+          unitPrice: parseFloat(item.unit_price),
+          totalPieces: item.total_pieces,
+          sold: sold,
+          writeOff: writeOff,
+          remaining: remaining,
+          totalPrice: totalPrice
+        });
+      });
+      
+      // Формируем результат
+      const supplies = suppliesResult.rows.map(supply => ({
+        id: supply.id,
+        deliveryDate: supply.delivery_date,
+        supplierName: supply.supplier_name || 'Не указан',
+        totalAmount: parseFloat(supply.total_amount) || 0,
+        deliveryPrice: parseFloat(supply.delivery_price) || 0,
+        comment: supply.comment,
+        items: itemsBySupply[supply.id] || []
+      }));
+      
+      res.json(supplies);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения поставок:', error);
+    res.status(500).json({ error: 'Ошибка получения поставок' });
+  }
+});
+
 // API: Получить поставку по ID
 app.get('/api/admin/warehouse/:id', checkAdminAuth, async (req, res) => {
   if (!pool) {
