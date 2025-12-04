@@ -179,29 +179,64 @@ export function Orders({ authToken }) {
   };
   
   const [filterStatus, setFilterStatus] = useState(getInitialFilter()); // По умолчанию "Все"
-  const [dateFilter, setDateFilter] = useState('week'); // По умолчанию "Неделя"
+  const [dateFilter, setDateFilter] = useState('all'); // По умолчанию "Все" (без фильтра по дате)
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  // Инициализация дат при загрузке компонента
-  useEffect(() => {
-    // Используем локальное время для правильного расчета дат
+  // Функция для форматирования даты в YYYY-MM-DD
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Обработка изменения фильтра даты
+  const handleDateFilterChange = (filter) => {
+    setDateFilter(filter);
+    
     const today = new Date();
     const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const weekAgo = new Date(localToday);
-    weekAgo.setDate(localToday.getDate() - 7);
     
-    // Форматируем даты в формате YYYY-MM-DD для input type="date"
-    const formatDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    
-    setDateFrom(formatDate(weekAgo));
-    setDateTo(formatDate(localToday));
-  }, []);
+    switch (filter) {
+      case 'today':
+        setDateFrom(formatDate(localToday));
+        setDateTo(formatDate(localToday));
+        break;
+      case 'tomorrow':
+        const tomorrow = new Date(localToday);
+        tomorrow.setDate(localToday.getDate() + 1);
+        setDateFrom(formatDate(tomorrow));
+        setDateTo(formatDate(tomorrow));
+        break;
+      case 'dayAfterTomorrow':
+        const dayAfterTomorrow = new Date(localToday);
+        dayAfterTomorrow.setDate(localToday.getDate() + 2);
+        setDateFrom(formatDate(dayAfterTomorrow));
+        setDateTo(formatDate(dayAfterTomorrow));
+        break;
+      case 'week':
+        const weekEnd = new Date(localToday);
+        weekEnd.setDate(localToday.getDate() + 7);
+        setDateFrom(formatDate(localToday));
+        setDateTo(formatDate(weekEnd));
+        break;
+      case 'month':
+        const monthEnd = new Date(localToday);
+        monthEnd.setDate(localToday.getDate() + 30);
+        setDateFrom(formatDate(localToday));
+        setDateTo(formatDate(monthEnd));
+        break;
+      case 'custom':
+        // Оставляем текущие значения dateFrom и dateTo
+        break;
+      case 'all':
+      default:
+        setDateFrom('');
+        setDateTo('');
+        break;
+    }
+  };
 
   // Восстанавливаем фильтр при возврате со страницы деталей заказа
   useEffect(() => {
@@ -270,8 +305,16 @@ export function Orders({ authToken }) {
     try {
       // Формируем URL с параметрами фильтрации по датам
       const params = new URLSearchParams();
-      if (dateFrom) params.append('dateFrom', dateFrom);
-      if (dateTo) params.append('dateTo', dateTo);
+      if (filterStatus && filterStatus !== 'all') {
+        params.append('status', filterStatus);
+      }
+      // Отправляем даты только если фильтр не "all"
+      if (dateFilter !== 'all' && dateFrom) {
+        params.append('dateFrom', dateFrom);
+      }
+      if (dateFilter !== 'all' && dateTo) {
+        params.append('dateTo', dateTo);
+      }
       
       const url = `${API_BASE}/api/admin/orders${params.toString() ? '?' + params.toString() : ''}`;
       
@@ -426,7 +469,9 @@ export function Orders({ authToken }) {
               value={dateFrom}
               onChange={(e) => {
                 setDateFrom(e.target.value);
-                setDateFilter('custom');
+                if (dateFilter !== 'custom') {
+                  setDateFilter('custom');
+                }
               }}
               className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:cursor-pointer"
             />
@@ -438,7 +483,9 @@ export function Orders({ authToken }) {
               value={dateTo}
               onChange={(e) => {
                 setDateTo(e.target.value);
-                setDateFilter('custom');
+                if (dateFilter !== 'custom') {
+                  setDateFilter('custom');
+                }
               }}
               className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:cursor-pointer"
             />
@@ -448,12 +495,13 @@ export function Orders({ authToken }) {
             onChange={(e) => handleDateFilterChange(e.target.value)}
             className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
           >
-            <option value="custom">Кастомный период</option>
+            <option value="all">Все</option>
             <option value="today">Сегодня</option>
-            <option value="yesterday">Вчера</option>
-            <option value="dayBeforeYesterday">Позавчера</option>
+            <option value="tomorrow">Завтра</option>
+            <option value="dayAfterTomorrow">Послезавтра</option>
             <option value="week">Неделя</option>
             <option value="month">Месяц</option>
+            <option value="custom">Кастомный период</option>
           </select>
         </div>
       </div>
