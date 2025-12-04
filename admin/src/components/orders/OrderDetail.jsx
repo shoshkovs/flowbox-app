@@ -446,7 +446,7 @@ export function OrderDetail({ authToken, orderId }) {
           {/* История статусов */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold mb-4">История статусов</h2>
-            <div className="space-y-2">
+            <div className="space-y-4">
               {orderHistory.length > 0 ? (
                 orderHistory.map((item, index) => {
                   const dateTime = item.created_at 
@@ -460,22 +460,59 @@ export function OrderDetail({ authToken, orderId }) {
                     : '-';
                   
                   return (
-                    <div key={index} className="flex items-center gap-2 py-1">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
-                        {getStatusLabel(item.status)}
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        {dateTime}
-                      </span>
+                    <div key={index} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                        {index < orderHistory.length - 1 && (
+                          <div className="w-px h-full bg-gray-200 my-1 min-h-[40px]" />
+                        )}
+                      </div>
+                      <div className="flex-1 pb-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
+                            {getStatusLabel(item.status)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {dateTime}
+                          </span>
+                        </div>
+                        {item.comment && (
+                          <p className="text-sm text-gray-600">{item.comment}</p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">
+                          {item.changed_by || item.source || 'Система'}
+                        </p>
+                      </div>
                     </div>
                   );
                 })
               ) : (
                 <div>
                   <p className="text-gray-500 text-sm mb-2">История пуста</p>
-                  <p className="text-xs text-gray-400">
-                    {order ? `Текущий статус: ${getStatusLabel(order.status)}` : ''}
-                  </p>
+                  {order && (
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
+                            {getStatusLabel(order.status)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { 
+                              day: '2-digit', 
+                              month: '2-digit', 
+                              year: 'numeric', 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            }) : '-'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">Текущий статус</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

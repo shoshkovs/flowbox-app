@@ -1370,6 +1370,7 @@ async function createOrderInDb(orderData) {
            VALUES ($1, $2, $3, $4)`,
           [order.id, 'NEW', 'system', 'Заказ создан через мини-апп']
         );
+        console.log(`✅ Создана запись в истории статусов для заказа #${order.id}`);
       } catch (historyError) {
         // Игнорируем ошибки истории (таблица может не существовать)
         console.log('⚠️  Не удалось создать запись в истории статусов:', historyError.message);
@@ -4119,6 +4120,7 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
           'SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at ASC',
           [id]
         );
+        console.log(`📋 История статусов для заказа #${id}: найдено ${result.rows.length} записей`);
         res.json(result.rows);
       } else {
         // Таблица не существует, возвращаем пустой массив
