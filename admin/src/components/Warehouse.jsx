@@ -421,7 +421,7 @@ export function Warehouse({ authToken }) {
                           <thead className="bg-gray-100">
                             <tr>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
-                                Партия
+                                ID поставки
                               </th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
                                 Дата
@@ -466,7 +466,7 @@ export function Warehouse({ authToken }) {
                                   }`}
                                 >
                                   <td className="py-2 px-4 text-sm">
-                                    {batch.batchNumber}
+                                    {batch.supplyId || batch.id}
                                     {isCurrent && (
                                       <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
                                         Текущая
