@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, TrendingDown, TrendingUp, AlertTriangle, Plus, Edit, RefreshCw } from 'lucide-react';
+import { Package, TrendingDown, TrendingUp, AlertTriangle, Plus, Edit, RefreshCw, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
@@ -11,7 +12,6 @@ export function Warehouse({ authToken }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [writeOffModal, setWriteOffModal] = useState({ open: false, product: null });
   const [writeOffQty, setWriteOffQty] = useState('');
-  const [writeOffComment, setWriteOffComment] = useState('');
   
   useEffect(() => {
     loadProducts();
@@ -214,106 +214,83 @@ export function Warehouse({ authToken }) {
         </div>
       </div>
 
-      {/* Модалка списания */}
+      {/* Модальное окно списания */}
       {writeOffModal.open && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Списать товар</h2>
-              <button
-                onClick={() => {
-                  setWriteOffModal({ open: false, product: null });
-                  setWriteOffQty('');
-                  setWriteOffComment('');
-                }}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 relative">
+            {/* Крестик для закрытия справа */}
+            <button
+              onClick={() => {
+                setWriteOffModal({ open: false, product: null });
+                setWriteOffQty('');
+              }}
+              className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
             
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Товар: {writeOffModal.product?.product_name || writeOffModal.product?.name}</p>
-              <p className="text-sm text-gray-600">Остаток: {writeOffModal.product?.stock || 0}</p>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Количество для списания *</label>
+            <h2 className="text-xl font-bold mb-6 pr-8">Списать</h2>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Количество</label>
               <input
                 type="number"
                 min="1"
-                max={writeOffModal.product?.stock || 0}
                 value={writeOffQty}
-                onChange={(e) => setWriteOffQty(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                placeholder="Введите количество"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Разрешаем только целые числа больше 0
+                  if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
+                    setWriteOffQty(value);
+                  }
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                placeholder="Введите целое число больше 0"
+                autoFocus
               />
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Комментарий (необязательно)</label>
-              <textarea
-                value={writeOffComment}
-                onChange={(e) => setWriteOffComment(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                rows="3"
-                placeholder="Причина списания"
-              />
-            </div>
+            <button
+              onClick={async () => {
+                const qty = parseInt(writeOffQty);
+                if (!qty || qty <= 0 || !Number.isInteger(qty)) {
+                  toast.error('Введите целое число больше 0');
+                  return;
+                }
 
-            <div className="flex gap-3">
-              <button
-                onClick={async () => {
-                  const qty = parseInt(writeOffQty);
-                  if (!qty || qty <= 0 || qty > (writeOffModal.product?.stock || 0)) {
-                    toast.error('Некорректное количество');
-                    return;
+                try {
+                  const response = await fetch(`${API_BASE}/api/admin/warehouse/write-off`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${authToken}`,
+                    },
+                    body: JSON.stringify({
+                      product_id: writeOffModal.product?.product_id || writeOffModal.product?.id,
+                      quantity: qty,
+                      comment: null,
+                    }),
+                  });
+
+                  if (response.ok) {
+                    toast.success('Товар успешно списан');
+                    setWriteOffModal({ open: false, product: null });
+                    setWriteOffQty('');
+                    // Перезагружаем данные для обновления граф "Списано" и "Остаток"
+                    await loadProducts();
+                  } else {
+                    const error = await response.json();
+                    toast.error(error.error || 'Ошибка списания товара');
                   }
-
-                  try {
-                    const response = await fetch(`${API_BASE}/api/admin/warehouse/write-off`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`,
-                      },
-                      body: JSON.stringify({
-                        product_id: writeOffModal.product?.product_id || writeOffModal.product?.id,
-                        quantity: qty,
-                        comment: writeOffComment || null,
-                      }),
-                    });
-
-                    if (response.ok) {
-                      toast.success('Товар успешно списан');
-                      setWriteOffModal({ open: false, product: null });
-                      setWriteOffQty('');
-                      setWriteOffComment('');
-                      loadProducts();
-                    } else {
-                      const error = await response.json();
-                      toast.error(error.error || 'Ошибка списания товара');
-                    }
-                  } catch (error) {
-                    console.error('Ошибка списания:', error);
-                    toast.error('Ошибка списания товара');
-                  }
-                }}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-              >
-                Списать
-              </button>
-              <button
-                onClick={() => {
-                  setWriteOffModal({ open: false, product: null });
-                  setWriteOffQty('');
-                  setWriteOffComment('');
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Отмена
-              </button>
-            </div>
+                } catch (error) {
+                  console.error('Ошибка списания:', error);
+                  toast.error('Ошибка списания товара');
+                }
+              }}
+              className="w-full bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition-colors"
+            >
+              Сохранить
+            </button>
           </div>
         </div>
       )}
