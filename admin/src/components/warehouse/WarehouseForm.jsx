@@ -18,7 +18,7 @@ export function WarehouseForm({ authToken }) {
     quantity: '',
     purchase_price: '',
     delivery_date: new Date().toISOString().split('T')[0],
-    comment: '',
+    supplier: '',
   });
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function WarehouseForm({ authToken }) {
   };
 
   const handleSaveDelivery = async () => {
-    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date) {
+    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date || !deliveryForm.supplier) {
       toast.error('Заполните все обязательные поля');
       return;
     }
@@ -88,7 +88,7 @@ export function WarehouseForm({ authToken }) {
           quantity: quantityInt,
           purchase_price: purchasePriceFloat,
           delivery_date: deliveryForm.delivery_date,
-          comment: deliveryForm.comment || null,
+          supplier: deliveryForm.supplier || null,
         }),
       });
 
@@ -239,13 +239,17 @@ export function WarehouseForm({ authToken }) {
                 type="date"
                 value={deliveryForm.delivery_date}
                 onChange={(e) => setDeliveryForm({ ...deliveryForm, delivery_date: e.target.value })}
-                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
               />
               <button
                 type="button"
-                onClick={() => {
-                  const input = document.querySelector('input[type="date"]');
-                  if (input) input.showPicker?.();
+                onClick={(e) => {
+                  e.preventDefault();
+                  const input = e.target.closest('.relative').querySelector('input[type="date"]');
+                  if (input) {
+                    input.showPicker?.();
+                    input.focus();
+                  }
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
@@ -254,13 +258,15 @@ export function WarehouseForm({ authToken }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Комментарий</label>
-            <textarea
-              value={deliveryForm.comment}
-              onChange={(e) => setDeliveryForm({ ...deliveryForm, comment: e.target.value })}
+            <label className="block text-sm font-medium mb-1">
+              Поставщик <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={deliveryForm.supplier}
+              onChange={(e) => setDeliveryForm({ ...deliveryForm, supplier: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              rows="4"
-              placeholder="Дополнительная информация о поставке..."
+              placeholder="Название поставщика"
             />
           </div>
         </div>

@@ -3305,7 +3305,7 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { product_id, quantity, purchase_price, delivery_date, comment } = req.body;
+  const { product_id, quantity, purchase_price, delivery_date, supplier } = req.body;
   
   if (!product_id || !quantity || !purchase_price || !delivery_date) {
     return res.status(400).json({ error: 'Товар, количество, цена закупки и дата поставки обязательны' });
@@ -3345,10 +3345,10 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
       
       // Создаем поставку
       const supplyResult = await client.query(
-        `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, comment)
+        `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [product_id, quantityInt, purchasePriceRounded, delivery_date, comment || null]
+        [product_id, quantityInt, purchasePriceRounded, delivery_date, supplier || null]
       );
       
       const supply = supplyResult.rows[0];
