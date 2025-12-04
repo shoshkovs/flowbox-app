@@ -2652,6 +2652,30 @@ function loadActiveOrders() {
                 const statusText = getOrderStatusText(order.status);
                 const statusClass = getOrderStatusClass(order.status);
                 console.log(`📦 Заказ #${order.id}, статус: ${order.status} -> "${statusText}"`);
+                
+                // Форматируем дату доставки для отображения
+                let deliveryDateFormatted = '';
+                if (order.deliveryDate) {
+                    try {
+                        const deliveryDate = new Date(order.deliveryDate);
+                        deliveryDateFormatted = deliveryDate.toLocaleDateString('ru-RU', {
+                            day: 'numeric',
+                            month: 'long'
+                        });
+                    } catch (e) {
+                        deliveryDateFormatted = order.deliveryDate;
+                    }
+                }
+                
+                // Форматируем время доставки (если формат "10-12", преобразуем в "10:00–12:00")
+                let deliveryTimeFormatted = order.deliveryTime || '';
+                if (deliveryTimeFormatted && !deliveryTimeFormatted.includes(':')) {
+                    const timeParts = deliveryTimeFormatted.split('-');
+                    if (timeParts.length === 2) {
+                        deliveryTimeFormatted = `${timeParts[0]}:00–${timeParts[1]}:00`;
+                    }
+                }
+                
                 return `
                 <div class="order-item">
                     <div class="order-item-header">
@@ -2660,7 +2684,7 @@ function loadActiveOrders() {
                     </div>
                     <p class="order-date">Дата: ${order.date}</p>
                     <p class="order-address">Адрес: ${order.address || 'Не указан'}</p>
-                    ${order.deliveryDate ? `<p class="order-delivery">Доставка: ${order.deliveryDate} ${order.deliveryTime || ''}</p>` : ''}
+                    ${deliveryDateFormatted ? `<p class="order-delivery">Доставим ${deliveryDateFormatted}${deliveryTimeFormatted ? ` с ${deliveryTimeFormatted}` : ''} по адресу</p>` : ''}
                     <p class="order-total">Сумма: ${order.total} ₽</p>
                 </div>
             `;
