@@ -3617,45 +3617,12 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
       
       const result = await client.query(query, params);
       
-      // Логирование для отладки
-      if (result.rows.length > 0) {
-        const firstOrder = result.rows[0];
-        console.log('🔍 Первый заказ из БД:', {
-          id: firstOrder.id,
-          created_at: firstOrder.created_at,
-          created_at_type: typeof firstOrder.created_at,
-          created_at_value: firstOrder.created_at ? firstOrder.created_at.toString() : 'null',
-          created_at_iso: firstOrder.created_at ? firstOrder.created_at.toISOString() : 'null'
-        });
-      }
-      
       // Преобразуем address_json из JSONB в объект и исправляем поле total
-      const orders = result.rows.map(row => {
-        // Логирование для каждого заказа (только первые 3 для экономии логов)
-        if (result.rows.indexOf(row) < 3) {
-          console.log('📦 Заказ #' + row.id + ':', {
-            created_at: row.created_at,
-            created_at_type: typeof row.created_at,
-            created_at_string: row.created_at ? row.created_at.toString() : 'null',
-            created_at_iso: row.created_at ? row.created_at.toISOString() : 'null'
-          });
-        }
-        
-        return {
-          ...row,
-          total: row.total || 0, // Используем total вместо total_amount
-          address_data: typeof row.address_json === 'object' ? row.address_json : (row.address_json ? JSON.parse(row.address_json) : {})
-        };
-      });
-      
-      console.log('📤 Отправляем заказов:', orders.length);
-      if (orders.length > 0) {
-        console.log('📤 Первый заказ в ответе:', {
-          id: orders[0].id,
-          created_at: orders[0].created_at,
-          created_at_type: typeof orders[0].created_at
-        });
-      }
+      const orders = result.rows.map(row => ({
+        ...row,
+        total: row.total || 0, // Используем total вместо total_amount
+        address_data: typeof row.address_json === 'object' ? row.address_json : (row.address_json ? JSON.parse(row.address_json) : {})
+      }));
       
       res.json(orders);
     } finally {

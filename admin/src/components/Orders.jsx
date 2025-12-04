@@ -7,10 +7,7 @@ const API_BASE = window.location.origin;
 
 // Функция для форматирования дат в человеко-понятный формат
 function formatHumanDate(dateInput) {
-  console.log('🔧 formatHumanDate called with:', dateInput, 'type:', typeof dateInput);
-  
   if (!dateInput) {
-    console.log('⚠️ formatHumanDate: dateInput is empty');
     return '';
   }
   
@@ -18,33 +15,25 @@ function formatHumanDate(dateInput) {
   let date;
   if (dateInput instanceof Date) {
     date = dateInput;
-    console.log('📅 formatHumanDate: dateInput is Date object');
   } else if (typeof dateInput === 'string') {
     // Если это ISO строка с временем (YYYY-MM-DDTHH:mm:ss.sssZ), используем стандартный парсер
     if (dateInput.includes('T') || dateInput.includes('Z')) {
       date = new Date(dateInput);
-      console.log('📅 formatHumanDate: parsed ISO string with time', date);
     } else if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
       // Если это только дата без времени (YYYY-MM-DD), парсим вручную
       const [year, month, day] = dateInput.split('-').map(Number);
       date = new Date(year, month - 1, day);
-      console.log('📅 formatHumanDate: parsed date-only string', { year, month, day, date });
     } else {
       date = new Date(dateInput);
-      console.log('📅 formatHumanDate: parsed string as Date', date);
     }
   } else {
     date = new Date(dateInput);
-    console.log('📅 formatHumanDate: converted to Date', date);
   }
   
   // Проверяем валидность даты
   if (isNaN(date.getTime())) {
-    console.log('❌ formatHumanDate: invalid date');
     return '';
   }
-  
-  console.log('✅ formatHumanDate: valid date', date);
   
   // Нормализуем даты (убираем время, оставляем только дату)
   const today = new Date();
@@ -467,34 +456,21 @@ export function Orders({ authToken }) {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4">ID</th>
-                <th className="text-left py-3 px-4">Состав заказа</th>
-                <th className="text-left py-3 px-4 min-w-[140px]">Дата</th>
-                <th className="text-left py-3 px-4">Статус</th>
-                <th className="text-left py-3 px-4">Клиент</th>
-                <th className="text-left py-3 px-4">Сумма</th>
-                <th className="text-left py-3 px-4">Доставка</th>
-                <th className="text-right py-3 px-4">Действия</th>
+                <th className="text-left py-3 px-2 w-16">ID</th>
+                <th className="text-left py-3 px-2 w-48">Состав заказа</th>
+                <th className="text-left py-3 px-2 w-32">Дата</th>
+                <th className="text-left py-3 px-2 w-32">Статус</th>
+                <th className="text-left py-3 px-2 w-40">Клиент</th>
+                <th className="text-left py-3 px-2 w-24">Сумма</th>
+                <th className="text-left py-3 px-2 w-32">Доставка</th>
+                <th className="text-right py-3 px-2 w-20">Действия</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => {
-                // Логирование для отладки
-                console.log('🔍 Order data:', {
-                  id: order.id,
-                  created_at: order.created_at,
-                  created_at_type: typeof order.created_at,
-                  created_at_value: order.created_at
-                });
-                
                 const orderDate = order.created_at ? new Date(order.created_at) : null;
-                console.log('📅 Parsed date:', orderDate, 'isValid:', orderDate && !isNaN(orderDate.getTime()));
-                
                 const dateStr = orderDate ? formatHumanDate(order.created_at) : '-';
-                console.log('📝 Formatted date string:', dateStr, 'length:', dateStr?.length);
-                
                 const timeStr = orderDate ? orderDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
-                console.log('⏰ Formatted time string:', timeStr);
                 
                 // Формируем список товаров для отображения
                 const orderItems = order.items && Array.isArray(order.items) ? order.items : [];
@@ -521,11 +497,11 @@ export function Orders({ authToken }) {
                         <div className="text-gray-500">-</div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600 min-w-[140px] whitespace-nowrap">
+                    <td className="py-3 px-2 text-sm text-gray-600 whitespace-nowrap">
                       <div className="font-medium">{dateStr}</div>
                       <div className="text-xs text-gray-500 mt-0.5">{timeStr}</div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-2">
                       <select
                         value={order.status || 'NEW'}
                         onChange={(e) => handleStatusChange(order.id, e.target.value, e)}
@@ -549,22 +525,22 @@ export function Orders({ authToken }) {
                         <option value="CANCELED">Отменён</option>
                       </select>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-2">
                       <div>
-                        <div>{order.customer_name || '-'}</div>
-                        <div className="text-sm text-gray-500">{order.customer_phone || '-'}</div>
+                        <div className="text-sm">{order.customer_name || '-'}</div>
+                        <div className="text-xs text-gray-500">{order.customer_phone || '-'}</div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-semibold">
+                    <td className="py-3 px-2 font-semibold text-sm">
                       {parseFloat(order.total || 0).toLocaleString()} ₽
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-2">
                       <div className="text-sm">
                         <div>{order.delivery_date ? formatHumanDate(order.delivery_date) : '-'}</div>
-                        <div className="text-gray-500">{formatDeliveryTime(order.delivery_time)}</div>
+                        <div className="text-xs text-gray-500">{formatDeliveryTime(order.delivery_time)}</div>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-2">
                       <div className="flex items-center justify-end gap-2">
                         <button 
                           onClick={(e) => {
