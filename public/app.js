@@ -331,13 +331,15 @@ function changeProductQuantity(productId, delta) {
 }
 
 // Добавление в корзину
-function addToCart(productId, quantity = 1) {
+function addToCart(productId, quantity = null) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
     const minQty = getMinQty(product);
-    // Округляем количество до ближайшего кратного minQty (вверх)
-    const actualQty = roundUpToStep(Math.max(minQty, quantity), minQty);
+    // Используем переданное quantity или текущее количество из productQuantities
+    // НЕ округляем - используем именно то количество, которое выбрал пользователь
+    const currentQty = productQuantities[productId] || minQty;
+    const actualQty = quantity !== null ? Math.max(minQty, quantity) : Math.max(minQty, currentQty);
 
     const existingItem = cart.find(item => item.id === productId);
     
@@ -346,7 +348,7 @@ function addToCart(productId, quantity = 1) {
     } else {
         cart.push({
             ...product,
-            quantity: actualQty,
+            quantity: actualQty, // Используем выбранное количество, а не minQty
             minStemQuantity: product.minStemQuantity, // Сохраняем minStemQuantity в элементе корзины
             min_order_quantity: product.min_order_quantity,
             min_stem_quantity: product.min_stem_quantity
@@ -636,10 +638,10 @@ function updateCartUI() {
         // Рендер товаров в корзине
         cartItemsList.innerHTML = cart.map(item => {
             const minQty = getMinQty(item);
-            // Округляем количество до кратного minQty (на случай, если было изменено вручную)
-            const roundedQty = roundUpToStep(item.quantity, minQty);
-            if (roundedQty !== item.quantity) {
-                item.quantity = roundedQty;
+            // НЕ округляем количество - используем именно то, что выбрал пользователь
+            // Проверяем только, что количество не меньше минимума
+            if (item.quantity < minQty) {
+                item.quantity = minQty;
             }
             const isMinQty = item.quantity <= minQty;
             
