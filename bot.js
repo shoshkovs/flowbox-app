@@ -2045,6 +2045,54 @@ app.get('/api/admin/colors', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Получить поставщиков
+app.get('/api/admin/suppliers', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM suppliers ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения поставщиков:', error);
+    res.status(500).json({ error: 'Ошибка получения поставщиков' });
+  }
+});
+
+// API: Создать поставщика
+app.post('/api/admin/suppliers', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Название поставщика обязательно' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'INSERT INTO suppliers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING *',
+        [name.trim()]
+      );
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка создания поставщика:', error);
+    res.status(500).json({ error: 'Ошибка создания поставщика' });
+  }
+});
+
 // API: Создать цвет
 app.post('/api/admin/colors', checkAdminAuth, async (req, res) => {
   if (!pool) {
