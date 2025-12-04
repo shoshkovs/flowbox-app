@@ -81,7 +81,7 @@ export function Warehouse({ authToken }) {
     (product) => product.totalRemaining === 0
   ).length;
 
-  const toggleProduct = (productId: string) => {
+  const toggleProduct = (productId) => {
     const newExpanded = new Set(expandedProducts);
     if (newExpanded.has(productId)) {
       newExpanded.delete(productId);
