@@ -482,20 +482,8 @@ export function Orders({ authToken }) {
                     key={order.id} 
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-2">
                       <span className="text-blue-600 font-medium">#{order.id}</span>
-                    </td>
-                    <td className="py-3 px-2 text-sm">
-                      {displayItems.length > 0 ? (
-                        <div className="text-gray-900 space-y-1">
-                          {displayItems.map((item, idx) => (
-                            <div key={idx}>{item.name} × {item.quantity}</div>
-                          ))}
-                          {hasMoreItems && <div className="text-gray-500">...</div>}
-                        </div>
-                      ) : (
-                        <div className="text-gray-500">-</div>
-                      )}
                     </td>
                     <td className="py-3 px-2 text-sm text-gray-600 whitespace-nowrap">
                       <div className="font-medium">{dateStr}</div>
@@ -525,6 +513,24 @@ export function Orders({ authToken }) {
                         <option value="CANCELED">Отменён</option>
                       </select>
                     </td>
+                    <td className="py-3 px-2 text-sm">
+                      {displayItems.length > 0 ? (
+                        <div className="text-gray-900 space-y-1">
+                          {displayItems.map((item, idx) => (
+                            <div key={idx}>{item.name} × {item.quantity}</div>
+                          ))}
+                          {hasMoreItems && <div className="text-gray-500">...</div>}
+                        </div>
+                      ) : (
+                        <div className="text-gray-500">-</div>
+                      )}
+                    </td>
+                    <td className="py-3 px-2">
+                      <div className="text-sm">
+                        <div>{order.delivery_date ? formatHumanDate(order.delivery_date) : '-'}</div>
+                        <div className="text-xs text-gray-500">{formatDeliveryTime(order.delivery_time)}</div>
+                      </div>
+                    </td>
                     <td className="py-3 px-2">
                       <div>
                         <div className="text-sm">{order.customer_name || '-'}</div>
@@ -533,12 +539,6 @@ export function Orders({ authToken }) {
                     </td>
                     <td className="py-3 px-2 font-semibold text-sm">
                       {parseFloat(order.total || 0).toLocaleString()} ₽
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="text-sm">
-                        <div>{order.delivery_date ? formatHumanDate(order.delivery_date) : '-'}</div>
-                        <div className="text-xs text-gray-500">{formatDeliveryTime(order.delivery_time)}</div>
-                      </div>
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex items-center justify-end gap-2">
