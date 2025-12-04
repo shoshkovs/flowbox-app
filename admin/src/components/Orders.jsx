@@ -436,8 +436,20 @@ export function Orders({ authToken }) {
             </thead>
             <tbody>
               {orders.map((order) => {
+                // Логирование для отладки
+                console.log('🔍 Order data:', {
+                  id: order.id,
+                  created_at: order.created_at,
+                  created_at_type: typeof order.created_at,
+                  created_at_value: order.created_at
+                });
+                
                 const orderDate = order.created_at ? new Date(order.created_at) : null;
+                console.log('📅 Parsed date:', orderDate, 'isValid:', orderDate && !isNaN(orderDate.getTime()));
+                
                 const dateStr = orderDate ? formatHumanDate(order.created_at) : '-';
+                console.log('📝 Formatted date string:', dateStr);
+                
                 const timeStr = orderDate ? orderDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
                 
                 // Формируем список товаров для отображения
