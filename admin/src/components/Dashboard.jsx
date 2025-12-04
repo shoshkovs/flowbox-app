@@ -245,9 +245,9 @@ export function Dashboard({ authToken }) {
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div>
-                    <p className="font-medium">{item.name || item.product_name || 'Товар'}</p>
+                    <p className="font-medium">{item.productName || item.name || item.product_name || 'Товар'}</p>
                     <p className="text-sm text-gray-600 mt-1">
-                      Остаток: <span className="font-semibold text-red-600">{item.stock || 0}</span>
+                      Остаток: <span className="font-semibold text-red-600">{item.totalRemaining || 0}</span>
                     </p>
                   </div>
                   <div className="text-right">

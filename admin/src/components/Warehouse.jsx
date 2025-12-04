@@ -160,37 +160,6 @@ export function Warehouse({ authToken }) {
     }
   };
 
-  const handleClearAll = async () => {
-    if (!confirm('⚠️ ВНИМАНИЕ! Это удалит ВСЕ поставки и заказы из базы данных. Продолжить?')) {
-      return;
-    }
-    
-    if (!confirm('Вы действительно уверены? Это действие нельзя отменить!')) {
-      return;
-    }
-    
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/warehouse/clear-all`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Ошибка очистки базы');
-      }
-      
-      const data = await response.json();
-      toast.success('База данных успешно очищена');
-      await loadWarehouseData();
-    } catch (error) {
-      console.error('Ошибка очистки базы:', error);
-      toast.error(error.message || 'Ошибка очистки базы данных');
-    }
-  };
-
   const handleSaveSupply = async (data) => {
     try {
       const response = await fetch(`${API_BASE}/api/admin/supplies`, {
@@ -245,22 +214,13 @@ export function Warehouse({ authToken }) {
           <h1 className="text-3xl">Склад</h1>
           <p className="text-gray-600 mt-1">Партийный учет товаров и поставок</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleClearAll}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-            title="Очистить все поставки и заказы"
-          >
-            🗑️ Очистить базу
-          </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Добавить поставку
-          </button>
-        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Добавить поставку
+        </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
