@@ -1122,8 +1122,11 @@ async function createOrderInDb(orderData) {
       const clientPhone = orderData.phone || userData?.phone || null;
       const clientEmail = orderData.email || userData?.email || null;
       
-      // Комментарий пользователя (для флориста/доставки)
+      // Комментарий пользователя (особые пожелания к заказу)
       const userComment = orderData.userComment || orderData.comment || null;
+      
+      // Комментарий для курьера (из поля адреса)
+      const courierComment = orderData.courierComment || null;
       
       // Определяем delivery_zone из deliveryPrice
       let deliveryZone = null;

@@ -1701,7 +1701,8 @@ async function validateAndSubmitOrder(e) {
         addressData: addressData,
         deliveryDate: deliveryDate,
         deliveryTime: deliveryTime,
-        comment: comment,
+        comment: comment, // Особые пожелания к заказу (user_comment)
+        courierComment: addressData?.comment || null, // Комментарий для курьера (courier_comment)
         userId: tg.initDataUnsafe?.user?.id || null,
         username: tg.initDataUnsafe?.user?.username || null,
         phone_number: tg.initDataUnsafe?.user?.phone_number || null // Номер телефона из Telegram (если доступен)

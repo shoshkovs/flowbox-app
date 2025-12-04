@@ -351,12 +351,12 @@ export function OrderDetail({ authToken, orderId }) {
                   </p>
                 </div>
               </div>
-              {order.user_comment && (
+              {order.courier_comment && (
                 <div className="flex items-start gap-3">
                   <MessageSquare className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Комментарий к доставке</p>
-                    <p className="text-gray-700">{order.user_comment}</p>
+                    <p className="text-gray-700">{order.courier_comment}</p>
                   </div>
                 </div>
               )}
