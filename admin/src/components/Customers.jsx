@@ -133,10 +133,12 @@ export function Customers({ authToken }) {
     ? customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / customers.length 
     : 0;
   const newThisMonth = customers.filter(c => {
-    if (!c.lastOrderDate) return false;
-    const orderDate = new Date(c.lastOrderDate);
+    // Считаем по дате создания аккаунта (registered_at или created_at)
+    const accountDate = c.registered_at || c.created_at;
+    if (!accountDate) return false;
+    const userDate = new Date(accountDate);
     const now = new Date();
-    return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+    return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
   }).length;
 
   if (loading) {

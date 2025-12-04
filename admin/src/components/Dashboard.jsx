@@ -82,13 +82,15 @@ export function Dashboard({ authToken }) {
           lowStockItemsList = warehouseData.filter(item => (parseInt(item.stock) || 0) < 20);
         }
         
-        // Новых пользователей: пользователи, созданные сегодня (в первый раз запустили мини-апп)
+        // Новых пользователей: пользователи, созданные сегодня (по дате создания аккаунта)
         let newUsersCount = 0;
         if (customersRes.ok) {
           const customers = await customersRes.json();
           const newUsers = customers.filter(c => {
-            if (!c.created_at) return false;
-            const userDate = new Date(c.created_at);
+            // Используем registered_at или created_at для определения даты создания аккаунта
+            const accountDate = c.registered_at || c.created_at;
+            if (!accountDate) return false;
+            const userDate = new Date(accountDate);
             return userDate >= today && userDate <= todayEnd;
           });
           newUsersCount = newUsers.length;
