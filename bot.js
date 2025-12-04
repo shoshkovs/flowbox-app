@@ -2378,6 +2378,27 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
         paramIndex++;
       }
       
+      // Обновляем features, если переданы quality_ids или features
+      if (quality_ids !== undefined || features !== undefined) {
+        let featuresArray = [];
+        if (features && Array.isArray(features)) {
+          featuresArray = features;
+        } else if (quality_ids && Array.isArray(quality_ids) && quality_ids.length > 0) {
+          // Получаем названия качеств по ID
+          const qualityNames = await client.query(
+            'SELECT name FROM product_qualities WHERE id = ANY($1::int[])',
+            [quality_ids]
+          );
+          featuresArray = qualityNames.rows.map(r => r.name);
+        }
+        
+        if (featuresArray.length > 0) {
+          updates.push(`features = $${paramIndex}`);
+          params.push(featuresArray);
+          paramIndex++;
+        }
+      }
+      
       if (updates.length === 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: 'Нет полей для обновления' });
