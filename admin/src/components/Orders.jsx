@@ -347,61 +347,6 @@ export function Orders({ authToken }) {
     }
   };
 
-  const handleDateFilterChange = (period) => {
-    setDateFilter(period);
-    
-    // Используем локальное время для правильного расчета дат
-    const today = new Date();
-    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    let fromDate = new Date(localToday);
-    let toDate = new Date(localToday);
-    
-    // Функция для форматирования даты в YYYY-MM-DD
-    const formatDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    
-    switch (period) {
-      case 'today':
-        fromDate = new Date(localToday);
-        toDate = new Date(localToday);
-        break;
-      case 'yesterday':
-        fromDate = new Date(localToday);
-        fromDate.setDate(localToday.getDate() - 1);
-        toDate = new Date(localToday);
-        toDate.setDate(localToday.getDate() - 1);
-        break;
-      case 'dayBeforeYesterday':
-        fromDate = new Date(localToday);
-        fromDate.setDate(localToday.getDate() - 2);
-        toDate = new Date(localToday);
-        toDate.setDate(localToday.getDate() - 2);
-        break;
-      case 'week':
-        fromDate = new Date(localToday);
-        fromDate.setDate(localToday.getDate() - 7);
-        toDate = new Date(localToday);
-        break;
-      case 'month':
-        fromDate = new Date(localToday);
-        fromDate.setMonth(localToday.getMonth() - 1);
-        toDate = new Date(localToday);
-        break;
-      default:
-        // Кастомный период - не меняем даты
-        return;
-    }
-    
-    setDateFrom(formatDate(fromDate));
-    setDateTo(formatDate(toDate));
-  };
-
-
   const getStatusLabel = (status) => {
     const labels = {
       UNPAID: 'Не оплачен',
