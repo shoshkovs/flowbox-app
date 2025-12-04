@@ -3343,9 +3343,11 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
         
         // Формируем партии
         const batches = supplies.map(supply => {
+          // Используем SUPPLY движения для получения начального количества
+          const supplied = movementsBySupply[`${supply.id}_SUPPLY`] || supply.initial_quantity;
           const sold = movementsBySupply[`${supply.id}_SALE`] || 0;
           const writeOff = movementsBySupply[`${supply.id}_WRITE_OFF`] || 0;
-          const remaining = supply.initial_quantity - sold - writeOff;
+          const remaining = Math.max(0, supplied - sold - writeOff); // Не допускаем отрицательные остатки
           
           // Используем parent_supply_id если есть, иначе id (для старых записей)
           const displaySupplyId = supply.parent_supply_id || supply.id;
