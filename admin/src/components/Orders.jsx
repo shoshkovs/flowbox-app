@@ -55,6 +55,10 @@ export function Orders({ authToken }) {
         // Фильтруем локально
         if (filterStatus === 'all') {
           setOrders(allData);
+        } else if (filterStatus === 'processing') {
+          // "В обработке" включает только PROCESSING
+          const filtered = allData.filter(order => order.status === 'PROCESSING');
+          setOrders(filtered);
         } else {
           const filtered = allData.filter(order => order.status === filterStatus);
           setOrders(filtered);
@@ -127,7 +131,7 @@ export function Orders({ authToken }) {
         {[
           { key: 'all', label: 'Все' },
           { key: 'NEW', label: 'Новые' },
-          { key: 'PROCESSING', label: 'В обработке' },
+          { key: 'processing', label: 'В обработке' },
           { key: 'COLLECTING', label: 'Собирается' },
           { key: 'DELIVERING', label: 'В доставке' },
           { key: 'COMPLETED', label: 'Завершённые' },
@@ -136,6 +140,8 @@ export function Orders({ authToken }) {
           let count = 0;
           if (key === 'all') {
             count = allOrders.length;
+          } else if (key === 'processing') {
+            count = allOrders.filter(o => o.status === 'PROCESSING').length;
           } else {
             count = allOrders.filter(o => o.status === key).length;
           }
@@ -191,8 +197,8 @@ export function Orders({ authToken }) {
                   </td>
                   <td className="py-3 px-4">
                     <div>
-                      <div>{order.customer_name || order.client_name || '-'}</div>
-                      <div className="text-sm text-gray-500">{order.customer_phone || order.client_phone || '-'}</div>
+                      <div>{order.customer_name || '-'}</div>
+                      <div className="text-sm text-gray-500">{order.customer_phone || '-'}</div>
                     </div>
                   </td>
                   <td className="py-3 px-4">

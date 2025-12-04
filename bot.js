@@ -1137,32 +1137,7 @@ async function createOrderInDb(orderData) {
         deliveryZone = 'До 20 км от КАД';
       }
       
-      // ВАЖНО: Проверяем остатки ПЕРЕД созданием заказа
-      for (const item of orderData.items || []) {
-        const productId = item.id;
-        const requestedQty = item.quantity || 0;
-        
-        // Рассчитываем доступный остаток по движениям
-        const stockResult = await client.query(
-          `SELECT 
-            COALESCE(SUM(CASE WHEN type = 'SUPPLY' THEN quantity ELSE 0 END), 0) - 
-            COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) - 
-            COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as available
-          FROM stock_movements
-          WHERE product_id = $1`,
-          [productId]
-        );
-        
-        const available = parseInt(stockResult.rows[0]?.available || 0);
-        
-        if (requestedQty > available) {
-          await client.query('ROLLBACK');
-          const productName = item.name || `товар #${productId}`;
-          throw new Error(`Недостаточно товара на складе: ${productName}. Запрошено: ${requestedQty}, доступно: ${available}`);
-        }
-      }
-      
-      // Создаем заказ только после проверки наличия товара
+      // Создаем заказ
       const orderResult = await client.query(
         `INSERT INTO orders 
          (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
@@ -1198,6 +1173,31 @@ async function createOrderInDb(orderData) {
       
       const order = orderResult.rows[0];
       console.log('✅ Заказ создан в БД, order_id:', order.id, 'user_id в заказе:', order.user_id || 'NULL');
+      
+      // Проверяем остатки перед добавлением позиций
+      for (const item of orderData.items || []) {
+        const productId = item.id;
+        const requestedQty = item.quantity || 0;
+        
+        // Рассчитываем доступный остаток по движениям
+        const stockResult = await client.query(
+          `SELECT 
+            COALESCE(SUM(CASE WHEN type = 'SUPPLY' THEN quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as available
+          FROM stock_movements
+          WHERE product_id = $1`,
+          [productId]
+        );
+        
+        const available = parseInt(stockResult.rows[0]?.available || 0);
+        
+        if (requestedQty > available) {
+          await client.query('ROLLBACK');
+          const productName = item.name || `товар #${productId}`;
+          throw new Error(`Недостаточно товара на складе: ${productName}. Запрошено: ${requestedQty}, доступно: ${available}`);
+        }
+      }
       
       // Добавляем позиции заказа и создаем движения
       for (const item of orderData.items || []) {
