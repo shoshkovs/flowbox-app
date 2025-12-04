@@ -68,7 +68,7 @@ export function Warehouse({ authToken }) {
   }, 0);
 
   const lowStockCount = warehouseProducts.filter(
-    (product) => product.totalRemaining > 0 && product.totalRemaining < 10
+    (product) => product.totalRemaining > 0 && product.totalRemaining < 20
   ).length;
 
   const outOfStockCount = warehouseProducts.filter(

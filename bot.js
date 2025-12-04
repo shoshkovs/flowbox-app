@@ -1431,7 +1431,7 @@ async function createOrderInDb(orderData) {
         }
       }
       
-      // Добавляем позиции заказа и создаем движения
+      // Добавляем позиции заказа и создаем движения с FIFO логикой
       for (const item of orderData.items || []) {
         const productId = item.id;
         const quantity = item.quantity || 0;
@@ -1444,12 +1444,47 @@ async function createOrderInDb(orderData) {
           [order.id, productId, item.name, item.price, quantity, totalPrice]
         );
         
-        // Создаем движение типа SALE
-        await client.query(
-          `INSERT INTO stock_movements (product_id, type, quantity, order_id, comment)
-           VALUES ($1, 'SALE', $2, $3, $4)`,
-          [productId, quantity, order.id, `Продажа по заказу #${order.id}`]
-        );
+        // FIFO логика: получаем все поставки с остатками, отсортированные по дате (старые первые)
+        const suppliesResult = await client.query(`
+          SELECT 
+            s.id as supply_id,
+            s.quantity as initial_quantity,
+            s.delivery_date,
+            COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
+            COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off
+          FROM supplies s
+          LEFT JOIN stock_movements sm ON s.id = sm.supply_id
+          WHERE s.product_id = $1
+          GROUP BY s.id, s.quantity, s.delivery_date
+          HAVING (s.quantity - COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0)) > 0
+          ORDER BY s.delivery_date ASC, s.id ASC
+        `, [productId]);
+        
+        let remainingToSell = quantity;
+        
+        // Списываем с самых ранних поставок
+        for (const supply of suppliesResult.rows) {
+          if (remainingToSell <= 0) break;
+          
+          const available = supply.initial_quantity - supply.sold - supply.written_off;
+          const toSell = Math.min(remainingToSell, available);
+          
+          if (toSell > 0) {
+            // Создаем движение типа SALE с привязкой к поставке
+            await client.query(
+              `INSERT INTO stock_movements (product_id, type, quantity, order_id, supply_id, comment)
+               VALUES ($1, 'SALE', $2, $3, $4, $5)`,
+              [productId, toSell, order.id, supply.supply_id, `Продажа по заказу #${order.id} (партия #${supply.supply_id})`]
+            );
+            
+            remainingToSell -= toSell;
+          }
+        }
+        
+        // Если не хватило товара на складе, это должно было быть проверено ранее, но на всякий случай
+        if (remainingToSell > 0) {
+          console.warn(`⚠️ Недостаточно товара для полного списания: product_id=${productId}, осталось списать=${remainingToSell}`);
+        }
       }
       console.log('✅ Позиции заказа добавлены и движения созданы, количество:', orderData.items?.length || 0);
       

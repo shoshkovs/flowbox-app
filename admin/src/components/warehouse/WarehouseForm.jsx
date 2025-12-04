@@ -123,7 +123,7 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
           quantity: quantityInt,
           purchasePrice: purchasePriceFloat,
           deliveryDate: deliveryForm.delivery_date,
-          supplier: deliveryForm.supplier_id ? suppliers.find(s => s.id === deliveryForm.supplier_id)?.name : null,
+          supplier: deliveryForm.supplier_id ? (suppliers.find(s => s.id === deliveryForm.supplier_id)?.name || null) : null,
           invoiceNumber: null, // Пока не используется
           comment: null, // Пока не используется
         }),

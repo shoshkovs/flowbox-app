@@ -74,12 +74,15 @@ export function Dashboard({ authToken }) {
         
         if (warehouseRes.ok) {
           const warehouseData = await warehouseRes.json();
-          // Сумма всех остатков на складе
-          totalStock = warehouseData.reduce((sum, item) => sum + (parseInt(item.stock) || 0), 0);
+          // Сумма всех остатков на складе (из нового формата с партиями)
+          totalStock = warehouseData.reduce((sum, product) => {
+            // Суммируем totalRemaining каждого товара
+            return sum + (parseInt(product.totalRemaining) || 0);
+          }, 0);
           // Количество позиций (товаров) на складе
           productCount = warehouseData.length;
-          // Низкие остатки: товары с остатком меньше 20
-          lowStockItemsList = warehouseData.filter(item => (parseInt(item.stock) || 0) < 20);
+          // Низкие остатки: товары с totalRemaining меньше 20
+          lowStockItemsList = warehouseData.filter(product => (parseInt(product.totalRemaining) || 0) < 20);
         }
         
         // Новых пользователей: пользователи, созданные сегодня (по дате создания аккаунта)
