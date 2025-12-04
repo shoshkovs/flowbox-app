@@ -2003,6 +2003,14 @@ h1, h2, h3, .font-bold {
     font-size: 12px;
 }
 
+.order-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
 .order-status.active {
     background: var(--primary-color);
     color: white;
@@ -2015,6 +2023,37 @@ h1, h2, h3, .font-bold {
 
 .order-status.pending {
     background: #ff9800;
+    color: white;
+}
+
+/* Новые стили для статусов заказов */
+.order-status.status-unpaid {
+    background: #ff9800;
+    color: white;
+}
+
+.order-status.status-processing {
+    background: #2196f3;
+    color: white;
+}
+
+.order-status.status-delivering {
+    background: #9c27b0;
+    color: white;
+}
+
+.order-status.status-completed {
+    background: #4caf50;
+    color: white;
+}
+
+.order-status.status-canceled {
+    background: #757575;
+    color: white;
+}
+
+.order-status.status-unknown {
+    background: #9e9e9e;
     color: white;
 }
 

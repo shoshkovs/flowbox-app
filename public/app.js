@@ -2598,6 +2598,46 @@ function clearOrderAddressFields() {
     if (orderAddressError) orderAddressError.style.display = 'none';
 }
 
+// Возвращает человекочитаемый текст статуса
+function getOrderStatusText(status) {
+  switch (status) {
+    case 'UNPAID':
+      return 'Не оплачен';
+    case 'NEW':
+    case 'PROCESSING':
+    case 'COLLECTING':
+      return 'В обработке';
+    case 'DELIVERING':
+      return 'В пути';
+    case 'COMPLETED':
+      return 'Доставлен';
+    case 'CANCELED':
+      return 'Отменён';
+    default:
+      return 'Неизвестный статус';
+  }
+}
+
+// Возвращает CSS-класс для бейджа статуса
+function getOrderStatusClass(status) {
+  switch (status) {
+    case 'UNPAID':
+      return 'status-unpaid';
+    case 'NEW':
+    case 'PROCESSING':
+    case 'COLLECTING':
+      return 'status-processing';
+    case 'DELIVERING':
+      return 'status-delivering';
+    case 'COMPLETED':
+      return 'status-completed';
+    case 'CANCELED':
+      return 'status-canceled';
+    default:
+      return 'status-unknown';
+  }
+}
+
 // Загрузка активных заказов
 function loadActiveOrders() {
     // Данные уже загружены в loadUserData, просто обновляем отображение
