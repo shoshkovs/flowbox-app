@@ -4077,7 +4077,7 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
       
       if (tableCheck.rows[0].exists) {
         const result = await client.query(
-          'SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC',
+          'SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at ASC',
           [id]
         );
         res.json(result.rows);

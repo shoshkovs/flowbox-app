@@ -106,6 +106,7 @@ export function OrderDetail({ authToken, orderId }) {
       if (response.ok) {
         const updatedOrder = await response.json();
         setOrder(updatedOrder);
+        // Перезагружаем историю статусов после сохранения
         await loadOrderDetails();
         toast.success('Изменения сохранены');
         // Автоматически возвращаемся на страницу заказов
