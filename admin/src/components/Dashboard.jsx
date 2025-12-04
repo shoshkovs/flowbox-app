@@ -218,7 +218,7 @@ export function Dashboard({ authToken }) {
                       {order.customer_name || 'Клиент'}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                      {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                     </p>
                   </div>
                   <div className="text-right">

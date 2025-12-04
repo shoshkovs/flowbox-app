@@ -189,7 +189,7 @@ export function Orders({ authToken }) {
                     <span className="text-blue-600 font-medium">#{order.id}</span>
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600">
-                    {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
+                    {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded text-xs ${getStatusColor(order.status)}`}>
