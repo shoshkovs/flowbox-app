@@ -1473,7 +1473,78 @@ app.post('/api/user-data', async (req, res) => {
   }
 });
 
-// API endpoint для загрузки данных пользователя
+// API endpoint для загрузки данных пользователя (POST - с данными из Telegram)
+app.post('/api/user-data/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { telegramUser } = req.body;
+  
+  try {
+    if (pool) {
+      // Работа с БД - передаем данные пользователя из Telegram для создания/обновления
+      const user = await getOrCreateUser(userId, telegramUser || null);
+      if (!user) {
+        return res.json({
+          cart: [],
+          addresses: [],
+          profile: null,
+          activeOrders: [],
+          completedOrders: [],
+          bonuses: 0
+        });
+      }
+      
+      const addresses = await loadUserAddresses(user.id);
+      console.log(`📦 Загружено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
+      // Загружаем активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING)
+      // CANCELED и COMPLETED не показываются в активных - они идут в историю
+      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING']);
+      // История заказов - только доставленные (COMPLETED) и отмененные (CANCELED)
+      const completedOrders = await loadUserOrders(user.id, ['COMPLETED', 'CANCELED']);
+      
+      console.log(`📥 Загружено заказов для пользователя ${userId} (user_id=${user.id}): активных=${activeOrders.length}, завершенных=${completedOrders.length}`);
+      if (activeOrders.length > 0) {
+        console.log('📥 ID активных заказов:', activeOrders.map(o => o.id).join(', '));
+      }
+      
+      const userData = {
+        cart: [], // Корзина хранится на клиенте
+        addresses: addresses,
+        profile: {
+          name: user.first_name || '',
+          phone: user.phone || '',
+          email: user.email || ''
+        },
+        activeOrders: activeOrders,
+        completedOrders: completedOrders,
+        // Используем реальные бонусы из БД, если они есть, иначе 0 (не 500!)
+        bonuses: user.bonuses !== null && user.bonuses !== undefined ? user.bonuses : 0
+      };
+      
+      // Логируем загрузку данных только если есть что загружать
+      if (addresses.length > 0 || activeOrders.length > 0) {
+        console.log(`📥 Загружены данные для пользователя ${userId} (БД): адресов=${addresses.length}, активных заказов=${activeOrders.length}`);
+      }
+      
+      res.json(userData);
+    } else {
+      // Fallback на файловое хранилище
+      const userData = userDataStore[userId] || {
+        cart: [],
+        addresses: [],
+        profile: null,
+        activeOrders: [],
+        completedOrders: [],
+        bonuses: 0
+      };
+      res.json(userData);
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки данных пользователя:', error);
+    res.status(500).json({ error: 'Ошибка загрузки данных' });
+  }
+});
+
+// API endpoint для загрузки данных пользователя (GET - для обратной совместимости)
 app.get('/api/user-data/:userId', async (req, res) => {
   const { userId } = req.params;
   

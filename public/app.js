@@ -495,7 +495,26 @@ async function loadUserData() {
     
     if (userId) {
         try {
-            const response = await fetch(`/api/user-data/${userId}`);
+            // Получаем данные пользователя из Telegram
+            const telegramUser = tg.initDataUnsafe?.user || null;
+            
+            // Передаем данные пользователя в запросе
+            const requestBody = telegramUser ? {
+                telegramUser: {
+                    id: telegramUser.id,
+                    first_name: telegramUser.first_name,
+                    last_name: telegramUser.last_name,
+                    username: telegramUser.username
+                }
+            } : {};
+            
+            const response = await fetch(`/api/user-data/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
