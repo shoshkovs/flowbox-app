@@ -55,6 +55,12 @@ export function Orders({ authToken }) {
         // Фильтруем локально
         if (filterStatus === 'all') {
           setOrders(allData);
+        } else if (filterStatus === 'processing') {
+          // "В обработке" включает PROCESSING и COLLECTING
+          const filtered = allData.filter(order => 
+            order.status === 'PROCESSING' || order.status === 'COLLECTING'
+          );
+          setOrders(filtered);
         } else {
           const filtered = allData.filter(order => order.status === filterStatus);
           setOrders(filtered);
@@ -124,19 +130,37 @@ export function Orders({ authToken }) {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {['all', 'new', 'assembly', 'delivery', 'completed'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-lg text-sm ${
-              filterStatus === status
-                ? 'bg-pink-600 text-white'
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {getStatusLabel(status)} ({status === 'all' ? allOrders.length : allOrders.filter(o => o.status === status).length})
-          </button>
-        ))}
+        {[
+          { key: 'all', label: 'Все' },
+          { key: 'NEW', label: 'Новые' },
+          { key: 'processing', label: 'В обработке' },
+          { key: 'DELIVERING', label: 'В доставке' },
+          { key: 'COMPLETED', label: 'Завершённые' },
+          { key: 'CANCELED', label: 'Отменённые' }
+        ].map(({ key, label }) => {
+          let count = 0;
+          if (key === 'all') {
+            count = allOrders.length;
+          } else if (key === 'processing') {
+            count = allOrders.filter(o => o.status === 'PROCESSING' || o.status === 'COLLECTING').length;
+          } else {
+            count = allOrders.filter(o => o.status === key).length;
+          }
+          
+          return (
+            <button
+              key={key}
+              onClick={() => setFilterStatus(key)}
+              className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap ${
+                filterStatus === key
+                  ? 'bg-pink-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {label} ({count})
+            </button>
+          );
+        })}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
