@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Clock, MapPin, User, Phone, Package, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -7,6 +7,7 @@ const API_BASE = window.location.origin;
 
 export function OrderDetail({ authToken, orderId }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [order, setOrder] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [products, setProducts] = useState([]);
@@ -113,9 +114,17 @@ export function OrderDetail({ authToken, orderId }) {
         // Перезагружаем историю статусов после сохранения
         await loadOrderDetails();
         toast.success('Изменения сохранены');
-        // Автоматически возвращаемся на страницу заказов
+        // Автоматически возвращаемся на ту же страницу, с которой открыли заказ
         setTimeout(() => {
-          navigate('/orders');
+          const returnTo = location.state?.returnTo || '/orders';
+          const filterStatus = location.state?.filterStatus;
+          
+          if (filterStatus) {
+            // Если был фильтр по статусу, возвращаемся с ним
+            navigate(`${returnTo}?status=${filterStatus}`);
+          } else {
+            navigate(returnTo);
+          }
         }, 500);
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Ошибка сохранения изменений' }));
@@ -237,7 +246,16 @@ export function OrderDetail({ authToken, orderId }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/orders')}
+            onClick={() => {
+              const returnTo = location.state?.returnTo || '/orders';
+              const filterStatus = location.state?.filterStatus;
+              
+              if (filterStatus) {
+                navigate(`${returnTo}?status=${filterStatus}`);
+              } else {
+                navigate(returnTo);
+              }
+            }}
             className="p-2 hover:bg-gray-100 rounded-lg"
           >
             <ArrowLeft className="w-5 h-5" />

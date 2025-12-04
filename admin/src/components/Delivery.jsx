@@ -333,7 +333,9 @@ export function Delivery({ authToken }) {
                             className="text-pink-600 hover:text-pink-800 text-sm font-medium"
                             onClick={(e) => {
                               e.preventDefault();
-                              navigate(`/orders/${delivery.orderId}`);
+                              navigate(`/orders/${delivery.orderId}`, {
+                                state: { returnTo: '/delivery', filterStatus: null }
+                              });
                             }}
                           >
                             #{delivery.orderId}
@@ -415,7 +417,9 @@ export function Delivery({ authToken }) {
                       {/* Кнопка Детали */}
                       <div className="mt-4 flex justify-end">
                         <button
-                          onClick={() => navigate(`/orders/${delivery.orderId}`)}
+                          onClick={() => navigate(`/orders/${delivery.orderId}`, {
+                            state: { returnTo: '/delivery', filterStatus: null }
+                          })}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-pink-600 hover:text-pink-800 hover:bg-pink-50 rounded-lg transition-colors"
                         >
                           <Eye className="w-4 h-4" />

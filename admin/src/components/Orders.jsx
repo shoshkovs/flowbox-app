@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, Phone, RefreshCw, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -90,10 +90,20 @@ function formatHumanDate(dateInput) {
 
 export function Orders({ authToken }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]); // Храним все заказы для правильного подсчета
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('all'); // По умолчанию "Все"
+  
+  // Восстанавливаем фильтр из URL или state
+  const getInitialFilter = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const statusFromUrl = urlParams.get('status');
+    const statusFromState = location.state?.filterStatus;
+    return statusFromUrl || statusFromState || 'all';
+  };
+  
+  const [filterStatus, setFilterStatus] = useState(getInitialFilter()); // По умолчанию "Все"
   const [dateFilter, setDateFilter] = useState('week'); // По умолчанию "Неделя"
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -495,7 +505,9 @@ export function Orders({ authToken }) {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/orders/${order.id}`);
+                            navigate(`/orders/${order.id}`, {
+                              state: { returnTo: '/orders', filterStatus: filterStatus }
+                            });
                           }}
                           className="p-2 hover:bg-gray-100 rounded"
                           title="Просмотр"
