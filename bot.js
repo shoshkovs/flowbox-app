@@ -3922,8 +3922,8 @@ app.post('/api/admin/supplies', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Поставщик не найден' });
       }
       
-      // Вычисляем общую сумму, если не указана
-      const calculatedTotalAmount = total_amount !== null ? total_amount : items.reduce((sum, item) => {
+      // Используем введенную пользователем общую сумму, если указана, иначе вычисляем автоматически
+      const finalTotalAmount = total_amount !== null && total_amount !== undefined ? total_amount : items.reduce((sum, item) => {
         const batchCount = parseInt(item.batchCount);
         const batchPrice = parseFloat(item.batchPrice);
         return sum + (batchCount * batchPrice);
@@ -3934,7 +3934,7 @@ app.post('/api/admin/supplies', checkAdminAuth, async (req, res) => {
         `INSERT INTO supplies (delivery_date, supplier_id, total_amount, delivery_price, comment)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [delivery_date, supplier_id, calculatedTotalAmount, delivery_price || 0, supply_comment]
+        [delivery_date, supplier_id, finalTotalAmount, delivery_price || 0, supply_comment]
       );
       
       const supply = supplyResult.rows[0];
