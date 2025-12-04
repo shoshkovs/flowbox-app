@@ -104,6 +104,33 @@ function formatHumanDate(dateInput) {
   return result;
 }
 
+// Функция для форматирования времени доставки (12-14 -> 12:00-14:00)
+function formatDeliveryTime(timeStr) {
+  if (!timeStr || timeStr === '-') return '-';
+  
+  // Если уже есть двоеточие, возвращаем как есть
+  if (timeStr.includes(':')) {
+    return timeStr;
+  }
+  
+  // Если формат "12-14", преобразуем в "12:00-14:00"
+  if (timeStr.includes('-')) {
+    const parts = timeStr.split('-').map(part => {
+      const trimmed = part.trim();
+      // Если уже есть двоеточие, оставляем как есть
+      if (trimmed.includes(':')) {
+        return trimmed;
+      }
+      // Иначе добавляем ":00"
+      return trimmed + ':00';
+    });
+    return parts.join('-');
+  }
+  
+  // Если одно время без дефиса, добавляем ":00"
+  return timeStr.trim() + ':00';
+}
+
 export function Orders({ authToken }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -534,7 +561,7 @@ export function Orders({ authToken }) {
                     <td className="py-3 px-4">
                       <div className="text-sm">
                         <div>{order.delivery_date ? formatHumanDate(order.delivery_date) : '-'}</div>
-                        <div className="text-gray-500">{order.delivery_time || '-'}</div>
+                        <div className="text-gray-500">{formatDeliveryTime(order.delivery_time)}</div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
