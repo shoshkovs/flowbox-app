@@ -191,8 +191,8 @@ export function Orders({ authToken }) {
                   </td>
                   <td className="py-3 px-4">
                     <div>
-                      <div>{order.customer_name || '-'}</div>
-                      <div className="text-sm text-gray-500">{order.customer_phone || '-'}</div>
+                      <div>{order.customer_name || order.client_name || '-'}</div>
+                      <div className="text-sm text-gray-500">{order.customer_phone || order.client_phone || '-'}</div>
                     </div>
                   </td>
                   <td className="py-3 px-4">
