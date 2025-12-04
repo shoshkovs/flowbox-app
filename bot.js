@@ -366,19 +366,93 @@ if (process.env.DATABASE_URL) {
             'utf8'
           );
           
-          // Выполняем миграцию построчно
-          const statements = migrationSQL.split(';').filter(s => s.trim());
+          // Улучшенная логика разбора SQL: учитываем DO блоки
+          const statements = [];
+          let currentStatement = '';
+          let inDoBlock = false;
+          let dollarTag = '';
+          let dollarTagDepth = 0;
+          
+          const lines = migrationSQL.split('\n');
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            // Пропускаем комментарии
+            if (trimmedLine.startsWith('--')) {
+              continue;
+            }
+            
+            // Проверяем начало DO блока
+            const doMatch = trimmedLine.match(/DO\s+\$(\w*)\$/i);
+            if (doMatch) {
+              inDoBlock = true;
+              dollarTag = '$' + (doMatch[1] || '') + '$';
+              dollarTagDepth = 1;
+              currentStatement += line + '\n';
+              continue;
+            }
+            
+            // Подсчитываем вложенные $$ блоки
+            if (inDoBlock) {
+              const tagMatches = trimmedLine.match(new RegExp('\\$' + (dollarTag.match(/\$(\w*)\$/) ? dollarTag.match(/\$(\w*)\$/)[1] : '') + '\\$', 'g'));
+              if (tagMatches) {
+                dollarTagDepth += tagMatches.length;
+              }
+            }
+            
+            // Проверяем конец DO блока
+            if (inDoBlock && trimmedLine.includes('END ' + dollarTag)) {
+              currentStatement += line;
+              dollarTagDepth--;
+              if (dollarTagDepth === 0 && trimmedLine.endsWith(';')) {
+                statements.push(currentStatement.trim());
+                currentStatement = '';
+                inDoBlock = false;
+                dollarTag = '';
+                dollarTagDepth = 0;
+              }
+              continue;
+            }
+            
+            // Добавляем строку к текущему statement
+            currentStatement += line + '\n';
+            
+            // Если не в DO блоке и строка заканчивается на ;, завершаем statement
+            if (!inDoBlock && trimmedLine.endsWith(';')) {
+              statements.push(currentStatement.trim());
+              currentStatement = '';
+            }
+          }
+          
+          // Добавляем последний statement если он есть
+          if (currentStatement.trim()) {
+            statements.push(currentStatement.trim());
+          }
+          
+          // Выполняем statements
           for (const statement of statements) {
             if (statement.trim() && !statement.trim().startsWith('--')) {
               try {
                 await client.query(statement);
               } catch (err) {
-                // Игнорируем ошибки "уже существует" и constraint уже существует
-                if (!err.message.includes('already exists') && 
-                    !err.message.includes('duplicate') &&
-                    !err.message.includes('constraint') &&
-                    err.code !== '42P16' &&
-                    err.code !== '42710') {
+                // Игнорируем ошибки "уже существует", "не существует" и т.д.
+                const ignorableErrors = [
+                  'already exists',
+                  'duplicate',
+                  'constraint',
+                  'does not exist',
+                  'column',
+                  'relation',
+                  '42P16', // duplicate_column
+                  '42710', // duplicate_object
+                  '42704'  // undefined_object
+                ];
+                
+                const shouldIgnore = ignorableErrors.some(msg => 
+                  err.message.includes(msg) || err.code === msg
+                );
+                
+                if (!shouldIgnore) {
                   console.log('⚠️  Ошибка миграции структуры БД:', err.message);
                 }
               }
@@ -407,21 +481,90 @@ if (process.env.DATABASE_URL) {
             'utf8'
           );
           
-          // Выполняем миграцию построчно
-          const statements = migrationSQL.split(';').filter(s => s.trim());
+          // Улучшенная логика разбора SQL: учитываем DO блоки
+          const statements = [];
+          let currentStatement = '';
+          let inDoBlock = false;
+          let dollarTag = '';
+          
+          const lines = migrationSQL.split('\n');
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            // Пропускаем комментарии
+            if (trimmedLine.startsWith('--')) {
+              continue;
+            }
+            
+            // Проверяем начало DO блока
+            if (trimmedLine.match(/DO\s+\$\$/i)) {
+              inDoBlock = true;
+              dollarTag = '$$';
+              currentStatement += line + '\n';
+              continue;
+            }
+            
+            // Проверяем начало DO блока с кастомным тегом
+            const doMatch = trimmedLine.match(/DO\s+\$(\w+)\$/i);
+            if (doMatch) {
+              inDoBlock = true;
+              dollarTag = '$' + doMatch[1] + '$';
+              currentStatement += line + '\n';
+              continue;
+            }
+            
+            // Проверяем конец DO блока
+            if (inDoBlock && trimmedLine.includes('END ' + dollarTag)) {
+              currentStatement += line;
+              if (trimmedLine.endsWith(';')) {
+                statements.push(currentStatement.trim());
+                currentStatement = '';
+                inDoBlock = false;
+                dollarTag = '';
+              }
+              continue;
+            }
+            
+            // Добавляем строку к текущему statement
+            currentStatement += line + '\n';
+            
+            // Если не в DO блоке и строка заканчивается на ;, завершаем statement
+            if (!inDoBlock && trimmedLine.endsWith(';')) {
+              statements.push(currentStatement.trim());
+              currentStatement = '';
+            }
+          }
+          
+          // Добавляем последний statement если он есть
+          if (currentStatement.trim()) {
+            statements.push(currentStatement.trim());
+          }
+          
+          // Выполняем statements
           for (const statement of statements) {
             if (statement.trim() && !statement.trim().startsWith('--')) {
               try {
                 await client.query(statement);
               } catch (err) {
-                // Игнорируем ошибки "уже существует" и constraint уже существует
-                if (!err.message.includes('already exists') && 
-                    !err.message.includes('duplicate') &&
-                    !err.message.includes('constraint') &&
-                    !err.message.includes('does not exist') &&
-                    err.code !== '42P16' &&
-                    err.code !== '42710' &&
-                    err.code !== '42704') {
+                // Игнорируем ошибки "уже существует", "не существует" и т.д.
+                const ignorableErrors = [
+                  'already exists',
+                  'duplicate',
+                  'constraint',
+                  'does not exist',
+                  'column',
+                  'relation',
+                  '42P16', // duplicate_column
+                  '42710', // duplicate_object
+                  '42704', // undefined_object
+                  '42804'  // datatype_mismatch (для features)
+                ];
+                
+                const shouldIgnore = ignorableErrors.some(msg => 
+                  err.message.includes(msg) || err.code === msg
+                );
+                
+                if (!shouldIgnore) {
                   console.log('⚠️  Ошибка финальной миграции БД:', err.message);
                 }
               }

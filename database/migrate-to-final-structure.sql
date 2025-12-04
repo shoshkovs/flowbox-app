@@ -51,30 +51,51 @@ WHERE delivery_zone IS NULL;
 -- 2. ТАБЛИЦА products — features как TEXT[]
 -- ==================================================
 
--- Конвертируем features из JSONB в TEXT[] если нужно
+-- Проверяем тип features и конвертируем если нужно
 DO $$
 BEGIN
+    -- Проверяем, существует ли колонка features
     IF EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'products' 
-        AND column_name = 'features' 
-        AND data_type = 'jsonb'
+        AND column_name = 'features'
     ) THEN
-        -- Конвертируем JSONB в TEXT[]
-        ALTER TABLE products
-            ALTER COLUMN features TYPE TEXT[]
-            USING CASE
-                WHEN features IS NULL THEN NULL::TEXT[]
-                WHEN jsonb_typeof(features) = 'array' THEN
-                    ARRAY(SELECT jsonb_array_elements_text(features))
-                ELSE ARRAY[]::TEXT[]
+        -- Проверяем тип колонки
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'products' 
+            AND column_name = 'features' 
+            AND data_type = 'jsonb'
+        ) THEN
+            -- Конвертируем JSONB в TEXT[]
+            ALTER TABLE products
+                ALTER COLUMN features TYPE TEXT[]
+                USING CASE
+                    WHEN features IS NULL THEN NULL::TEXT[]
+                    WHEN jsonb_typeof(features) = 'array' THEN
+                        ARRAY(SELECT jsonb_array_elements_text(features))
+                    ELSE ARRAY[]::TEXT[]
+                END;
+        ELSIF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'products' 
+            AND column_name = 'features' 
+            AND udt_name != '_text'
+        ) THEN
+            -- Если тип не TEXT[], пытаемся конвертировать
+            BEGIN
+                ALTER TABLE products
+                    ALTER COLUMN features TYPE TEXT[] USING COALESCE(features::TEXT[], ARRAY[]::TEXT[]);
+            EXCEPTION WHEN OTHERS THEN
+                -- Если не получается, оставляем как есть
+                NULL;
             END;
+        END IF;
+    ELSE
+        -- Если колонки нет, создаем как TEXT[]
+        ALTER TABLE products ADD COLUMN features TEXT[];
     END IF;
 END $$;
-
--- Если features еще не TEXT[], создаем как TEXT[]
-ALTER TABLE products
-    ALTER COLUMN features TYPE TEXT[] USING COALESCE(features::TEXT[], ARRAY[]::TEXT[]);
 
 -- ==================================================
 -- 3. ТАБЛИЦА users — убираем manager_note, добавляем manager_comment
