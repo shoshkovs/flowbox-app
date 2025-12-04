@@ -300,8 +300,18 @@ export function Products({ authToken }) {
               </tr>
             </thead>
             <tbody>
-                {products.map((product) => (
-                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 align-top" style={{ minHeight: '60px' }}>
+                {products.map((product) => {
+                  // Подсчитываем количество качеств для определения высоты строки
+                  let productFeatures = [];
+                  if (product.features && Array.isArray(product.features) && product.features.length > 0) {
+                    productFeatures = product.features.filter(f => f && f.trim());
+                  } else if (product.qualities && Array.isArray(product.qualities) && product.qualities.length > 0) {
+                    productFeatures = product.qualities.map(q => typeof q === 'object' ? q.name : q).filter(f => f && f.trim());
+                  }
+                  const minRowHeight = productFeatures.length > 1 ? `${40 + (productFeatures.length - 1) * 28}px` : 'auto';
+                  
+                  return (
+                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 align-top" style={{ minHeight: minRowHeight }}>
                   <td className="py-3 px-4 text-gray-600">#{product.id}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
@@ -393,7 +403,8 @@ export function Products({ authToken }) {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
