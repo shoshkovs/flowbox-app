@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Search, ChevronDown, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CreatableSelect } from '../CreatableSelect';
 
 const API_BASE = window.location.origin;
 
@@ -18,11 +19,14 @@ export function WarehouseForm({ authToken }) {
     quantity: '',
     purchase_price: '',
     delivery_date: new Date().toISOString().split('T')[0],
-    supplier: '',
+    supplier_id: null,
   });
+  
+  const [suppliers, setSuppliers] = useState([]);
 
   useEffect(() => {
     loadProducts();
+    loadSuppliers();
   }, []);
 
   // Закрываем dropdown при клике вне его
@@ -55,8 +59,41 @@ export function WarehouseForm({ authToken }) {
     }
   };
 
+  const loadSuppliers = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/suppliers`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers(data);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки поставщиков:', error);
+    }
+  };
+
+  const handleCreateSupplier = async (name) => {
+    const response = await fetch(`${API_BASE}/api/admin/suppliers`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name }),
+    });
+    if (response.ok) {
+      const newSupplier = await response.json();
+      setSuppliers([...suppliers, newSupplier]);
+      return newSupplier;
+    }
+    throw new Error('Ошибка создания поставщика');
+  };
+
   const handleSaveDelivery = async () => {
-    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date || !deliveryForm.supplier) {
+    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date || !deliveryForm.supplier_id) {
       toast.error('Заполните все обязательные поля');
       return;
     }
@@ -88,7 +125,7 @@ export function WarehouseForm({ authToken }) {
           quantity: quantityInt,
           purchase_price: purchasePriceFloat,
           delivery_date: deliveryForm.delivery_date,
-          supplier: deliveryForm.supplier || null,
+          supplier_id: deliveryForm.supplier_id,
         }),
       });
 
@@ -239,7 +276,8 @@ export function WarehouseForm({ authToken }) {
                 type="date"
                 value={deliveryForm.delivery_date}
                 onChange={(e) => setDeliveryForm({ ...deliveryForm, delivery_date: e.target.value })}
-                className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                style={{ WebkitAppearance: 'none' }}
               />
               <button
                 type="button"
@@ -251,24 +289,21 @@ export function WarehouseForm({ authToken }) {
                     input.focus();
                   }
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 pointer-events-auto"
               >
                 <Calendar className="w-5 h-5" />
               </button>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Поставщик <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={deliveryForm.supplier}
-              onChange={(e) => setDeliveryForm({ ...deliveryForm, supplier: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="Название поставщика"
-            />
-          </div>
+          <CreatableSelect
+            value={deliveryForm.supplier_id}
+            onChange={(id) => setDeliveryForm({ ...deliveryForm, supplier_id: id })}
+            options={suppliers}
+            onCreate={handleCreateSupplier}
+            placeholder="Выберите поставщика"
+            label="Поставщик"
+            required
+          />
         </div>
       </div>
 

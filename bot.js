@@ -176,27 +176,60 @@ if (process.env.DATABASE_URL) {
         }
       }, 2500);
       
-      // Миграция: добавление поля supplier в таблицу supplies
+      // Миграция: создание таблицы suppliers и добавление supplier_id в supplies
       setTimeout(async () => {
         try {
           const client = await pool.connect();
           try {
+            // Создаем таблицу suppliers, если её нет
+            const tableCheck = await client.query(`
+              SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'suppliers'
+              )
+            `);
+            
+            if (!tableCheck.rows[0].exists) {
+              console.log('🔄 Создаем таблицу suppliers...');
+              await client.query(`
+                CREATE TABLE suppliers (
+                  id SERIAL PRIMARY KEY,
+                  name TEXT NOT NULL UNIQUE,
+                  created_at TIMESTAMPTZ DEFAULT now(),
+                  updated_at TIMESTAMPTZ DEFAULT now()
+                )
+              `);
+              console.log('✅ Таблица suppliers создана');
+            }
+            
+            // Добавляем supplier_id в supplies, если его нет
             const columnCheck = await client.query(`
               SELECT column_name 
               FROM information_schema.columns 
-              WHERE table_name = 'supplies' AND column_name = 'supplier'
+              WHERE table_name = 'supplies' AND column_name = 'supplier_id'
             `);
             
             if (columnCheck.rows.length === 0) {
-              console.log('🔄 Добавляем поле supplier в таблицу supplies...');
+              console.log('🔄 Добавляем поле supplier_id в таблицу supplies...');
+              // Сначала удаляем старое поле supplier, если оно есть
+              const oldColumnCheck = await client.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'supplies' AND column_name = 'supplier'
+              `);
+              if (oldColumnCheck.rows.length > 0) {
+                await client.query(`ALTER TABLE supplies DROP COLUMN IF EXISTS supplier`);
+              }
+              // Добавляем новое поле supplier_id
               await client.query(`
                 ALTER TABLE supplies 
-                ADD COLUMN IF NOT EXISTS supplier TEXT
+                ADD COLUMN supplier_id INTEGER REFERENCES suppliers(id)
               `);
-              console.log('✅ Поле supplier добавлено в таблицу supplies');
+              console.log('✅ Поле supplier_id добавлено в таблицу supplies');
             }
           } catch (migrationError) {
-            console.log('⚠️  Миграция supplier:', migrationError.message);
+            console.log('⚠️  Миграция suppliers:', migrationError.message);
           } finally {
             client.release();
           }
@@ -3334,7 +3367,7 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { product_id, quantity, purchase_price, delivery_date, supplier } = req.body;
+  const { product_id, quantity, purchase_price, delivery_date, supplier_id } = req.body;
   
   if (!product_id || !quantity || !purchase_price || !delivery_date) {
     return res.status(400).json({ error: 'Товар, количество, цена закупки и дата поставки обязательны' });
@@ -3374,10 +3407,10 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
       
       // Создаем поставку
       const supplyResult = await client.query(
-        `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier)
+        `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [product_id, quantityInt, purchasePriceRounded, delivery_date, supplier || null]
+        [product_id, quantityInt, purchasePriceRounded, delivery_date, supplier_id]
       );
       
       const supply = supplyResult.rows[0];
