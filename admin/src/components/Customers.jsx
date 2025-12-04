@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Phone, Mail, ShoppingBag, Calendar, Eye, Search, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { CustomerDetail } from './customers/CustomerDetail';
 
 const API_BASE = window.location.origin;
 
@@ -11,6 +12,7 @@ export function Customers({ authToken }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubscription, setFilterSubscription] = useState('all');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   useEffect(() => {
     loadCustomers();
@@ -136,6 +138,17 @@ export function Customers({ authToken }) {
 
   if (loading) {
     return <div className="p-6">Загрузка...</div>;
+  }
+
+  // Если выбран клиент, показываем детальный вид
+  if (selectedCustomer) {
+    return (
+      <CustomerDetail
+        customer={selectedCustomer}
+        onClose={() => setSelectedCustomer(null)}
+        authToken={authToken}
+      />
+    );
   }
 
   return (
@@ -264,9 +277,9 @@ export function Customers({ authToken }) {
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => navigate(`/customers/${customer.id}`)}
+                        onClick={() => setSelectedCustomer(customer)}
                         className="p-2 hover:bg-gray-100 rounded text-gray-600"
-                        title="Редактировать"
+                        title="Просмотреть детали"
                       >
                         <Eye className="w-4 h-4" />
                       </button>

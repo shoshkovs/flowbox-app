@@ -1,52 +1,36 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, Phone, MessageCircle, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
-export function CustomerDetail({ authToken, customerId }) {
-  const navigate = useNavigate();
-  const [customer, setCustomer] = useState(null);
+export function CustomerDetail({ customer, onClose, authToken }) {
+  const [customerData, setCustomerData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  
-  const [customerForm, setCustomerForm] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    telegram: '',
-    address: '',
-    comments: '',
-    tags: [],
-  });
+  const [bonusAdjustment, setBonusAdjustment] = useState('');
+  const [managerComment, setManagerComment] = useState('');
+  const [isEditingBonuses, setIsEditingBonuses] = useState(false);
+  const [isSavingComment, setIsSavingComment] = useState(false);
+  const [isAdjustingBonuses, setIsAdjustingBonuses] = useState(false);
 
   useEffect(() => {
-    if (customerId) {
-      loadCustomer();
+    if (customer?.id) {
+      loadCustomerDetail();
     }
-  }, [customerId]);
+  }, [customer?.id]);
 
-  const loadCustomer = async () => {
+  const loadCustomerDetail = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/admin/customers/${customerId}`, {
+      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
       if (response.ok) {
-        const foundCustomer = await response.json();
-        setCustomer(foundCustomer);
-        setCustomerForm({
-          name: foundCustomer.name || '',
-          phone: foundCustomer.phone || '',
-          email: foundCustomer.email || '',
-          telegram: foundCustomer.telegram_id ? `@${foundCustomer.telegram_id}` : '',
-          address: '',
-          comments: '',
-          tags: [],
-        });
+        const data = await response.json();
+        setCustomerData(data);
+        setManagerComment(data.manager_comment || '');
       } else {
         toast.error('Ошибка загрузки данных клиента');
       }
@@ -58,165 +42,378 @@ export function CustomerDetail({ authToken, customerId }) {
     }
   };
 
-  const handleSaveCustomer = async () => {
-    if (!customerForm.name || !customerForm.phone) {
-      toast.error('Заполните обязательные поля');
+  const handleBonusAdjustment = async () => {
+    const amount = parseInt(bonusAdjustment);
+    if (!amount || amount === 0) {
+      toast.error('Введите сумму корректировки');
       return;
     }
 
-    setSaving(true);
+    setIsAdjustingBonuses(true);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/customers/${customerId}`, {
+      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}/bonuses`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: customerForm.name,
-          phone: customerForm.phone,
-          email: customerForm.email || null,
-          telegram: customerForm.telegram || null,
-        }),
+        body: JSON.stringify({ amount }),
       });
 
       if (response.ok) {
-        toast.success('Данные клиента сохранены');
-        navigate('/customers');
+        toast.success('Бонусы успешно скорректированы');
+        setBonusAdjustment('');
+        setIsEditingBonuses(false);
+        await loadCustomerDetail();
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Ошибка сохранения данных');
+        toast.error(error.error || 'Ошибка корректировки бонусов');
       }
     } catch (error) {
-      console.error('Ошибка сохранения клиента:', error);
-      toast.error('Ошибка сохранения данных');
+      console.error('Ошибка корректировки бонусов:', error);
+      toast.error('Ошибка корректировки бонусов');
     } finally {
-      setSaving(false);
+      setIsAdjustingBonuses(false);
     }
   };
 
-  if (loading) {
+  const handleSaveComment = async () => {
+    setIsSavingComment(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}/manager-comment`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ comment: managerComment }),
+      });
+
+      if (response.ok) {
+        toast.success('Комментарий сохранен');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка сохранения комментария');
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения комментария:', error);
+      toast.error('Ошибка сохранения комментария');
+    } finally {
+      setIsSavingComment(false);
+    }
+  };
+
+  const handleToggleSubscription = async () => {
+    // TODO: Implement subscription toggle
+    toast.info('Функция управления подпиской будет реализована позже');
+  };
+
+  if (loading || !customerData) {
     return <div className="p-6">Загрузка...</div>;
   }
 
-  if (!customer) {
-    return <div className="p-6">Клиент не найден</div>;
-  }
+  const customerName = customerData.first_name || customerData.name || 'Не указано';
+  const username = customerData.username ? `@${customerData.username}` : '';
+  const telegramId = customerData.telegram_id || '';
+  const phone = customerData.phone || '-';
+  const email = customerData.email || '-';
+  const registeredAt = customerData.registered_at || customerData.created_at;
+  const lastOrderDate = customerData.stats?.lastOrderDate || customerData.lastOrderDate;
+  const ordersCount = customerData.stats?.ordersCount || customer.ordersCount || 0;
+  const totalSpent = customerData.stats?.totalSpent || customer.totalSpent || 0;
+  const avgCheck = customerData.stats?.avgCheck || (ordersCount > 0 ? Math.round(totalSpent / ordersCount) : 0);
+  const bonusBalance = customerData.bonuses || customer.bonuses || 0;
+  const orders = customerData.orders || [];
+  const addresses = customerData.addresses || [];
+
+  // Форматируем адреса
+  const formattedAddresses = addresses.map(addr => {
+    const addrData = typeof addr.address_json === 'object' ? addr.address_json : 
+                     (addr.address_json ? JSON.parse(addr.address_json) : {});
+    const parts = [
+      addr.city || addrData.city,
+      addr.street || addrData.street,
+      addr.house ? `д. ${addr.house}` : addrData.house ? `д. ${addrData.house}` : '',
+      addr.apartment ? `кв. ${addr.apartment}` : addrData.apartment ? `кв. ${addrData.apartment}` : ''
+    ].filter(Boolean);
+    return parts.join(', ');
+  });
 
   return (
     <div className="space-y-6">
-      {/* Заголовок с кнопкой назад */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/customers')}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold">Редактировать клиента</h1>
-          <p className="text-gray-600 mt-1">ID: {customer.id}</p>
+          <h1 className="text-3xl font-bold">{customerName}</h1>
+          {username && <p className="text-gray-600 mt-1">{username}</p>}
         </div>
       </div>
 
-      {/* Форма редактирования */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold mb-6">Информация о клиенте</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Имя <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={customerForm.name}
-                onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                placeholder="Имя клиента"
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Контактная информация */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-4">Контактная информация</h2>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+                  <p className="mt-1">{customerName}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telegram Username</label>
+                  <p className="mt-1">{username || '-'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                  <button className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">
+                    <Phone className="w-4 h-4" />
+                    {phone}
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telegram ID</label>
+                  <p className="mt-1">{telegramId || '-'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Дата регистрации</label>
+                  <p className="mt-1">
+                    {registeredAt ? new Date(registeredAt).toLocaleDateString('ru-RU') : '-'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Последний заказ</label>
+                  <p className="mt-1">
+                    {lastOrderDate ? new Date(lastOrderDate).toLocaleDateString('ru-RU') : '-'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Телефон <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={customerForm.phone}
-                onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                placeholder="+7 (999) 123-45-67"
-              />
+
+          {/* История заказов */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-4">История заказов</h2>
+            <div className="space-y-4">
+              {orders.length > 0 ? (
+                orders.map((order) => {
+                  const statusText = {
+                    'COMPLETED': 'Завершен',
+                    'CANCELED': 'Отменен',
+                    'NEW': 'Новый',
+                    'PROCESSING': 'В обработке',
+                    'COLLECTING': 'Собирается',
+                    'DELIVERING': 'В доставке'
+                  }[order.status] || order.status;
+
+                  const itemsText = order.items && Array.isArray(order.items) 
+                    ? order.items.map(item => `${item.name} ${item.quantity} шт`).join(', ')
+                    : 'Товары не указаны';
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-blue-600 font-medium">#{order.id}</span>
+                          <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs">
+                            {statusText}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{itemsText}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(order.created_at).toLocaleDateString('ru-RU')}
+                        </p>
+                      </div>
+                      <p className="font-medium">{parseInt(order.total || 0).toLocaleString()} ₽</p>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-gray-500 text-center py-8">Нет заказов</p>
+              )}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="email"
-                value={customerForm.email}
-                onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                placeholder="email@example.com"
-              />
+
+          {/* Адреса доставки */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-4">Адреса доставки</h2>
+            <div className="space-y-3">
+              {formattedAddresses.length > 0 ? (
+                formattedAddresses.map((address, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                    {address}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">Нет сохраненных адресов</p>
+              )}
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Telegram</label>
-            <input
-              type="text"
-              value={customerForm.telegram}
-              onChange={(e) => setCustomerForm({ ...customerForm, telegram: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="@username"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Адрес</label>
-            <textarea
-              value={customerForm.address}
-              onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              rows="3"
-              placeholder="Адрес доставки"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Комментарии</label>
-            <textarea
-              value={customerForm.comments}
-              onChange={(e) => setCustomerForm({ ...customerForm, comments: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              rows="4"
-              placeholder="Дополнительная информация о клиенте..."
-            />
           </div>
         </div>
-      </div>
 
-      {/* Кнопки действий */}
-      <div className="flex justify-end gap-4">
-        <button
-          onClick={() => navigate('/customers')}
-          className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          disabled={saving}
-        >
-          Отменить
-        </button>
-        <button
-          onClick={handleSaveCustomer}
-          disabled={saving}
-          className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50"
-        >
-          {saving ? 'Сохранение...' : 'Сохранить'}
-        </button>
+        {/* Правая колонка */}
+        <div className="space-y-6">
+          {/* Статистика */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-4">Статистика</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Количество заказов</label>
+                <p className="text-2xl mt-1 font-bold">{ordersCount}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Сумма покупок</label>
+                <p className="text-2xl mt-1 font-bold">{totalSpent.toLocaleString()} ₽</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Средний чек</label>
+                <p className="text-2xl mt-1 font-bold">{avgCheck.toLocaleString()} ₽</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Подписка */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-4">Подписка</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+                <p className="text-2xl mt-1">
+                  {customerData.subscription?.active ? (
+                    <span className="text-green-600 font-bold">Активна</span>
+                  ) : (
+                    <span className="text-gray-600 font-bold">Не активна</span>
+                  )}
+                </p>
+              </div>
+              {customerData.subscription?.active && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Дата начала</label>
+                    <p className="mt-1">
+                      {new Date(customerData.subscription.startDate).toLocaleDateString('ru-RU')}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Дата окончания</label>
+                    <p className="mt-1">
+                      {new Date(customerData.subscription.endDate).toLocaleDateString('ru-RU')}
+                    </p>
+                  </div>
+                </>
+              )}
+              <button
+                onClick={handleToggleSubscription}
+                className={`w-full px-4 py-2 rounded-lg transition-colors ${
+                  customerData.subscription?.active
+                    ? 'border border-gray-300 hover:bg-gray-50'
+                    : 'bg-pink-600 text-white hover:bg-pink-700'
+                }`}
+              >
+                {customerData.subscription?.active ? 'Отменить подписку' : 'Активировать подписку'}
+              </button>
+            </div>
+          </div>
+
+          {/* Бонусы */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Бонусы</h2>
+              <button
+                onClick={() => setIsEditingBonuses(!isEditingBonuses)}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Текущий баланс</label>
+              <p className="text-2xl mt-1 text-green-600 font-bold">
+                {bonusBalance.toLocaleString()} ₽
+              </p>
+            </div>
+            {isEditingBonuses && (
+              <div className="mt-4">
+                <label htmlFor="bonusAdjust" className="block text-sm font-medium text-gray-700 mb-1">
+                  Корректировка
+                </label>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    id="bonusAdjust"
+                    type="number"
+                    value={bonusAdjustment}
+                    onChange={(e) => setBonusAdjustment(e.target.value)}
+                    placeholder="Сумма"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleBonusAdjustment}
+                    disabled={isAdjustingBonuses}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {isAdjustingBonuses ? '...' : 'Применить'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Комментарии менеджера */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-4">Комментарии менеджера</h2>
+            <textarea
+              value={managerComment}
+              onChange={(e) => setManagerComment(e.target.value)}
+              placeholder="Заметки о клиенте..."
+              rows={6}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
+            />
+            <button
+              onClick={handleSaveComment}
+              disabled={isSavingComment}
+              className="w-full mt-4 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+            >
+              {isSavingComment ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+
+          {/* Кнопки действий */}
+          <div className="flex gap-3">
+            <a
+              href={`tel:${phone}`}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2"
+            >
+              <Phone className="w-4 h-4" />
+              Позвонить
+            </a>
+            {telegramId && (
+              <a
+                href={`https://t.me/${telegramId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Написать
+              </a>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
