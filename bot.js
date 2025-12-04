@@ -3753,6 +3753,64 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
   }
 });
 
+// Очистка всех поставок и активных заказов (для тестирования)
+app.post('/api/admin/warehouse/clear-all', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Удаляем все движения по складу
+      await client.query('DELETE FROM stock_movements');
+      
+      // Удаляем все позиции заказов
+      await client.query('DELETE FROM order_items');
+      
+      // Удаляем историю статусов заказов
+      await client.query('DELETE FROM order_status_history');
+      
+      // Удаляем транзакции бонусов, связанные с заказами
+      await client.query('DELETE FROM bonus_transactions WHERE order_id IS NOT NULL');
+      
+      // Удаляем все заказы
+      await client.query('DELETE FROM orders');
+      
+      // Удаляем все поставки
+      await client.query('DELETE FROM supplies');
+      
+      await client.query('COMMIT');
+      
+      // Проверка
+      const suppliesResult = await client.query('SELECT COUNT(*) as count FROM supplies');
+      const ordersResult = await client.query('SELECT COUNT(*) as count FROM orders');
+      const movementsResult = await client.query('SELECT COUNT(*) as count FROM stock_movements');
+      
+      res.json({ 
+        success: true, 
+        message: 'Все поставки и заказы успешно удалены',
+        stats: {
+          supplies: parseInt(suppliesResult.rows[0]?.count || 0),
+          orders: parseInt(ordersResult.rows[0]?.count || 0),
+          movements: parseInt(movementsResult.rows[0]?.count || 0)
+        }
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Ошибка очистки базы:', error);
+      res.status(500).json({ error: error.message || 'Ошибка очистки базы данных' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка подключения к БД:', error);
+    res.status(500).json({ error: 'Ошибка подключения к базе данных' });
+  }
+});
+
 // Списание товара со склада (партийный учёт)
 app.post('/api/admin/stock-movements/write-off', checkAdminAuth, async (req, res) => {
   if (!pool) {
