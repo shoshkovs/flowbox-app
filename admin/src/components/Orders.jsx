@@ -447,9 +447,9 @@ export function Orders({ authToken }) {
                         <div className="text-gray-500">-</div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      <div>{dateStr}</div>
-                      <div>{timeStr}</div>
+                    <td className="py-3 px-4 text-sm text-gray-600 min-w-[120px]">
+                      <div className="font-medium">{dateStr}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{timeStr}</div>
                     </td>
                     <td className="py-3 px-4">
                       <select
