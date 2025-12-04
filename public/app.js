@@ -92,7 +92,7 @@ const navItems = document.querySelectorAll('.nav-item');
 const tabContents = document.querySelectorAll('.tab-content');
 
 // Фильтры
-const filterButtons = document.querySelectorAll('.filter-btn');
+let filterButtons = []; // Будет обновляться после загрузки фильтров
 
 // Навигация по полям по Enter без отправки формы
 function setupEnterKeyNavigation(form) {
@@ -117,6 +117,75 @@ function setupEnterKeyNavigation(form) {
     });
 }
 
+// Загрузка фильтров
+async function loadFilters() {
+    try {
+        // Загружаем категории
+        const categoriesResponse = await fetch('/api/categories');
+        const categories = await categoriesResponse.json();
+        const categoryContainer = document.getElementById('categoryFilters');
+        if (categoryContainer) {
+            // Оставляем кнопку "Все"
+            const allBtn = categoryContainer.querySelector('[data-filter="all"]');
+            categoryContainer.innerHTML = '';
+            if (allBtn) {
+                categoryContainer.appendChild(allBtn);
+            }
+            // Добавляем категории
+            categories.forEach(category => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn filter-btn-large';
+                btn.setAttribute('data-filter', category.name.toLowerCase().replace(/\s+/g, '-'));
+                btn.setAttribute('data-category', 'type');
+                btn.setAttribute('data-category-id', category.id);
+                btn.textContent = category.name;
+                categoryContainer.appendChild(btn);
+            });
+        }
+        
+        // Загружаем цвета
+        const colorsResponse = await fetch('/api/colors');
+        const colors = await colorsResponse.json();
+        const colorContainer = document.getElementById('colorFilters');
+        if (colorContainer) {
+            colorContainer.innerHTML = '';
+            colors.forEach(color => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn filter-btn-small';
+                btn.setAttribute('data-filter', color.name.toLowerCase().replace(/\s+/g, '-'));
+                btn.setAttribute('data-category', 'color');
+                btn.setAttribute('data-color-id', color.id);
+                btn.textContent = color.name;
+                colorContainer.appendChild(btn);
+            });
+        }
+        
+        // Загружаем качества
+        const qualitiesResponse = await fetch('/api/qualities');
+        const qualities = await qualitiesResponse.json();
+        const qualityContainer = document.getElementById('qualityFilters');
+        if (qualityContainer) {
+            qualityContainer.innerHTML = '';
+            qualities.forEach(quality => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn filter-btn-small';
+                btn.setAttribute('data-filter', quality.name.toLowerCase().replace(/\s+/g, '-'));
+                btn.setAttribute('data-category', 'feature');
+                btn.setAttribute('data-quality-id', quality.id);
+                btn.textContent = quality.name;
+                qualityContainer.appendChild(btn);
+            });
+        }
+        
+        // Обновляем список кнопок фильтров и привязываем обработчики
+        filterButtons = document.querySelectorAll('.filter-btn');
+        attachFilterHandlers();
+        initFilters();
+    } catch (error) {
+        console.error('Ошибка загрузки фильтров:', error);
+    }
+}
+
 // Загрузка товаров
 async function loadProducts() {
     try {
@@ -138,22 +207,31 @@ async function loadProducts() {
 // Фильтрация товаров
 function applyFilters() {
     filteredProducts = products.filter(product => {
-        // Фильтр по типу
+        // Фильтр по категории (типу)
         if (activeFilters.type.length > 0 && !activeFilters.type.includes('all')) {
-            const productType = product.type || 'all';
-            if (!activeFilters.type.includes(productType)) return false;
+            // Сравниваем по названию категории (приводим к нижнему регистру и заменяем пробелы на дефисы)
+            const productCategory = (product.category || product.type || '').toLowerCase().replace(/\s+/g, '-');
+            const filterCategory = activeFilters.type[0].toLowerCase().replace(/\s+/g, '-');
+            if (productCategory !== filterCategory) return false;
         }
         
         // Фильтр по цвету (только один выбор)
         if (activeFilters.color.length > 0) {
-            const productColor = product.color || [];
-            if (!activeFilters.color.some(c => productColor.includes(c))) return false;
+            // Сравниваем по названию цвета (приводим к нижнему регистру и заменяем пробелы на дефисы)
+            const productColor = (product.color || '').toLowerCase().replace(/\s+/g, '-');
+            const filterColor = activeFilters.color[0].toLowerCase().replace(/\s+/g, '-');
+            if (productColor !== filterColor) return false;
         }
         
-        // Фильтр по характеристикам (только один выбор)
+        // Фильтр по качествам (характеристикам) - только один выбор
         if (activeFilters.feature.length > 0) {
             const productFeatures = product.features || [];
-            if (!activeFilters.feature.some(f => productFeatures.includes(f))) return false;
+            // Приводим к нижнему регистру и заменяем пробелы на дефисы для сравнения
+            const normalizedProductFeatures = productFeatures.map(f => 
+                (typeof f === 'string' ? f : '').toLowerCase().replace(/\s+/g, '-')
+            );
+            const filterFeature = activeFilters.feature[0].toLowerCase().replace(/\s+/g, '-');
+            if (!normalizedProductFeatures.includes(filterFeature)) return false;
         }
         
         return true;
@@ -162,60 +240,70 @@ function applyFilters() {
     renderProducts();
 }
 
-// Обработка фильтров
-filterButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        const filter = btn.dataset.filter;
-        const category = btn.dataset.category;
-        
-        // Для первой строки (type) - взаимоисключающий выбор
-        if (category === 'type') {
-            // Если нажали "Все"
-            if (filter === 'all') {
-                // Снимаем все фильтры типа
-                document.querySelectorAll(`.filter-btn[data-category="type"]`).forEach(b => {
-                    b.classList.remove('active');
-                });
-                activeFilters.type = ['all'];
-                btn.classList.add('active');
-            } else {
-                // Если нажали конкретный тип - убираем "Все"
-                const allBtn = document.querySelector(`.filter-btn[data-filter="all"][data-category="type"]`);
-                if (allBtn) {
-                    allBtn.classList.remove('active');
-                }
-                // Убираем все остальные фильтры типа
-                document.querySelectorAll(`.filter-btn[data-category="type"]:not([data-filter="${filter}"])`).forEach(b => {
-                    b.classList.remove('active');
-                });
-                activeFilters.type = [filter];
-                btn.classList.add('active');
-            }
-        } else {
-            // Для маленьких фильтров (color, feature) - только один выбор среди всех маленьких фильтров
-            if (btn.classList.contains('active')) {
-                // Отмена фильтра
-                btn.classList.remove('active');
-                activeFilters.color = [];
-                activeFilters.feature = [];
-            } else {
-                // Снимаем все активные маленькие фильтры (и color, и feature)
-                document.querySelectorAll(`.filter-btn[data-category="color"], .filter-btn[data-category="feature"]`).forEach(b => {
-                    b.classList.remove('active');
-                });
-                // Очищаем оба массива
-                activeFilters.color = [];
-                activeFilters.feature = [];
-                // Активация нового фильтра
-                btn.classList.add('active');
-                activeFilters[category] = [filter];
-            }
-        }
-        
-        applyFilters();
-        tg.HapticFeedback.impactOccurred('light');
+// Привязка обработчиков к фильтрам
+function attachFilterHandlers() {
+    filterButtons.forEach(btn => {
+        // Удаляем старые обработчики, если они есть
+        btn.replaceWith(btn.cloneNode(true));
     });
-});
+    
+    // Получаем обновленный список кнопок
+    filterButtons = document.querySelectorAll('.filter-btn');
+    
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const filter = btn.dataset.filter;
+            const category = btn.dataset.category;
+            
+            // Для первой строки (type) - взаимоисключающий выбор
+            if (category === 'type') {
+                // Если нажали "Все"
+                if (filter === 'all') {
+                    // Снимаем все фильтры типа
+                    document.querySelectorAll(`.filter-btn[data-category="type"]`).forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    activeFilters.type = ['all'];
+                    btn.classList.add('active');
+                } else {
+                    // Если нажали конкретный тип - убираем "Все"
+                    const allBtn = document.querySelector(`.filter-btn[data-filter="all"][data-category="type"]`);
+                    if (allBtn) {
+                        allBtn.classList.remove('active');
+                    }
+                    // Убираем все остальные фильтры типа
+                    document.querySelectorAll(`.filter-btn[data-category="type"]:not([data-filter="${filter}"])`).forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    activeFilters.type = [filter];
+                    btn.classList.add('active');
+                }
+            } else {
+                // Для маленьких фильтров (color, feature) - только один выбор среди всех маленьких фильтров
+                if (btn.classList.contains('active')) {
+                    // Отмена фильтра
+                    btn.classList.remove('active');
+                    activeFilters.color = [];
+                    activeFilters.feature = [];
+                } else {
+                    // Снимаем все активные маленькие фильтры (и color, и feature)
+                    document.querySelectorAll(`.filter-btn[data-category="color"], .filter-btn[data-category="feature"]`).forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    // Очищаем оба массива
+                    activeFilters.color = [];
+                    activeFilters.feature = [];
+                    // Активация нового фильтра
+                    btn.classList.add('active');
+                    activeFilters[category] = [filter];
+                }
+            }
+            
+            applyFilters();
+            tg.HapticFeedback.impactOccurred('light');
+        });
+    });
+}
 
 // Отображение товаров
 function renderProducts() {

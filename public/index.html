@@ -26,37 +26,20 @@
             <div class="tab-content active" id="menuTab">
                 <!-- Фильтры -->
                 <div class="filters-container">
-                    <!-- Первая строка фильтров (большие, розовая заливка при выборе) -->
-                    <div class="filter-row filter-row-large">
-                        <button class="filter-btn filter-btn-large" data-filter="all" data-category="type">Все</button>
-                        <button class="filter-btn filter-btn-large" data-filter="chrysanthemums" data-category="type">Хризантемы</button>
-                        <button class="filter-btn filter-btn-large" data-filter="exotic" data-category="type">Экзотика</button>
-                        <button class="filter-btn filter-btn-large" data-filter="ranunculus" data-category="type">Ранункулюсы</button>
-                        <button class="filter-btn filter-btn-large" data-filter="greenery" data-category="type">Зелень</button>
-                        <button class="filter-btn filter-btn-large" data-filter="carnations" data-category="type">Гвоздики</button>
-                        <button class="filter-btn filter-btn-large" data-filter="conifers" data-category="type">Хвоя</button>
-                        <button class="filter-btn filter-btn-large" data-filter="bush-roses" data-category="type">Кустовые розы</button>
-                        <button class="filter-btn filter-btn-large" data-filter="roses" data-category="type">Розы</button>
-                        <button class="filter-btn filter-btn-large" data-filter="tulips" data-category="type">Тюльпаны</button>
+                    <!-- Первая строка фильтров (категории, большие, розовая заливка при выборе) -->
+                    <div class="filter-row filter-row-large" id="categoryFilters">
+                        <button class="filter-btn filter-btn-large active" data-filter="all" data-category="type">Все</button>
+                        <!-- Категории будут загружены динамически -->
                     </div>
                     
                     <!-- Вторая строка фильтров (цвета, серая обводка) -->
-                    <div class="filter-row filter-row-small">
-                        <button class="filter-btn filter-btn-small" data-filter="pink" data-category="color">Розовые</button>
-                        <button class="filter-btn filter-btn-small" data-filter="white" data-category="color">Белые</button>
-                        <button class="filter-btn filter-btn-small" data-filter="green" data-category="color">Зеленые</button>
-                        <button class="filter-btn filter-btn-small" data-filter="brown" data-category="color">Коричневые</button>
-                        <button class="filter-btn filter-btn-small" data-filter="red" data-category="color">Красные</button>
-                        <button class="filter-btn filter-btn-small" data-filter="purple" data-category="color">Фиолетовые</button>
-                        <button class="filter-btn filter-btn-small" data-filter="orange" data-category="color">Оранжевые</button>
+                    <div class="filter-row filter-row-small" id="colorFilters">
+                        <!-- Цвета будут загружены динамически -->
                     </div>
                     
-                    <!-- Третья строка фильтров (характеристики, серая обводка) -->
-                    <div class="filter-row filter-row-small">
-                        <button class="filter-btn filter-btn-small" data-filter="aromatic" data-category="feature">Ароматные</button>
-                        <button class="filter-btn filter-btn-small" data-filter="durable" data-category="feature">Стойкие</button>
-                        <button class="filter-btn filter-btn-small" data-filter="tall" data-category="feature">Высокие</button>
-                        <button class="filter-btn filter-btn-small" data-filter="peony" data-category="feature">Пионовидные</button>
+                    <!-- Третья строка фильтров (качества, серая обводка) -->
+                    <div class="filter-row filter-row-small" id="qualityFilters">
+                        <!-- Качества будут загружены динамически -->
                     </div>
                 </div>
                 

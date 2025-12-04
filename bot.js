@@ -738,6 +738,64 @@ app.get('/', (req, res) => {
 });
 
 // API endpoint для получения каталога (использует БД или fallback)
+// Публичные API для фильтров (без авторизации)
+app.get('/api/categories', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM product_categories ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения категорий:', error);
+    res.status(500).json({ error: 'Ошибка получения категорий' });
+  }
+});
+
+app.get('/api/colors', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM product_colors ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения цветов:', error);
+    res.status(500).json({ error: 'Ошибка получения цветов' });
+  }
+});
+
+app.get('/api/qualities', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM product_qualities ORDER BY name');
+      res.json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения качеств:', error);
+    res.status(500).json({ error: 'Ошибка получения качеств' });
+  }
+});
+
 app.get('/api/products', async (req, res) => {
   if (pool) {
     // Используем БД
