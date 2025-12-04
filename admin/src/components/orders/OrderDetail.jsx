@@ -103,12 +103,17 @@ export function OrderDetail({ authToken, orderId }) {
       });
 
       if (response.ok) {
+        const updatedOrder = await response.json();
+        setOrder(updatedOrder);
         await loadOrderDetails();
         setStatusComment('');
         toast.success('Изменения сохранены');
       } else {
-        const error = await response.json();
-        toast.error(error.error || 'Ошибка сохранения изменений');
+        const errorData = await response.json().catch(() => ({ error: 'Ошибка сохранения изменений' }));
+        console.error('Ошибка сохранения заказа:', errorData);
+        // Если статус обновился на сервере, но ответ не OK, все равно перезагружаем данные
+        await loadOrderDetails();
+        toast.error(errorData.error || 'Ошибка сохранения изменений');
       }
     } catch (error) {
       console.error('Ошибка обновления статуса:', error);

@@ -2124,17 +2124,45 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Заказ не найден' });
       }
       
+      // Записываем в историю статусов, если статус изменился
+      if (status !== undefined) {
+        try {
+          await client.query(
+            'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
+            [orderId, status, 'admin', internal_comment || null]
+          );
+        } catch (historyError) {
+          // Игнорируем ошибку, если таблица не существует
+          if (!historyError.message.includes('does not exist')) {
+            console.error('Ошибка записи в историю статусов:', historyError);
+          }
+        }
+      }
+      
       const order = result.rows[0];
       // Загружаем items
       const itemsResult = await client.query(
         'SELECT * FROM order_items WHERE order_id = $1',
-        [id]
+        [orderId]
       );
+      
+      // Парсим address_json, если он строка
+      let addressData = {};
+      if (order.address_json) {
+        try {
+          addressData = typeof order.address_json === 'string' 
+            ? JSON.parse(order.address_json) 
+            : order.address_json;
+        } catch (e) {
+          console.error('Ошибка парсинга address_json:', e);
+          addressData = {};
+        }
+      }
       
       res.json({
         ...order,
         items: itemsResult.rows,
-        address_data: order.address_json ? JSON.parse(order.address_json) : {}
+        address_data: addressData
       });
     } finally {
       client.release();
