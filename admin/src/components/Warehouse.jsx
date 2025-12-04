@@ -200,10 +200,8 @@ export function Warehouse({ authToken }) {
                 <PackageIcon className="w-6 h-6 text-purple-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600">Низкие остатки</p>
@@ -214,10 +212,8 @@ export function Warehouse({ authToken }) {
                 <TrendingDown className="w-6 h-6 text-orange-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600">Нулевые остатки</p>
