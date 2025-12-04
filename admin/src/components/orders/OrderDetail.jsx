@@ -471,7 +471,12 @@ export function OrderDetail({ authToken, orderId }) {
                   );
                 })
               ) : (
-                <p className="text-gray-500 text-sm">История пуста</p>
+                <div>
+                  <p className="text-gray-500 text-sm mb-2">История пуста</p>
+                  <p className="text-xs text-gray-400">
+                    {order ? `Текущий статус: ${getStatusLabel(order.status)}` : ''}
+                  </p>
+                </div>
               )}
             </div>
           </div>
