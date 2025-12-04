@@ -2,6 +2,12 @@
 
 BEGIN;
 
+-- Делаем product_id и quantity nullable для новой структуры (поставки без конкретного товара)
+ALTER TABLE supplies 
+  ALTER COLUMN product_id DROP NOT NULL,
+  ALTER COLUMN quantity DROP NOT NULL,
+  ALTER COLUMN unit_purchase_price DROP NOT NULL;
+
 -- Добавляем новые поля в таблицу supplies
 ALTER TABLE supplies 
   ADD COLUMN IF NOT EXISTS total_amount DECIMAL(10,2),

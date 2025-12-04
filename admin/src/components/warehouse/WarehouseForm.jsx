@@ -14,7 +14,7 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
   const [supplyForm, setSupplyForm] = useState({
     delivery_date: new Date().toISOString().split('T')[0],
     supplier_id: null,
-    total_amount: '',
+    total_amount: '', // Пользователь вводит сам
     delivery_price: '',
     comment: '',
   });
@@ -227,8 +227,14 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
       }
     }
 
-    const totalAmount = calculateTotalAmount();
+    // Используем введенную пользователем общую сумму, если она указана
+    const totalAmount = supplyForm.total_amount ? parseFloat(supplyForm.total_amount) : calculateTotalAmount();
     const deliveryPrice = parseFloat(supplyForm.delivery_price) || 0;
+
+    if (isNaN(totalAmount) || totalAmount < 0) {
+      toast.error('Общая сумма должна быть числом больше или равным 0');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -295,17 +301,6 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">
-              ID поставки
-            </label>
-            <input
-              type="text"
-              value="Автоматически"
-              disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
               Дата поставки <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -349,9 +344,22 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
             </label>
             <input
               type="text"
-              value={calculateTotalAmount().toFixed(2)}
-              disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              inputMode="decimal"
+              value={supplyForm.total_amount}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                const parts = value.split('.');
+                const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                setSupplyForm({ ...supplyForm, total_amount: cleanedValue });
+              }}
+              onBlur={(e) => {
+                const numValue = parseFloat(e.target.value);
+                if (!isNaN(numValue) && numValue >= 0) {
+                  setSupplyForm({ ...supplyForm, total_amount: numValue.toFixed(2) });
+                }
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              placeholder="0.00"
             />
           </div>
           <div>
@@ -395,15 +403,8 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
 
       {/* Товары в поставке */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6">
           <h2 className="text-xl font-semibold">Товары в поставке</h2>
-          <button
-            onClick={addSupplyItem}
-            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Добавить товар
-          </button>
         </div>
 
         <div className="space-y-6">
