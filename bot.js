@@ -2462,8 +2462,14 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
       let paramIndex = 1;
       
       if (status !== undefined) {
+        // Нормализуем статус к единому enum перед сохранением
+        const normalizedStatus = normalizeOrderStatus(status);
+        const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
+        if (!validStatuses.includes(normalizedStatus)) {
+          return res.status(400).json({ error: `Неверный статус: ${status}. Допустимые значения: ${validStatuses.join(', ')}` });
+        }
         updateQuery += `, status = $${paramIndex}`;
-        params.push(status);
+        params.push(normalizedStatus);
         paramIndex++;
       }
       if (recipient_name !== undefined) {
@@ -3271,19 +3277,55 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
 });
 
 // API: Обновить статус заказа (расширенный)
+// Нормализация статуса: преобразует старые форматы в единый enum
+function normalizeOrderStatus(status) {
+  if (!status) return null;
+  
+  const statusUpper = status.toUpperCase();
+  
+  // Маппинг старых статусов на новые
+  const statusMap = {
+    'NEW': 'NEW',
+    'PROCESSING': 'PROCESSING',
+    'COLLECTING': 'COLLECTING',
+    'DELIVERING': 'DELIVERING',
+    'COMPLETED': 'COMPLETED',
+    'CANCELED': 'CANCELED',
+    'CANCELLED': 'CANCELED', // Британский вариант
+    'UNPAID': 'UNPAID',
+    // Старые форматы
+    'ACTIVE': 'NEW',
+    'PAID': 'NEW',
+    'CONFIRMED': 'PROCESSING',
+    'PREPARING': 'PROCESSING',
+    'ASSEMBLY': 'COLLECTING',
+    'IN_TRANSIT': 'DELIVERING',
+    'DELIVERED': 'COMPLETED',
+    'CANCELLED': 'CANCELED'
+  };
+  
+  return statusMap[statusUpper] || statusUpper;
+}
+
 app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
   const { id } = req.params;
-  const { status, comment } = req.body;
+  let { status, comment } = req.body;
   
-  // Расширенные статусы
-  const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED',
-                         'new', 'confirmed', 'preparing', 'assigned', 'in_transit', 'delivered', 'cancelled', 'active', 'completed', 'paid', 'assembly', 'delivery'];
+  if (!status) {
+    return res.status(400).json({ error: 'Статус обязателен' });
+  }
+  
+  // Нормализуем статус к единому enum
+  status = normalizeOrderStatus(status);
+  
+  // Валидация: только правильные статусы
+  const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
   if (!validStatuses.includes(status)) {
-    return res.status(400).json({ error: 'Неверный статус' });
+    return res.status(400).json({ error: `Неверный статус. Допустимые значения: ${validStatuses.join(', ')}` });
   }
   
   try {
