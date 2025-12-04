@@ -1703,7 +1703,8 @@ async function validateAndSubmitOrder(e) {
         deliveryTime: deliveryTime,
         comment: comment,
         userId: tg.initDataUnsafe?.user?.id || null,
-        username: tg.initDataUnsafe?.user?.username || null
+        username: tg.initDataUnsafe?.user?.username || null,
+        phone_number: tg.initDataUnsafe?.user?.phone_number || null // Номер телефона из Telegram (если доступен)
     };
 
     try {
