@@ -1,22 +1,67 @@
 import { useState, useEffect } from 'react';
-import { Truck, Phone, MessageCircle, RefreshCw } from 'lucide-react';
+import { Truck, Phone, MapPin, Eye, Calendar, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = window.location.origin;
 
+// Форматирование даты для datepicker (YYYY-MM-DD)
+const formatDateForInput = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Форматирование даты для отображения (DD.MM.YYYY)
+const formatDateForDisplay = (dateString) => {
+  if (!dateString) return '';
+  const [year, month, day] = dateString.split('-');
+  return `${day}.${month}.${year}`;
+};
+
+// Форматирование времени для отображения (10-12 -> 10:00–12:00)
+const formatTimeForDisplay = (timeString) => {
+  if (!timeString) return '';
+  return timeString.replace('-', '–').split('').map((char, idx) => {
+    if (idx === 2 && char === '–') return ':00–';
+    if (idx === 5 && char === '–') return ':00';
+    return char;
+  }).join('') || timeString.replace('-', ':00–') + ':00';
+};
+
+// Форматирование суммы в рубли
+const formatPrice = (amount) => {
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
 export function Delivery({ authToken }) {
+  const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState(formatDateForInput(new Date()));
+  const [stats, setStats] = useState({
+    total: 0,
+    waiting: 0,
+    delivering: 0,
+    delivered: 0
+  });
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState({});
 
   useEffect(() => {
     loadDeliveries();
-  }, []);
+  }, [selectedDate]);
 
   const loadDeliveries = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/delivery`, {
+      const response = await fetch(`${API_BASE}/api/admin/delivery?date=${selectedDate}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -24,9 +69,11 @@ export function Delivery({ authToken }) {
 
       if (response.ok) {
         const data = await response.json();
-        setDeliveries(data);
+        setStats(data.stats || { total: 0, waiting: 0, delivering: 0, delivered: 0 });
+        setDeliveries(data.deliveries || []);
       } else {
-        toast.error('Ошибка загрузки доставок');
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка загрузки доставок');
       }
     } catch (error) {
       console.error('Ошибка загрузки доставок:', error);
@@ -36,12 +83,23 @@ export function Delivery({ authToken }) {
     }
   };
 
-  const updateDeliveryStatus = async (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus) => {
     setUpdatingStatus(prev => ({ ...prev, [orderId]: true }));
     
+    // Оптимистичное обновление
+    const oldDelivery = deliveries.find(d => d.orderId === orderId);
+    const oldStatus = oldDelivery?.status;
+    
+    setDeliveries(prev => prev.map(d => 
+      d.orderId === orderId ? { ...d, status: newStatus } : d
+    ));
+    
+    // Пересчитываем статистику локально
+    updateStatsLocally(oldStatus, newStatus);
+    
     try {
-      const response = await fetch(`${API_BASE}/api/admin/delivery/${orderId}`, {
-        method: 'PUT',
+      const response = await fetch(`${API_BASE}/api/admin/orders/${orderId}/status`, {
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
@@ -50,16 +108,26 @@ export function Delivery({ authToken }) {
       });
 
       if (response.ok) {
-        // Обновляем локальное состояние
-        setDeliveries(prev => prev.map(d => 
-          d.order_id === orderId ? { ...d, delivery_status: newStatus } : d
-        ));
-        toast.success('Статус доставки обновлен');
+        toast.success('Статус заказа обновлен');
+        // Перезагружаем данные для синхронизации
+        await loadDeliveries();
       } else {
+        // Откатываем изменения при ошибке
+        setDeliveries(prev => prev.map(d => 
+          d.orderId === orderId ? { ...d, status: oldStatus } : d
+        ));
+        updateStatsLocally(newStatus, oldStatus);
+        
         const error = await response.json();
         toast.error(error.error || 'Ошибка обновления статуса');
       }
     } catch (error) {
+      // Откатываем изменения при ошибке
+      setDeliveries(prev => prev.map(d => 
+        d.orderId === orderId ? { ...d, status: oldStatus } : d
+      ));
+      updateStatsLocally(newStatus, oldStatus);
+      
       console.error('Ошибка обновления статуса:', error);
       toast.error('Ошибка обновления статуса');
     } finally {
@@ -71,145 +139,257 @@ export function Delivery({ authToken }) {
     }
   };
 
-  const formatPhone = (phone) => {
-    if (!phone) return '-';
-    // Убираем все нецифровые символы кроме +
-    const cleaned = phone.replace(/[^\d+]/g, '');
-    return cleaned;
-  };
-
-  const formatDateTime = (date, time) => {
-    if (!date) return '-';
-    const dateObj = new Date(date);
-    const formattedDate = dateObj.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+  const updateStatsLocally = (oldStatus, newStatus) => {
+    setStats(prev => {
+      const newStats = { ...prev };
+      
+      // Убираем из старого статуса
+      if (oldStatus === 'PROCESSING') newStats.waiting = Math.max(0, newStats.waiting - 1);
+      else if (oldStatus === 'DELIVERING') newStats.delivering = Math.max(0, newStats.delivering - 1);
+      else if (oldStatus === 'COMPLETED') newStats.delivered = Math.max(0, newStats.delivered - 1);
+      
+      // Добавляем в новый статус
+      if (newStatus === 'PROCESSING') newStats.waiting++;
+      else if (newStatus === 'DELIVERING') newStats.delivering++;
+      else if (newStatus === 'COMPLETED') newStats.delivered++;
+      
+      return newStats;
     });
-    return time ? `${formattedDate} ${time}` : formattedDate;
   };
 
+  // Группируем доставки по времени
+  const deliveriesByTime = deliveries.reduce((acc, delivery) => {
+    const time = delivery.deliveryTime || 'Без времени';
+    if (!acc[time]) {
+      acc[time] = [];
+    }
+    acc[time].push(delivery);
+    return acc;
+  }, {});
+
+  // Сортируем временные слоты
+  const sortedTimeSlots = Object.keys(deliveriesByTime).sort((a, b) => {
+    if (a === 'Без времени') return 1;
+    if (b === 'Без времени') return -1;
+    return a.localeCompare(b);
+  });
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      'PROCESSING': 'Ожидает курьера',
+      'DELIVERING': 'В пути',
+      'COMPLETED': 'Доставлено',
+      'CANCELED': 'Отменён'
+    };
+    return labels[status] || status;
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'PROCESSING': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'DELIVERING': 'bg-blue-100 text-blue-800 border-blue-300',
+      'COMPLETED': 'bg-green-100 text-green-800 border-green-300',
+      'CANCELED': 'bg-gray-100 text-gray-800 border-gray-300'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+  };
 
   if (loading) {
-    return <div className="p-6">Загрузка...</div>;
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-pink-600" />
+          <p className="text-gray-600">Загрузка доставок...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      {/* Заголовок и датапикер */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Доставка</h1>
-          <p className="text-gray-600 mt-1">Список доставок по заказам</p>
+          <p className="text-gray-600 mt-1">Управление доставками</p>
         </div>
-        <button
-          onClick={loadDeliveries}
-          className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Обновить
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-500" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            />
+          </div>
+          <button
+            onClick={loadDeliveries}
+            className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Обновить
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4">ID заказа</th>
-                <th className="text-left py-3 px-4">Получатель</th>
-                <th className="text-left py-3 px-4">Телефон</th>
-                <th className="text-left py-3 px-4">Адрес</th>
-                <th className="text-left py-3 px-4">Дата и время</th>
-                <th className="text-left py-3 px-4">Связь</th>
-                <th className="text-left py-3 px-4">Статус</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveries.map((delivery) => {
-                const phone = formatPhone(delivery.recipient_phone);
-                const isUpdating = updatingStatus[delivery.order_id];
-                
-                return (
-                  <tr key={delivery.order_id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 text-gray-600">#{delivery.order_id}</td>
-                    <td className="py-3 px-4">{delivery.recipient_name || '-'}</td>
-                    <td className="py-3 px-4">
-                      {phone !== '-' ? (
-                        <a 
-                          href={`tel:${phone}`}
-                          className="text-pink-600 hover:text-pink-800 flex items-center gap-1"
-                        >
-                          <Phone className="w-4 h-4" />
-                          {delivery.recipient_phone}
-                        </a>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="max-w-xs truncate" title={delivery.address_string || delivery.address}>
-                        {delivery.address_string || delivery.address || '-'}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      {formatDateTime(delivery.delivery_date, delivery.delivery_time)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {phone !== '-' && (
-                          <a
-                            href={`tel:${phone}`}
-                            className="p-2 hover:bg-gray-100 rounded text-blue-600"
-                            title="Позвонить"
-                          >
-                            <Phone className="w-4 h-4" />
-                          </a>
-                        )}
-                        {(delivery.telegram_id || delivery.telegram_username) && (
-                          <a
-                            href={delivery.telegram_username 
-                              ? `https://t.me/${delivery.telegram_username.replace('@', '')}`
-                              : `tg://user?id=${delivery.telegram_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 hover:bg-gray-100 rounded text-blue-600"
-                            title="Написать в Telegram"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <select
-                        value={delivery.delivery_status || delivery.status || 'pending'}
-                        onChange={(e) => updateDeliveryStatus(delivery.order_id, e.target.value)}
-                        disabled={isUpdating}
-                        className={`px-3 py-1 rounded text-sm border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
-                          isUpdating ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <option value="pending">Ожидает доставки</option>
-                        <option value="in_transit">В пути</option>
-                        <option value="delivered">Доставлено</option>
-                        <option value="cancelled">Отменено</option>
-                      </select>
-                      {isUpdating && (
-                        <span className="ml-2 text-xs text-gray-500">Обновление...</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {deliveries.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              Пока нет доставок
-            </div>
-          )}
+      {/* Статистика (KPI карточки) */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-2">Всего доставок</div>
+          <div className="text-3xl font-bold">{stats.total}</div>
         </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-2">Ожидают курьера</div>
+          <div className="text-3xl font-bold text-yellow-600">{stats.waiting}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-2">В пути</div>
+          <div className="text-3xl font-bold text-blue-600">{stats.delivering}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-2">Доставлено</div>
+          <div className="text-3xl font-bold text-green-600">{stats.delivered}</div>
+        </div>
+      </div>
+
+      {/* Список доставок */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">
+            Доставки на {formatDateForDisplay(selectedDate)}
+          </h2>
+          <select className="px-4 py-2 border border-gray-300 rounded-lg">
+            <option>Все курьеры</option>
+          </select>
+        </div>
+
+        {sortedTimeSlots.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <Truck className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-600">Нет доставок на выбранную дату</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {sortedTimeSlots.map((timeSlot) => (
+              <div key={timeSlot} className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Время: {formatTimeForDisplay(timeSlot)}
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {deliveriesByTime[timeSlot].map((delivery) => (
+                    <div
+                      key={delivery.orderId}
+                      className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="grid grid-cols-12 gap-4">
+                        {/* Время и ID заказа */}
+                        <div className="col-span-2">
+                          <div className="text-sm text-gray-600 mb-1">Время</div>
+                          <div className="font-semibold">{formatTimeForDisplay(delivery.deliveryTime)}</div>
+                          <a
+                            href={`/admin/orders/${delivery.orderId}`}
+                            className="text-pink-600 hover:text-pink-800 text-sm font-medium"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(`/admin/orders/${delivery.orderId}`);
+                            }}
+                          >
+                            #{delivery.orderId}
+                          </a>
+                        </div>
+
+                        {/* Адрес */}
+                        <div className="col-span-3">
+                          <div className="text-sm text-gray-600 mb-1">Адрес</div>
+                          <div className="font-medium mb-2">{delivery.address || '-'}</div>
+                          <a
+                            href="#"
+                            className="text-pink-600 hover:text-pink-800 text-sm flex items-center gap-1"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              // TODO: Открыть карту
+                              toast.info('Функция открытия карты будет добавлена позже');
+                            }}
+                          >
+                            <MapPin className="w-4 h-4" />
+                            Открыть на карте
+                          </a>
+                        </div>
+
+                        {/* Получатель */}
+                        <div className="col-span-2">
+                          <div className="text-sm text-gray-600 mb-1">Получатель</div>
+                          <div className="font-medium">{delivery.recipientName || '-'}</div>
+                          {delivery.recipientPhone && (
+                            <a
+                              href={`tel:${delivery.recipientPhone.replace(/\D/g, '')}`}
+                              className="text-pink-600 hover:text-pink-800 text-sm flex items-center gap-1 mt-1"
+                            >
+                              <Phone className="w-4 h-4" />
+                              {delivery.recipientPhone}
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Состав */}
+                        <div className="col-span-2">
+                          <div className="text-sm text-gray-600 mb-1">Состав</div>
+                          <div className="text-sm">{delivery.itemsSummary || '-'}</div>
+                        </div>
+
+                        {/* Сумма */}
+                        <div className="col-span-1">
+                          <div className="text-sm text-gray-600 mb-1">Сумма</div>
+                          <div className="font-semibold">{formatPrice(delivery.total)}</div>
+                        </div>
+
+                        {/* Курьер (заглушка) */}
+                        <div className="col-span-1">
+                          <div className="text-sm text-gray-600 mb-1">Курьер</div>
+                          <select className="w-full px-2 py-1 text-sm border border-gray-300 rounded">
+                            <option>Не назначен</option>
+                          </select>
+                        </div>
+
+                        {/* Статус */}
+                        <div className="col-span-1">
+                          <div className="text-sm text-gray-600 mb-1">Статус</div>
+                          <select
+                            value={delivery.status}
+                            onChange={(e) => updateOrderStatus(delivery.orderId, e.target.value)}
+                            disabled={updatingStatus[delivery.orderId]}
+                            className={`w-full px-2 py-1 text-sm border rounded ${
+                              updatingStatus[delivery.orderId] 
+                                ? 'opacity-50 cursor-not-allowed' 
+                                : 'cursor-pointer'
+                            } ${getStatusColor(delivery.status)}`}
+                          >
+                            <option value="PROCESSING">Ожидает курьера</option>
+                            <option value="DELIVERING">В пути</option>
+                            <option value="COMPLETED">Доставлено</option>
+                            <option value="CANCELED" className="text-gray-500">Отменён</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Кнопка Детали */}
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() => navigate(`/admin/orders/${delivery.orderId}`)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-pink-600 hover:text-pink-800 hover:bg-pink-50 rounded-lg transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Детали
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

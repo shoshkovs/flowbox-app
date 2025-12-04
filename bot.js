@@ -3474,85 +3474,159 @@ app.delete('/api/admin/couriers/:id', checkAdminAuth, async (req, res) => {
 });
 
 // API: Получить зоны доставки
-// API: Получить список доставок
+// API: Получить список доставок по дате с статистикой
 app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
+  const { date } = req.query; // Формат: YYYY-MM-DD
+  const deliveryDate = date || new Date().toISOString().split('T')[0]; // По умолчанию сегодня
+  
   try {
     const client = await pool.connect();
     try {
-      // Получаем заказы с доставкой (где есть delivery_date или статус delivery)
-      const result = await client.query(`
-        SELECT 
+      // Получаем заказы с доставкой на указанную дату
+      const result = await client.query(
+        `SELECT 
           o.id as order_id,
+          o.status,
           o.recipient_name,
           o.recipient_phone,
           o.address_string,
-          o.address_json,
           o.delivery_date,
           o.delivery_time,
-          o.status,
-          o.comment,
-          u.telegram_id,
-          u.username
+          o.total,
+          STRING_AGG(oi.name || ' x ' || oi.quantity, ', ' ORDER BY oi.id) as items_summary
         FROM orders o
-        LEFT JOIN users u ON o.user_id = u.id
-        WHERE o.delivery_date IS NOT NULL
-           OR o.status IN ('DELIVERING', 'NEW', 'PROCESSING', 'COLLECTING')
-        ORDER BY 
-          CASE 
-            WHEN o.delivery_date IS NOT NULL THEN o.delivery_date
-            ELSE o.created_at
-          END ASC,
-          o.delivery_time ASC
-      `);
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.delivery_date = $1
+          AND o.status IN ('PROCESSING', 'DELIVERING', 'COMPLETED', 'CANCELED')
+        GROUP BY o.id, o.status, o.recipient_name, o.recipient_phone, o.address_string, 
+                 o.delivery_date, o.delivery_time, o.total
+        ORDER BY o.delivery_time ASC, o.id ASC`,
+        [deliveryDate]
+      );
+      
+      // Подсчитываем статистику
+      const stats = {
+        total: 0,
+        waiting: 0,    // PROCESSING
+        delivering: 0, // DELIVERING
+        delivered: 0   // COMPLETED
+      };
       
       const deliveries = result.rows.map(row => {
-        // Формируем адрес из address_string или address_json
-        let address = row.address_string;
-        if (!address && row.address_json) {
-          const addrData = typeof row.address_json === 'object' 
-            ? row.address_json 
-            : JSON.parse(row.address_json);
-          if (addrData) {
-            const parts = [];
-            if (addrData.city) parts.push(addrData.city);
-            if (addrData.street) parts.push(addrData.street);
-            if (addrData.house) parts.push(`д. ${addrData.house}`);
-            if (addrData.apartment) parts.push(`кв. ${addrData.apartment}`);
-            address = parts.join(', ');
-          }
-        }
+        // Обновляем статистику
+        stats.total++;
+        if (row.status === 'PROCESSING') stats.waiting++;
+        else if (row.status === 'DELIVERING') stats.delivering++;
+        else if (row.status === 'COMPLETED') stats.delivered++;
         
         return {
-          order_id: row.order_id,
-          recipient_name: row.recipient_name,
-          recipient_phone: row.recipient_phone,
-          address_string: address || row.address_string,
-          address: address || row.address_string,
-          delivery_date: row.delivery_date,
-          delivery_time: row.delivery_time,
-          delivery_status: row.status, // Используем status заказа как статус доставки
+          orderId: parseInt(row.order_id),
           status: row.status,
-          comment: row.comment,
-          telegram_id: row.telegram_id, // Используем telegram_id для связи
-          telegram_username: row.username // Используем username для связи в Telegram
+          recipientName: row.recipient_name || '',
+          recipientPhone: row.recipient_phone || '',
+          address: row.address_string || '',
+          deliveryDate: row.delivery_date,
+          deliveryTime: row.delivery_time || '',
+          total: parseInt(row.total || 0),
+          itemsSummary: row.items_summary || ''
         };
       });
       
-      res.json(deliveries);
+      res.json({
+        stats,
+        deliveries
+      });
     } finally {
       client.release();
     }
   } catch (error) {
     console.error('Ошибка получения доставок:', error);
-    res.status(500).json({ error: 'Ошибка получения доставок' });
+    res.status(500).json({ error: 'Ошибка получения доставок: ' + error.message });
   }
 });
 
-// API: Обновить статус доставки
+// API: Обновить статус заказа (PATCH для Delivery страницы)
+app.patch('/api/admin/orders/:orderId/status', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { orderId } = req.params;
+  const { status, comment } = req.body;
+  
+  if (!status) {
+    return res.status(400).json({ error: 'Статус обязателен' });
+  }
+  
+  // Валидация статуса
+  const validStatuses = ['PROCESSING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Неверный статус' });
+  }
+  
+  const orderIdInt = parseInt(orderId);
+  if (isNaN(orderIdInt)) {
+    return res.status(400).json({ error: 'Неверный ID заказа' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Получаем старый статус
+      const oldOrderResult = await client.query('SELECT status FROM orders WHERE id = $1', [orderIdInt]);
+      if (oldOrderResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      const oldStatus = oldOrderResult.rows[0].status;
+      
+      // Обновляем статус заказа
+      const result = await client.query(
+        'UPDATE orders SET status = $1, updated_at = now() WHERE id = $2 RETURNING *',
+        [status, orderIdInt]
+      );
+      
+      // Записываем в историю статусов, если статус изменился
+      if (oldStatus !== status) {
+        try {
+          await client.query(
+            `INSERT INTO order_status_history (order_id, status, source, changed_by_id, comment)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [orderIdInt, status, 'admin', req.adminUserId || null, comment || null]
+          );
+        } catch (historyError) {
+          // Игнорируем ошибки истории (таблица может не существовать)
+          console.log('⚠️  Не удалось создать запись в истории статусов:', historyError.message);
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      res.json({ 
+        success: true,
+        orderId: orderIdInt,
+        status: status
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления статуса заказа:', error);
+    res.status(500).json({ error: 'Ошибка обновления статуса заказа: ' + error.message });
+  }
+});
+
+// API: Обновить статус доставки (старый endpoint для обратной совместимости)
 app.put('/api/admin/delivery/:id', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
@@ -3567,7 +3641,7 @@ app.put('/api/admin/delivery/:id', checkAdminAuth, async (req, res) => {
   
   // Маппинг статусов доставки на статусы заказа
   const statusMap = {
-    'pending': 'NEW',
+    'pending': 'PROCESSING',
     'in_transit': 'DELIVERING',
     'delivered': 'COMPLETED',
     'cancelled': 'CANCELED'
