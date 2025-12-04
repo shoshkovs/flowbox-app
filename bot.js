@@ -3214,7 +3214,7 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
           c.name as color_name
         FROM products p
         LEFT JOIN product_categories pc ON p.category_id = pc.id
-        LEFT JOIN colors c ON p.color_id = c.id
+        LEFT JOIN product_colors c ON p.color_id = c.id
         WHERE p.is_active = true
         ORDER BY p.name
       `);
