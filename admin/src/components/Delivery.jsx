@@ -150,13 +150,11 @@ export function Delivery({ authToken }) {
       const newStats = { ...prev };
       
       // Убираем из старого статуса
-      if (oldStatus === 'PROCESSING') newStats.waiting = Math.max(0, newStats.waiting - 1);
-      else if (oldStatus === 'DELIVERING') newStats.delivering = Math.max(0, newStats.delivering - 1);
+      if (oldStatus === 'DELIVERING') newStats.waiting = Math.max(0, newStats.waiting - 1);
       else if (oldStatus === 'COMPLETED') newStats.delivered = Math.max(0, newStats.delivered - 1);
       
       // Добавляем в новый статус
-      if (newStatus === 'PROCESSING') newStats.waiting++;
-      else if (newStatus === 'DELIVERING') newStats.delivering++;
+      if (newStatus === 'DELIVERING') newStats.waiting++;
       else if (newStatus === 'COMPLETED') newStats.delivered++;
       
       return newStats;
@@ -182,20 +180,16 @@ export function Delivery({ authToken }) {
 
   const getStatusLabel = (status) => {
     const labels = {
-      'PROCESSING': 'Ожидает курьера',
-      'DELIVERING': 'В пути',
-      'COMPLETED': 'Доставлено',
-      'CANCELED': 'Отменён'
+      'DELIVERING': 'Ожидает доставки',
+      'COMPLETED': 'Доставлено'
     };
     return labels[status] || status;
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      'PROCESSING': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      'DELIVERING': 'bg-blue-100 text-blue-800 border-blue-300',
-      'COMPLETED': 'bg-green-100 text-green-800 border-green-300',
-      'CANCELED': 'bg-gray-100 text-gray-800 border-gray-300'
+      'DELIVERING': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'COMPLETED': 'bg-green-100 text-green-800 border-green-300'
     };
     return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
   };
@@ -240,18 +234,14 @@ export function Delivery({ authToken }) {
       </div>
 
       {/* Статистика (KPI карточки) */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="text-sm text-gray-600 mb-2">Всего доставок</div>
           <div className="text-3xl font-bold">{stats.total}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="text-sm text-gray-600 mb-2">Ожидают курьера</div>
+          <div className="text-sm text-gray-600 mb-2">Ожидают доставки</div>
           <div className="text-3xl font-bold text-yellow-600">{stats.waiting}</div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="text-sm text-gray-600 mb-2">В пути</div>
-          <div className="text-3xl font-bold text-blue-600">{stats.delivering}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="text-sm text-gray-600 mb-2">Доставлено</div>
@@ -265,9 +255,6 @@ export function Delivery({ authToken }) {
           <h2 className="text-xl font-semibold">
             Доставки на {formatDateForDisplay(selectedDate)}
           </h2>
-          <select className="px-4 py-2 border border-gray-300 rounded-lg">
-            <option>Все курьеры</option>
-          </select>
         </div>
 
         {sortedTimeSlots.length === 0 ? (
@@ -288,7 +275,7 @@ export function Delivery({ authToken }) {
                       key={delivery.orderId}
                       className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow"
                     >
-                      <div className="grid grid-cols-12 gap-4">
+                      <div className="grid grid-cols-11 gap-4">
                         {/* Время и ID заказа */}
                         <div className="col-span-2">
                           <div className="text-sm text-gray-600 mb-1">Время</div>
@@ -350,14 +337,6 @@ export function Delivery({ authToken }) {
                           <div className="font-semibold">{formatPrice(delivery.total)}</div>
                         </div>
 
-                        {/* Курьер (заглушка) */}
-                        <div className="col-span-1">
-                          <div className="text-sm text-gray-600 mb-1">Курьер</div>
-                          <select className="w-full px-2 py-1 text-sm border border-gray-300 rounded">
-                            <option>Не назначен</option>
-                          </select>
-                        </div>
-
                         {/* Статус */}
                         <div className="col-span-1">
                           <div className="text-sm text-gray-600 mb-1">Статус</div>
@@ -371,10 +350,8 @@ export function Delivery({ authToken }) {
                                 : 'cursor-pointer'
                             } ${getStatusColor(delivery.status)}`}
                           >
-                            <option value="PROCESSING">Ожидает курьера</option>
-                            <option value="DELIVERING">В пути</option>
+                            <option value="DELIVERING">Ожидает доставки</option>
                             <option value="COMPLETED">Доставлено</option>
-                            <option value="CANCELED" className="text-gray-500">Отменён</option>
                           </select>
                         </div>
                       </div>

@@ -3583,7 +3583,9 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
-      // Получаем заказы с доставкой на указанную дату
+        // Получаем заказы с доставкой на указанную дату
+        // Показываем только заказы со статусом DELIVERING (когда заказ переходит в доставку)
+        // Также показываем COMPLETED для статистики
       const result = await client.query(
         `SELECT 
           o.id as order_id,
@@ -3598,7 +3600,7 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
         WHERE o.delivery_date = $1
-          AND o.status IN ('PROCESSING', 'DELIVERING', 'COMPLETED', 'CANCELED')
+          AND o.status IN ('DELIVERING', 'COMPLETED')
         GROUP BY o.id, o.status, o.recipient_name, o.recipient_phone, o.address_string, 
                  o.delivery_date, o.delivery_time, o.total
         ORDER BY o.delivery_time ASC, o.id ASC`,
@@ -3608,17 +3610,19 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
       // Подсчитываем статистику
       const stats = {
         total: 0,
-        waiting: 0,    // PROCESSING
-        delivering: 0, // DELIVERING
+        waiting: 0,    // DELIVERING (ожидает доставки)
+        delivering: 0, // DELIVERING (в пути) - используем тот же статус
         delivered: 0   // COMPLETED
       };
       
       const deliveries = result.rows.map(row => {
         // Обновляем статистику
         stats.total++;
-        if (row.status === 'PROCESSING') stats.waiting++;
-        else if (row.status === 'DELIVERING') stats.delivering++;
-        else if (row.status === 'COMPLETED') stats.delivered++;
+        if (row.status === 'DELIVERING') {
+          stats.waiting++; // Все DELIVERING считаются как "ожидает доставки"
+        } else if (row.status === 'COMPLETED') {
+          stats.delivered++;
+        }
         
         return {
           orderId: parseInt(row.order_id),
