@@ -405,8 +405,7 @@ export function Products({ authToken }) {
                     </div>
                   </td>
                 </tr>
-                );
-              })}
+              ))}
             </tbody>
           </table>
         </div>
