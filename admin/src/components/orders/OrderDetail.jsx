@@ -127,6 +127,7 @@ export function OrderDetail({ authToken, orderId }) {
       UNPAID: 'Не оплачен',
       NEW: 'Новый',
       PROCESSING: 'В обработке',
+      PURCHASE: 'Закупка',
       COLLECTING: 'Собирается',
       DELIVERING: 'В пути',
       COMPLETED: 'Доставлен',
@@ -149,6 +150,7 @@ export function OrderDetail({ authToken, orderId }) {
       UNPAID: 'bg-gray-100 text-gray-800',
       NEW: 'bg-yellow-100 text-yellow-800',
       PROCESSING: 'bg-blue-100 text-blue-800',
+      PURCHASE: 'bg-orange-100 text-orange-800',
       COLLECTING: 'bg-purple-100 text-purple-800',
       DELIVERING: 'bg-blue-100 text-blue-800',
       COMPLETED: 'bg-green-100 text-green-800',
@@ -270,6 +272,7 @@ export function OrderDetail({ authToken, orderId }) {
                     <option value="UNPAID">Не оплачен</option>
                     <option value="NEW">Новый</option>
                     <option value="PROCESSING">В обработке</option>
+                    <option value="PURCHASE">Закупка</option>
                     <option value="COLLECTING">Собирается</option>
                     <option value="DELIVERING">В пути</option>
                     <option value="COMPLETED">Доставлен</option>

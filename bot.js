@@ -1333,6 +1333,7 @@ function normalizeOrderStatus(status) {
   const statusMap = {
     'NEW': 'NEW',
     'PROCESSING': 'PROCESSING',
+    'PURCHASE': 'PURCHASE', // Внутренний статус для админки
     'COLLECTING': 'COLLECTING',
     'DELIVERING': 'DELIVERING',
     'COMPLETED': 'COMPLETED',
@@ -1351,6 +1352,22 @@ function normalizeOrderStatus(status) {
   };
   
   return statusMap[statusUpper] || statusUpper;
+}
+
+// Функция для получения статуса для пользователя (мини-апп)
+// Маппит внутренние статусы админки в статусы, видимые пользователю
+function getStatusForUser(status) {
+  if (!status) return null;
+  
+  const normalized = normalizeOrderStatus(status);
+  
+  // Маппинг: PURCHASE (внутренний статус) → COLLECTING (для пользователя)
+  if (normalized === 'PURCHASE') {
+    return 'COLLECTING';
+  }
+  
+  // Все остальные статусы возвращаем как есть
+  return normalized;
 }
 
 // Загрузка заказов пользователя
@@ -1402,7 +1419,7 @@ async function loadUserOrders(userId, status = null) {
         address: row.address_string,
         deliveryDate: row.delivery_date ? new Date(row.delivery_date).toISOString().split('T')[0] : null,
         deliveryTime: row.delivery_time,
-        status: normalizeOrderStatus(row.status), // Нормализуем статус для единообразия
+        status: getStatusForUser(row.status), // Маппим статус для пользователя (PURCHASE → COLLECTING)
         createdAt: row.created_at
       }));
     } finally {
@@ -2718,7 +2735,7 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
       if (status !== undefined) {
         // Нормализуем статус к единому enum перед сохранением
         const normalizedStatus = normalizeOrderStatus(status);
-        const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
+        const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
         if (!validStatuses.includes(normalizedStatus)) {
           return res.status(400).json({ error: `Неверный статус: ${status}. Допустимые значения: ${validStatuses.join(', ')}` });
         }
@@ -3552,7 +3569,7 @@ app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   status = normalizeOrderStatus(status);
   
   // Валидация: только правильные статусы
-  const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
+  const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: `Неверный статус. Допустимые значения: ${validStatuses.join(', ')}` });
   }
