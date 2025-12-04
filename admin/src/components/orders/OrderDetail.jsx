@@ -295,6 +295,71 @@ export function OrderDetail({ authToken, orderId }) {
             </div>
           </div>
 
+          {/* Состав заказа */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-4">Состав заказа</h2>
+            <div className="space-y-4">
+              {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
+                order.items.map((item, index) => {
+                  const productImage = item.product_image || getProductImage(item.product_id);
+                  const itemTotal = (parseFloat(item.price || 0) * parseInt(item.quantity || 1));
+                  return (
+                    <div key={item.id || index} className="flex items-center gap-4 pb-4 border-b last:border-0">
+                      {productImage ? (
+                        <img
+                          src={productImage}
+                          alt={item.name}
+                          className="w-16 h-16 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                          <Package className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{item.name}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {item.price_per_stem ? `${item.price_per_stem} ₽` : `${item.price} ₽`} × {item.quantity}
+                        </p>
+                      </div>
+                      <p className="font-medium text-gray-900">
+                        {itemTotal.toLocaleString('ru-RU')} ₽
+                      </p>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-gray-500">Товары не найдены</p>
+              )}
+              <div className="pt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Товары</span>
+                  <span className="text-gray-900">{subtotal.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Доставка</span>
+                  <span className="text-gray-900">{delivery.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                {bonusUsed > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Использовано бонусов</span>
+                    <span>-{bonusUsed.toLocaleString('ru-RU')} ₽</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm text-blue-600">
+                  <span>Начислено бонусов</span>
+                  <span>+{bonusEarned.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="font-semibold">Итого к оплате</span>
+                  <span className="text-xl font-semibold text-pink-600">
+                    {total.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Клиент и получатель */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold mb-4">Клиент и получатель</h2>
@@ -363,71 +428,6 @@ export function OrderDetail({ authToken, orderId }) {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Состав заказа */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">Состав заказа</h2>
-            <div className="space-y-4">
-              {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
-                order.items.map((item, index) => {
-                  const productImage = item.product_image || getProductImage(item.product_id);
-                  const itemTotal = (parseFloat(item.price || 0) * parseInt(item.quantity || 1));
-                  return (
-                    <div key={item.id || index} className="flex items-center gap-4 pb-4 border-b last:border-0">
-                      {productImage ? (
-                        <img
-                          src={productImage}
-                          alt={item.name}
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
-                          <Package className="w-8 h-8 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {item.price_per_stem ? `${item.price_per_stem} ₽` : `${item.price} ₽`} × {item.quantity}
-                        </p>
-                      </div>
-                      <p className="font-medium text-gray-900">
-                        {itemTotal.toLocaleString('ru-RU')} ₽
-                      </p>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-gray-500">Товары не найдены</p>
-              )}
-              <div className="pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Товары</span>
-                  <span className="text-gray-900">{subtotal.toLocaleString('ru-RU')} ₽</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Доставка</span>
-                  <span className="text-gray-900">{delivery.toLocaleString('ru-RU')} ₽</span>
-                </div>
-                {bonusUsed > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Использовано бонусов</span>
-                    <span>-{bonusUsed.toLocaleString('ru-RU')} ₽</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm text-blue-600">
-                  <span>Начислено бонусов</span>
-                  <span>+{bonusEarned.toLocaleString('ru-RU')} ₽</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t">
-                  <span className="font-semibold">Итого к оплате</span>
-                  <span className="text-xl font-semibold text-pink-600">
-                    {total.toLocaleString('ru-RU')} ₽
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
