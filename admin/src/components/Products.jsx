@@ -111,14 +111,14 @@ export function Products({ authToken }) {
     
     if (filterFeature !== 'all') {
       filtered = filtered.filter(p => {
-        // Проверяем qualities (массив объектов с id и name) или features (массив строк)
+        // Используем features из таблицы products (TEXT[]) - это основной источник качеств
         let productFeatures = [];
-        if (p.qualities && Array.isArray(p.qualities)) {
-          // Если qualities - массив объектов, извлекаем названия
-          productFeatures = p.qualities.map(q => (typeof q === 'object' ? q.name : q));
-        } else if (p.features && Array.isArray(p.features)) {
-          // Если features - массив строк
-          productFeatures = p.features;
+        if (p.features && Array.isArray(p.features) && p.features.length > 0) {
+          // features - массив строк из поля products.features
+          productFeatures = p.features.filter(f => f && f.trim());
+        } else if (p.qualities && Array.isArray(p.qualities) && p.qualities.length > 0) {
+          // Fallback: если features нет, используем qualities из связной таблицы
+          productFeatures = p.qualities.map(q => (typeof q === 'object' ? q.name : q)).filter(f => f && f.trim());
         }
         
         if (productFeatures.length === 0) return false;
@@ -319,14 +319,14 @@ export function Products({ authToken }) {
                   <td className="py-3 px-4">{product.price_per_stem || product.pricePerStem || product.price || 0} ₽</td>
                   <td className="py-3 px-4">
                     {(() => {
-                      // Получаем качества из qualities (объекты) или features (строки)
+                      // Используем features из таблицы products (TEXT[]) - это основной источник качеств
                       let productFeatures = [];
-                      if (product.qualities && Array.isArray(product.qualities) && product.qualities.length > 0) {
-                        // Если qualities - массив объектов с id и name
-                        productFeatures = product.qualities.map(q => typeof q === 'object' ? q.name : q);
-                      } else if (product.features && Array.isArray(product.features) && product.features.length > 0) {
-                        // Если features - массив строк
-                        productFeatures = product.features;
+                      if (product.features && Array.isArray(product.features) && product.features.length > 0) {
+                        // features - массив строк из поля products.features
+                        productFeatures = product.features.filter(f => f && f.trim());
+                      } else if (product.qualities && Array.isArray(product.qualities) && product.qualities.length > 0) {
+                        // Fallback: если features нет, используем qualities из связной таблицы
+                        productFeatures = product.qualities.map(q => typeof q === 'object' ? q.name : q).filter(f => f && f.trim());
                       }
                       
                       return productFeatures.length > 0 ? (
