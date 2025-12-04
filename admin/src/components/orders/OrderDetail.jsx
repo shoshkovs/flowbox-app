@@ -212,7 +212,7 @@ export function OrderDetail({ authToken, orderId }) {
         <div>
           <h1 className="text-3xl font-bold">Заказ #{order.id}</h1>
           <p className="text-gray-600 mt-1">
-            Создан {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU') : '-'}
+            Создан {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
           </p>
         </div>
         <div className="ml-auto">
@@ -241,7 +241,7 @@ export function OrderDetail({ authToken, orderId }) {
               <div>
                 <span className="text-gray-600">Дата создания:</span>
                 <span className="ml-2">
-                  {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU') : '-'}
+                  {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
                 </span>
               </div>
               <div>
@@ -427,7 +427,7 @@ export function OrderDetail({ authToken, orderId }) {
                         {getStatusLabel(historyItem.status)}
                       </span>
                       <span className="text-sm text-gray-600">
-                        {historyItem.created_at ? new Date(historyItem.created_at).toLocaleString('ru-RU') : '-'}
+                        {historyItem.created_at ? new Date(historyItem.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
                       </span>
                     </div>
                     {historyItem.comment && (
