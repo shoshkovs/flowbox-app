@@ -3428,6 +3428,7 @@ app.get('/api/admin/supplies', checkAdminAuth, async (req, res) => {
       `);
       
       // Получаем движения по складу для расчета продано/списано/остаток
+      // Для товаров в поставке нужно суммировать все движения по этому товару из всех партий этой поставки
       const movementsResult = await client.query(`
         SELECT 
           sm.supply_id,
@@ -3438,6 +3439,29 @@ app.get('/api/admin/supplies', checkAdminAuth, async (req, res) => {
         WHERE sm.supply_id IS NOT NULL
         GROUP BY sm.supply_id, sm.product_id, sm.type
       `);
+      
+      // Получаем все поставки (партии) для товаров из supply_items
+      // Нужно найти все supplies, которые относятся к товарам из этой поставки
+      const supplyItemsSuppliesResult = await client.query(`
+        SELECT 
+          s.id as supply_id,
+          s.product_id,
+          si.supply_id as parent_supply_id
+        FROM supplies s
+        INNER JOIN supply_items si ON s.product_id = si.product_id
+        WHERE si.supply_id IN (SELECT id FROM supplies WHERE total_amount IS NOT NULL)
+        AND s.delivery_date = (SELECT delivery_date FROM supplies WHERE id = si.supply_id)
+      `);
+      
+      // Создаём мапу: parent_supply_id -> product_id -> [supply_ids]
+      const suppliesByParentAndProduct = {};
+      supplyItemsSuppliesResult.rows.forEach(row => {
+        const key = `${row.parent_supply_id}_${row.product_id}`;
+        if (!suppliesByParentAndProduct[key]) {
+          suppliesByParentAndProduct[key] = [];
+        }
+        suppliesByParentAndProduct[key].push(row.supply_id);
+      });
       
       // Создаём мапу движений по supply_id и product_id
       const movementsBySupplyProduct = {};
@@ -3453,9 +3477,18 @@ app.get('/api/admin/supplies', checkAdminAuth, async (req, res) => {
           itemsBySupply[item.supply_id] = [];
         }
         
-        // Рассчитываем продано, списано, остаток для каждого товара
-        const sold = movementsBySupplyProduct[`${item.supply_id}_${item.product_id}_SALE`] || 0;
-        const writeOff = movementsBySupplyProduct[`${item.supply_id}_${item.product_id}_WRITE_OFF`] || 0;
+        // Находим все поставки (партии) для этого товара из этой поставки
+        const relatedSupplyIds = suppliesByParentAndProduct[`${item.supply_id}_${item.product_id}`] || [];
+        
+        // Суммируем продано и списано по всем связанным партиям
+        let sold = 0;
+        let writeOff = 0;
+        
+        relatedSupplyIds.forEach(supplyId => {
+          sold += movementsBySupplyProduct[`${supplyId}_${item.product_id}_SALE`] || 0;
+          writeOff += movementsBySupplyProduct[`${supplyId}_${item.product_id}_WRITE_OFF`] || 0;
+        });
+        
         const remaining = item.total_pieces - sold - writeOff;
         const totalPrice = item.total_pieces * item.unit_price;
         
