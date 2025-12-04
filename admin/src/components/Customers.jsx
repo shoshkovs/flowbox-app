@@ -106,11 +106,13 @@ export function Customers({ authToken }) {
   };
 
   const filteredCustomers = customers.filter(customer => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch = 
-      customer.name?.toLowerCase().includes(query) ||
-      customer.phone?.includes(query) ||
-      customer.email?.toLowerCase().includes(query);
+    // Если поисковый запрос пустой, показываем всех клиентов
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch = query === '' || 
+      (customer.name && customer.name.toLowerCase().includes(query)) ||
+      (customer.phone && customer.phone.includes(query)) ||
+      (customer.email && customer.email.toLowerCase().includes(query)) ||
+      (customer.id && customer.id.toString().includes(query));
     
     const matchesFilter = filterSubscription === 'all' || 
       (filterSubscription === 'subscribed' && customer.subscription) ||
@@ -209,7 +211,7 @@ export function Customers({ authToken }) {
                   className="border-b border-gray-100 hover:bg-gray-50"
                 >
                   <td className="py-3 px-4">
-                    <div className="font-medium">{customer.name}</div>
+                    <div className="font-medium">{customer.name || 'Не указано'}</div>
                     {customer.telegram_id && (
                       <div className="text-sm text-gray-500">@{customer.telegram_id}</div>
                     )}
@@ -218,7 +220,7 @@ export function Customers({ authToken }) {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm">
                         <Phone className="w-3 h-3 text-gray-400" />
-                        {customer.phone}
+                        {customer.phone || '-'}
                       </div>
                       {customer.email && customer.email !== '-' && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">

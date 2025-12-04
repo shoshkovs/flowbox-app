@@ -3747,10 +3747,10 @@ app.get('/api/admin/customers', checkAdminAuth, async (req, res) => {
       const result = await client.query(`
         SELECT 
           u.id,
-          u.first_name as name,
-          u.phone,
-          u.email,
-          u.bonuses,
+          COALESCE(u.first_name, '') as name,
+          COALESCE(u.phone, '') as phone,
+          COALESCE(u.email, '') as email,
+          COALESCE(u.bonuses, 0) as bonuses,
           COUNT(DISTINCT o.id) as orders_count,
           COALESCE(SUM(o.total), 0) as total_spent,
           MAX(o.created_at) as last_order_date
@@ -3767,8 +3767,16 @@ app.get('/api/admin/customers', checkAdminAuth, async (req, res) => {
           [customer.id]
         );
         return {
-          ...customer,
+          id: customer.id,
+          name: customer.name || null,
+          phone: customer.phone || null,
+          email: customer.email || null,
+          bonuses: parseInt(customer.bonuses) || 0,
+          ordersCount: parseInt(customer.orders_count) || 0,
+          totalSpent: parseInt(customer.total_spent) || 0,
+          lastOrderDate: customer.last_order_date || null,
           orders: ordersResult.rows,
+          subscription: false // TODO: добавить проверку подписки из таблицы subscriptions
         };
       }));
       
