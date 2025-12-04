@@ -143,8 +143,8 @@ export function Dashboard({ authToken }) {
       value: stats.newUsers.toString(),
       change: null,
       icon: Users,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
     },
   ];
 

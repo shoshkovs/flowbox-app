@@ -8,14 +8,41 @@ const API_BASE = window.location.origin;
 export function Products({ authToken }) {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterColor, setFilterColor] = useState('all');
+  const [filterFeature, setFilterFeature] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [colors, setColors] = useState([]);
+  const [features, setFeatures] = useState([]);
 
   useEffect(() => {
+    loadColors();
     loadProducts();
-  }, [filterType, filterStatus]);
+  }, []);
+
+  useEffect(() => {
+    filterProducts();
+  }, [filterType, filterStatus, filterColor, filterFeature, searchQuery, allProducts]);
+
+  const loadColors = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/colors`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setColors(data);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки цветов:', error);
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -27,34 +54,67 @@ export function Products({ authToken }) {
 
       if (response.ok) {
         const data = await response.json();
-        let filtered = data;
-
-        if (filterType !== 'all') {
-          filtered = filtered.filter(p => 
-            (p.category_name || p.category || '').toLowerCase() === filterType.toLowerCase() ||
-            (p.type || '').toLowerCase() === filterType.toLowerCase()
-          );
-        }
-        if (filterStatus !== 'all') {
-          if (filterStatus === 'active') {
-            filtered = filtered.filter(p => p.is_active);
-          } else if (filterStatus === 'hidden') {
-            filtered = filtered.filter(p => !p.is_active);
+        setAllProducts(data);
+        
+        // Собираем уникальные качества из всех товаров
+        const uniqueFeatures = new Set();
+        data.forEach(product => {
+          if (product.features && Array.isArray(product.features)) {
+            product.features.forEach(feature => {
+              if (feature) uniqueFeatures.add(feature);
+            });
           }
-        }
-        if (searchQuery) {
-          filtered = filtered.filter(p => 
-            p.name.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        }
-
-        setProducts(filtered);
+        });
+        setFeatures(Array.from(uniqueFeatures).sort());
+        
+        filterProducts(data);
       }
     } catch (error) {
       console.error('Ошибка загрузки товаров:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterProducts = (productsToFilter = allProducts) => {
+    let filtered = [...productsToFilter];
+
+    if (filterType !== 'all') {
+      filtered = filtered.filter(p => 
+        (p.category_name || p.category || '').toLowerCase() === filterType.toLowerCase() ||
+        (p.type || '').toLowerCase() === filterType.toLowerCase()
+      );
+    }
+    
+    if (filterStatus !== 'all') {
+      if (filterStatus === 'active') {
+        filtered = filtered.filter(p => p.is_active);
+      } else if (filterStatus === 'hidden') {
+        filtered = filtered.filter(p => !p.is_active);
+      }
+    }
+    
+    if (filterColor !== 'all') {
+      filtered = filtered.filter(p => {
+        const productColor = (p.color_name || p.color || '').toLowerCase();
+        return productColor === filterColor.toLowerCase();
+      });
+    }
+    
+    if (filterFeature !== 'all') {
+      filtered = filtered.filter(p => {
+        if (!p.features || !Array.isArray(p.features)) return false;
+        return p.features.some(f => f && f.toLowerCase() === filterFeature.toLowerCase());
+      });
+    }
+    
+    if (searchQuery) {
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setProducts(filtered);
   };
 
   const handleRefreshProduct = async (productId) => {
@@ -145,11 +205,12 @@ export function Products({ authToken }) {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex gap-4 mb-6">
+        <div className="flex gap-4 mb-6 items-center">
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
           >
             <option value="all">Все типы</option>
             <option value="roses">Розы</option>
@@ -159,18 +220,42 @@ export function Products({ authToken }) {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
           >
             <option value="all">Все статусы</option>
             <option value="active">Активен</option>
             <option value="hidden">Скрыт</option>
           </select>
+          <select
+            value={filterColor}
+            onChange={(e) => setFilterColor(e.target.value)}
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
+          >
+            <option value="all">Все цвета</option>
+            {colors.map(color => (
+              <option key={color.id} value={color.name}>{color.name}</option>
+            ))}
+          </select>
+          <select
+            value={filterFeature}
+            onChange={(e) => setFilterFeature(e.target.value)}
+            className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
+          >
+            <option value="all">Все качества</option>
+            {features.map(feature => (
+              <option key={feature} value={feature}>{feature}</option>
+            ))}
+          </select>
+          <div className="flex-1"></div>
           <input
             type="text"
             placeholder="Поиск по названию..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+            className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
           />
         </div>
 
