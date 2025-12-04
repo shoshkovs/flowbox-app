@@ -297,62 +297,8 @@ if (process.env.DATABASE_URL) {
       }
     }, 4000);
     
-    // Выполняем миграцию features в JSONB (если нужно)
-    setTimeout(async () => {
-    try {
-      const client = await pool.connect();
-      try {
-        // Проверяем тип колонки features
-        const columnInfo = await client.query(`
-          SELECT data_type 
-          FROM information_schema.columns 
-          WHERE table_name = 'products' AND column_name = 'features'
-        `);
-        
-        if (columnInfo.rows.length > 0 && columnInfo.rows[0].data_type === 'ARRAY') {
-          console.log('🔄 Выполняем миграцию features: TEXT[] → JSONB...');
-          
-          // Выполняем миграцию
-          await client.query(`
-            DO $$
-            BEGIN
-              -- Конвертируем существующие данные
-              UPDATE products 
-              SET features = CASE 
-                  WHEN features IS NULL THEN NULL::jsonb
-                  WHEN pg_typeof(features) = 'text[]'::regtype THEN 
-                      jsonb_build_array(features)
-                  ELSE features::jsonb
-              END
-              WHERE features IS NOT NULL;
-            END $$;
-          `);
-          
-          await client.query(`
-            ALTER TABLE products 
-            ALTER COLUMN features TYPE JSONB 
-            USING CASE 
-                WHEN features IS NULL THEN NULL::jsonb
-                WHEN pg_typeof(features) = 'text[]'::regtype THEN 
-                    jsonb_build_array(features)
-                ELSE features::jsonb
-            END;
-          `);
-          
-          console.log('✅ Миграция features завершена');
-        }
-      } catch (migrationError) {
-        // Игнорируем ошибки миграции (возможно, уже выполнена)
-        if (migrationError.code !== '42804' && migrationError.code !== '42P16') {
-          console.log('⚠️  Миграция features:', migrationError.message);
-        }
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      // Игнорируем ошибки при миграции
-    }
-  }, 5000); // Ждем 5 секунд после подключения
+    // Миграция features удалена - features должен оставаться TEXT[]
+    // Конвертация выполняется в migrate-to-final-structure.sql если нужно
     
     // Миграция структуры БД к согласованному виду
     setTimeout(async () => {
