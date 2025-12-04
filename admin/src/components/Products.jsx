@@ -291,6 +291,7 @@ export function Products({ authToken }) {
                 <th className="text-left py-3 px-4">ID</th>
                 <th className="text-left py-3 px-4">Товар</th>
                 <th className="text-left py-3 px-4">Категория</th>
+                <th className="text-left py-3 px-4">Мин заказ</th>
                 <th className="text-left py-3 px-4">Цвет</th>
                 <th className="text-left py-3 px-4">Цена за шт</th>
                 <th className="text-left py-3 px-4">Качества</th>
@@ -315,6 +316,7 @@ export function Products({ authToken }) {
                     </div>
                   </td>
                   <td className="py-3 px-4">{product.category_name || product.category || '-'}</td>
+                  <td className="py-3 px-4">{product.min_stem_quantity || product.min_order_quantity || product.minStemQuantity || 1}</td>
                   <td className="py-3 px-4">{product.color_name || product.color || '-'}</td>
                   <td className="py-3 px-4">{product.price_per_stem || product.pricePerStem || product.price || 0} ₽</td>
                   <td className="py-3 px-4">
