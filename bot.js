@@ -4176,6 +4176,14 @@ app.post('/api/admin/stock-movements/write-off', checkAdminAuth, async (req, res
       }
       
       // Считаем доступный остаток для этой партии
+      // Используем SUPPLY движения для получения начального количества
+      const supplyMovementsResult = await client.query(
+        `SELECT COALESCE(SUM(quantity), 0) as supplied
+         FROM stock_movements
+         WHERE supply_id = $1 AND type = 'SUPPLY'`,
+        [supplyId]
+      );
+      
       const movementsResult = await client.query(
         `SELECT 
           COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) as sold,
@@ -4185,9 +4193,10 @@ app.post('/api/admin/stock-movements/write-off', checkAdminAuth, async (req, res
         [supplyId]
       );
       
+      const supplied = parseInt(supplyMovementsResult.rows[0]?.supplied || supply.quantity);
       const sold = parseInt(movementsResult.rows[0]?.sold || 0);
       const writtenOff = parseInt(movementsResult.rows[0]?.written_off || 0);
-      const available = supply.quantity - sold - writtenOff;
+      const available = supplied - sold - writtenOff;
       
       if (quantityInt > available) {
         await client.query('ROLLBACK');

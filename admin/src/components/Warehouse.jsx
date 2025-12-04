@@ -497,18 +497,8 @@ export function Warehouse({ authToken }) {
                                   <td className="py-2 px-4 text-right text-sm">
                                     {batch.writeOff}
                                   </td>
-                                  <td className="py-2 px-4 text-right">
-                                    <span
-                                      className={`text-sm font-medium ${
-                                        isExhausted
-                                          ? 'text-gray-400'
-                                          : batch.remaining < 5
-                                          ? 'text-orange-600'
-                                          : 'text-gray-900'
-                                      }`}
-                                    >
-                                      {batch.remaining}
-                                    </span>
+                                  <td className="py-2 px-4 text-right text-sm">
+                                    {batch.remaining}
                                   </td>
                                   <td className="py-2 px-4 text-right text-sm">
                                     {batch.purchasePrice} ₽
@@ -570,148 +560,154 @@ export function Warehouse({ authToken }) {
       {activeTab === 'supplies' && (
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-6">
-            <div className="space-y-3">
-              {supplies.map((supply) => {
-                const isExpanded = expandedSupplies.has(supply.id);
-
-                return (
-                  <div
-                    key={supply.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden bg-white"
-                  >
-                    <div
-                      className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => toggleSupply(supply.id)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          {/* ID поставки вместо изображения */}
-                          <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <div className="text-lg font-semibold text-gray-700">
-                              #{supply.id}
-                            </div>
-                          </div>
-                          {/* ID поставки и дата */}
-                          <div className="flex-1">
-                            <div className="text-lg font-semibold">
-                              #{supply.id}, {new Date(supply.deliveryDate).toLocaleDateString('ru-RU')}
-                            </div>
-                            <div className="text-sm text-gray-500 mt-1">
-                              {supply.supplierName}
-                            </div>
-                          </div>
-                        </div>
-                        {/* Общая стоимость справа */}
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-sm text-gray-500">Общая стоимость</div>
-                            <div className="text-xl font-semibold">
-                              {supply.totalAmount.toLocaleString()} ₽
-                            </div>
-                          </div>
-                          <button className="p-2 hover:bg-gray-100 rounded">
+            <table className="w-full">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                    ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                    Поставщик
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                    Дата
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
+                    Стоимость
+                  </th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
+                    Действия
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {supplies.map((supply) => {
+                  const isExpanded = expandedSupplies.has(supply.id);
+                  return (
+                    <>
+                      <tr
+                        key={supply.id}
+                        className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => toggleSupply(supply.id)}
+                      >
+                        <td className="py-3 px-4 text-sm font-medium">
+                          #{supply.id}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium">
+                          {supply.supplierName || 'Не указан'}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {new Date(supply.deliveryDate).toLocaleDateString('ru-RU')}
+                        </td>
+                        <td className="py-3 px-4 text-right text-sm font-medium">
+                          {supply.totalAmount.toLocaleString()} ₽
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button className="p-1 hover:bg-gray-100 rounded">
                             {isExpanded ? (
                               <ChevronUp className="w-5 h-5 text-gray-400" />
                             ) : (
                               <ChevronDown className="w-5 h-5 text-gray-400" />
                             )}
                           </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {isExpanded && supply.items.length > 0 && (
-                      <div className="border-t border-gray-200 bg-gray-50">
-                        <table className="w-full">
-                          <thead className="bg-gray-100">
-                            <tr>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
-                                Товар
-                              </th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
-                                Количество штук
-                              </th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
-                                Продано
-                              </th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
-                                Списано
-                              </th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
-                                Остаток
-                              </th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
-                                Цена за шт
-                              </th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
-                                Цена общая
-                              </th>
-                              <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">
-                                Действия
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {supply.items.map((item) => {
-                              const isHidden = hiddenItems.has(item.id);
-
-                              return (
-                                <tr
-                                  key={item.id}
-                                  className={`border-b border-gray-200 ${
-                                    isHidden ? 'bg-gray-300 opacity-50' : 'bg-white'
-                                  }`}
-                                >
-                                  <td className="py-2 px-4 text-sm font-medium">
-                                    {item.productName}
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm">
-                                    {item.totalPieces}
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm">
-                                    {item.sold}
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm">
-                                    {item.writeOff}
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm font-medium">
-                                    {item.remaining}
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm">
-                                    {item.unitPrice.toFixed(2)} ₽
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm font-medium">
-                                    {item.totalPrice.toFixed(2)} ₽
-                                  </td>
-                                  <td className="py-2 px-4">
-                                    <div className="flex items-center justify-center">
-                                      <button
-                                        className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          toggleItemVisibility(item.id);
-                                        }}
-                                        title={isHidden ? 'Показать' : 'Скрыть'}
+                        </td>
+                      </tr>
+                      {isExpanded && supply.items.length > 0 && (
+                        <tr>
+                          <td colSpan="5" className="p-0">
+                            <div className="bg-gray-50 border-t border-gray-200">
+                              <table className="w-full">
+                                <thead className="bg-gray-100">
+                                  <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
+                                      Товар
+                                    </th>
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                      Количество штук
+                                    </th>
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                      Продано
+                                    </th>
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                      Списано
+                                    </th>
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                      Остаток
+                                    </th>
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                      Цена за шт
+                                    </th>
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
+                                      Цена общая
+                                    </th>
+                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">
+                                      Действия
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {supply.items.map((item) => {
+                                    const isHidden = hiddenItems.has(item.id);
+                                    return (
+                                      <tr
+                                        key={item.id}
+                                        className={`border-b border-gray-200 ${
+                                          isHidden ? 'bg-gray-300 opacity-50' : 'bg-white'
+                                        }`}
                                       >
-                                        {isHidden ? (
-                                          <EyeOff className="w-4 h-4 text-gray-400" />
-                                        ) : (
-                                          <Eye className="w-4 h-4 text-gray-400" />
-                                        )}
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                                        <td className="py-2 px-4 text-sm font-medium">
+                                          {item.productName}
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm">
+                                          {item.totalPieces}
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm">
+                                          {item.sold}
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm">
+                                          {item.writeOff}
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm font-medium">
+                                          {item.remaining}
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm">
+                                          {item.unitPrice.toFixed(2)} ₽
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm font-medium">
+                                          {item.totalPrice.toFixed(2)} ₽
+                                        </td>
+                                        <td className="py-2 px-4">
+                                          <div className="flex items-center justify-center">
+                                            <button
+                                              className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleItemVisibility(item.id);
+                                              }}
+                                              title={isHidden ? 'Показать' : 'Скрыть'}
+                                            >
+                                              {isHidden ? (
+                                                <EyeOff className="w-4 h-4 text-gray-400" />
+                                              ) : (
+                                                <Eye className="w-4 h-4 text-gray-400" />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
