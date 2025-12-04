@@ -2761,10 +2761,11 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
               'INSERT INTO order_status_history (order_id, status, source, changed_by_id, comment) VALUES ($1, $2, $3, $4, $5)',
               [orderId, normalizedStatus, 'admin', req.adminUserId || null, status_comment || null]
             );
-        } catch (historyError) {
-          // Игнорируем ошибку, если таблица не существует
-          if (!historyError.message.includes('does not exist')) {
-            console.error('Ошибка записи в историю статусов:', historyError);
+          } catch (historyError) {
+            // Игнорируем ошибку, если таблица не существует
+            if (!historyError.message.includes('does not exist')) {
+              console.error('Ошибка записи в историю статусов:', historyError);
+            }
           }
         }
         
