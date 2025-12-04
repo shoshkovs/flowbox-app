@@ -590,21 +590,21 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
                 Ваша сумма
               </label>
               <p className="text-2xl font-bold">
-                {calculateTotalAmount().toFixed(2)} ₽
+                {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Автоматически рассчитанная сумма товаров
+                Количество всех банчей × цена банча + доставка
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <label className="block text-sm font-medium text-gray-600 mb-1">
-                Общая сумма автоматическая
+                Сумма по чеку
               </label>
               <p className="text-2xl font-bold">
-                {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
+                {((parseFloat(supplyForm.total_amount) || 0) + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Ваша сумма + цена доставки (не включает введенную общую сумму)
+                Общая сумма (введенная) + доставка
               </p>
             </div>
           </div>
