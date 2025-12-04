@@ -1424,26 +1424,10 @@ async function validateAndSubmitOrder(e) {
             hasErrors = true;
         }
     } else if (recipientRadio && recipientRadio.value === 'self') {
-        // Если выбран "Я получу заказ", используем данные из профиля
-        const user = tg.initDataUnsafe?.user;
-        const savedProfile = localStorage.getItem('userProfile');
-        let profileData = null;
-        
-        if (savedProfile) {
-            try {
-                profileData = JSON.parse(savedProfile);
-            } catch (e) {
-                console.error('Ошибка парсинга профиля:', e);
-            }
-        }
-        
-        if (profileData) {
-            recipientName = profileData.name || '';
-            recipientPhone = profileData.phone || '';
-        } else if (user) {
-            recipientName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-            recipientPhone = '';
-        }
+        // Если выбран "Я получу заказ", используем данные из формы (не из профиля!)
+        // Это гарантирует, что номер будет взят из заполненной формы, даже если профиль пустой
+        recipientName = name; // Имя из поля формы клиента
+        recipientPhone = phone; // Телефон из поля формы клиента
     }
     
     // Проверка выбранного адреса (ПЕРЕД проверкой времени доставки)
