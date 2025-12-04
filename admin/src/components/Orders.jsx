@@ -20,11 +20,15 @@ function formatHumanDate(dateInput) {
     date = dateInput;
     console.log('📅 formatHumanDate: dateInput is Date object');
   } else if (typeof dateInput === 'string') {
-    // Если это ISO строка (YYYY-MM-DD), парсим её
-    if (dateInput.match(/^\d{4}-\d{2}-\d{2}/)) {
+    // Если это ISO строка с временем (YYYY-MM-DDTHH:mm:ss.sssZ), используем стандартный парсер
+    if (dateInput.includes('T') || dateInput.includes('Z')) {
+      date = new Date(dateInput);
+      console.log('📅 formatHumanDate: parsed ISO string with time', date);
+    } else if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Если это только дата без времени (YYYY-MM-DD), парсим вручную
       const [year, month, day] = dateInput.split('-').map(Number);
       date = new Date(year, month - 1, day);
-      console.log('📅 formatHumanDate: parsed ISO string', { year, month, day, date });
+      console.log('📅 formatHumanDate: parsed date-only string', { year, month, day, date });
     } else {
       date = new Date(dateInput);
       console.log('📅 formatHumanDate: parsed string as Date', date);
