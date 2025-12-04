@@ -2131,7 +2131,9 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     tag_ids,
     tags, // Массив строк тегов (TEXT[])
     image_url,
-    is_active
+    is_active,
+    stock,
+    min_stock
   } = req.body;
   
   if (!name || !category_id || !color_id || !price_per_stem || !min_stem_quantity) {

@@ -329,6 +329,12 @@ export function Products({ authToken }) {
                         productFeatures = product.qualities.map(q => typeof q === 'object' ? q.name : q).filter(f => f && f.trim());
                       }
                       
+                      // Капитализируем первую букву каждого качества
+                      const capitalizeFirst = (str) => {
+                        if (!str) return str;
+                        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+                      };
+                      
                       return productFeatures.length > 0 ? (
                         <div className="flex flex-col gap-1">
                           {productFeatures.map((feature, idx) => (
@@ -336,7 +342,7 @@ export function Products({ authToken }) {
                               key={idx}
                               className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full w-fit"
                             >
-                              {feature}
+                              {capitalizeFirst(feature)}
                             </span>
                           ))}
                         </div>
