@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Search, ChevronDown, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreatableSelect } from '../CreatableSelect';
+import { Button } from '../ui/button';
 
 const API_BASE = window.location.origin;
 
-export function WarehouseForm({ authToken }) {
-  const navigate = useNavigate();
+export function WarehouseForm({ authToken, onClose, onSave }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [productSearch, setProductSearch] = useState('');
@@ -93,7 +92,7 @@ export function WarehouseForm({ authToken }) {
   };
 
   const handleSaveDelivery = async () => {
-    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date || !deliveryForm.supplier_id) {
+    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date) {
       toast.error('Заполните все обязательные поля');
       return;
     }
@@ -114,26 +113,40 @@ export function WarehouseForm({ authToken }) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/warehouse`, {
+      const response = await fetch(`${API_BASE}/api/admin/supplies`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          product_id: parseInt(deliveryForm.product_id),
+          productId: parseInt(deliveryForm.product_id),
           quantity: quantityInt,
-          purchase_price: purchasePriceFloat,
-          delivery_date: deliveryForm.delivery_date,
-          supplier_id: deliveryForm.supplier_id,
+          purchasePrice: purchasePriceFloat,
+          deliveryDate: deliveryForm.delivery_date,
+          supplier: deliveryForm.supplier_id ? suppliers.find(s => s.id === deliveryForm.supplier_id)?.name : null,
+          invoiceNumber: null, // Пока не используется
+          comment: null, // Пока не используется
         }),
       });
 
-          if (response.ok) {
-            toast.success('Поставка успешно добавлена');
-            // Переходим на страницу склада - там будет автоматическое обновление
-            navigate('/warehouse');
-          } else {
+      if (response.ok) {
+        toast.success('Поставка успешно добавлена');
+        // Вызываем onSave callback для обновления данных
+        if (onSave) {
+          onSave({
+            productId: parseInt(deliveryForm.product_id),
+            quantity: quantityInt,
+            purchasePrice: purchasePriceFloat,
+            deliveryDate: deliveryForm.delivery_date,
+            supplier: deliveryForm.supplier_id,
+            invoiceNumber: null,
+            comment: null,
+          });
+        }
+        // Закрываем форму
+        onClose();
+      } else {
         const error = await response.json();
         toast.error(error.error || 'Ошибка сохранения поставки');
       }
@@ -149,12 +162,13 @@ export function WarehouseForm({ authToken }) {
     <div className="space-y-6">
       {/* Заголовок с кнопкой назад */}
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/warehouse')}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
         >
           <ArrowLeft className="w-5 h-5" />
-        </button>
+        </Button>
         <div>
           <h1 className="text-3xl font-bold">Добавить поставку</h1>
           <p className="text-gray-600 mt-1">Регистрация новой поставки товара</p>
@@ -310,8 +324,8 @@ export function WarehouseForm({ authToken }) {
       {/* Кнопки действий */}
       <div className="flex justify-end gap-4">
         <button
-          onClick={() => navigate('/warehouse')}
-          className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          onClick={onClose}
+          variant="outline"
           disabled={loading}
         >
           Отменить

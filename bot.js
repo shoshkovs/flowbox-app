@@ -3195,6 +3195,7 @@ app.post('/api/admin/orders/refresh', checkAdminAuth, async (req, res) => {
 });
 
 // API: Получить склад (остатки товаров с расчетом по движениям)
+// Новый endpoint для партийного учёта
 app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
@@ -3203,29 +3204,106 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query(
-        `SELECT 
+      // Получаем все товары с категориями и цветами
+      const productsResult = await client.query(`
+        SELECT 
           p.id,
           p.name,
-          p.type,
-          p.color,
-          p.price_per_stem as price,
           p.image_url,
-          20 as min_stock,
-          p.is_active,
-          COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) as total_supplied,
-          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as total_sold,
-          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as total_written_off,
-          COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
-          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
-          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as stock
+          pc.name as category_name,
+          c.name as color_name
         FROM products p
-        LEFT JOIN stock_movements sm ON p.id = sm.product_id
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
+        LEFT JOIN colors c ON p.color_id = c.id
         WHERE p.is_active = true
-        GROUP BY p.id, p.name, p.type, p.color, p.price_per_stem, p.image_url, p.is_active
-        ORDER BY p.name`
-      );
-      res.json(result.rows);
+        ORDER BY p.name
+      `);
+      
+      // Получаем все поставки с поставщиками
+      const suppliesResult = await client.query(`
+        SELECT 
+          s.id,
+          s.product_id,
+          s.quantity as initial_quantity,
+          s.unit_purchase_price,
+          s.delivery_date,
+          s.supplier_id,
+          sup.name as supplier_name
+        FROM supplies s
+        LEFT JOIN suppliers sup ON s.supplier_id = sup.id
+        ORDER BY s.delivery_date DESC, s.id DESC
+      `);
+      
+      // Получаем все движения по складу
+      const movementsResult = await client.query(`
+        SELECT 
+          sm.supply_id,
+          sm.product_id,
+          sm.type,
+          SUM(sm.quantity) as quantity
+        FROM stock_movements sm
+        WHERE sm.supply_id IS NOT NULL
+        GROUP BY sm.supply_id, sm.product_id, sm.type
+      `);
+      
+      // Создаём мапу движений по supply_id
+      const movementsBySupply = {};
+      movementsResult.rows.forEach(m => {
+        const key = `${m.supply_id}_${m.type}`;
+        if (!movementsBySupply[key]) {
+          movementsBySupply[key] = 0;
+        }
+        movementsBySupply[key] += parseInt(m.quantity || 0);
+      });
+      
+      // Группируем поставки по товарам
+      const suppliesByProduct = {};
+      suppliesResult.rows.forEach(supply => {
+        if (!suppliesByProduct[supply.product_id]) {
+          suppliesByProduct[supply.product_id] = [];
+        }
+        suppliesByProduct[supply.product_id].push(supply);
+      });
+      
+      // Формируем результат
+      const warehouseProducts = productsResult.rows.map(product => {
+        const supplies = suppliesByProduct[product.id] || [];
+        
+        // Формируем партии
+        const batches = supplies.map(supply => {
+          const sold = movementsBySupply[`${supply.id}_SALE`] || 0;
+          const writeOff = movementsBySupply[`${supply.id}_WRITE_OFF`] || 0;
+          const remaining = supply.initial_quantity - sold - writeOff;
+          
+          return {
+            id: supply.id.toString(),
+            batchNumber: `#${supply.id}`,
+            deliveryDate: supply.delivery_date,
+            initialQuantity: supply.initial_quantity,
+            sold: sold,
+            writeOff: writeOff,
+            remaining: remaining,
+            purchasePrice: parseFloat(supply.unit_purchase_price),
+            supplier: supply.supplier_name || 'Не указан'
+          };
+        });
+        
+        // Считаем общий остаток
+        const totalRemaining = batches.reduce((sum, batch) => sum + batch.remaining, 0);
+        
+        return {
+          id: product.id.toString(),
+          productId: product.id.toString(),
+          productName: product.name,
+          category: product.category_name || 'Без категории',
+          color: product.color_name || 'Без цвета',
+          image: product.image_url || '',
+          totalRemaining: totalRemaining,
+          batches: batches
+        };
+      }).filter(product => product.batches.length > 0); // Показываем только товары с поставками
+      
+      res.json(warehouseProducts);
     } finally {
       client.release();
     }
@@ -3470,12 +3548,19 @@ app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
 });
 
 // API: Добавить поставку
-app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
+// Создание новой поставки (партийный учёт)
+app.post('/api/admin/supplies', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { product_id, quantity, purchase_price, delivery_date, supplier_id } = req.body;
+  const { productId, quantity, purchasePrice, deliveryDate, supplier, invoiceNumber, comment } = req.body;
+  
+  // Маппинг старых названий полей для обратной совместимости
+  const product_id = productId || req.body.product_id;
+  const purchase_price = purchasePrice || req.body.purchase_price;
+  const delivery_date = deliveryDate || req.body.delivery_date;
+  let supplier_id = supplier || req.body.supplier_id;
   
   if (!product_id || !quantity || !purchase_price || !delivery_date) {
     return res.status(400).json({ error: 'Товар, количество, цена закупки и дата поставки обязательны' });
@@ -3513,6 +3598,26 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Товар не найден' });
       }
       
+      // Если supplier передан как строка (имя), создаём или находим поставщика
+      if (supplier && typeof supplier === 'string' && !supplier_id) {
+        // Проверяем, существует ли поставщик с таким именем
+        const existingSupplier = await client.query(
+          'SELECT id FROM suppliers WHERE name = $1',
+          [supplier]
+        );
+        
+        if (existingSupplier.rows.length > 0) {
+          supplier_id = existingSupplier.rows[0].id;
+        } else {
+          // Создаём нового поставщика
+          const newSupplierResult = await client.query(
+            'INSERT INTO suppliers (name) VALUES ($1) RETURNING id',
+            [supplier]
+          );
+          supplier_id = newSupplierResult.rows[0].id;
+        }
+      }
+      
       // Создаем поставку
       const supplyResult = await client.query(
         `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
@@ -3535,8 +3640,7 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
       console.log(`✅ Поставка создана: ID=${supply.id}, товар=${product_id}, количество=${quantityInt}`);
       
       // Возвращаем поставку с правильным форматом цены
-      const finalSupply = supplyResult.rows[0];
-      res.json(finalSupply);
+      res.json({ success: true, supply: supplyResult.rows[0] });
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Ошибка создания поставки:', error);
@@ -3550,16 +3654,16 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Списание товара со склада
-app.post('/api/admin/warehouse/write-off', checkAdminAuth, async (req, res) => {
+// Списание товара со склада (партийный учёт)
+app.post('/api/admin/stock-movements/write-off', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { product_id, quantity, comment } = req.body;
+  const { productId, supplyId, quantity, comment } = req.body;
   
-  if (!product_id || !quantity) {
-    return res.status(400).json({ error: 'Товар и количество обязательны' });
+  if (!productId || !supplyId || !quantity) {
+    return res.status(400).json({ error: 'Товар, партия и количество обязательны' });
   }
   
   const quantityInt = parseInt(quantity);
@@ -3572,18 +3676,37 @@ app.post('/api/admin/warehouse/write-off', checkAdminAuth, async (req, res) => {
     try {
       await client.query('BEGIN');
       
-      // Проверяем доступный остаток товара
-      const stockResult = await client.query(
-        `SELECT 
-          COALESCE(SUM(CASE WHEN type = 'SUPPLY' THEN quantity ELSE 0 END), 0) - 
-          COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) - 
-          COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as available
-        FROM stock_movements
-        WHERE product_id = $1`,
-        [product_id]
+      // Проверяем поставку
+      const supplyResult = await client.query(
+        'SELECT id, product_id, quantity FROM supplies WHERE id = $1',
+        [supplyId]
       );
       
-      const available = parseInt(stockResult.rows[0]?.available || 0);
+      if (supplyResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Поставка не найдена' });
+      }
+      
+      const supply = supplyResult.rows[0];
+      
+      if (parseInt(supply.product_id) !== parseInt(productId)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Товар не соответствует поставке' });
+      }
+      
+      // Считаем доступный остаток для этой партии
+      const movementsResult = await client.query(
+        `SELECT 
+          COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) as sold,
+          COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as written_off
+        FROM stock_movements
+        WHERE supply_id = $1`,
+        [supplyId]
+      );
+      
+      const sold = parseInt(movementsResult.rows[0]?.sold || 0);
+      const writtenOff = parseInt(movementsResult.rows[0]?.written_off || 0);
+      const available = supply.quantity - sold - writtenOff;
       
       if (quantityInt > available) {
         await client.query('ROLLBACK');
@@ -3592,16 +3715,16 @@ app.post('/api/admin/warehouse/write-off', checkAdminAuth, async (req, res) => {
         });
       }
       
-      // Создаем движение типа WRITE_OFF
+      // Создаем движение типа WRITE_OFF с привязкой к партии
       await client.query(
-        `INSERT INTO stock_movements (product_id, type, quantity, comment)
-         VALUES ($1, 'WRITE_OFF', $2, $3)`,
-        [product_id, quantityInt, comment || `Списание товара #${product_id}`]
+        `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
+         VALUES ($1, 'WRITE_OFF', $2, $3, $4)`,
+        [productId, quantityInt, supplyId, comment || `Списание по партии #${supplyId}`]
       );
       
       await client.query('COMMIT');
       
-      console.log(`✅ Товар списан: product_id=${product_id}, quantity=${quantityInt}`);
+      console.log(`✅ Товар списан: product_id=${productId}, supply_id=${supplyId}, quantity=${quantityInt}`);
       res.json({ success: true, message: 'Товар успешно списан' });
     } catch (error) {
       await client.query('ROLLBACK');
