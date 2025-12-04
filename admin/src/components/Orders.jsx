@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
-// Функция для форматирования дат в человеко-понятный формат
-function formatHumanDate(dateInput) {
+// Функция для форматирования дат доставки в человеко-понятный формат
+function formatDeliveryDate(dateInput) {
   if (!dateInput) {
     return '';
   }
@@ -46,20 +46,10 @@ function formatHumanDate(dateInput) {
   const diffTime = targetDate - today;
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
   
-  // Определяем, нужно ли показывать год
-  const currentYear = today.getFullYear();
-  const targetYear = targetDate.getFullYear();
-  const showYear = targetYear !== currentYear;
-  
   // Дни недели на русском (с заглавной буквы)
   const weekdaysShort = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   
   // Месяцы на русском
-  const months = [
-    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
-  ];
-  
   const monthsShort = [
     'янв', 'фев', 'мар', 'апр', 'мая', 'июня',
     'июля', 'авг', 'сен', 'окт', 'ноя', 'дек'
@@ -68,9 +58,69 @@ function formatHumanDate(dateInput) {
   const day = targetDate.getDate();
   const month = monthsShort[targetDate.getMonth()];
   const weekday = weekdaysShort[targetDate.getDay()];
-  const year = targetDate.getFullYear();
   
   // Специальные случаи для близких дат
+  if (diffDays === 0) {
+    return 'Сегодня';
+  }
+  
+  if (diffDays === 1) {
+    return 'Завтра';
+  }
+  
+  if (diffDays === 2) {
+    return 'Послезавтра';
+  }
+  
+  // Для остальных дат формируем строку: "Чт, 04.12"
+  return `${weekday}, ${String(day).padStart(2, '0')}.${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Функция для форматирования дат создания (для обратной совместимости)
+function formatHumanDate(dateInput) {
+  if (!dateInput) {
+    return '';
+  }
+  
+  let date;
+  if (dateInput instanceof Date) {
+    date = dateInput;
+  } else if (typeof dateInput === 'string') {
+    if (dateInput.includes('T') || dateInput.includes('Z')) {
+      date = new Date(dateInput);
+    } else if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateInput.split('-').map(Number);
+      date = new Date(year, month - 1, day);
+    } else {
+      date = new Date(dateInput);
+    }
+  } else {
+    date = new Date(dateInput);
+  }
+  
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+  
+  const diffTime = targetDate - today;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  const weekdaysShort = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  const monthsShort = [
+    'янв', 'фев', 'мар', 'апр', 'мая', 'июня',
+    'июля', 'авг', 'сен', 'окт', 'ноя', 'дек'
+  ];
+  
+  const day = targetDate.getDate();
+  const month = monthsShort[targetDate.getMonth()];
+  const weekday = weekdaysShort[targetDate.getDay()];
+  
   if (diffDays === 0) {
     return 'Сегодня';
   }
@@ -83,14 +133,7 @@ function formatHumanDate(dateInput) {
     return 'Завтра';
   }
   
-  // Для остальных дат формируем строку: "30 дек" или "30 дек 2025"
-  let result = `${day} ${month}`;
-  
-  if (showYear) {
-    result += ` ${year}`;
-  }
-  
-  return result;
+  return `${weekday}, ${String(day).padStart(2, '0')}.${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 }
 
 // Функция для форматирования времени доставки (12-14 -> 12:00-14:00)
@@ -170,7 +213,7 @@ export function Orders({ authToken }) {
 
   useEffect(() => {
     loadOrders();
-  }, [filterStatus, dateFrom, dateTo]);
+  }, [filterStatus, dateFrom, dateTo, dateFilter]);
 
   const handleRefreshOrders = async () => {
     try {
@@ -527,7 +570,7 @@ export function Orders({ authToken }) {
                     </td>
                     <td className="py-3 px-2">
                       <div className="text-sm">
-                        <div>{order.delivery_date ? formatHumanDate(order.delivery_date) : '-'}</div>
+                        <div>{order.delivery_date ? formatDeliveryDate(order.delivery_date) : '-'}</div>
                         <div className="text-xs text-gray-500">{formatDeliveryTime(order.delivery_time)}</div>
                       </div>
                     </td>

@@ -3655,14 +3655,15 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
         paramIndex++;
       }
       
+      // Фильтруем по дате доставки (delivery_date) вместо created_at
       if (dateFrom) {
-        conditions.push(`DATE(o.created_at) >= $${paramIndex}`);
+        conditions.push(`DATE(o.delivery_date) >= $${paramIndex}`);
         params.push(dateFrom);
         paramIndex++;
       }
       
       if (dateTo) {
-        conditions.push(`DATE(o.created_at) <= $${paramIndex}`);
+        conditions.push(`DATE(o.delivery_date) <= $${paramIndex}`);
         params.push(dateTo);
         paramIndex++;
       }
@@ -3671,7 +3672,12 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
         query += ' WHERE ' + conditions.join(' AND ');
       }
       
-      query += ' GROUP BY o.id, u.id ORDER BY o.created_at DESC';
+      // Сортировка: по delivery_date (раньше → выше), затем по delivery_time, затем по created_at
+      query += ` GROUP BY o.id, u.id 
+                 ORDER BY 
+                   COALESCE(o.delivery_date, '9999-12-31'::date) ASC,
+                   COALESCE(o.delivery_time, '00:00:00'::time) ASC,
+                   o.created_at DESC`;
       
       const result = await client.query(query, params);
       
