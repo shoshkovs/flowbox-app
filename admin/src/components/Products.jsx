@@ -300,18 +300,8 @@ export function Products({ authToken }) {
               </tr>
             </thead>
             <tbody>
-                {products.map((product) => {
-                  // Подсчитываем количество качеств для определения высоты строки
-                  let productFeatures = [];
-                  if (product.features && Array.isArray(product.features) && product.features.length > 0) {
-                    productFeatures = product.features.filter(f => f && f.trim());
-                  } else if (product.qualities && Array.isArray(product.qualities) && product.qualities.length > 0) {
-                    productFeatures = product.qualities.map(q => typeof q === 'object' ? q.name : q).filter(f => f && f.trim());
-                  }
-                  const minRowHeight = productFeatures.length > 1 ? `${40 + (productFeatures.length - 1) * 28}px` : 'auto';
-                  
-                  return (
-                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 align-top" style={{ minHeight: minRowHeight }}>
+                {products.map((product) => (
+                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4 text-gray-600">#{product.id}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
@@ -327,7 +317,7 @@ export function Products({ authToken }) {
                   </td>
                   <td className="py-3 px-4">{product.category_name || product.category || '-'}</td>
                   <td className="py-3 px-4">{product.color_name || product.color || '-'}</td>
-                  <td className="py-3 px-4 align-top">
+                  <td className="py-3 px-4">
                     {(() => {
                       // Используем features из таблицы products (TEXT[]) - это основной источник качеств
                       let productFeatures = [];
@@ -345,19 +335,31 @@ export function Products({ authToken }) {
                         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
                       };
                       
-                      return productFeatures.length > 0 ? (
-                        <div className="flex flex-col gap-1.5 py-1">
+                      if (productFeatures.length === 0) {
+                        return <span className="text-gray-400">-</span>;
+                      }
+                      
+                      // Если качество одно - показываем его текст
+                      if (productFeatures.length === 1) {
+                        return (
+                          <span className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full">
+                            {capitalizeFirst(productFeatures[0])}
+                          </span>
+                        );
+                      }
+                      
+                      // Если качеств больше - показываем "2 качества" и выпадающий список
+                      const qualitiesText = `${productFeatures.length} качеств${productFeatures.length === 2 ? 'а' : productFeatures.length > 4 ? '' : 'а'}`;
+                      return (
+                        <select 
+                          className="px-2 py-1 text-xs border border-gray-300 rounded bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          defaultValue=""
+                        >
+                          <option value="" disabled>{qualitiesText}</option>
                           {productFeatures.map((feature, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full w-fit whitespace-nowrap"
-                            >
-                              {capitalizeFirst(feature)}
-                            </span>
+                            <option key={idx} value={feature}>{capitalizeFirst(feature)}</option>
                           ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
+                        </select>
                       );
                     })()}
                   </td>
