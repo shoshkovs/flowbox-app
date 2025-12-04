@@ -49,15 +49,22 @@ export function Analytics({ authToken }) {
         });
 
         // Форматируем даты и сортируем от ближайшего дня вниз
-        const formattedOrdersByDate = data.ordersByDate.map(item => ({
-          date: new Date(item.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }),
-          count: item.ordersCount,
-          revenue: item.revenue,
-          dateObj: new Date(item.date)
-        })).sort((a, b) => b.dateObj - a.dateObj); // Сортировка от ближайшего дня вниз
+        const formattedOrdersByDate = data.ordersByDate.map(item => {
+          const dateObj = new Date(item.date);
+          return {
+            date: dateObj.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+            count: item.ordersCount,
+            revenue: item.revenue,
+            dateObj: dateObj
+          };
+        }).sort((a, b) => b.dateObj - a.dateObj); // Сортировка от ближайшего дня вниз
         
         setOrdersByDate(formattedOrdersByDate);
-        setTopProducts(data.topProducts || []);
+        setTopProducts((data.topProducts || []).map(p => ({
+          name: p.productName,
+          count: p.totalSold,
+          revenue: p.revenue
+        })));
       }
     } catch (error) {
       console.error('Ошибка загрузки аналитики:', error);
