@@ -128,6 +128,14 @@ export function Orders({ authToken }) {
     setDateTo(formatDate(localToday));
   }, []);
 
+  // Восстанавливаем фильтр при возврате со страницы деталей заказа
+  useEffect(() => {
+    const statusFromState = location.state?.filterStatus;
+    if (statusFromState && statusFromState !== filterStatus) {
+      setFilterStatus(statusFromState);
+    }
+  }, [location.state]);
+
   useEffect(() => {
     loadOrders();
   }, [filterStatus, dateFrom, dateTo]);
