@@ -27,6 +27,8 @@ CREATE TABLE users (
     phone           TEXT,
     email           TEXT,
     bonuses         INTEGER DEFAULT 500,     -- Бонусные баллы
+    manager_note   TEXT,                    -- Внутренний комментарий менеджера
+    registered_at   TIMESTAMPTZ DEFAULT now(), -- Дата регистрации
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
@@ -78,17 +80,35 @@ CREATE TABLE orders (
     delivery_price  INTEGER NOT NULL DEFAULT 0,      -- Доставка
     bonus_used      INTEGER NOT NULL DEFAULT 0,      -- Использованные бонусы
     bonus_earned    INTEGER NOT NULL DEFAULT 0,     -- Начисленные бонусы
+    -- Данные клиента на момент заказа
+    client_name     TEXT,                           -- Имя клиента
+    client_phone    TEXT,                           -- Телефон клиента
+    client_email    TEXT,                           -- Email клиента
+    -- Данные получателя
     recipient_name  TEXT,                           -- Имя получателя
     recipient_phone TEXT,                          -- Телефон получателя
+    -- Адрес доставки
+    address_id      INTEGER REFERENCES addresses(id), -- Ссылка на сохраненный адрес
     address_string  TEXT NOT NULL,                   -- Адрес (текст)
     address_json    JSONB,                          -- Адрес (полные данные)
+    -- Доставка
+    delivery_type   TEXT,                           -- 'INSIDE_KAD','OUTSIDE_KAD_10','OUTSIDE_KAD_20','PICKUP'
+    delivery_zone_id INTEGER REFERENCES delivery_zones(id), -- Зона доставки
+    delivery_slot_id INTEGER REFERENCES delivery_slots(id),  -- Временной слот
     delivery_date   DATE,                           -- Дата доставки
-    delivery_time   TEXT,                           -- Время доставки
+    delivery_time   TEXT,                           -- Время доставки (для обратной совместимости)
+    delivery_time_from TIME,                        -- Время доставки от
+    delivery_time_to TIME,                          -- Время доставки до
+    -- Комментарии
     comment         TEXT,                           -- Комментарий к заказу
+    florist_comment TEXT,                           -- Комментарий для флориста
     internal_comment TEXT,                          -- Внутренний комментарий
     courier_comment TEXT,                          -- Комментарий для курьера
+    -- Промокод
+    promocode_code  TEXT,                           -- Код промокода
     created_at      TIMESTAMPTZ DEFAULT now(),
-    updated_at      TIMESTAMPTZ DEFAULT now()
+    updated_at      TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT orders_status_check CHECK (status IN ('UNPAID','NEW','PROCESSING','COLLECTING','DELIVERING','COMPLETED','CANCELED'))
 );
 ```
 
@@ -114,10 +134,11 @@ CREATE TABLE orders (
 CREATE TABLE order_items (
     id              SERIAL PRIMARY KEY,
     order_id        BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    product_id      INTEGER,
+    product_id      INTEGER REFERENCES products(id) ON DELETE SET NULL,
     name            TEXT NOT NULL,
     price           INTEGER NOT NULL,        -- Цена за единицу
     quantity        INTEGER NOT NULL,         -- Количество
+    total_price     INTEGER,                  -- Общая стоимость (price * quantity)
     created_at      TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -159,20 +180,19 @@ CREATE TABLE products (
     category_id         INTEGER REFERENCES product_categories(id),
     color_id            INTEGER REFERENCES colors(id),
     price_per_stem      INTEGER NOT NULL,            -- Цена за стебель (рубли)
-    min_stem_quantity   INTEGER DEFAULT 1,          -- Минимальное количество
+    min_stem_quantity   INTEGER DEFAULT 1,          -- Минимальное количество для заказа
     image_url           TEXT,
     features            JSONB,                       -- Отличительные качества (массив)
+    -- Характеристики для сотрудника (текстовые поля)
+    stem_length         TEXT,                        -- "40 см", "50 см"
+    country             TEXT,                         -- "Кения", "Эквадор"
+    variety             TEXT,                         -- "Freedom", "Explorer"
+    tags                TEXT,                         -- Теги через запятую или JSONB
     is_active           BOOLEAN DEFAULT TRUE,
     created_at          TIMESTAMPTZ DEFAULT now(),
     updated_at          TIMESTAMPTZ DEFAULT now()
 );
 ```
-
-**Характеристики для сотрудника (опциональные):**
-- `stem_length_id` - Длина стебля (FK -> stem_lengths)
-- `country_id` - Страна (FK -> countries)
-- `variety_id` - Сорт (FK -> varieties)
-- `tags` - Теги (JSONB массив)
 
 ---
 
@@ -533,9 +553,69 @@ GROUP BY p.id, p.name;
 
 ---
 
+## 7️⃣ БОНУСЫ И ПОДПИСКИ
+
+### Таблица `bonus_transactions`
+**Назначение:** История движения бонусов
+
+```sql
+CREATE TABLE bonus_transactions (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    order_id        BIGINT NULL REFERENCES orders(id) ON DELETE SET NULL,
+    type            TEXT NOT NULL CHECK (type IN ('accrual','redeem','adjustment')),
+    amount          INTEGER NOT NULL,      -- плюс или минус
+    description     TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Типы транзакций:**
+- `accrual` - Начисление бонусов (amount > 0)
+- `redeem` - Списание бонусов (amount < 0)
+- `adjustment` - Ручная корректировка менеджером (amount может быть + или -)
+
+**Индексы:**
+- `idx_bonus_transactions_user_id` на `user_id`
+- `idx_bonus_transactions_order_id` на `order_id`
+- `idx_bonus_transactions_type` на `type`
+- `idx_bonus_transactions_created_at` на `created_at`
+
+---
+
+### Таблица `subscriptions`
+**Назначение:** Подписки пользователей
+
+```sql
+CREATE TABLE subscriptions (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status          TEXT NOT NULL CHECK (status IN ('active','canceled','expired','trial')),
+    plan_code       TEXT NOT NULL,          -- код плана/тарифа
+    started_at      TIMESTAMPTZ NOT NULL,
+    ends_at         TIMESTAMPTZ NOT NULL,
+    canceled_at     TIMESTAMPTZ NULL,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Статусы:**
+- `active` - Активная подписка
+- `canceled` - Отменена вручную
+- `expired` - Истекла
+- `trial` - Пробный период
+
+**Индексы:**
+- `idx_subscriptions_user_id` на `user_id`
+- `idx_subscriptions_status` на `status`
+- `idx_subscriptions_ends_at` на `ends_at`
+
+---
+
 ## ✅ Итоговая структура
 
-**Всего таблиц:** ~20
+**Всего таблиц:** ~22
 
 **Основные группы:**
 1. ✅ Пользователи и заказы (5 таблиц)
@@ -544,5 +624,15 @@ GROUP BY p.id, p.name;
 4. ✅ Админка (2 таблицы)
 5. ⚠️ Доставка (3 таблицы - частично)
 6. ⚠️ Промокоды (2 таблицы - частично)
+7. ✅ Бонусы и подписки (2 таблицы)
 
 **Все данные пользователя хранятся в БД и связаны через `user_id`!**
+
+**Важные изменения:**
+- ✅ Добавлены поля `manager_note` и `registered_at` в `users`
+- ✅ Добавлены поля `client_*`, `address_id`, `delivery_type`, `delivery_time_from/to`, `florist_comment`, `promocode_code` в `orders`
+- ✅ Добавлен `total_price` в `order_items`
+- ✅ Добавлены текстовые поля характеристик (`stem_length`, `country`, `variety`, `tags`) в `products`
+- ✅ Создана таблица `bonus_transactions` для истории бонусов
+- ✅ Создана таблица `subscriptions` для подписок
+- ✅ Добавлен constraint на статусы заказов
