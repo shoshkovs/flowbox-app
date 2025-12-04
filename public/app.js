@@ -2767,15 +2767,17 @@ function getOrderStatusClass(status) {
     case 'UNPAID':
       return 'status-unpaid';
     case 'NEW':
+      return 'status-new'; // В обработке - серый
     case 'PROCESSING':
+      return 'status-processing'; // Принят - слабо зеленый
     case 'COLLECTING':
-      return 'status-processing';
+      return 'status-collecting'; // Сборка - желтый
     case 'DELIVERING':
-      return 'status-delivering';
+      return 'status-delivering'; // В пути - синий
     case 'COMPLETED':
-      return 'status-completed';
+      return 'status-completed'; // Доставлен - залит зеленый
     case 'CANCELED':
-      return 'status-canceled';
+      return 'status-canceled'; // Отменён - залит красный
     default:
       return 'status-unknown';
   }

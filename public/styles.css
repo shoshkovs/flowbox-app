@@ -2028,33 +2028,49 @@ h1, h2, h3, .font-bold {
 
 /* Новые стили для статусов заказов */
 .order-status.status-unpaid {
-    background: #ff9800;
-    color: white;
+    background: rgba(255, 152, 0, 0.2);
+    color: #ff9800;
+}
+
+.order-status.status-new {
+    /* В обработке - серый полупрозрачный */
+    background: rgba(158, 158, 158, 0.2);
+    color: #616161;
 }
 
 .order-status.status-processing {
-    background: #2196f3;
-    color: white;
+    /* Принят - слабо зеленый полупрозрачный */
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.order-status.status-collecting {
+    /* Сборка - желтый полупрозрачный */
+    background: rgba(255, 193, 7, 0.2);
+    color: #f57c00;
 }
 
 .order-status.status-delivering {
-    background: #9c27b0;
-    color: white;
+    /* В пути - синий полупрозрачный */
+    background: rgba(33, 150, 243, 0.2);
+    color: #1976d2;
 }
 
 .order-status.status-completed {
+    /* Доставлен - залит зеленый */
     background: #4caf50;
     color: white;
 }
 
 .order-status.status-canceled {
-    background: #757575;
+    /* Отменён - залит красный */
+    background: #f44336;
     color: white;
 }
 
 .order-status.status-unknown {
-    background: #9e9e9e;
-    color: white;
+    background: rgba(158, 158, 158, 0.2);
+    color: #616161;
 }
 
 .pay-btn {
