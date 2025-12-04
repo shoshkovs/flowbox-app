@@ -478,7 +478,7 @@ export function Warehouse({ authToken }) {
                                     <td className="py-2 px-3">
                                       <div className="flex items-center justify-end gap-1">
                                         <button
-                                          className="h-7 px-2 text-sm hover:bg-gray-100 rounded"
+                                          className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setWriteOffDialog({
@@ -491,19 +491,19 @@ export function Warehouse({ authToken }) {
                                             });
                                           }}
                                           disabled={batch.remaining === 0}
+                                          title="Списать"
                                         >
-                                          <Edit className="w-3 h-3 mr-1 inline" />
-                                          Изменить
+                                          <Edit className="w-4 h-4" />
                                         </button>
                                         <button
-                                          className="h-7 px-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                                          className="h-7 w-7 p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded flex items-center justify-center"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleDeleteBatch(product.id, batch.id);
                                           }}
+                                          title="Удалить партию"
                                         >
-                                          <Trash2 className="w-3 h-3 mr-1 inline" />
-                                          Удалить
+                                          <Trash2 className="w-4 h-4" />
                                         </button>
                                       </div>
                                     </td>

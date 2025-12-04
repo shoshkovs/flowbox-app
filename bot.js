@@ -3713,9 +3713,11 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
         return res.status(404).json({ error: 'Поставка не найдена' });
       }
       
-      // Проверяем, есть ли движения по этой поставке
+      // Проверяем, есть ли движения по этой поставке (кроме SUPPLY, который создается автоматически)
       const movementsResult = await client.query(
-        'SELECT COUNT(*) as count FROM stock_movements WHERE supply_id = $1',
+        `SELECT COUNT(*) as count 
+         FROM stock_movements 
+         WHERE supply_id = $1 AND type != 'SUPPLY'`,
         [id]
       );
       
@@ -3727,6 +3729,9 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
           error: 'Невозможно удалить поставку, так как по ней уже есть движения (продажи или списания)' 
         });
       }
+      
+      // Удаляем автоматически созданное движение SUPPLY
+      await client.query('DELETE FROM stock_movements WHERE supply_id = $1 AND type = $2', [id, 'SUPPLY']);
       
       // Удаляем поставку
       await client.query('DELETE FROM supplies WHERE id = $1', [id]);
