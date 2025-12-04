@@ -360,49 +360,41 @@ export function Warehouse({ authToken }) {
                 return (
                   <div
                     key={product.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden"
+                    className="border border-gray-200 rounded-lg overflow-hidden bg-white"
                   >
                     <div
-                      className="bg-white p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                       onClick={() => toggleProduct(product.id)}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-16 text-sm font-medium text-gray-600">
-                            {product.batches.length > 0 && (product.batches[0].supplyId || product.batches[0].id)}
+                          {/* Изображение товара */}
+                          <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.productName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                <PackageIcon className="w-8 h-8" />
+                              </div>
+                            )}
                           </div>
+                          {/* Название и категория */}
                           <div className="flex-1">
-                            <div className="font-medium">{product.productName}</div>
+                            <div className="text-lg font-semibold">{product.productName}</div>
                             <div className="text-sm text-gray-500 mt-1">
                               {product.category} • {product.color}
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6 text-sm">
+                        {/* Остаток справа */}
+                        <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <div className="text-gray-500">Поставлено</div>
-                            <div className="font-medium">{totalSupplied} шт</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-gray-500">Продано</div>
-                            <div className="font-medium">{totalSold} шт</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-gray-500">Списано</div>
-                            <div className="font-medium">{totalWriteOff} шт</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-gray-500">Остаток</div>
-                            <div className="font-medium">{product.totalRemaining} шт</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-gray-500">Стоимость</div>
-                            <div className="font-medium">
-                              {product.batches
-                                .reduce((sum, b) => sum + b.remaining * b.purchasePrice, 0)
-                                .toLocaleString()}{' '}
-                              ₽
-                            </div>
+                            <div className="text-sm text-gray-500">Остаток</div>
+                            <div className="text-xl font-semibold">{product.totalRemaining} шт</div>
                           </div>
                           <button className="p-2 hover:bg-gray-100 rounded">
                             {isExpanded ? (
@@ -413,6 +405,26 @@ export function Warehouse({ authToken }) {
                           </button>
                         </div>
                       </div>
+                      
+                      {/* Статистика под заголовком */}
+                      <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-200">
+                        <div className="text-sm">
+                          <span className="text-gray-500">Всего поставлено:</span>{' '}
+                          <span className="font-medium">{totalSupplied} шт</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">Продано:</span>{' '}
+                          <span className="font-medium">{totalSold} шт</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">Списано:</span>{' '}
+                          <span className="font-medium">{totalWriteOff} шт</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">Остаток:</span>{' '}
+                          <span className="font-medium">{product.totalRemaining} шт</span>
+                        </div>
+                      </div>
                     </div>
 
                     {isExpanded && (
@@ -421,7 +433,7 @@ export function Warehouse({ authToken }) {
                           <thead className="bg-gray-100">
                             <tr>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
-                                ID поставки
+                                Поставка
                               </th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
                                 Дата
@@ -442,7 +454,7 @@ export function Warehouse({ authToken }) {
                                 Цена закупки
                               </th>
                               <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
-                                Стоимость
+                                Себестоимость
                               </th>
                               <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
                                 Поставщик
@@ -466,9 +478,9 @@ export function Warehouse({ authToken }) {
                                   }`}
                                 >
                                   <td className="py-2 px-4 text-sm">
-                                    {batch.supplyId || batch.id}
+                                    #{batch.supplyId || batch.id}
                                     {isCurrent && (
-                                      <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
+                                      <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-medium">
                                         Текущая
                                       </span>
                                     )}
@@ -565,29 +577,35 @@ export function Warehouse({ authToken }) {
                 return (
                   <div
                     key={supply.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden"
+                    className="border border-gray-200 rounded-lg overflow-hidden bg-white"
                   >
                     <div
-                      className="bg-white p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                       onClick={() => toggleSupply(supply.id)}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-20 text-sm font-medium text-gray-600">
-                            #{supply.id}
+                          {/* ID поставки вместо изображения */}
+                          <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <div className="text-lg font-semibold text-gray-700">
+                              #{supply.id}
+                            </div>
                           </div>
+                          {/* ID поставки и дата */}
                           <div className="flex-1">
-                            <div className="font-medium">
-                              {new Date(supply.deliveryDate).toLocaleDateString('ru-RU')}
+                            <div className="text-lg font-semibold">
+                              #{supply.id}, {new Date(supply.deliveryDate).toLocaleDateString('ru-RU')}
                             </div>
                             <div className="text-sm text-gray-500 mt-1">
                               {supply.supplierName}
                             </div>
                           </div>
                         </div>
+                        {/* Общая стоимость справа */}
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <div className="text-sm font-medium">
+                            <div className="text-sm text-gray-500">Общая стоимость</div>
+                            <div className="text-xl font-semibold">
                               {supply.totalAmount.toLocaleString()} ₽
                             </div>
                           </div>
