@@ -457,12 +457,12 @@ export function Orders({ authToken }) {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-2 w-16">ID</th>
-                <th className="text-left py-3 px-2 w-48">Состав заказа</th>
                 <th className="text-left py-3 px-2 w-32">Дата</th>
                 <th className="text-left py-3 px-2 w-32">Статус</th>
+                <th className="text-left py-3 px-2 w-48">Состав заказа</th>
+                <th className="text-left py-3 px-2 w-32">Доставка</th>
                 <th className="text-left py-3 px-2 w-40">Клиент</th>
                 <th className="text-left py-3 px-2 w-24">Сумма</th>
-                <th className="text-left py-3 px-2 w-32">Доставка</th>
                 <th className="text-right py-3 px-2 w-20">Действия</th>
               </tr>
             </thead>
