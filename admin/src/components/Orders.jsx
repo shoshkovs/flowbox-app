@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Phone, RefreshCw } from 'lucide-react';
+import { Eye, Phone, RefreshCw, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
@@ -11,10 +11,23 @@ export function Orders({ authToken }) {
   const [allOrders, setAllOrders] = useState([]); // Храним все заказы для правильного подсчета
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('NEW');
+  const [dateFilter, setDateFilter] = useState('week'); // По умолчанию "Неделя"
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // Инициализация дат при загрузке компонента
+  useEffect(() => {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    
+    setDateFrom(weekAgo.toISOString().split('T')[0]);
+    setDateTo(today.toISOString().split('T')[0]);
+  }, []);
 
   useEffect(() => {
     loadOrders();
-  }, [filterStatus]);
+  }, [filterStatus, dateFrom, dateTo]);
 
   const handleRefreshOrders = async () => {
     try {
@@ -69,8 +82,14 @@ export function Orders({ authToken }) {
 
   const loadOrders = async () => {
     try {
-      // Всегда загружаем все заказы для правильного подсчета
-      const allResponse = await fetch(`${API_BASE}/api/admin/orders`, {
+      // Формируем URL с параметрами фильтрации по датам
+      const params = new URLSearchParams();
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
+      
+      const url = `${API_BASE}/api/admin/orders${params.toString() ? '?' + params.toString() : ''}`;
+      
+      const allResponse = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -80,7 +99,7 @@ export function Orders({ authToken }) {
         const allData = await allResponse.json();
         setAllOrders(allData);
         
-        // Фильтруем локально
+        // Фильтруем локально по статусу
         if (filterStatus === 'all') {
           setOrders(allData);
         } else if (filterStatus === 'processing') {
@@ -97,6 +116,50 @@ export function Orders({ authToken }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateFilterChange = (period) => {
+    setDateFilter(period);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let fromDate = new Date(today);
+    let toDate = new Date(today);
+    
+    switch (period) {
+      case 'today':
+        fromDate = new Date(today);
+        toDate = new Date(today);
+        break;
+      case 'yesterday':
+        fromDate = new Date(today);
+        fromDate.setDate(today.getDate() - 1);
+        toDate = new Date(today);
+        toDate.setDate(today.getDate() - 1);
+        break;
+      case 'dayBeforeYesterday':
+        fromDate = new Date(today);
+        fromDate.setDate(today.getDate() - 2);
+        toDate = new Date(today);
+        toDate.setDate(today.getDate() - 2);
+        break;
+      case 'week':
+        fromDate = new Date(today);
+        fromDate.setDate(today.getDate() - 7);
+        toDate = new Date(today);
+        break;
+      case 'month':
+        fromDate = new Date(today);
+        fromDate.setMonth(today.getMonth() - 1);
+        toDate = new Date(today);
+        break;
+      default:
+        // Кастомный период - не меняем даты
+        return;
+    }
+    
+    setDateFrom(fromDate.toISOString().split('T')[0]);
+    setDateTo(toDate.toISOString().split('T')[0]);
   };
 
 
@@ -152,9 +215,51 @@ export function Orders({ authToken }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Заказы</h1>
-        <p className="text-gray-600 mt-1">Управление заказами клиентов</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Заказы</h1>
+          <p className="text-gray-600 mt-1">Управление заказами клиентов</p>
+        </div>
+        
+        {/* Фильтр по датам */}
+        <div className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">с</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setDateFilter('custom');
+              }}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">по</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setDateFilter('custom');
+              }}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+            />
+          </div>
+          <select
+            value={dateFilter}
+            onChange={(e) => handleDateFilterChange(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
+          >
+            <option value="custom">Кастомный период</option>
+            <option value="today">Сегодня</option>
+            <option value="yesterday">Вчера</option>
+            <option value="dayBeforeYesterday">Позавчера</option>
+            <option value="week">Неделя</option>
+            <option value="month">Месяц</option>
+          </select>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2">

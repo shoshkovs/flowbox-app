@@ -3562,7 +3562,7 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { status } = req.query; // Опциональный фильтр по статусу
+  const { status, dateFrom, dateTo } = req.query; // Опциональные фильтры
   
   try {
     const client = await pool.connect();
@@ -3588,9 +3588,29 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
       `;
       
       const params = [];
+      const conditions = [];
+      let paramIndex = 1;
+      
       if (status) {
-        query += ' WHERE o.status = $1';
+        conditions.push(`o.status = $${paramIndex}`);
         params.push(status);
+        paramIndex++;
+      }
+      
+      if (dateFrom) {
+        conditions.push(`DATE(o.created_at) >= $${paramIndex}`);
+        params.push(dateFrom);
+        paramIndex++;
+      }
+      
+      if (dateTo) {
+        conditions.push(`DATE(o.created_at) <= $${paramIndex}`);
+        params.push(dateTo);
+        paramIndex++;
+      }
+      
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
       }
       
       query += ' GROUP BY o.id, u.id ORDER BY o.created_at DESC';
