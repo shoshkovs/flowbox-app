@@ -329,11 +329,11 @@ export function Delivery({ authToken }) {
                           <div className="text-sm text-gray-600 mb-1">Время</div>
                           <div className="font-semibold">{formatTimeForDisplay(delivery.deliveryTime)}</div>
                           <a
-                            href={`/admin/orders/${delivery.orderId}`}
+                            href={`/orders/${delivery.orderId}`}
                             className="text-pink-600 hover:text-pink-800 text-sm font-medium"
                             onClick={(e) => {
                               e.preventDefault();
-                              navigate(`/admin/orders/${delivery.orderId}`);
+                              navigate(`/orders/${delivery.orderId}`);
                             }}
                           >
                             #{delivery.orderId}
@@ -415,7 +415,7 @@ export function Delivery({ authToken }) {
                       {/* Кнопка Детали */}
                       <div className="mt-4 flex justify-end">
                         <button
-                          onClick={() => navigate(`/admin/orders/${delivery.orderId}`)}
+                          onClick={() => navigate(`/orders/${delivery.orderId}`)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-pink-600 hover:text-pink-800 hover:bg-pink-50 rounded-lg transition-colors"
                         >
                           <Eye className="w-4 h-4" />
