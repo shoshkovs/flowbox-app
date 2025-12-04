@@ -14,6 +14,7 @@ export function OrderDetail({ authToken, orderId }) {
   const [saving, setSaving] = useState(false);
   const [internalComment, setInternalComment] = useState('');
   const [courierComment, setCourierComment] = useState('');
+  const [userComment, setUserComment] = useState('');
 
   useEffect(() => {
     loadOrderDetails();
@@ -62,6 +63,7 @@ export function OrderDetail({ authToken, orderId }) {
         // Инициализируем комментарии из заказа
         setInternalComment(orderData.internal_comment || '');
         setCourierComment(orderData.courier_comment || '');
+        setUserComment(orderData.user_comment || '');
       } else if (orderRes.status === 404) {
         setOrder(null);
         toast.error('Заказ не найден');
@@ -490,6 +492,16 @@ export function OrderDetail({ authToken, orderId }) {
                   value={courierComment}
                   onChange={(e) => setCourierComment(e.target.value)}
                   placeholder="Инструкции для курьера..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none"
+                  rows="4"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Особые пожелания к заказу</label>
+                <textarea
+                  value={userComment}
+                  onChange={(e) => setUserComment(e.target.value)}
+                  placeholder="Особые пожелания к заказу..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none"
                   rows="4"
                 />
