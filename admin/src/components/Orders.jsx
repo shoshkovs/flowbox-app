@@ -10,7 +10,7 @@ export function Orders({ authToken }) {
   const [orders, setOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]); // Храним все заказы для правильного подсчета
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('NEW');
 
   useEffect(() => {
     loadOrders();
@@ -55,12 +55,6 @@ export function Orders({ authToken }) {
         // Фильтруем локально
         if (filterStatus === 'all') {
           setOrders(allData);
-        } else if (filterStatus === 'processing') {
-          // "В обработке" включает PROCESSING и COLLECTING
-          const filtered = allData.filter(order => 
-            order.status === 'PROCESSING' || order.status === 'COLLECTING'
-          );
-          setOrders(filtered);
         } else {
           const filtered = allData.filter(order => order.status === filterStatus);
           setOrders(filtered);
@@ -133,7 +127,8 @@ export function Orders({ authToken }) {
         {[
           { key: 'all', label: 'Все' },
           { key: 'NEW', label: 'Новые' },
-          { key: 'processing', label: 'В обработке' },
+          { key: 'PROCESSING', label: 'В обработке' },
+          { key: 'COLLECTING', label: 'Собирается' },
           { key: 'DELIVERING', label: 'В доставке' },
           { key: 'COMPLETED', label: 'Завершённые' },
           { key: 'CANCELED', label: 'Отменённые' }
@@ -141,8 +136,6 @@ export function Orders({ authToken }) {
           let count = 0;
           if (key === 'all') {
             count = allOrders.length;
-          } else if (key === 'processing') {
-            count = allOrders.filter(o => o.status === 'PROCESSING' || o.status === 'COLLECTING').length;
           } else {
             count = allOrders.filter(o => o.status === key).length;
           }
