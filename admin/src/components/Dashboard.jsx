@@ -37,7 +37,6 @@ export function Dashboard({ authToken }) {
       
       if (ordersRes.ok) {
         const orders = await ordersRes.json();
-        const today = new Date().toISOString().split('T')[0];
         
         // Выручка за сегодня: сумма всех заказов за сегодня (независимо от статуса)
         const today = new Date();
