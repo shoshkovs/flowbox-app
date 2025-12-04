@@ -1045,38 +1045,24 @@ async function createOrderInDb(orderData) {
       let userId = null;
       let userData = null;
       if (orderData.userId) {
-        // Если передан username или phone_number, обновляем их в БД
-        if (orderData.username || orderData.phone_number) {
-          const updates = [];
-          const values = [];
-          let paramIndex = 1;
-          
-          if (orderData.username) {
-            updates.push(`username = $${paramIndex}`);
-            values.push(orderData.username);
-            paramIndex++;
-          }
-          
-          if (orderData.phone_number) {
-            updates.push(`phone = $${paramIndex}`);
-            values.push(orderData.phone_number);
-            paramIndex++;
-          }
-          
-          if (updates.length > 0) {
-            values.push(orderData.userId);
-            await client.query(
-              `UPDATE users 
-               SET ${updates.join(', ')}, updated_at = now()
-               WHERE telegram_id = $${paramIndex}
-               AND (
-                 ${orderData.username ? `(username IS NULL OR username != $1)` : 'true'}
-                 ${orderData.username && orderData.phone_number ? ' OR ' : ''}
-                 ${orderData.phone_number ? `(phone IS NULL OR phone != $${orderData.username ? 2 : 1})` : ''}
-               )`,
-              values
-            );
-          }
+        // Если передан username, обновляем его в БД
+        if (orderData.username) {
+          await client.query(
+            `UPDATE users 
+             SET username = $1, updated_at = now()
+             WHERE telegram_id = $2 AND (username IS NULL OR username != $1)`,
+            [orderData.username, orderData.userId]
+          );
+        }
+        
+        // Если передан phone_number, обновляем его в БД
+        if (orderData.phone_number) {
+          await client.query(
+            `UPDATE users 
+             SET phone = $1, updated_at = now()
+             WHERE telegram_id = $2 AND (phone IS NULL OR phone != $1)`,
+            [orderData.phone_number, orderData.userId]
+          );
         }
         
         const userResult = await client.query(
