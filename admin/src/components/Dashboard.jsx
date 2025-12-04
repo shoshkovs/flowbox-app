@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, ShoppingCart, Package, AlertTriangle } from 'lucide-react';
+import { TrendingUp, ShoppingCart, Package, Users } from 'lucide-react';
 
 const API_BASE = window.location.origin;
 
@@ -10,9 +10,10 @@ export function Dashboard({ authToken }) {
     avgOrder: 0,
     totalStock: 0,
     productCount: 0,
-    lowStock: 0,
+    newUsers: 0,
   });
   const [recentOrders, setRecentOrders] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +31,13 @@ export function Dashboard({ authToken }) {
       
       // Загружаем склад
       const warehouseRes = await fetch(`${API_BASE}/api/admin/warehouse`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      // Загружаем клиентов для подсчета новых пользователей
+      const customersRes = await fetch(`${API_BASE}/api/admin/customers`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -62,6 +70,7 @@ export function Dashboard({ authToken }) {
         // Загружаем данные склада
         let totalStock = 0;
         let productCount = 0;
+        let lowStockItemsList = [];
         
         if (warehouseRes.ok) {
           const warehouseData = await warehouseRes.json();
@@ -69,6 +78,20 @@ export function Dashboard({ authToken }) {
           totalStock = warehouseData.reduce((sum, item) => sum + (parseInt(item.stock) || 0), 0);
           // Количество позиций (товаров) на складе
           productCount = warehouseData.length;
+          // Низкие остатки: товары с остатком меньше 20
+          lowStockItemsList = warehouseData.filter(item => (parseInt(item.stock) || 0) < 20);
+        }
+        
+        // Новых пользователей: пользователи, созданные сегодня (в первый раз запустили мини-апп)
+        let newUsersCount = 0;
+        if (customersRes.ok) {
+          const customers = await customersRes.json();
+          const newUsers = customers.filter(c => {
+            if (!c.created_at) return false;
+            const userDate = new Date(c.created_at);
+            return userDate >= today && userDate <= todayEnd;
+          });
+          newUsersCount = newUsers.length;
         }
         
         setStats({
@@ -77,9 +100,10 @@ export function Dashboard({ authToken }) {
           avgOrder: todayOrders.length > 0 ? revenue / todayOrders.length : 0,
           totalStock: totalStock,
           productCount: productCount,
-          lowStock: 0, // TODO: загрузить из API склада
+          newUsers: newUsersCount,
         });
         
+        setLowStockItems(lowStockItemsList);
         setRecentOrders(orders.slice(0, 5));
       }
     } catch (error) {
@@ -115,10 +139,10 @@ export function Dashboard({ authToken }) {
       bgColor: 'bg-purple-50',
     },
     {
-      title: 'Требует внимания',
-      value: stats.lowStock.toString(),
-      change: 'Низкий остаток',
-      icon: AlertTriangle,
+      title: 'Новых пользователей',
+      value: stats.newUsers.toString(),
+      change: null,
+      icon: Users,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
@@ -171,11 +195,21 @@ export function Dashboard({ authToken }) {
                     <div className="flex items-center gap-2">
                       <span className="text-gray-900 font-medium">#{order.id}</span>
                       <span className={`px-2 py-1 rounded text-xs ${
-                        order.status === 'new' ? 'bg-yellow-100 text-yellow-800' :
-                        order.status === 'paid' ? 'bg-green-100 text-green-800' :
+                        order.status === 'NEW' ? 'bg-yellow-100 text-yellow-800' :
+                        order.status === 'PROCESSING' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'COLLECTING' ? 'bg-purple-100 text-purple-800' :
+                        order.status === 'DELIVERING' ? 'bg-indigo-100 text-indigo-800' :
+                        order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        order.status === 'CANCELED' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {order.status === 'new' ? 'Новый' : order.status === 'paid' ? 'Оплачен' : order.status}
+                        {order.status === 'NEW' ? 'Новый' :
+                         order.status === 'PROCESSING' ? 'В обработке' :
+                         order.status === 'COLLECTING' ? 'Собирается' :
+                         order.status === 'DELIVERING' ? 'В доставке' :
+                         order.status === 'COMPLETED' ? 'Доставлен' :
+                         order.status === 'CANCELED' ? 'Отменён' :
+                         order.status}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
@@ -186,7 +220,7 @@ export function Dashboard({ authToken }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{parseFloat(order.total_amount || 0).toLocaleString()} ₽</p>
+                    <p className="font-semibold">{(parseInt(order.total) || 0).toLocaleString()} ₽</p>
                   </div>
                 </div>
               ))
@@ -199,7 +233,26 @@ export function Dashboard({ authToken }) {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-xl font-semibold mb-4">Низкие остатки на складе</h2>
           <div className="space-y-4">
-            <p className="text-gray-500 text-center py-8">Данные будут загружены из модуля склада</p>
+            {lowStockItems.length > 0 ? (
+              lowStockItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div>
+                    <p className="font-medium">{item.name || item.product_name || 'Товар'}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Остаток: <span className="font-semibold text-red-600">{item.stock || 0}</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500">Меньше 20</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-8">Нет товаров с низким остатком</p>
+            )}
           </div>
         </div>
       </div>
