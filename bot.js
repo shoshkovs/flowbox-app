@@ -3714,16 +3714,21 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
       }
       
       // Проверяем, есть ли движения по этой поставке (кроме SUPPLY, который создается автоматически)
+      // Разрешаем удаление только если есть только движение SUPPLY (т.е. поставка только что создана)
       const movementsResult = await client.query(
-        `SELECT COUNT(*) as count 
+        `SELECT type, COUNT(*) as count 
          FROM stock_movements 
-         WHERE supply_id = $1 AND type != 'SUPPLY'`,
+         WHERE supply_id = $1
+         GROUP BY type`,
         [id]
       );
       
-      const movementsCount = parseInt(movementsResult.rows[0]?.count || 0);
+      // Проверяем, есть ли движения типа SALE или WRITE_OFF
+      const hasSalesOrWriteOffs = movementsResult.rows.some(
+        row => row.type === 'SALE' || row.type === 'WRITE_OFF'
+      );
       
-      if (movementsCount > 0) {
+      if (hasSalesOrWriteOffs) {
         await client.query('ROLLBACK');
         return res.status(400).json({ 
           error: 'Невозможно удалить поставку, так как по ней уже есть движения (продажи или списания)' 
