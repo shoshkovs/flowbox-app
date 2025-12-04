@@ -1192,6 +1192,45 @@ app.post('/api/orders', async (req, res) => {
       if (result && result.orderId) {
         console.log(`✅ Заказ создан в БД: ID=${result.orderId}, сумма=${orderData.total}₽`);
         
+        // Сохраняем адрес из заказа в таблицу addresses, если он есть
+        if (orderData.userId && orderData.addressData) {
+          try {
+            const user = await getOrCreateUser(orderData.userId);
+            if (user && orderData.addressData.street && orderData.addressData.house) {
+              // Проверяем, не является ли это дубликатом
+              const existingAddresses = await loadUserAddresses(user.id);
+              const isDuplicate = existingAddresses.some(existing => {
+                const sameCity = (existing.city || '').toLowerCase().trim() === (orderData.addressData.city || '').toLowerCase().trim();
+                const sameStreet = (existing.street || '').toLowerCase().trim() === (orderData.addressData.street || '').toLowerCase().trim();
+                const sameHouse = (existing.house || '').toLowerCase().trim() === (orderData.addressData.house || '').toLowerCase().trim();
+                const sameApartment = (existing.apartment || '').toLowerCase().trim() === (orderData.addressData.apartment || '').toLowerCase().trim();
+                return sameCity && sameStreet && sameHouse && sameApartment;
+              });
+              
+              if (!isDuplicate) {
+                const addressToSave = [{
+                  name: orderData.addressData.name || `${orderData.addressData.street}, ${orderData.addressData.house}`,
+                  city: orderData.addressData.city || 'Санкт-Петербург',
+                  street: orderData.addressData.street,
+                  house: orderData.addressData.house,
+                  entrance: orderData.addressData.entrance || '',
+                  apartment: orderData.addressData.apartment || '',
+                  floor: orderData.addressData.floor || '',
+                  intercom: orderData.addressData.intercom || '',
+                  comment: orderData.addressData.comment || ''
+                }];
+                await saveUserAddresses(user.id, addressToSave);
+                console.log('✅ Адрес из заказа сохранен в БД');
+              } else {
+                console.log('ℹ️  Адрес из заказа уже существует, пропускаем');
+              }
+            }
+          } catch (addrError) {
+            console.error('⚠️  Ошибка сохранения адреса из заказа:', addrError);
+            // Не прерываем создание заказа из-за ошибки сохранения адреса
+          }
+        }
+        
         // Отправляем уведомление в Telegram (если нужно)
         // const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
         // if (ADMIN_CHAT_ID) {
