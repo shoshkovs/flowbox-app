@@ -198,11 +198,7 @@ export function Customers({ authToken }) {
           </select>
           <select
             value={sortByOrders}
-            onChange={(e) => {
-              setSortByOrders(e.target.value);
-              setSortByTotalSpent('none');
-              setSortByAvgCheck('none');
-            }}
+            onChange={(e) => setSortByOrders(e.target.value)}
             className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
           >
@@ -212,11 +208,7 @@ export function Customers({ authToken }) {
           </select>
           <select
             value={sortByTotalSpent}
-            onChange={(e) => {
-              setSortByTotalSpent(e.target.value);
-              setSortByOrders('none');
-              setSortByAvgCheck('none');
-            }}
+            onChange={(e) => setSortByTotalSpent(e.target.value)}
             className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
           >
@@ -226,11 +218,7 @@ export function Customers({ authToken }) {
           </select>
           <select
             value={sortByAvgCheck}
-            onChange={(e) => {
-              setSortByAvgCheck(e.target.value);
-              setSortByOrders('none');
-              setSortByTotalSpent('none');
-            }}
+            onChange={(e) => setSortByAvgCheck(e.target.value)}
             className="px-4 py-2 pr-10 border border-gray-300 rounded-lg appearance-none bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', paddingRight: '2.5rem' }}
           >
