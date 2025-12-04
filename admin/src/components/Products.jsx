@@ -291,10 +291,10 @@ export function Products({ authToken }) {
                 <th className="text-left py-3 px-4">ID</th>
                 <th className="text-left py-3 px-4">Товар</th>
                 <th className="text-left py-3 px-4">Категория</th>
-                <th className="text-left py-3 px-4">Мин заказ</th>
                 <th className="text-left py-3 px-4">Цвет</th>
-                <th className="text-left py-3 px-4">Цена за шт</th>
                 <th className="text-left py-3 px-4">Качества</th>
+                <th className="text-left py-3 px-4">Цена за шт</th>
+                <th className="text-left py-3 px-4">Мин заказ</th>
                 <th className="text-left py-3 px-4 pl-8">Статус</th>
                 <th className="text-right py-3 px-4">Действия</th>
               </tr>
@@ -316,9 +316,7 @@ export function Products({ authToken }) {
                     </div>
                   </td>
                   <td className="py-3 px-4">{product.category_name || product.category || '-'}</td>
-                  <td className="py-3 px-4">{product.min_stem_quantity || product.min_order_quantity || product.minStemQuantity || 1}</td>
                   <td className="py-3 px-4">{product.color_name || product.color || '-'}</td>
-                  <td className="py-3 px-4">{product.price_per_stem || product.pricePerStem || product.price || 0} ₽</td>
                   <td className="py-3 px-4">
                     {(() => {
                       // Используем features из таблицы products (TEXT[]) - это основной источник качеств
@@ -332,16 +330,23 @@ export function Products({ authToken }) {
                       }
                       
                       return productFeatures.length > 0 ? (
-                        <select className="px-2 py-1 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                        <div className="flex flex-wrap gap-1">
                           {productFeatures.map((feature, idx) => (
-                            <option key={idx} value={feature}>{feature}</option>
+                            <span
+                              key={idx}
+                              className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full"
+                            >
+                              {feature}
+                            </span>
                           ))}
-                        </select>
+                        </div>
                       ) : (
                         <span className="text-gray-400">-</span>
                       );
                     })()}
                   </td>
+                  <td className="py-3 px-4">{product.price_per_stem || product.pricePerStem || product.price || 0} ₽</td>
+                  <td className="py-3 px-4">{product.min_stem_quantity || product.min_order_quantity || product.minStemQuantity || 1}</td>
                   <td className="py-3 px-4 pl-8">
                     <span className={`px-2 py-1 rounded text-xs ${
                       product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
