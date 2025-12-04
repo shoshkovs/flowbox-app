@@ -111,9 +111,20 @@ export function Products({ authToken }) {
     
     if (filterFeature !== 'all') {
       filtered = filtered.filter(p => {
-        if (!p.features || !Array.isArray(p.features)) return false;
+        // Проверяем qualities (массив объектов с id и name) или features (массив строк)
+        let productFeatures = [];
+        if (p.qualities && Array.isArray(p.qualities)) {
+          // Если qualities - массив объектов, извлекаем названия
+          productFeatures = p.qualities.map(q => (typeof q === 'object' ? q.name : q));
+        } else if (p.features && Array.isArray(p.features)) {
+          // Если features - массив строк
+          productFeatures = p.features;
+        }
+        
+        if (productFeatures.length === 0) return false;
+        
         // Проверяем, содержит ли товар выбранное качество (без учета регистра)
-        return p.features.some(f => {
+        return productFeatures.some(f => {
           if (!f) return false;
           const featureLower = String(f).toLowerCase().trim();
           const filterLower = filterFeature.toLowerCase().trim();
@@ -307,15 +318,27 @@ export function Products({ authToken }) {
                   <td className="py-3 px-4">{product.color_name || product.color || '-'}</td>
                   <td className="py-3 px-4">{product.price_per_stem || product.pricePerStem || product.price || 0} ₽</td>
                   <td className="py-3 px-4">
-                    {product.features && Array.isArray(product.features) && product.features.length > 0 ? (
-                      <select className="px-2 py-1 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-                        {product.features.map((feature, idx) => (
-                          <option key={idx} value={feature}>{feature}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
+                    {(() => {
+                      // Получаем качества из qualities (объекты) или features (строки)
+                      let productFeatures = [];
+                      if (product.qualities && Array.isArray(product.qualities) && product.qualities.length > 0) {
+                        // Если qualities - массив объектов с id и name
+                        productFeatures = product.qualities.map(q => typeof q === 'object' ? q.name : q);
+                      } else if (product.features && Array.isArray(product.features) && product.features.length > 0) {
+                        // Если features - массив строк
+                        productFeatures = product.features;
+                      }
+                      
+                      return productFeatures.length > 0 ? (
+                        <select className="px-2 py-1 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                          {productFeatures.map((feature, idx) => (
+                            <option key={idx} value={feature}>{feature}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      );
+                    })()}
                   </td>
                   <td className="py-3 px-4 pl-8">
                     <span className={`px-2 py-1 rounded text-xs ${

@@ -2007,6 +2007,7 @@ app.get('/api/admin/products', checkAdminAuth, async (req, res) => {
           sl.value as stem_length_value,
           c.name as country_name,
           v.name as variety_name,
+          p.features as features, -- Поле features из таблицы products (TEXT[])
           COALESCE(
             (SELECT json_agg(json_build_object('id', pq.id, 'name', pq.name))
              FROM product_qualities pq
@@ -2397,6 +2398,7 @@ app.get('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
           sl.value as stem_length_value,
           c.name as country_name,
           v.name as variety_name,
+          p.features as features, -- Поле features из таблицы products (TEXT[])
           COALESCE(
             (SELECT json_agg(json_build_object('id', pq.id, 'name', pq.name))
              FROM product_qualities pq
