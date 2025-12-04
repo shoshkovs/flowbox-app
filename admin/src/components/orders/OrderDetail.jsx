@@ -95,10 +95,10 @@ export function OrderDetail({ authToken, orderId }) {
           recipient_phone: order.recipient_phone,
           delivery_date: order.delivery_date,
           delivery_time: order.delivery_time,
-          comment: order.comment || statusComment || null,
           address_json: order.address_data || order.address_json || null,
           internal_comment: internalComment || null,
           courier_comment: courierComment || null,
+          status_comment: statusComment || null,
         }),
       });
 
@@ -280,10 +280,10 @@ export function OrderDetail({ authToken, orderId }) {
                   <div>{order.customer_name || '-'}</div>
                   <div className="text-sm text-gray-600 flex items-center gap-1">
                     <Phone className="w-3 h-3" />
-                    {order.customer_phone || '-'}
+                    {order.customer_phone || order.client_phone || '-'}
                   </div>
-                  {order.customer_email && (
-                    <div className="text-sm text-gray-600">{order.customer_email}</div>
+                  {(order.customer_email || order.client_email) && (
+                    <div className="text-sm text-gray-600">{order.customer_email || order.client_email}</div>
                   )}
                 </div>
               </div>
@@ -338,18 +338,30 @@ export function OrderDetail({ authToken, orderId }) {
           </div>
 
           {/* Комментарии */}
-          {(order.user_comment || order.courier_comment || order.status_comment) && (
+          {(order.user_comment || order.internal_comment || order.courier_comment || order.status_comment) && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-xl font-semibold mb-4">Комментарии</h2>
               <div className="space-y-4">
-                {/* Комментарий для флориста (из формы заказа) */}
+                {/* Особые пожелания к заказу (из формы заказа) */}
                 {order.user_comment && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium text-gray-700">Для флориста:</span>
+                      <span className="font-medium text-gray-700">Особые пожелания к заказу:</span>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-gray-700">{order.user_comment}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Внутренний комментарий для сотрудников */}
+                {order.internal_comment && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium text-gray-700">Внутренний комментарий:</span>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                      <p className="text-gray-700">{order.internal_comment}</p>
                     </div>
                   </div>
                 )}
