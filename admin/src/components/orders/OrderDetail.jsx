@@ -58,7 +58,11 @@ export function OrderDetail({ authToken, orderId }) {
         // Загружаем историю, если endpoint доступен
         if (historyRes.ok) {
           const historyData = await historyRes.json();
+          console.log('📋 Загружена история статусов:', historyData);
           setOrderHistory(historyData);
+        } else {
+          console.log('⚠️ Не удалось загрузить историю статусов:', historyRes.status);
+          setOrderHistory([]);
         }
         // Инициализируем комментарии из заказа
         setInternalComment(orderData.internal_comment || '');
