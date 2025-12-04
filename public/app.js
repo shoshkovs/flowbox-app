@@ -504,7 +504,8 @@ async function loadUserData() {
                     id: telegramUser.id,
                     first_name: telegramUser.first_name,
                     last_name: telegramUser.last_name,
-                    username: telegramUser.username
+                    username: telegramUser.username,
+                    phone_number: telegramUser.phone_number || null // Номер телефона из Telegram (если доступен)
                 }
             } : {};
             

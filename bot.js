@@ -804,7 +804,8 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
             telegramUser?.username || profile?.username || null,
             telegramUser?.first_name || profile?.name || null,
             telegramUser?.last_name || null,
-            profile?.phone || null,
+            // Приоритет: номер из профиля > номер из Telegram > null
+            profile?.phone || telegramUser?.phone_number || null,
             profile?.email || null,
             500 // Начальные бонусы
           ]
@@ -815,7 +816,8 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
         const newUsername = telegramUser?.username || profile?.username || null;
         const newFirstName = telegramUser?.first_name || profile?.name || null;
         const newLastName = telegramUser?.last_name || null;
-        const newPhone = profile?.phone || null;
+        // Приоритет: номер из профиля > номер из Telegram > текущий номер
+        const newPhone = profile?.phone || telegramUser?.phone_number || null;
         const newEmail = profile?.email || null;
         
         // Обновляем username, если:
@@ -1043,14 +1045,38 @@ async function createOrderInDb(orderData) {
       let userId = null;
       let userData = null;
       if (orderData.userId) {
-        // Если передан username, обновляем его в БД
-        if (orderData.username) {
-          await client.query(
-            `UPDATE users 
-             SET username = $1, updated_at = now()
-             WHERE telegram_id = $2 AND (username IS NULL OR username != $1)`,
-            [orderData.username, orderData.userId]
-          );
+        // Если передан username или phone_number, обновляем их в БД
+        if (orderData.username || orderData.phone_number) {
+          const updates = [];
+          const values = [];
+          let paramIndex = 1;
+          
+          if (orderData.username) {
+            updates.push(`username = $${paramIndex}`);
+            values.push(orderData.username);
+            paramIndex++;
+          }
+          
+          if (orderData.phone_number) {
+            updates.push(`phone = $${paramIndex}`);
+            values.push(orderData.phone_number);
+            paramIndex++;
+          }
+          
+          if (updates.length > 0) {
+            values.push(orderData.userId);
+            await client.query(
+              `UPDATE users 
+               SET ${updates.join(', ')}, updated_at = now()
+               WHERE telegram_id = $${paramIndex}
+               AND (
+                 ${orderData.username ? `(username IS NULL OR username != $1)` : 'true'}
+                 ${orderData.username && orderData.phone_number ? ' OR ' : ''}
+                 ${orderData.phone_number ? `(phone IS NULL OR phone != $${orderData.username ? 2 : 1})` : ''}
+               )`,
+              values
+            );
+          }
         }
         
         const userResult = await client.query(
@@ -1672,10 +1698,11 @@ app.post('/api/orders', async (req, res) => {
         // Также обновляем username пользователя, если он передан в orderData
         if (orderData.userId && orderData.addressData) {
           try {
-            // Передаем данные пользователя из Telegram для обновления username
-            const telegramUser = orderData.username ? {
+            // Передаем данные пользователя из Telegram для обновления username и phone_number
+            const telegramUser = (orderData.username || orderData.phone_number) ? {
               id: orderData.userId,
-              username: orderData.username
+              username: orderData.username || null,
+              phone_number: orderData.phone_number || null
             } : null;
             const user = await getOrCreateUser(orderData.userId, telegramUser);
             if (user && orderData.addressData.street && orderData.addressData.house) {
