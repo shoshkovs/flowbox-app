@@ -2753,12 +2753,14 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
       const oldOrder = oldOrderResult.rows[0];
       
       // Записываем в историю статусов, если статус изменился
-      if (status !== undefined && status !== oldOrder.status) {
-        try {
-          await client.query(
-            'INSERT INTO order_status_history (order_id, status, source, changed_by_id, comment) VALUES ($1, $2, $3, $4, $5)',
-            [orderId, status, 'admin', req.adminUserId || null, status_comment || null]
-          );
+      if (status !== undefined) {
+        const normalizedStatus = normalizeOrderStatus(status);
+        if (normalizedStatus !== oldOrder.status) {
+          try {
+            await client.query(
+              'INSERT INTO order_status_history (order_id, status, source, changed_by_id, comment) VALUES ($1, $2, $3, $4, $5)',
+              [orderId, normalizedStatus, 'admin', req.adminUserId || null, status_comment || null]
+            );
         } catch (historyError) {
           // Игнорируем ошибку, если таблица не существует
           if (!historyError.message.includes('does not exist')) {
