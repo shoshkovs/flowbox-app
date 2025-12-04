@@ -137,6 +137,45 @@ if (process.env.DATABASE_URL) {
         // Игнорируем ошибки при миграции
       }
       
+      // Миграция: создание таблицы order_status_history, если её нет
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            const tableCheck = await client.query(`
+              SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'order_status_history'
+              )
+            `);
+            
+            if (!tableCheck.rows[0].exists) {
+              console.log('🔄 Создаем таблицу order_status_history...');
+              await client.query(`
+                CREATE TABLE order_status_history (
+                  id              SERIAL PRIMARY KEY,
+                  order_id        BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+                  status          TEXT NOT NULL,
+                  source          TEXT,
+                  changed_by      TEXT,
+                  changed_by_id   INTEGER,
+                  comment         TEXT,
+                  created_at      TIMESTAMPTZ DEFAULT now()
+                )
+              `);
+              console.log('✅ Таблица order_status_history создана');
+            }
+          } catch (migrationError) {
+            console.log('⚠️  Миграция order_status_history:', migrationError.message);
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      }, 2500);
+      
       // Миграция: добавление статуса PURCHASE в constraint
       setTimeout(async () => {
         try {
