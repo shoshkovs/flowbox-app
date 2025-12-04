@@ -4168,7 +4168,17 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
         [dateFrom, dateTo]
       );
       
+      // Считаем новых пользователей за период (по дате регистрации)
+      const newUsersResult = await client.query(
+        `SELECT COUNT(*) as new_users_count
+        FROM users
+        WHERE (registered_at >= $1 AND registered_at <= $2)
+           OR (registered_at IS NULL AND created_at >= $1 AND created_at <= $2)`,
+        [dateFrom, dateTo]
+      );
+      
       const metrics = metricsResult.rows[0];
+      const newUsersCount = parseInt(newUsersResult.rows[0]?.new_users_count || 0);
       const avgCheck = metrics.total_orders > 0 ? Math.round(metrics.total_revenue / metrics.total_orders) : 0;
       
       // Заказы по датам
@@ -4209,7 +4219,7 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
           totalRevenue: parseInt(metrics.total_revenue || 0),
           totalOrders: parseInt(metrics.total_orders || 0),
           avgCheck,
-          uniqueCustomers: parseInt(metrics.unique_customers || 0)
+          uniqueCustomers: newUsersCount // Новые пользователи за период по дате регистрации
         },
         ordersByDate: ordersByDateResult.rows.map(row => ({
           date: row.date,

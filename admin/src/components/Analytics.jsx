@@ -160,7 +160,7 @@ export function Analytics({ authToken }) {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-600">Клиентов</p>
+              <p className="text-sm text-gray-600">Пользователей</p>
               <p className="text-2xl font-bold mt-2">{stats.totalCustomers}</p>
             </div>
             <div className="bg-pink-50 p-3 rounded-lg">
