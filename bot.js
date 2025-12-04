@@ -3967,25 +3967,22 @@ app.post('/api/admin/supplies', checkAdminAuth, async (req, res) => {
           [supply.id, productId, batchCountInt, piecesPerBatchInt, batchPriceFloat, unitPriceFloat, totalPiecesInt]
         );
         
-        // Создаем движение типа SUPPLY для каждого товара
-        // Для каждого банча создаем отдельную запись в supplies (для совместимости со старой логикой)
-        for (let i = 0; i < batchCountInt; i++) {
-          const supplyItemResult = await client.query(
-            `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id`,
-            [productId, piecesPerBatchInt, unitPriceFloat, delivery_date, supplier_id]
-          );
-          
-          const supplyItem = supplyItemResult.rows[0];
-          
-          // Создаем движение типа SUPPLY
-          await client.query(
-            `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
-             VALUES ($1, 'SUPPLY', $2, $3, $4)`,
-            [productId, piecesPerBatchInt, supplyItem.id, supply_comment]
-          );
-        }
+        // Создаем ОДНУ запись в supplies для товара с общим количеством (не для каждого банча)
+        const supplyItemResult = await client.query(
+          `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id`,
+          [productId, totalPiecesInt, unitPriceFloat, delivery_date, supplier_id]
+        );
+        
+        const supplyItem = supplyItemResult.rows[0];
+        
+        // Создаем движение типа SUPPLY с общим количеством
+        await client.query(
+          `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
+           VALUES ($1, 'SUPPLY', $2, $3, $4)`,
+          [productId, totalPiecesInt, supplyItem.id, supply_comment]
+        );
       }
       
       await client.query('COMMIT');

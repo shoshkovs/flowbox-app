@@ -570,6 +570,45 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
             </div>
           ))}
         </div>
+        
+        {/* Кнопка добавить товар внизу */}
+        <div className="mt-6">
+          <button
+            onClick={addSupplyItem}
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Добавить товар
+          </button>
+        </div>
+        
+        {/* Итоговые суммы */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Ваша сумма
+              </label>
+              <p className="text-2xl font-bold">
+                {calculateTotalAmount().toFixed(2)} ₽
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Автоматически рассчитанная сумма товаров
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Общая сумма автоматическая
+              </label>
+              <p className="text-2xl font-bold">
+                {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Ваша сумма + цена доставки (не включает введенную общую сумму)
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Кнопки действий */}
