@@ -10,19 +10,29 @@ export function Orders({ authToken }) {
   const [orders, setOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]); // Храним все заказы для правильного подсчета
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('NEW');
+  const [filterStatus, setFilterStatus] = useState('all'); // По умолчанию "Все"
   const [dateFilter, setDateFilter] = useState('week'); // По умолчанию "Неделя"
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
   // Инициализация дат при загрузке компонента
   useEffect(() => {
+    // Используем локальное время для правильного расчета дат
     const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(today.getDate() - 7);
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const weekAgo = new Date(localToday);
+    weekAgo.setDate(localToday.getDate() - 7);
     
-    setDateFrom(weekAgo.toISOString().split('T')[0]);
-    setDateTo(today.toISOString().split('T')[0]);
+    // Форматируем даты в формате YYYY-MM-DD для input type="date"
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    setDateFrom(formatDate(weekAgo));
+    setDateTo(formatDate(localToday));
   }, []);
 
   useEffect(() => {
@@ -120,46 +130,56 @@ export function Orders({ authToken }) {
 
   const handleDateFilterChange = (period) => {
     setDateFilter(period);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
-    let fromDate = new Date(today);
-    let toDate = new Date(today);
+    // Используем локальное время для правильного расчета дат
+    const today = new Date();
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    let fromDate = new Date(localToday);
+    let toDate = new Date(localToday);
+    
+    // Функция для форматирования даты в YYYY-MM-DD
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
     
     switch (period) {
       case 'today':
-        fromDate = new Date(today);
-        toDate = new Date(today);
+        fromDate = new Date(localToday);
+        toDate = new Date(localToday);
         break;
       case 'yesterday':
-        fromDate = new Date(today);
-        fromDate.setDate(today.getDate() - 1);
-        toDate = new Date(today);
-        toDate.setDate(today.getDate() - 1);
+        fromDate = new Date(localToday);
+        fromDate.setDate(localToday.getDate() - 1);
+        toDate = new Date(localToday);
+        toDate.setDate(localToday.getDate() - 1);
         break;
       case 'dayBeforeYesterday':
-        fromDate = new Date(today);
-        fromDate.setDate(today.getDate() - 2);
-        toDate = new Date(today);
-        toDate.setDate(today.getDate() - 2);
+        fromDate = new Date(localToday);
+        fromDate.setDate(localToday.getDate() - 2);
+        toDate = new Date(localToday);
+        toDate.setDate(localToday.getDate() - 2);
         break;
       case 'week':
-        fromDate = new Date(today);
-        fromDate.setDate(today.getDate() - 7);
-        toDate = new Date(today);
+        fromDate = new Date(localToday);
+        fromDate.setDate(localToday.getDate() - 7);
+        toDate = new Date(localToday);
         break;
       case 'month':
-        fromDate = new Date(today);
-        fromDate.setMonth(today.getMonth() - 1);
-        toDate = new Date(today);
+        fromDate = new Date(localToday);
+        fromDate.setMonth(localToday.getMonth() - 1);
+        toDate = new Date(localToday);
         break;
       default:
         // Кастомный период - не меняем даты
         return;
     }
     
-    setDateFrom(fromDate.toISOString().split('T')[0]);
-    setDateTo(toDate.toISOString().split('T')[0]);
+    setDateFrom(formatDate(fromDate));
+    setDateTo(formatDate(toDate));
   };
 
 
