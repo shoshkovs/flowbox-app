@@ -217,8 +217,25 @@ export function Delivery({ authToken }) {
     if (diffDays === 2) return 'Послезавтра';
     if (diffDays === -2) return 'Позавчера';
     
-    // Если больше 2 дней, показываем дату
-    return formatDateForDisplay(dateString);
+    // Если больше 2 дней, показываем дату с днем недели
+    const weekdaysShort = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    const months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    
+    const day = targetDate.getDate();
+    const month = months[targetDate.getMonth()];
+    const weekday = weekdaysShort[targetDate.getDay()];
+    const year = targetDate.getFullYear();
+    
+    // Показываем год только если это не текущий год
+    const currentYear = today.getFullYear();
+    if (year !== currentYear) {
+      return `${weekday}, ${day} ${month} ${year}`;
+    }
+    
+    return `${weekday}, ${day} ${month}`;
   };
 
   if (loading) {
