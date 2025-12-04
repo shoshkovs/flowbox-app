@@ -24,11 +24,17 @@ const formatDateForDisplay = (dateString) => {
 // Форматирование времени для отображения (10-12 -> 10:00–12:00)
 const formatTimeForDisplay = (timeString) => {
   if (!timeString) return '';
-  return timeString.replace('-', '–').split('').map((char, idx) => {
-    if (idx === 2 && char === '–') return ':00–';
-    if (idx === 5 && char === '–') return ':00';
-    return char;
-  }).join('') || timeString.replace('-', ':00–') + ':00';
+  // Формат может быть "10-12" или "10:00-12:00"
+  if (timeString.includes(':')) {
+    // Уже в формате с часами и минутами
+    return timeString.replace('-', '–');
+  }
+  // Формат "10-12" -> "10:00–12:00"
+  const parts = timeString.split('-');
+  if (parts.length === 2) {
+    return `${parts[0]}:00–${parts[1]}:00`;
+  }
+  return timeString;
 };
 
 // Форматирование суммы в рубли
