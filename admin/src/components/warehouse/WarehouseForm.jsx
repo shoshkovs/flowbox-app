@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Calendar, Search, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Search, ChevronDown, X, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreatableSelect } from '../CreatableSelect';
 
@@ -7,20 +7,35 @@ const API_BASE = window.location.origin;
 
 export function WarehouseForm({ authToken, onClose, onSave }) {
   const [products, setProducts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [productSearch, setProductSearch] = useState('');
-  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
-  const productDropdownRef = useRef(null);
   
-  const [deliveryForm, setDeliveryForm] = useState({
-    product_id: '',
-    quantity: '',
-    purchase_price: '',
+  // Основные поля поставки
+  const [supplyForm, setSupplyForm] = useState({
     delivery_date: new Date().toISOString().split('T')[0],
     supplier_id: null,
+    total_amount: '',
+    delivery_price: '',
+    comment: '',
   });
   
-  const [suppliers, setSuppliers] = useState([]);
+  // Товары в поставке
+  const [supplyItems, setSupplyItems] = useState([
+    {
+      id: 1,
+      product_id: '',
+      batch_count: '',
+      pieces_per_batch: '',
+      batch_price: '',
+      unit_price: '',
+      total_pieces: '',
+    }
+  ]);
+  
+  // Поиск товаров
+  const [productSearch, setProductSearch] = useState({});
+  const [isProductDropdownOpen, setProductDropdownOpen] = useState({});
+  const productDropdownRefs = useRef({});
 
   useEffect(() => {
     loadProducts();
@@ -30,9 +45,12 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
   // Закрываем dropdown при клике вне его
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target)) {
-        setIsProductDropdownOpen(false);
-      }
+      Object.keys(productDropdownRefs.current).forEach(itemId => {
+        const ref = productDropdownRefs.current[itemId];
+        if (ref && !ref.contains(event.target)) {
+          setProductDropdownOpen(prev => ({ ...prev, [itemId]: false }));
+        }
+      });
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -90,25 +108,127 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
     throw new Error('Ошибка создания поставщика');
   };
 
-  const handleSaveDelivery = async () => {
-    if (!deliveryForm.product_id || !deliveryForm.quantity || !deliveryForm.purchase_price || !deliveryForm.delivery_date) {
-      toast.error('Заполните все обязательные поля');
+  // Добавить новый товар в поставку
+  const addSupplyItem = () => {
+    const newId = Math.max(...supplyItems.map(item => item.id), 0) + 1;
+    setSupplyItems([
+      ...supplyItems,
+      {
+        id: newId,
+        product_id: '',
+        batch_count: '',
+        pieces_per_batch: '',
+        batch_price: '',
+        unit_price: '',
+        total_pieces: '',
+      }
+    ]);
+  };
+
+  // Удалить товар из поставки
+  const removeSupplyItem = (itemId) => {
+    if (supplyItems.length === 1) {
+      toast.error('Должен быть хотя бы один товар в поставке');
+      return;
+    }
+    setSupplyItems(supplyItems.filter(item => item.id !== itemId));
+    // Очищаем refs и состояние поиска
+    delete productDropdownRefs.current[itemId];
+    setProductSearch(prev => {
+      const newSearch = { ...prev };
+      delete newSearch[itemId];
+      return newSearch;
+    });
+    setProductDropdownOpen(prev => {
+      const newOpen = { ...prev };
+      delete newOpen[itemId];
+      return newOpen;
+    });
+  };
+
+  // Обновить товар в поставке
+  const updateSupplyItem = (itemId, field, value) => {
+    setSupplyItems(supplyItems.map(item => {
+      if (item.id === itemId) {
+        const updated = { ...item, [field]: value };
+        
+        // Автоматический расчет цены за штуку
+        if (field === 'batch_price' || field === 'pieces_per_batch') {
+          const batchPrice = parseFloat(updated.batch_price) || 0;
+          const piecesPerBatch = parseInt(updated.pieces_per_batch) || 0;
+          if (piecesPerBatch > 0) {
+            updated.unit_price = (batchPrice / piecesPerBatch).toFixed(2);
+          } else {
+            updated.unit_price = '';
+          }
+        }
+        
+        // Автоматический расчет количества штук
+        if (field === 'batch_count' || field === 'pieces_per_batch') {
+          const batchCount = parseInt(updated.batch_count) || 0;
+          const piecesPerBatch = parseInt(updated.pieces_per_batch) || 0;
+          updated.total_pieces = (batchCount * piecesPerBatch).toString();
+        }
+        
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  // Вычислить общую сумму поставки
+  const calculateTotalAmount = () => {
+    return supplyItems.reduce((sum, item) => {
+      const batchCount = parseInt(item.batch_count) || 0;
+      const batchPrice = parseFloat(item.batch_price) || 0;
+      return sum + (batchCount * batchPrice);
+    }, 0);
+  };
+
+  const handleSaveSupply = async () => {
+    // Валидация основных полей
+    if (!supplyForm.delivery_date || !supplyForm.supplier_id) {
+      toast.error('Заполните дату поставки и выберите поставщика');
       return;
     }
 
-    // Валидация
-    const quantityInt = parseInt(deliveryForm.quantity);
-    const purchasePriceFloat = parseFloat(deliveryForm.purchase_price);
-    
-    if (!Number.isInteger(quantityInt) || quantityInt <= 0) {
-      toast.error('Количество должно быть целым числом больше 0');
+    // Валидация товаров
+    const validItems = supplyItems.filter(item => 
+      item.product_id && 
+      item.batch_count && 
+      item.pieces_per_batch && 
+      item.batch_price
+    );
+
+    if (validItems.length === 0) {
+      toast.error('Добавьте хотя бы один товар с заполненными полями');
       return;
     }
-    
-    if (isNaN(purchasePriceFloat) || purchasePriceFloat <= 0) {
-      toast.error('Цена закупки должна быть числом больше 0');
-      return;
+
+    // Проверка всех товаров
+    for (const item of validItems) {
+      const batchCount = parseInt(item.batch_count);
+      const piecesPerBatch = parseInt(item.pieces_per_batch);
+      const batchPrice = parseFloat(item.batch_price);
+
+      if (!Number.isInteger(batchCount) || batchCount <= 0) {
+        toast.error('Количество банчей должно быть целым числом больше 0');
+        return;
+      }
+
+      if (!Number.isInteger(piecesPerBatch) || piecesPerBatch <= 0) {
+        toast.error('Количество штук в банче должно быть целым числом больше 0');
+        return;
+      }
+
+      if (isNaN(batchPrice) || batchPrice <= 0) {
+        toast.error('Цена банча должна быть числом больше 0');
+        return;
+      }
     }
+
+    const totalAmount = calculateTotalAmount();
+    const deliveryPrice = parseFloat(supplyForm.delivery_price) || 0;
 
     setLoading(true);
     try {
@@ -119,31 +239,27 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          productId: parseInt(deliveryForm.product_id),
-          quantity: quantityInt,
-          purchasePrice: purchasePriceFloat,
-          deliveryDate: deliveryForm.delivery_date,
-          supplier: deliveryForm.supplier_id ? (suppliers.find(s => s.id === deliveryForm.supplier_id)?.name || null) : null,
-          invoiceNumber: null, // Пока не используется
-          comment: null, // Пока не используется
+          deliveryDate: supplyForm.delivery_date,
+          supplierId: supplyForm.supplier_id,
+          totalAmount: totalAmount,
+          deliveryPrice: deliveryPrice,
+          comment: supplyForm.comment || null,
+          items: validItems.map(item => ({
+            productId: parseInt(item.product_id),
+            batchCount: parseInt(item.batch_count),
+            piecesPerBatch: parseInt(item.pieces_per_batch),
+            batchPrice: parseFloat(item.batch_price),
+            unitPrice: parseFloat(item.unit_price) || (parseFloat(item.batch_price) / parseInt(item.pieces_per_batch)),
+            totalPieces: parseInt(item.total_pieces) || (parseInt(item.batch_count) * parseInt(item.pieces_per_batch)),
+          })),
         }),
       });
 
       if (response.ok) {
         toast.success('Поставка успешно добавлена');
-        // Вызываем onSave callback для обновления данных
         if (onSave) {
-          onSave({
-            productId: parseInt(deliveryForm.product_id),
-            quantity: quantityInt,
-            purchasePrice: purchasePriceFloat,
-            deliveryDate: deliveryForm.delivery_date,
-            supplier: deliveryForm.supplier_id,
-            invoiceNumber: null,
-            comment: null,
-          });
+          onSave();
         }
-        // Закрываем форму
         onClose();
       } else {
         const error = await response.json();
@@ -173,110 +289,19 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
         </div>
       </div>
 
-      {/* Форма поставки */}
+      {/* Основная информация о поставке */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-xl font-semibold mb-6">Информация о поставке</h2>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">
-              Товар <span className="text-red-500">*</span>
-            </label>
-            <div className="relative" ref={productDropdownRef}>
-              <div
-                onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent cursor-pointer flex items-center justify-between bg-white"
-              >
-                <span className={deliveryForm.product_id ? 'text-gray-900' : 'text-gray-500'}>
-                  {deliveryForm.product_id
-                    ? products.find(p => p.id === parseInt(deliveryForm.product_id))?.name || 'Выберите товар'
-                    : 'Выберите товар'}
-                </span>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isProductDropdownOpen ? 'rotate-180' : ''}`} />
-              </div>
-              
-              {isProductDropdownOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
-                  <div className="p-2 border-b border-gray-200">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={productSearch}
-                        onChange={(e) => setProductSearch(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        placeholder="Поиск товара..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto">
-                    {products
-                      .filter(product => 
-                        product.name.toLowerCase().includes(productSearch.toLowerCase())
-                      )
-                      .map((product) => (
-                        <div
-                          key={product.id}
-                          onClick={() => {
-                            setDeliveryForm({ ...deliveryForm, product_id: product.id.toString() });
-                            setProductSearch('');
-                            setIsProductDropdownOpen(false);
-                          }}
-                          className={`px-4 py-2 hover:bg-gray-50 cursor-pointer ${
-                            deliveryForm.product_id === product.id.toString() ? 'bg-pink-50' : ''
-                          }`}
-                        >
-                          {product.name}
-                        </div>
-                      ))}
-                    {products.filter(product => 
-                      product.name.toLowerCase().includes(productSearch.toLowerCase())
-                    ).length === 0 && (
-                      <div className="px-4 py-2 text-gray-500 text-sm">Товары не найдены</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Количество (шт) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              value={deliveryForm.quantity}
-              onChange={(e) => setDeliveryForm({ ...deliveryForm, quantity: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Цена закупки за шт (₽) <span className="text-red-500">*</span>
+              ID поставки
             </label>
             <input
               type="text"
-              inputMode="decimal"
-              value={deliveryForm.purchase_price}
-              onChange={(e) => {
-                // Разрешаем только цифры и одну точку/запятую
-                const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                // Убираем лишние точки
-                const parts = value.split('.');
-                const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                setDeliveryForm({ ...deliveryForm, purchase_price: cleanedValue });
-              }}
-              onBlur={(e) => {
-                // При потере фокуса округляем до 2 знаков после запятой
-                const numValue = parseFloat(e.target.value);
-                if (!isNaN(numValue) && numValue > 0) {
-                  setDeliveryForm({ ...deliveryForm, purchase_price: numValue.toFixed(2) });
-                }
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="180.00"
+              value="Автоматически"
+              disabled
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
             />
           </div>
           <div>
@@ -286,8 +311,8 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
             <div className="relative">
               <input
                 type="date"
-                value={deliveryForm.delivery_date}
-                onChange={(e) => setDeliveryForm({ ...deliveryForm, delivery_date: e.target.value })}
+                value={supplyForm.delivery_date}
+                onChange={(e) => setSupplyForm({ ...supplyForm, delivery_date: e.target.value })}
                 className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
                 style={{ WebkitAppearance: 'none' }}
               />
@@ -307,15 +332,242 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
               </button>
             </div>
           </div>
-          <CreatableSelect
-            value={deliveryForm.supplier_id}
-            onChange={(id) => setDeliveryForm({ ...deliveryForm, supplier_id: id })}
-            options={suppliers}
-            onCreate={handleCreateSupplier}
-            placeholder="Выберите поставщика"
-            label="Поставщик"
-            required
-          />
+          <div>
+            <CreatableSelect
+              value={supplyForm.supplier_id}
+              onChange={(id) => setSupplyForm({ ...supplyForm, supplier_id: id })}
+              options={suppliers}
+              onCreate={handleCreateSupplier}
+              placeholder="Выберите поставщика"
+              label="Поставщик"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Общая сумма (₽)
+            </label>
+            <input
+              type="text"
+              value={calculateTotalAmount().toFixed(2)}
+              disabled
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Цена доставки (₽)
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={supplyForm.delivery_price}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                const parts = value.split('.');
+                const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                setSupplyForm({ ...supplyForm, delivery_price: cleanedValue });
+              }}
+              onBlur={(e) => {
+                const numValue = parseFloat(e.target.value);
+                if (!isNaN(numValue) && numValue >= 0) {
+                  setSupplyForm({ ...supplyForm, delivery_price: numValue.toFixed(2) });
+                }
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              placeholder="0.00"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-1">
+              Комментарий
+            </label>
+            <textarea
+              value={supplyForm.comment}
+              onChange={(e) => setSupplyForm({ ...supplyForm, comment: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              rows={3}
+              placeholder="Введите комментарий..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Товары в поставке */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Товары в поставке</h2>
+          <button
+            onClick={addSupplyItem}
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Добавить товар
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          {supplyItems.map((item, index) => (
+            <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-lg">Товар {index + 1}</h3>
+                {supplyItems.length > 1 && (
+                  <button
+                    onClick={() => removeSupplyItem(item.id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                    title="Удалить товар"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">
+                    Товар <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative" ref={el => productDropdownRefs.current[item.id] = el}>
+                    <div
+                      onClick={() => setProductDropdownOpen(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent cursor-pointer flex items-center justify-between bg-white"
+                    >
+                      <span className={item.product_id ? 'text-gray-900' : 'text-gray-500'}>
+                        {item.product_id
+                          ? products.find(p => p.id === parseInt(item.product_id))?.name || 'Выберите товар'
+                          : 'Выберите товар'}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isProductDropdownOpen[item.id] ? 'rotate-180' : ''}`} />
+                    </div>
+                    
+                    {isProductDropdownOpen[item.id] && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+                        <div className="p-2 border-b border-gray-200">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="text"
+                              value={productSearch[item.id] || ''}
+                              onChange={(e) => setProductSearch(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="Поиск товара..."
+                              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          {products
+                            .filter(product => 
+                              (productSearch[item.id] || '').toLowerCase() === '' ||
+                              product.name.toLowerCase().includes((productSearch[item.id] || '').toLowerCase())
+                            )
+                            .map((product) => (
+                              <div
+                                key={product.id}
+                                onClick={() => {
+                                  updateSupplyItem(item.id, 'product_id', product.id.toString());
+                                  setProductSearch(prev => ({ ...prev, [item.id]: '' }));
+                                  setProductDropdownOpen(prev => ({ ...prev, [item.id]: false }));
+                                }}
+                                className={`px-4 py-2 hover:bg-gray-50 cursor-pointer ${
+                                  item.product_id === product.id.toString() ? 'bg-pink-50' : ''
+                                }`}
+                              >
+                                {product.name}
+                              </div>
+                            ))}
+                          {products.filter(product => 
+                            (productSearch[item.id] || '').toLowerCase() === '' ||
+                            product.name.toLowerCase().includes((productSearch[item.id] || '').toLowerCase())
+                          ).length === 0 && (
+                            <div className="px-4 py-2 text-gray-500 text-sm">Товары не найдены</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Количество банчей <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.batch_count}
+                    onChange={(e) => updateSupplyItem(item.id, 'batch_count', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    placeholder="10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Штук в банче <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.pieces_per_batch}
+                    onChange={(e) => updateSupplyItem(item.id, 'pieces_per_batch', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    placeholder="20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Цена банча (₽) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={item.batch_price}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                      const parts = value.split('.');
+                      const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                      updateSupplyItem(item.id, 'batch_price', cleanedValue);
+                    }}
+                    onBlur={(e) => {
+                      const numValue = parseFloat(e.target.value);
+                      if (!isNaN(numValue) && numValue > 0) {
+                        updateSupplyItem(item.id, 'batch_price', numValue.toFixed(2));
+                      }
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    placeholder="1800.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Цена за штуку (₽)
+                  </label>
+                  <input
+                    type="text"
+                    value={item.unit_price || ''}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Количество штук
+                  </label>
+                  <input
+                    type="text"
+                    value={item.total_pieces || ''}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -329,7 +581,7 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
           Отменить
         </button>
         <button
-          onClick={handleSaveDelivery}
+          onClick={handleSaveSupply}
           disabled={loading}
           className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50"
         >
@@ -339,4 +591,3 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
     </div>
   );
 }
-

@@ -137,6 +137,42 @@ if (process.env.DATABASE_URL) {
         // Игнорируем ошибки при миграции
       }
       
+      // Миграция структуры поставок
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const migrationSQL = fs.readFileSync(
+              path.join(__dirname, 'database', 'migrate-supply-structure.sql'),
+              'utf8'
+            );
+            
+            // Выполняем миграцию построчно
+            const statements = migrationSQL.split(';').filter(s => s.trim());
+            for (const statement of statements) {
+              if (statement.trim()) {
+                try {
+                  await client.query(statement);
+                } catch (err) {
+                  // Игнорируем ошибки "уже существует"
+                  if (!err.message.includes('already exists') && !err.message.includes('duplicate') && !err.message.includes('column') && !err.message.includes('relation')) {
+                    console.log('⚠️  Ошибка миграции структуры поставок:', err.message);
+                  }
+                }
+              }
+            }
+            console.log('✅ Миграция структуры поставок завершена');
+          } catch (migrationError) {
+            console.log('⚠️  Миграция структуры поставок:', migrationError.message);
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      
       // Миграция: создание таблицы order_status_history, если её нет
       setTimeout(async () => {
         try {
@@ -3583,98 +3619,234 @@ app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
 });
 
 // API: Добавить поставку
-// Создание новой поставки (партийный учёт)
+// Создание новой поставки с множественными товарами (партийный учёт)
 app.post('/api/admin/supplies', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
   
-  const { productId, quantity, purchasePrice, deliveryDate, supplier, invoiceNumber, comment } = req.body;
+  // Новая структура: множественные товары через items
+  const { deliveryDate, supplierId, totalAmount, deliveryPrice, comment, items } = req.body;
   
-  // Маппинг старых названий полей для обратной совместимости
-  const product_id = productId || req.body.product_id;
-  const purchase_price = purchasePrice || req.body.purchase_price;
+  // Обратная совместимость со старой структурой
   const delivery_date = deliveryDate || req.body.delivery_date;
-  let supplier_id = supplier || req.body.supplier_id;
+  let supplier_id = supplierId || req.body.supplier_id;
+  const total_amount = totalAmount !== undefined ? parseFloat(totalAmount) : null;
+  const delivery_price = deliveryPrice !== undefined ? parseFloat(deliveryPrice) : 0;
+  const supply_comment = comment || req.body.comment || null;
   
-  if (!product_id || !quantity || !purchase_price || !delivery_date) {
-    return res.status(400).json({ error: 'Товар, количество, цена закупки и дата поставки обязательны' });
+  // Если используется старая структура (один товар)
+  if (!items && req.body.productId) {
+    const { productId, quantity, purchasePrice, supplier } = req.body;
+    const product_id = productId || req.body.product_id;
+    const purchase_price = purchasePrice || req.body.purchase_price;
+    
+    if (!product_id || !quantity || !purchase_price || !delivery_date) {
+      return res.status(400).json({ error: 'Товар, количество, цена закупки и дата поставки обязательны' });
+    }
+    
+    // Валидация
+    const quantityInt = parseInt(quantity);
+    const purchasePriceFloat = parseFloat(purchase_price);
+    
+    if (!Number.isInteger(quantityInt) || quantityInt <= 0) {
+      return res.status(400).json({ error: 'Количество должно быть целым числом больше 0' });
+    }
+    
+    if (isNaN(purchasePriceFloat) || purchasePriceFloat <= 0) {
+      return res.status(400).json({ error: 'Цена закупки должна быть числом больше 0' });
+    }
+    
+    const purchasePriceRounded = Math.round(purchasePriceFloat * 100) / 100;
+    
+    try {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Проверяем существование товара
+        const productResult = await client.query(
+          'SELECT id FROM products WHERE id = $1',
+          [product_id]
+        );
+        
+        if (productResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'Товар не найден' });
+        }
+        
+        // Если supplier передан как строка (имя), создаём или находим поставщика
+        if (supplier && typeof supplier === 'string' && !supplier_id) {
+          const existingSupplier = await client.query(
+            'SELECT id FROM suppliers WHERE name = $1',
+            [supplier]
+          );
+          
+          if (existingSupplier.rows.length > 0) {
+            supplier_id = existingSupplier.rows[0].id;
+          } else {
+            const newSupplierResult = await client.query(
+              'INSERT INTO suppliers (name) VALUES ($1) RETURNING id',
+              [supplier]
+            );
+            supplier_id = newSupplierResult.rows[0].id;
+          }
+        }
+        
+        // Создаем поставку (старая структура - без total_amount, delivery_price, comment)
+        const supplyResult = await client.query(
+          `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [product_id, quantityInt, purchasePriceRounded, delivery_date, supplier_id]
+        );
+        
+        const supply = supplyResult.rows[0];
+        
+        // Создаем движение типа SUPPLY
+        await client.query(
+          `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
+           VALUES ($1, 'SUPPLY', $2, $3, $4)`,
+          [product_id, quantityInt, supply.id, supply_comment]
+        );
+        
+        await client.query('COMMIT');
+        
+        console.log(`✅ Поставка создана (старая структура): ID=${supply.id}, товар=${product_id}, количество=${quantityInt}`);
+        
+        res.json({ success: true, supply: supplyResult.rows[0] });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Ошибка создания поставки:', error);
+        res.status(500).json({ error: error.message || 'Ошибка создания поставки' });
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Ошибка подключения к БД:', error);
+      res.status(500).json({ error: 'Ошибка подключения к базе данных' });
+    }
+    return;
   }
   
-  // Валидация
-  const quantityInt = parseInt(quantity);
-  // Используем parseFloat и округляем до 2 знаков для DECIMAL(10,2)
-  const purchasePriceFloat = parseFloat(purchase_price);
-  
-  if (!Number.isInteger(quantityInt) || quantityInt <= 0) {
-    return res.status(400).json({ error: 'Количество должно быть целым числом больше 0' });
+  // Новая структура: множественные товары
+  if (!delivery_date || !supplier_id || !items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Дата поставки, поставщик и хотя бы один товар обязательны' });
   }
   
-  if (isNaN(purchasePriceFloat) || purchasePriceFloat <= 0) {
-    return res.status(400).json({ error: 'Цена закупки должна быть числом больше 0' });
+  // Валидация товаров
+  for (const item of items) {
+    const { productId, batchCount, piecesPerBatch, batchPrice, unitPrice, totalPieces } = item;
+    
+    if (!productId || !batchCount || !piecesPerBatch || !batchPrice) {
+      return res.status(400).json({ error: 'Все поля товара обязательны: productId, batchCount, piecesPerBatch, batchPrice' });
+    }
+    
+    const batchCountInt = parseInt(batchCount);
+    const piecesPerBatchInt = parseInt(piecesPerBatch);
+    const batchPriceFloat = parseFloat(batchPrice);
+    const unitPriceFloat = unitPrice !== undefined ? parseFloat(unitPrice) : (batchPriceFloat / piecesPerBatchInt);
+    const totalPiecesInt = totalPieces !== undefined ? parseInt(totalPieces) : (batchCountInt * piecesPerBatchInt);
+    
+    if (!Number.isInteger(batchCountInt) || batchCountInt <= 0) {
+      return res.status(400).json({ error: 'Количество банчей должно быть целым числом больше 0' });
+    }
+    
+    if (!Number.isInteger(piecesPerBatchInt) || piecesPerBatchInt <= 0) {
+      return res.status(400).json({ error: 'Количество штук в банче должно быть целым числом больше 0' });
+    }
+    
+    if (isNaN(batchPriceFloat) || batchPriceFloat <= 0) {
+      return res.status(400).json({ error: 'Цена банча должна быть числом больше 0' });
+    }
   }
-  
-  // Округляем до 2 знаков после запятой для DECIMAL(10,2)
-  const purchasePriceRounded = Math.round(purchasePriceFloat * 100) / 100;
   
   try {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       
-      // Проверяем существование товара
-      const productResult = await client.query(
-        'SELECT id FROM products WHERE id = $1',
-        [product_id]
+      // Проверяем существование поставщика
+      const supplierResult = await client.query(
+        'SELECT id FROM suppliers WHERE id = $1',
+        [supplier_id]
       );
       
-      if (productResult.rows.length === 0) {
+      if (supplierResult.rows.length === 0) {
         await client.query('ROLLBACK');
-        return res.status(404).json({ error: 'Товар не найден' });
+        return res.status(404).json({ error: 'Поставщик не найден' });
       }
       
-      // Если supplier передан как строка (имя), создаём или находим поставщика
-      if (supplier && typeof supplier === 'string' && !supplier_id) {
-        // Проверяем, существует ли поставщик с таким именем
-        const existingSupplier = await client.query(
-          'SELECT id FROM suppliers WHERE name = $1',
-          [supplier]
-        );
-        
-        if (existingSupplier.rows.length > 0) {
-          supplier_id = existingSupplier.rows[0].id;
-        } else {
-          // Создаём нового поставщика
-          const newSupplierResult = await client.query(
-            'INSERT INTO suppliers (name) VALUES ($1) RETURNING id',
-            [supplier]
-          );
-          supplier_id = newSupplierResult.rows[0].id;
-        }
-      }
+      // Вычисляем общую сумму, если не указана
+      const calculatedTotalAmount = total_amount !== null ? total_amount : items.reduce((sum, item) => {
+        const batchCount = parseInt(item.batchCount);
+        const batchPrice = parseFloat(item.batchPrice);
+        return sum + (batchCount * batchPrice);
+      }, 0);
       
-      // Создаем поставку
+      // Создаем поставку (без product_id и quantity - они теперь в supply_items)
       const supplyResult = await client.query(
-        `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
+        `INSERT INTO supplies (delivery_date, supplier_id, total_amount, delivery_price, comment)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [product_id, quantityInt, purchasePriceRounded, delivery_date, supplier_id]
+        [delivery_date, supplier_id, calculatedTotalAmount, delivery_price || 0, supply_comment]
       );
       
       const supply = supplyResult.rows[0];
       
-      // Создаем движение типа SUPPLY
-      await client.query(
-        `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
-         VALUES ($1, 'SUPPLY', $2, $3, $4)`,
-        [product_id, quantityInt, supply.id, comment || null]
-      );
+      // Создаем товары в поставке и движения по складу
+      for (const item of items) {
+        const { productId, batchCount, piecesPerBatch, batchPrice, unitPrice, totalPieces } = item;
+        
+        // Проверяем существование товара
+        const productResult = await client.query(
+          'SELECT id FROM products WHERE id = $1',
+          [productId]
+        );
+        
+        if (productResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: `Товар с ID ${productId} не найден` });
+        }
+        
+        const batchCountInt = parseInt(batchCount);
+        const piecesPerBatchInt = parseInt(piecesPerBatch);
+        const batchPriceFloat = parseFloat(batchPrice);
+        const unitPriceFloat = unitPrice !== undefined ? parseFloat(unitPrice) : (batchPriceFloat / piecesPerBatchInt);
+        const totalPiecesInt = totalPieces !== undefined ? parseInt(totalPieces) : (batchCountInt * piecesPerBatchInt);
+        
+        // Создаем запись товара в поставке
+        await client.query(
+          `INSERT INTO supply_items (supply_id, product_id, batch_count, pieces_per_batch, batch_price, unit_price, total_pieces)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [supply.id, productId, batchCountInt, piecesPerBatchInt, batchPriceFloat, unitPriceFloat, totalPiecesInt]
+        );
+        
+        // Создаем движение типа SUPPLY для каждого товара
+        // Для каждого банча создаем отдельную запись в supplies (для совместимости со старой логикой)
+        for (let i = 0; i < batchCountInt; i++) {
+          const supplyItemResult = await client.query(
+            `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id`,
+            [productId, piecesPerBatchInt, unitPriceFloat, delivery_date, supplier_id]
+          );
+          
+          const supplyItem = supplyItemResult.rows[0];
+          
+          // Создаем движение типа SUPPLY
+          await client.query(
+            `INSERT INTO stock_movements (product_id, type, quantity, supply_id, comment)
+             VALUES ($1, 'SUPPLY', $2, $3, $4)`,
+            [productId, piecesPerBatchInt, supplyItem.id, supply_comment]
+          );
+        }
+      }
       
       await client.query('COMMIT');
       
-      console.log(`✅ Поставка создана: ID=${supply.id}, товар=${product_id}, количество=${quantityInt}`);
+      console.log(`✅ Поставка создана (новая структура): ID=${supply.id}, товаров=${items.length}`);
       
-      // Возвращаем поставку с правильным форматом цены
       res.json({ success: true, supply: supplyResult.rows[0] });
     } catch (error) {
       await client.query('ROLLBACK');
