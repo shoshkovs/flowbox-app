@@ -5,6 +5,89 @@ import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
+// Функция для форматирования дат в человеко-понятный формат
+function formatHumanDate(dateInput) {
+  if (!dateInput) return '';
+  
+  // Преобразуем входную дату в Date объект
+  let date;
+  if (dateInput instanceof Date) {
+    date = dateInput;
+  } else if (typeof dateInput === 'string') {
+    // Если это ISO строка (YYYY-MM-DD), парсим её
+    if (dateInput.match(/^\d{4}-\d{2}-\d{2}/)) {
+      const [year, month, day] = dateInput.split('-').map(Number);
+      date = new Date(year, month - 1, day);
+    } else {
+      date = new Date(dateInput);
+    }
+  } else {
+    date = new Date(dateInput);
+  }
+  
+  // Проверяем валидность даты
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+  
+  // Нормализуем даты (убираем время, оставляем только дату)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+  
+  // Вычисляем разницу в днях
+  const diffTime = targetDate - today;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Определяем, нужно ли показывать год
+  const currentYear = today.getFullYear();
+  const targetYear = targetDate.getFullYear();
+  const showYear = targetYear !== currentYear;
+  
+  // Дни недели на русском (с заглавной буквы)
+  const weekdaysShort = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  
+  // Месяцы на русском
+  const months = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+  ];
+  
+  const monthsShort = [
+    'янв', 'фев', 'мар', 'апр', 'мая', 'июня',
+    'июля', 'авг', 'сен', 'окт', 'ноя', 'дек'
+  ];
+  
+  const day = targetDate.getDate();
+  const month = monthsShort[targetDate.getMonth()];
+  const weekday = weekdaysShort[targetDate.getDay()];
+  const year = targetDate.getFullYear();
+  
+  // Специальные случаи для близких дат
+  if (diffDays === 0) {
+    return 'Сегодня';
+  }
+  
+  if (diffDays === -1) {
+    return 'Вчера';
+  }
+  
+  if (diffDays === 1) {
+    return 'Завтра';
+  }
+  
+  // Для остальных дат формируем строку: "30 дек" или "30 дек 2025"
+  let result = `${day} ${month}`;
+  
+  if (showYear) {
+    result += ` ${year}`;
+  }
+  
+  return result;
+}
+
 export function Orders({ authToken }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -336,7 +419,7 @@ export function Orders({ authToken }) {
             <tbody>
               {orders.map((order) => {
                 const orderDate = order.created_at ? new Date(order.created_at) : null;
-                const dateStr = orderDate ? orderDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
+                const dateStr = orderDate ? formatHumanDate(order.created_at) : '-';
                 const timeStr = orderDate ? orderDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
                 
                 // Формируем список товаров для отображения
@@ -403,7 +486,7 @@ export function Orders({ authToken }) {
                     </td>
                     <td className="py-3 px-4">
                       <div className="text-sm">
-                        <div>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('ru-RU') : '-'}</div>
+                        <div>{order.delivery_date ? formatHumanDate(order.delivery_date) : '-'}</div>
                         <div className="text-gray-500">{order.delivery_time || '-'}</div>
                       </div>
                     </td>
