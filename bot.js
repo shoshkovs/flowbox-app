@@ -4121,9 +4121,37 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
           [id]
         );
         console.log(`📋 История статусов для заказа #${id}: найдено ${result.rows.length} записей`);
-        res.json(result.rows);
+        
+        // Если история пуста, но заказ существует, создаем начальную запись
+        if (result.rows.length === 0) {
+          const orderCheck = await client.query('SELECT id, status, created_at FROM orders WHERE id = $1', [id]);
+          if (orderCheck.rows.length > 0) {
+            const order = orderCheck.rows[0];
+            try {
+              await client.query(
+                'INSERT INTO order_status_history (order_id, status, source, comment) VALUES ($1, $2, $3, $4)',
+                [order.id, order.status, 'system', 'Заказ создан']
+              );
+              console.log(`✅ Создана начальная запись в истории для заказа #${id}`);
+              // Перезагружаем историю
+              const newResult = await client.query(
+                'SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at ASC',
+                [id]
+              );
+              res.json(newResult.rows);
+            } catch (initError) {
+              console.log('⚠️  Не удалось создать начальную запись:', initError.message);
+              res.json([]);
+            }
+          } else {
+            res.json([]);
+          }
+        } else {
+          res.json(result.rows);
+        }
       } else {
         // Таблица не существует, возвращаем пустой массив
+        console.log('⚠️  Таблица order_status_history не существует');
         res.json([]);
       }
     } finally {
