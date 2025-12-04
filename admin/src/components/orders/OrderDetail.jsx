@@ -99,6 +99,7 @@ export function OrderDetail({ authToken, orderId }) {
           address_json: order.address_data || order.address_json || null,
           internal_comment: internalComment || null,
           courier_comment: courierComment || null,
+          user_comment: userComment || null,
         }),
       });
 
