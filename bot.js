@@ -810,9 +810,16 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
           ]
         );
       } else {
-        // Обновляем данные пользователя, если они изменились
+        // Обновляем данные пользователя, если они изменились или если username отсутствует
         const user = result.rows[0];
-        if (telegramUser || profile) {
+        const newUsername = telegramUser?.username || profile?.username || null;
+        const newFirstName = telegramUser?.first_name || profile?.name || null;
+        const newLastName = telegramUser?.last_name || null;
+        const newPhone = profile?.phone || null;
+        const newEmail = profile?.email || null;
+        
+        // Обновляем, если переданы новые данные или если username отсутствует
+        if (telegramUser || profile || (!user.username && newUsername)) {
           result = await client.query(
             `UPDATE users 
              SET username = COALESCE($1, username),
@@ -824,11 +831,11 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
              WHERE telegram_id = $6
              RETURNING *`,
             [
-              telegramUser?.username || profile?.username || null,
-              telegramUser?.first_name || profile?.name || null,
-              telegramUser?.last_name || null,
-              profile?.phone || null,
-              profile?.email || null,
+              newUsername,
+              newFirstName,
+              newLastName,
+              newPhone,
+              newEmail,
               telegramId
             ]
           );
@@ -1630,9 +1637,15 @@ app.post('/api/orders', async (req, res) => {
         console.log(`✅ Заказ создан в БД: ID=${result.orderId}, сумма=${orderData.total}₽`);
         
         // Сохраняем адрес из заказа в таблицу addresses, если он есть
+        // Также обновляем username пользователя, если он передан в orderData
         if (orderData.userId && orderData.addressData) {
           try {
-            const user = await getOrCreateUser(orderData.userId);
+            // Передаем данные пользователя из Telegram для обновления username
+            const telegramUser = orderData.username ? {
+              id: orderData.userId,
+              username: orderData.username
+            } : null;
+            const user = await getOrCreateUser(orderData.userId, telegramUser);
             if (user && orderData.addressData.street && orderData.addressData.house) {
               // Проверяем, не является ли это дубликатом
               const existingAddresses = await loadUserAddresses(user.id);
