@@ -2279,10 +2279,12 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
     price_per_stem, 
     min_stem_quantity,
     quality_ids,
+    features, // Массив строк качеств (TEXT[]) - опционально
     stem_length_id,
     country_id,
     variety_id,
     tag_ids,
+    tags, // Массив строк тегов (TEXT[]) - опционально
     image_url,
     is_active,
     stock,
@@ -2381,22 +2383,28 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
       // Обновляем features, если переданы quality_ids или features
       if (quality_ids !== undefined || features !== undefined) {
         let featuresArray = [];
-        if (features && Array.isArray(features)) {
+        if (features !== undefined && Array.isArray(features)) {
+          // Если переданы features напрямую, используем их
           featuresArray = features;
-        } else if (quality_ids && Array.isArray(quality_ids) && quality_ids.length > 0) {
-          // Получаем названия качеств по ID
-          const qualityNames = await client.query(
-            'SELECT name FROM product_qualities WHERE id = ANY($1::int[])',
-            [quality_ids]
-          );
-          featuresArray = qualityNames.rows.map(r => r.name);
+        } else if (quality_ids !== undefined) {
+          // Если переданы quality_ids, преобразуем их в названия качеств
+          if (Array.isArray(quality_ids) && quality_ids.length > 0) {
+            // Получаем названия качеств по ID
+            const qualityNames = await client.query(
+              'SELECT name FROM product_qualities WHERE id = ANY($1::int[])',
+              [quality_ids]
+            );
+            featuresArray = qualityNames.rows.map(r => r.name);
+          } else {
+            // Если quality_ids пустой массив, features тоже должен быть пустым
+            featuresArray = [];
+          }
         }
         
-        if (featuresArray.length > 0) {
-          updates.push(`features = $${paramIndex}`);
-          params.push(featuresArray);
-          paramIndex++;
-        }
+        // Обновляем features (даже если массив пустой, чтобы можно было очистить качества)
+        updates.push(`features = $${paramIndex}`);
+        params.push(featuresArray.length > 0 ? featuresArray : null);
+        paramIndex++;
       }
       
       if (updates.length === 0) {
