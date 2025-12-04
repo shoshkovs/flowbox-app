@@ -172,6 +172,7 @@ if (process.env.DATABASE_URL) {
         } catch (error) {
           // Игнорируем ошибки при миграции
         }
+      }, 3200);
       
       // Миграция: создание таблицы order_status_history, если её нет
       setTimeout(async () => {
