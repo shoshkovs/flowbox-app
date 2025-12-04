@@ -3730,8 +3730,8 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
         });
       }
       
-      // Удаляем автоматически созданное движение SUPPLY
-      await client.query('DELETE FROM stock_movements WHERE supply_id = $1 AND type = $2', [id, 'SUPPLY']);
+      // Удаляем все движения по этой поставке (включая SUPPLY)
+      await client.query('DELETE FROM stock_movements WHERE supply_id = $1', [id]);
       
       // Удаляем поставку
       await client.query('DELETE FROM supplies WHERE id = $1', [id]);

@@ -214,13 +214,22 @@ export function Warehouse({ authToken }) {
           <h1 className="text-3xl">Склад</h1>
           <p className="text-gray-600 mt-1">Партийный учет товаров и поставок</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Добавить поставку
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleClearAll}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+            title="Очистить все поставки и заказы"
+          >
+            🗑️ Очистить базу
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Добавить поставку
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
