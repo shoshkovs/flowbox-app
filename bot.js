@@ -4389,7 +4389,7 @@ app.put('/api/admin/customers/:id/manager-comment', checkAdminAuth, async (req, 
     try {
       await client.query(
         'UPDATE users SET manager_comment = $1 WHERE id = $2',
-        [manager_comment || null, userId]
+        [commentText || null, userId]
       );
       res.json({ success: true });
     } finally {
