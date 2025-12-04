@@ -214,11 +214,10 @@ export function Orders({ authToken }) {
                 const dateStr = orderDate ? orderDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
                 const timeStr = orderDate ? orderDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
                 
-                // Формируем строку состава заказа
+                // Формируем список товаров для отображения
                 const orderItems = order.items && Array.isArray(order.items) ? order.items : [];
-                const itemsSummary = orderItems.length > 0 
-                  ? orderItems.slice(0, 2).map(item => `${item.name} × ${item.quantity}`).join(', ') + (orderItems.length > 2 ? '...' : '')
-                  : '-';
+                const displayItems = orderItems.length > 0 ? orderItems.slice(0, 3) : [];
+                const hasMoreItems = orderItems.length > 3;
                 
                 return (
                   <tr 
@@ -229,7 +228,16 @@ export function Orders({ authToken }) {
                       <span className="text-blue-600 font-medium">#{order.id}</span>
                     </td>
                     <td className="py-3 px-4 text-sm">
-                      <div className="text-gray-900">{itemsSummary}</div>
+                      {displayItems.length > 0 ? (
+                        <div className="text-gray-900 space-y-1">
+                          {displayItems.map((item, idx) => (
+                            <div key={idx}>{item.name} × {item.quantity}</div>
+                          ))}
+                          {hasMoreItems && <div className="text-gray-500">...</div>}
+                        </div>
+                      ) : (
+                        <div className="text-gray-500">-</div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">
                       <div>{dateStr}</div>
@@ -240,7 +248,14 @@ export function Orders({ authToken }) {
                         value={order.status || 'NEW'}
                         onChange={(e) => handleStatusChange(order.id, e.target.value, e)}
                         onClick={(e) => e.stopPropagation()}
-                        className={`px-2 py-1 rounded text-xs border-0 ${getStatusColor(order.status)} cursor-pointer`}
+                        className={`px-2 py-1 rounded text-xs border-0 ${getStatusColor(order.status)} cursor-pointer font-medium focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-1`}
+                        style={{
+                          appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 0.5rem center',
+                          paddingRight: '1.75rem'
+                        }}
                       >
                         <option value="UNPAID">Не оплачен</option>
                         <option value="NEW">Новый</option>
