@@ -752,6 +752,11 @@ function switchTab(tabId) {
     // Скрыть все вкладки
     tabContents.forEach(tab => tab.classList.remove('active'));
     
+    // При переключении на профиль - обновляем заказы для актуальных статусов
+    if (tabId === 'profileTab') {
+        refreshOrders();
+    }
+    
     // Показать выбранную вкладку
     const activeTab = document.getElementById(tabId);
     if (activeTab) {
@@ -3137,6 +3142,79 @@ function initKeyboardHandling() {
     });
 }
 
+// Автоматическое обновление заказов
+let ordersRefreshInterval = null;
+
+// Функция для обновления только заказов (без полной перезагрузки всех данных)
+async function refreshOrders() {
+    const userId = getUserId();
+    if (!userId) return;
+    
+    try {
+        const response = await fetch(`/api/user-data/${userId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Обновляем только заказы
+        if (data.activeOrders && Array.isArray(data.activeOrders)) {
+            const oldOrdersCount = userActiveOrders.length;
+            const oldOrdersJson = JSON.stringify(userActiveOrders);
+            const newOrdersJson = JSON.stringify(data.activeOrders);
+            
+            // Обновляем данные
+            userActiveOrders = data.activeOrders;
+            localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+            
+            // Обновляем отображение только если есть изменения
+            if (oldOrdersCount !== userActiveOrders.length || oldOrdersJson !== newOrdersJson) {
+                loadActiveOrders();
+                console.log(`🔄 Обновлены активные заказы: ${userActiveOrders.length} заказов`);
+            }
+        }
+        
+        if (data.completedOrders && Array.isArray(data.completedOrders)) {
+            userCompletedOrders = data.completedOrders;
+            localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
+        }
+    } catch (error) {
+        console.error('Ошибка обновления заказов:', error);
+    }
+}
+
+// Запуск автоматического обновления заказов каждые 30 секунд
+function startOrdersAutoRefresh() {
+    // Останавливаем предыдущий интервал, если он был
+    if (ordersRefreshInterval) {
+        clearInterval(ordersRefreshInterval);
+    }
+    
+    // Обновляем заказы каждые 30 секунд
+    ordersRefreshInterval = setInterval(() => {
+        refreshOrders();
+    }, 30000); // 30 секунд
+    
+    console.log('🔄 Автообновление заказов запущено (каждые 30 секунд)');
+}
+
+// Остановка автоматического обновления
+function stopOrdersAutoRefresh() {
+    if (ordersRefreshInterval) {
+        clearInterval(ordersRefreshInterval);
+        ordersRefreshInterval = null;
+        console.log('⏸️ Автообновление заказов остановлено');
+    }
+}
+
+// Обновление заказов при возврате на страницу (когда вкладка становится видимой)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        // Страница стала видимой - обновляем заказы
+        refreshOrders();
+    }
+});
+
 // Инициализация при загрузке
 loadProducts();
 loadUserData(); // Загружаем все данные пользователя с сервера
@@ -3145,6 +3223,9 @@ loadSavedAddresses();
 loadActiveOrders();
 initFilters(); // Инициализируем фильтры
 initKeyboardHandling(); // Инициализируем обработку клавиатуры
+
+// Запускаем автоматическое обновление заказов
+startOrdersAutoRefresh();
 
 // Экспорт функций для глобального доступа
 window.addToCart = addToCart;

@@ -1319,7 +1319,7 @@ async function loadUserOrders(userId, status = null) {
         address: row.address_string,
         deliveryDate: row.delivery_date ? new Date(row.delivery_date).toISOString().split('T')[0] : null,
         deliveryTime: row.delivery_time,
-        status: row.status,
+        status: normalizeOrderStatus(row.status), // Нормализуем статус для единообразия
         createdAt: row.created_at
       }));
     } finally {
