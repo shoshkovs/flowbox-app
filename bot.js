@@ -1494,11 +1494,11 @@ app.get('/api/user-data/:userId', async (req, res) => {
       
       const addresses = await loadUserAddresses(user.id);
       console.log(`📦 Загружено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
-      // Загружаем активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING, CANCELED)
-      // CANCELED тоже показывается в активных, чтобы пользователь видел отмененные заказы
-      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING', 'CANCELED']);
-      // История заказов - только доставленные (COMPLETED)
-      const completedOrders = await loadUserOrders(user.id, ['COMPLETED']);
+      // Загружаем активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING)
+      // CANCELED и COMPLETED не показываются в активных - они идут в историю
+      const activeOrders = await loadUserOrders(user.id, ['NEW', 'PROCESSING', 'COLLECTING', 'DELIVERING']);
+      // История заказов - только доставленные (COMPLETED) и отмененные (CANCELED)
+      const completedOrders = await loadUserOrders(user.id, ['COMPLETED', 'CANCELED']);
       
       console.log(`📥 Загружено заказов для пользователя ${userId} (user_id=${user.id}): активных=${activeOrders.length}, завершенных=${completedOrders.length}`);
       if (activeOrders.length > 0) {

@@ -517,13 +517,23 @@ async function loadUserData() {
             }
             if (data.activeOrders && Array.isArray(data.activeOrders)) {
                 console.log('📥 Загружено активных заказов с сервера:', data.activeOrders.length, data.activeOrders);
-                userActiveOrders = data.activeOrders;
+                // Фильтруем только активные статусы: NEW, PROCESSING, COLLECTING, DELIVERING
+                // Исключаем CANCELED и COMPLETED - они должны быть в истории
+                userActiveOrders = data.activeOrders.filter(order => {
+                    const status = order.status?.toUpperCase();
+                    return status === 'NEW' || status === 'PROCESSING' || status === 'COLLECTING' || status === 'DELIVERING' || status === 'UNPAID';
+                });
                 localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
+                console.log('📥 Отфильтровано активных заказов:', userActiveOrders.length);
             } else {
                 console.log('📥 Активные заказы не получены или не массив:', data.activeOrders);
             }
             if (data.completedOrders && Array.isArray(data.completedOrders)) {
-                userCompletedOrders = data.completedOrders;
+                // Фильтруем только COMPLETED и CANCELED для истории
+                userCompletedOrders = data.completedOrders.filter(order => {
+                    const status = order.status?.toUpperCase();
+                    return status === 'COMPLETED' || status === 'CANCELED';
+                });
                 localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
             }
             
@@ -587,7 +597,13 @@ async function loadUserData() {
     const savedActiveOrders = localStorage.getItem('activeOrders');
     if (savedActiveOrders) {
         try {
-            userActiveOrders = JSON.parse(savedActiveOrders);
+            const parsedOrders = JSON.parse(savedActiveOrders);
+            // Фильтруем только активные статусы: NEW, PROCESSING, COLLECTING, DELIVERING
+            // Исключаем CANCELED и COMPLETED - они должны быть в истории
+            userActiveOrders = parsedOrders.filter(order => {
+                const status = order.status?.toUpperCase();
+                return status === 'NEW' || status === 'PROCESSING' || status === 'COLLECTING' || status === 'DELIVERING' || status === 'UNPAID';
+            });
             loadActiveOrders();
         } catch (e) {
             console.error('Ошибка загрузки активных заказов:', e);
@@ -2654,14 +2670,20 @@ function getOrderStatusClass(status) {
 // Загрузка активных заказов
 function loadActiveOrders() {
     // Данные уже загружены в loadUserData, просто обновляем отображение
-    console.log('📦 loadActiveOrders вызвана, активных заказов:', userActiveOrders.length);
-    console.log('📦 Заказы:', userActiveOrders);
+    // Фильтруем только активные статусы перед отображением
+    const filteredActiveOrders = userActiveOrders.filter(order => {
+        const status = order.status?.toUpperCase();
+        return status === 'NEW' || status === 'PROCESSING' || status === 'COLLECTING' || status === 'DELIVERING' || status === 'UNPAID';
+    });
+    
+    console.log('📦 loadActiveOrders вызвана, активных заказов:', filteredActiveOrders.length);
+    console.log('📦 Заказы:', filteredActiveOrders);
     
     if (activeOrdersElement) {
-        if (userActiveOrders.length === 0) {
+        if (filteredActiveOrders.length === 0) {
             activeOrdersElement.innerHTML = '<p class="no-orders">У вас нет активных заказов</p>';
         } else {
-            activeOrdersElement.innerHTML = userActiveOrders.map(order => {
+            activeOrdersElement.innerHTML = filteredActiveOrders.map(order => {
                 const statusText = getOrderStatusText(order.status);
                 const statusClass = getOrderStatusClass(order.status);
                 console.log(`📦 Заказ #${order.id}, статус: ${order.status} -> "${statusText}"`);
@@ -2708,7 +2730,12 @@ function loadActiveOrders() {
 
 // Загрузка истории заказов
 function loadOrderHistory() {
-    const allOrders = [...userActiveOrders, ...userCompletedOrders].sort((a, b) => {
+    // В истории показываем только завершенные заказы (COMPLETED и CANCELED)
+    // Активные заказы (NEW, PROCESSING, COLLECTING, DELIVERING) не показываем в истории
+    const allOrders = userCompletedOrders.filter(order => {
+        const status = order.status?.toUpperCase();
+        return status === 'COMPLETED' || status === 'CANCELED';
+    }).sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
     });
     
@@ -3161,10 +3188,18 @@ async function refreshOrders() {
         if (data.activeOrders && Array.isArray(data.activeOrders)) {
             const oldOrdersCount = userActiveOrders.length;
             const oldOrdersJson = JSON.stringify(userActiveOrders);
-            const newOrdersJson = JSON.stringify(data.activeOrders);
+            
+            // Фильтруем только активные статусы: NEW, PROCESSING, COLLECTING, DELIVERING
+            // Исключаем CANCELED и COMPLETED - они должны быть в истории
+            const filteredOrders = data.activeOrders.filter(order => {
+                const status = order.status?.toUpperCase();
+                return status === 'NEW' || status === 'PROCESSING' || status === 'COLLECTING' || status === 'DELIVERING' || status === 'UNPAID';
+            });
+            
+            const newOrdersJson = JSON.stringify(filteredOrders);
             
             // Обновляем данные
-            userActiveOrders = data.activeOrders;
+            userActiveOrders = filteredOrders;
             localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
             
             // Обновляем отображение только если есть изменения
@@ -3175,7 +3210,11 @@ async function refreshOrders() {
         }
         
         if (data.completedOrders && Array.isArray(data.completedOrders)) {
-            userCompletedOrders = data.completedOrders;
+            // Фильтруем только COMPLETED и CANCELED для истории
+            userCompletedOrders = data.completedOrders.filter(order => {
+                const status = order.status?.toUpperCase();
+                return status === 'COMPLETED' || status === 'CANCELED';
+            });
             localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
         }
     } catch (error) {
