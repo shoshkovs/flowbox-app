@@ -86,9 +86,22 @@ export function Warehouse({ authToken }) {
   };
 
   const getCurrentBatchId = (batches) => {
-    // FIFO logic - find first batch with remaining > 0
-    const activeBatch = batches.find((batch) => batch.remaining > 0);
-    return activeBatch?.id;
+    // FIFO logic - find oldest batch with remaining > 0 (sorted by delivery_date ASC)
+    const batchesWithStock = batches.filter((batch) => batch.remaining > 0);
+    if (batchesWithStock.length === 0) return null;
+    
+    // Сортируем по дате доставки (старые первые)
+    const sortedBatches = [...batchesWithStock].sort((a, b) => {
+      const dateA = new Date(a.deliveryDate);
+      const dateB = new Date(b.deliveryDate);
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      // Если даты одинаковые, сортируем по ID (старые первые)
+      return parseInt(a.id) - parseInt(b.id);
+    });
+    
+    return sortedBatches[0]?.id;
   };
 
   const handleWriteOff = async (productId, batchId, data) => {
@@ -121,9 +134,30 @@ export function Warehouse({ authToken }) {
     }
   };
 
-  const handleEditBatch = (productId, batchId) => {
-    console.log('Edit batch:', { productId, batchId });
-    // TODO: Open edit form
+  const handleDeleteBatch = async (productId, batchId) => {
+    if (!confirm('Вы уверены, что хотите удалить эту партию? Это действие нельзя отменить.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/supplies/${batchId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success('Партия успешно удалена');
+        await loadWarehouseData();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка удаления партии');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления партии:', error);
+      toast.error('Ошибка удаления партии');
+    }
   };
 
   const handleSaveSupply = async (data) => {
@@ -447,17 +481,6 @@ export function Warehouse({ authToken }) {
                                           className="h-7 px-2 text-sm hover:bg-gray-100 rounded"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handleEditBatch(product.id, batch.id);
-                                          }}
-                                        >
-                                          <Edit className="w-3 h-3 mr-1 inline" />
-                                          Изменить
-                                        </button>
-                                        <button
-                                          className="h-7 px-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                          disabled={batch.remaining === 0}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
                                             setWriteOffDialog({
                                               open: true,
                                               productId: product.id,
@@ -467,9 +490,20 @@ export function Warehouse({ authToken }) {
                                               availableQuantity: batch.remaining,
                                             });
                                           }}
+                                          disabled={batch.remaining === 0}
+                                        >
+                                          <Edit className="w-3 h-3 mr-1 inline" />
+                                          Изменить
+                                        </button>
+                                        <button
+                                          className="h-7 px-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteBatch(product.id, batch.id);
+                                          }}
                                         >
                                           <Trash2 className="w-3 h-3 mr-1 inline" />
-                                          Списать
+                                          Удалить
                                         </button>
                                       </div>
                                     </td>

@@ -3689,6 +3689,65 @@ app.post('/api/admin/supplies', checkAdminAuth, async (req, res) => {
   }
 });
 
+// Удаление поставки (партии)
+app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Проверяем существование поставки
+      const supplyResult = await client.query(
+        'SELECT id, product_id FROM supplies WHERE id = $1',
+        [id]
+      );
+      
+      if (supplyResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Поставка не найдена' });
+      }
+      
+      // Проверяем, есть ли движения по этой поставке
+      const movementsResult = await client.query(
+        'SELECT COUNT(*) as count FROM stock_movements WHERE supply_id = $1',
+        [id]
+      );
+      
+      const movementsCount = parseInt(movementsResult.rows[0]?.count || 0);
+      
+      if (movementsCount > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Невозможно удалить поставку, так как по ней уже есть движения (продажи или списания)' 
+        });
+      }
+      
+      // Удаляем поставку
+      await client.query('DELETE FROM supplies WHERE id = $1', [id]);
+      
+      await client.query('COMMIT');
+      
+      console.log(`✅ Поставка удалена: ID=${id}`);
+      res.json({ success: true, message: 'Поставка успешно удалена' });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Ошибка удаления поставки:', error);
+      res.status(500).json({ error: error.message || 'Ошибка удаления поставки' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка подключения к БД:', error);
+    res.status(500).json({ error: 'Ошибка подключения к базе данных' });
+  }
+});
+
 // Списание товара со склада (партийный учёт)
 app.post('/api/admin/stock-movements/write-off', checkAdminAuth, async (req, res) => {
   if (!pool) {
