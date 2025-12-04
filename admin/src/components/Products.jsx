@@ -300,8 +300,8 @@ export function Products({ authToken }) {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
-                <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
+                {products.map((product) => (
+                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 align-top">
                   <td className="py-3 px-4 text-gray-600">#{product.id}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
@@ -330,11 +330,11 @@ export function Products({ authToken }) {
                       }
                       
                       return productFeatures.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col gap-1">
                           {productFeatures.map((feature, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full"
+                              className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full w-fit"
                             >
                               {feature}
                             </span>
