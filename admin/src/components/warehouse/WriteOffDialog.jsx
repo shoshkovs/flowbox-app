@@ -1,17 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '../ui/dialog';
+import { AlertTriangle, X } from 'lucide-react';
 
 export function WriteOffDialog({
   open,
@@ -48,16 +36,24 @@ export function WriteOffDialog({
     onClose();
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Списание товара</DialogTitle>
-          <DialogDescription>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 relative">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded transition-colors"
+        >
+          <X className="w-5 h-5 text-gray-600" />
+        </button>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold pr-8">Списание товара</h2>
+          <p className="text-sm text-gray-600 mt-1">
             {batchInfo.productName} • Поставка {batchInfo.batchNumber}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
+          </p>
+        </div>
+        <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
             <div className="flex-1">
@@ -68,8 +64,10 @@ export function WriteOffDialog({
             </div>
           </div>
           <div>
-            <Label htmlFor="quantity">Количество для списания *</Label>
-            <Input
+            <label htmlFor="quantity" className="block text-sm font-medium mb-2">
+              Количество для списания *
+            </label>
+            <input
               id="quantity"
               type="number"
               min="1"
@@ -80,19 +78,21 @@ export function WriteOffDialog({
                 setError('');
               }}
               placeholder="Введите количество"
-              className="mt-2"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mt-2"
             />
             {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
           </div>
           <div>
-            <Label htmlFor="comment">Причина списания</Label>
-            <Textarea
+            <label htmlFor="comment" className="block text-sm font-medium mb-2">
+              Причина списания
+            </label>
+            <textarea
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Например: брак, испорчен, просрочен..."
               rows={3}
-              className="mt-2"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mt-2"
             />
           </div>
           {quantity && parseInt(quantity) > 0 && (
@@ -106,16 +106,22 @@ export function WriteOffDialog({
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={handleClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
             Отмена
-          </Button>
-          <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700">
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
             Списать
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

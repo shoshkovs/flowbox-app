@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Calendar, Search, ChevronDown, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreatableSelect } from '../CreatableSelect';
-import { Button } from '../ui/button';
 
 const API_BASE = window.location.origin;
 
@@ -162,13 +161,12 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
     <div className="space-y-6">
       {/* Заголовок с кнопкой назад */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
           onClick={onClose}
+          className="p-2 hover:bg-gray-100 rounded-lg"
         >
           <ArrowLeft className="w-5 h-5" />
-        </Button>
+        </button>
         <div>
           <h1 className="text-3xl font-bold">Добавить поставку</h1>
           <p className="text-gray-600 mt-1">Регистрация новой поставки товара</p>
@@ -325,8 +323,8 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
       <div className="flex justify-end gap-4">
         <button
           onClick={onClose}
-          variant="outline"
           disabled={loading}
+          className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
         >
           Отменить
         </button>

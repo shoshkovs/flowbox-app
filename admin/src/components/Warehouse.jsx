@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Trash2 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { Switch } from './ui/switch';
-import { Label } from './ui/label';
 import { WarehouseForm } from './warehouse/WarehouseForm';
 import { WriteOffDialog } from './warehouse/WriteOffDialog';
 import { toast } from 'sonner';
@@ -186,14 +180,16 @@ export function Warehouse({ authToken }) {
           <h1 className="text-3xl">Склад</h1>
           <p className="text-gray-600 mt-1">Партийный учет товаров и поставок</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
           Добавить поставку
-        </Button>
+        </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600">Стоимость склада</p>
@@ -232,34 +228,36 @@ export function Warehouse({ authToken }) {
                 <AlertCircle className="w-6 h-6 text-red-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+        </div>
       </div>
-      <Card>
-        <CardHeader>
+      <div className="bg-white rounded-xl border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <CardTitle>Товары на складе</CardTitle>
+            <h2 className="text-xl font-semibold">Товары на складе</h2>
             <div className="flex gap-4 items-center">
               <div className="flex items-center gap-2">
-                <Switch
+                <input
+                  type="checkbox"
                   id="onlyInStock"
                   checked={showOnlyInStock}
-                  onCheckedChange={setShowOnlyInStock}
+                  onChange={(e) => setShowOnlyInStock(e.target.checked)}
+                  className="w-4 h-4"
                 />
-                <Label htmlFor="onlyInStock" className="cursor-pointer">
+                <label htmlFor="onlyInStock" className="cursor-pointer text-sm">
                   Только в наличии
-                </Label>
+                </label>
               </div>
-              <Input
+              <input
+                type="text"
                 placeholder="Поиск по товару..."
-                className="w-64"
+                className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-6">
           <div className="space-y-3">
             {filteredProducts.map((product) => {
               const isExpanded = expandedProducts.has(product.id);
@@ -274,7 +272,7 @@ export function Warehouse({ authToken }) {
                 0
               );
               return (
-                <Card key={product.id} className="overflow-hidden">
+                <div key={product.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   <div
                     className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => toggleProduct(product.id)}
@@ -316,13 +314,13 @@ export function Warehouse({ authToken }) {
                             {product.totalRemaining} шт
                           </p>
                         </div>
-                        <Button variant="ghost" size="icon">
+                        <button className="p-2 hover:bg-gray-100 rounded-lg">
                           {isExpanded ? (
                             <ChevronUp className="w-5 h-5" />
                           ) : (
                             <ChevronDown className="w-5 h-5" />
                           )}
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -405,12 +403,9 @@ export function Warehouse({ authToken }) {
                                           {batch.batchNumber}
                                         </span>
                                         {isCurrentBatch && (
-                                          <Badge
-                                            variant="default"
-                                            className="text-xs bg-blue-100 text-blue-700"
-                                          >
+                                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                                             Текущая
-                                          </Badge>
+                                          </span>
                                         )}
                                       </div>
                                     </td>
@@ -452,22 +447,18 @@ export function Warehouse({ authToken }) {
                                     </td>
                                     <td className="py-2 px-3">
                                       <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 px-2"
+                                        <button
+                                          className="h-7 px-2 text-sm hover:bg-gray-100 rounded"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleEditBatch(product.id, batch.id);
                                           }}
                                         >
-                                          <Edit className="w-3 h-3 mr-1" />
+                                          <Edit className="w-3 h-3 mr-1 inline" />
                                           Изменить
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        </button>
+                                        <button
+                                          className="h-7 px-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                           disabled={batch.remaining === 0}
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -481,9 +472,9 @@ export function Warehouse({ authToken }) {
                                             });
                                           }}
                                         >
-                                          <Trash2 className="w-3 h-3 mr-1" />
+                                          <Trash2 className="w-3 h-3 mr-1 inline" />
                                           Списать
-                                        </Button>
+                                        </button>
                                       </div>
                                     </td>
                                   </tr>
@@ -495,12 +486,12 @@ export function Warehouse({ authToken }) {
                       </div>
                     </div>
                   )}
-                </Card>
+                </div>
               );
             })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
       {writeOffDialog && (
         <WriteOffDialog
           open={writeOffDialog.open}
