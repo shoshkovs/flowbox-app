@@ -339,25 +339,23 @@ export function Products({ authToken }) {
                         return <span className="text-gray-400">-</span>;
                       }
                       
-                      // Если качество одно - показываем его текст
+                      // Если качество одно - показываем просто текст
                       if (productFeatures.length === 1) {
                         return (
-                          <span className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full">
+                          <span className="text-sm">
                             {capitalizeFirst(productFeatures[0])}
                           </span>
                         );
                       }
                       
-                      // Если качеств больше - показываем "2 качества" и выпадающий список
-                      const qualitiesText = `${productFeatures.length} качеств${productFeatures.length === 2 ? 'а' : productFeatures.length > 4 ? '' : 'а'}`;
+                      // Если качеств больше одного - показываем "N качеств" с выпадающим списком
                       return (
-                        <select 
-                          className="px-2 py-1 text-xs border border-gray-300 rounded bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                          defaultValue=""
-                        >
-                          <option value="" disabled>{qualitiesText}</option>
+                        <select className="px-2 py-1 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                          <option value="">{productFeatures.length} качеств</option>
                           {productFeatures.map((feature, idx) => (
-                            <option key={idx} value={feature}>{capitalizeFirst(feature)}</option>
+                            <option key={idx} value={feature}>
+                              {capitalizeFirst(feature)}
+                            </option>
                           ))}
                         </select>
                       );
@@ -405,7 +403,8 @@ export function Products({ authToken }) {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
