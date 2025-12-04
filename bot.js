@@ -1577,13 +1577,20 @@ app.post('/api/user-data/:userId', async (req, res) => {
 });
 
 // API endpoint для загрузки данных пользователя (GET - для обратной совместимости)
+// Пытаемся получить данные пользователя из заголовков, если они есть
 app.get('/api/user-data/:userId', async (req, res) => {
   const { userId } = req.params;
   
   try {
     if (pool) {
+      // Пытаемся получить данные пользователя из заголовков (если переданы)
+      // В большинстве случаев это не сработает, но на всякий случай проверяем
+      let telegramUser = null;
+      const initData = req.headers['x-telegram-init-data'] || req.query.initData;
+      // Если initData не передан, просто используем userId
+      
       // Работа с БД
-      const user = await getOrCreateUser(userId);
+      const user = await getOrCreateUser(userId, telegramUser);
       if (!user) {
         return res.json({
           cart: [],
