@@ -8,8 +8,10 @@ export function Warehouse({ authToken }) {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterLowStock, setFilterLowStock] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [writeOffModal, setWriteOffModal] = useState({ open: false, product: null });
+  const [writeOffQty, setWriteOffQty] = useState('');
+  const [writeOffComment, setWriteOffComment] = useState('');
   
   useEffect(() => {
     loadProducts();
@@ -65,17 +67,8 @@ export function Warehouse({ authToken }) {
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = (product.product_name || product.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const stock = product.stock !== null && product.stock !== undefined ? product.stock : 0;
-    const minStock = product.min_stock || 10;
-    const matchesFilter = !filterLowStock || stock < minStock || stock <= 0;
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
-
-  const lowStockCount = products.filter(p => {
-    const stock = p.stock !== null && p.stock !== undefined ? p.stock : 0;
-    const minStock = p.min_stock || 10;
-    return stock < minStock || stock <= 0;
-  }).length;
   
   const totalStockValue = products.reduce((sum, p) => {
     const stock = p.stock !== null && p.stock !== undefined ? p.stock : 0;
@@ -113,7 +106,7 @@ export function Warehouse({ authToken }) {
       </div>
 
       {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-start justify-between">
             <div>
@@ -122,21 +115,6 @@ export function Warehouse({ authToken }) {
             </div>
             <div className="bg-blue-50 p-3 rounded-lg">
               <Package className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Низкий остаток</p>
-              <p className="text-2xl font-bold mt-2">{lowStockCount}</p>
-              {lowStockCount > 0 && (
-                <p className="text-sm text-orange-600 mt-1">Требует внимания</p>
-              )}
-            </div>
-            <div className="bg-orange-50 p-3 rounded-lg">
-              <AlertTriangle className="w-6 h-6 text-orange-600" />
             </div>
           </div>
         </div>
@@ -164,15 +142,6 @@ export function Warehouse({ authToken }) {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
           />
-          <label className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-            <input
-              type="checkbox"
-              checked={filterLowStock}
-              onChange={(e) => setFilterLowStock(e.target.checked)}
-              className="w-4 h-4"
-            />
-            <span>Только низкий остаток</span>
-          </label>
         </div>
 
         {/* Таблица товаров */}
@@ -186,8 +155,7 @@ export function Warehouse({ authToken }) {
                 <th className="text-left py-3 px-4">Продано</th>
                 <th className="text-left py-3 px-4">Списано</th>
                 <th className="text-left py-3 px-4">Остаток</th>
-                <th className="text-left py-3 px-4">Мин. остаток</th>
-                <th className="text-left py-3 px-4">Статус</th>
+                <th className="text-left py-3 px-4">Действия</th>
               </tr>
             </thead>
             <tbody>
@@ -198,9 +166,7 @@ export function Warehouse({ authToken }) {
                 const totalSold = product.total_sold || 0;
                 const totalWrittenOff = product.total_written_off || 0;
                 const stock = product.stock !== null && product.stock !== undefined ? product.stock : 0;
-                const minStock = product.min_stock || 10;
-                const status = product.status || (stock <= 0 ? 'out_of_stock' : stock < minStock ? 'low_stock' : 'sufficient');
-                const isLowStock = stock < minStock || stock <= 0;
+                const status = stock <= 0 ? 'out_of_stock' : 'sufficient';
 
                 return (
                   <tr key={productId} className="border-b border-gray-100 hover:bg-gray-50">
@@ -221,24 +187,18 @@ export function Warehouse({ authToken }) {
                     <td className="py-3 px-4 text-gray-600">{totalSold}</td>
                     <td className="py-3 px-4 text-gray-600">{totalWrittenOff}</td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className={isLowStock ? 'text-orange-600 font-semibold' : 'font-semibold'}>
-                          {stock}
-                        </span>
-                        {isLowStock && <AlertTriangle className="w-4 h-4 text-orange-600" />}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">{minStock}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        status === 'out_of_stock' 
-                          ? 'bg-red-100 text-red-800'
-                          : status === 'low_stock'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {status === 'out_of_stock' ? 'Нет на складе' : status === 'low_stock' ? 'Низкий остаток' : 'Достаточно'}
+                      <span className={`font-semibold ${stock <= 0 ? 'text-red-600' : ''}`}>
+                        {stock}
                       </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => setWriteOffModal({ open: true, product })}
+                        className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm"
+                        disabled={stock <= 0}
+                      >
+                        Списать
+                      </button>
                     </td>
                   </tr>
                 );
@@ -253,6 +213,110 @@ export function Warehouse({ authToken }) {
           )}
         </div>
       </div>
+
+      {/* Модалка списания */}
+      {writeOffModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Списать товар</h2>
+              <button
+                onClick={() => {
+                  setWriteOffModal({ open: false, product: null });
+                  setWriteOffQty('');
+                  setWriteOffComment('');
+                }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">Товар: {writeOffModal.product?.product_name || writeOffModal.product?.name}</p>
+              <p className="text-sm text-gray-600">Остаток: {writeOffModal.product?.stock || 0}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Количество для списания *</label>
+              <input
+                type="number"
+                min="1"
+                max={writeOffModal.product?.stock || 0}
+                value={writeOffQty}
+                onChange={(e) => setWriteOffQty(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                placeholder="Введите количество"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Комментарий (необязательно)</label>
+              <textarea
+                value={writeOffComment}
+                onChange={(e) => setWriteOffComment(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                rows="3"
+                placeholder="Причина списания"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  const qty = parseInt(writeOffQty);
+                  if (!qty || qty <= 0 || qty > (writeOffModal.product?.stock || 0)) {
+                    toast.error('Некорректное количество');
+                    return;
+                  }
+
+                  try {
+                    const response = await fetch(`${API_BASE}/api/admin/warehouse/write-off`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                      },
+                      body: JSON.stringify({
+                        product_id: writeOffModal.product?.product_id || writeOffModal.product?.id,
+                        quantity: qty,
+                        comment: writeOffComment || null,
+                      }),
+                    });
+
+                    if (response.ok) {
+                      toast.success('Товар успешно списан');
+                      setWriteOffModal({ open: false, product: null });
+                      setWriteOffQty('');
+                      setWriteOffComment('');
+                      loadProducts();
+                    } else {
+                      const error = await response.json();
+                      toast.error(error.error || 'Ошибка списания товара');
+                    }
+                  } catch (error) {
+                    console.error('Ошибка списания:', error);
+                    toast.error('Ошибка списания товара');
+                  }
+                }}
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              >
+                Списать
+              </button>
+              <button
+                onClick={() => {
+                  setWriteOffModal({ open: false, product: null });
+                  setWriteOffQty('');
+                  setWriteOffComment('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

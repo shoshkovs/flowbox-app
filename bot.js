@@ -2512,14 +2512,10 @@ app.get('/api/admin/warehouse/stock', checkAdminAuth, async (req, res) => {
           COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
           COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
           COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as stock,
-          20 as min_stock,
           CASE 
             WHEN COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
                  COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
                  COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) <= 0 THEN 'out_of_stock'
-            WHEN COALESCE(SUM(CASE WHEN sm.type = 'SUPPLY' THEN sm.quantity ELSE 0 END), 0) - 
-                 COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
-                 COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) <= 20 THEN 'low_stock'
             ELSE 'sufficient'
           END as status
         FROM products p
@@ -2621,6 +2617,85 @@ app.post('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
       
       // Возвращаем поставку с правильным форматом цены
       const finalSupply = supplyResult.rows[0];
+      res.json(finalSupply);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Ошибка создания поставки:', error);
+      res.status(500).json({ error: error.message || 'Ошибка создания поставки' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка подключения к БД:', error);
+    res.status(500).json({ error: 'Ошибка подключения к базе данных' });
+  }
+});
+
+// Списание товара со склада
+app.post('/api/admin/warehouse/write-off', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { product_id, quantity, comment } = req.body;
+  
+  if (!product_id || !quantity) {
+    return res.status(400).json({ error: 'Товар и количество обязательны' });
+  }
+  
+  const quantityInt = parseInt(quantity);
+  if (!Number.isInteger(quantityInt) || quantityInt <= 0) {
+    return res.status(400).json({ error: 'Количество должно быть целым числом больше 0' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Проверяем доступный остаток товара
+      const stockResult = await client.query(
+        `SELECT 
+          COALESCE(SUM(CASE WHEN type = 'SUPPLY' THEN quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as available
+        FROM stock_movements
+        WHERE product_id = $1`,
+        [product_id]
+      );
+      
+      const available = parseInt(stockResult.rows[0]?.available || 0);
+      
+      if (quantityInt > available) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: `Недостаточно товара для списания. Доступно: ${available}, запрошено: ${quantityInt}` 
+        });
+      }
+      
+      // Создаем движение типа WRITE_OFF
+      await client.query(
+        `INSERT INTO stock_movements (product_id, type, quantity, comment)
+         VALUES ($1, 'WRITE_OFF', $2, $3)`,
+        [product_id, quantityInt, comment || `Списание товара #${product_id}`]
+      );
+      
+      await client.query('COMMIT');
+      
+      console.log(`✅ Товар списан: product_id=${product_id}, quantity=${quantityInt}`);
+      res.json({ success: true, message: 'Товар успешно списан' });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Ошибка списания товара:', error);
+      res.status(500).json({ error: error.message || 'Ошибка списания товара' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка подключения к БД:', error);
+    res.status(500).json({ error: 'Ошибка подключения к базе данных' });
+  }
+});
       // Убеждаемся, что цена возвращается как число, а не строка
       if (finalSupply.unit_purchase_price) {
         finalSupply.unit_purchase_price = parseFloat(finalSupply.unit_purchase_price);
