@@ -2921,7 +2921,7 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
       if (status !== undefined) {
         // Нормализуем статус к единому enum перед сохранением
         const normalizedStatus = normalizeOrderStatus(status);
-        const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'COMPLETED', 'CANCELED'];
+        const validStatuses = ['UNPAID', 'NEW', 'PROCESSING', 'PURCHASE', 'COLLECTING', 'DELIVERING', 'IN_TRANSIT', 'COMPLETED', 'CANCELED'];
         if (!validStatuses.includes(normalizedStatus)) {
           return res.status(400).json({ error: `Неверный статус: ${status}. Допустимые значения: ${validStatuses.join(', ')}` });
         }
