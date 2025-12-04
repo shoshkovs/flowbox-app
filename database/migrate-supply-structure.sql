@@ -12,7 +12,8 @@ ALTER TABLE supplies
 ALTER TABLE supplies 
   ADD COLUMN IF NOT EXISTS total_amount DECIMAL(10,2),
   ADD COLUMN IF NOT EXISTS delivery_price DECIMAL(10,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS comment TEXT;
+  ADD COLUMN IF NOT EXISTS comment TEXT,
+  ADD COLUMN IF NOT EXISTS parent_supply_id INTEGER REFERENCES supplies(id) ON DELETE CASCADE;
 
 -- Создаем таблицу для товаров в поставке (supply_items)
 CREATE TABLE IF NOT EXISTS supply_items (

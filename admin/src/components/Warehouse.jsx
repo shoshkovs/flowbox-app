@@ -369,7 +369,7 @@ export function Warehouse({ authToken }) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
                           <div className="w-16 text-sm font-medium text-gray-600">
-                            {product.batches.length > 0 && product.batches[0].id}
+                            {product.batches.length > 0 && (product.batches[0].supplyId || product.batches[0].id)}
                           </div>
                           <div className="flex-1">
                             <div className="font-medium">{product.productName}</div>

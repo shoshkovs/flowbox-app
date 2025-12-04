@@ -3347,8 +3347,12 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
           const writeOff = movementsBySupply[`${supply.id}_WRITE_OFF`] || 0;
           const remaining = supply.initial_quantity - sold - writeOff;
           
+          // Используем parent_supply_id если есть, иначе id (для старых записей)
+          const displaySupplyId = supply.parent_supply_id || supply.id;
+          
           return {
             id: supply.id.toString(),
+            supplyId: displaySupplyId.toString(), // ID основной поставки для отображения
             batchNumber: `#${supply.id}`,
             deliveryDate: supply.delivery_date,
             initialQuantity: supply.initial_quantity,
@@ -3968,11 +3972,12 @@ app.post('/api/admin/supplies', checkAdminAuth, async (req, res) => {
         );
         
         // Создаем ОДНУ запись в supplies для товара с общим количеством (не для каждого банча)
+        // Связываем с основной поставкой через parent_supply_id
         const supplyItemResult = await client.query(
-          `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO supplies (product_id, quantity, unit_purchase_price, delivery_date, supplier_id, parent_supply_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id`,
-          [productId, totalPiecesInt, unitPriceFloat, delivery_date, supplier_id]
+          [productId, totalPiecesInt, unitPriceFloat, delivery_date, supplier_id, supply.id]
         );
         
         const supplyItem = supplyItemResult.rows[0];
