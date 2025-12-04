@@ -1240,6 +1240,36 @@ async function createOrderInDb(orderData) {
   }
 }
 
+// Нормализация статуса: преобразует старые форматы в единый enum
+function normalizeOrderStatus(status) {
+  if (!status) return null;
+  
+  const statusUpper = status.toUpperCase();
+  
+  // Маппинг старых статусов на новые
+  const statusMap = {
+    'NEW': 'NEW',
+    'PROCESSING': 'PROCESSING',
+    'COLLECTING': 'COLLECTING',
+    'DELIVERING': 'DELIVERING',
+    'COMPLETED': 'COMPLETED',
+    'CANCELED': 'CANCELED',
+    'CANCELLED': 'CANCELED', // Британский вариант
+    'UNPAID': 'UNPAID',
+    // Старые форматы
+    'ACTIVE': 'NEW',
+    'PAID': 'NEW',
+    'CONFIRMED': 'PROCESSING',
+    'PREPARING': 'PROCESSING',
+    'ASSEMBLY': 'COLLECTING',
+    'IN_TRANSIT': 'DELIVERING',
+    'DELIVERED': 'COMPLETED',
+    'CANCELLED': 'CANCELED'
+  };
+  
+  return statusMap[statusUpper] || statusUpper;
+}
+
 // Загрузка заказов пользователя
 async function loadUserOrders(userId, status = null) {
   if (!pool) return [];
@@ -3277,36 +3307,6 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
 });
 
 // API: Обновить статус заказа (расширенный)
-// Нормализация статуса: преобразует старые форматы в единый enum
-function normalizeOrderStatus(status) {
-  if (!status) return null;
-  
-  const statusUpper = status.toUpperCase();
-  
-  // Маппинг старых статусов на новые
-  const statusMap = {
-    'NEW': 'NEW',
-    'PROCESSING': 'PROCESSING',
-    'COLLECTING': 'COLLECTING',
-    'DELIVERING': 'DELIVERING',
-    'COMPLETED': 'COMPLETED',
-    'CANCELED': 'CANCELED',
-    'CANCELLED': 'CANCELED', // Британский вариант
-    'UNPAID': 'UNPAID',
-    // Старые форматы
-    'ACTIVE': 'NEW',
-    'PAID': 'NEW',
-    'CONFIRMED': 'PROCESSING',
-    'PREPARING': 'PROCESSING',
-    'ASSEMBLY': 'COLLECTING',
-    'IN_TRANSIT': 'DELIVERING',
-    'DELIVERED': 'COMPLETED',
-    'CANCELLED': 'CANCELED'
-  };
-  
-  return statusMap[statusUpper] || statusUpper;
-}
-
 app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
