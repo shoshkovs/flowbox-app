@@ -301,7 +301,7 @@ export function Products({ authToken }) {
             </thead>
             <tbody>
                 {products.map((product) => (
-                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 align-top">
+                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 align-top" style={{ minHeight: '60px' }}>
                   <td className="py-3 px-4 text-gray-600">#{product.id}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
@@ -317,7 +317,7 @@ export function Products({ authToken }) {
                   </td>
                   <td className="py-3 px-4">{product.category_name || product.category || '-'}</td>
                   <td className="py-3 px-4">{product.color_name || product.color || '-'}</td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4 align-top">
                     {(() => {
                       // Используем features из таблицы products (TEXT[]) - это основной источник качеств
                       let productFeatures = [];
@@ -336,11 +336,11 @@ export function Products({ authToken }) {
                       };
                       
                       return productFeatures.length > 0 ? (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5 py-1">
                           {productFeatures.map((feature, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full w-fit"
+                              className="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded-full w-fit whitespace-nowrap"
                             >
                               {capitalizeFirst(feature)}
                             </span>
