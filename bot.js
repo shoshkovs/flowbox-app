@@ -1381,17 +1381,32 @@ app.post('/api/user-data', async (req, res) => {
       }
       
       // Сохраняем адреса
+      // КРИТИЧНО: Не перезаписываем существующие адреса пустым массивом после деплоя
       if (addresses !== undefined && Array.isArray(addresses)) {
-        const saved = await saveUserAddresses(user.id, addresses);
-        if (saved) {
-          console.log(`✅ Сохранено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
+        // Проверяем текущие адреса в БД перед сохранением
+        const currentAddresses = await loadUserAddresses(user.id);
+        
+        // Если фронт отправил пустой массив, но в БД уже есть адреса - это может быть ошибка после деплоя
+        // В этом случае НЕ перезаписываем существующие адреса пустым массивом
+        if (addresses.length === 0 && currentAddresses.length > 0) {
+          console.log(`⚠️ ПРЕДОТВРАЩЕНА перезапись адресов пользователя ${userId}: было ${currentAddresses.length}, пытались записать 0`);
+          // Не сохраняем пустой массив, оставляем существующие адреса
         } else {
-          console.error(`❌ Ошибка сохранения адресов для пользователя ${userId}`);
+          // Сохраняем адреса только если:
+          // 1. Массив не пустой (реальное изменение)
+          // 2. Или текущих адресов нет (первая инициализация)
+          const saved = await saveUserAddresses(user.id, addresses);
+          if (saved) {
+            console.log(`✅ Сохранено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
+          } else {
+            console.error(`❌ Ошибка сохранения адресов для пользователя ${userId}`);
+          }
         }
       }
       
       // Обновляем бонусы ТОЛЬКО если они явно переданы и не равны undefined
-      // Это предотвращает перезапись реальных бонусов из БД значениями по умолчанию
+      // КРИТИЧНО: Не перезаписываем существующие бонусы нулем, если пользователь уже имеет ненулевой баланс
+      // Это предотвращает потерю бонусов после деплоя, когда фронт может отправить 0
       if (bonuses !== undefined && bonuses !== null) {
         const client = await pool.connect();
         try {
@@ -1401,14 +1416,22 @@ app.post('/api/user-data', async (req, res) => {
             [user.id]
           );
           
-          // Обновляем только если переданное значение отличается от текущего
-          // или если текущее значение NULL (первая инициализация)
           const currentBonusValue = currentBonuses.rows[0]?.bonuses;
-          if (currentBonusValue === null || currentBonusValue === undefined || currentBonusValue !== bonuses) {
+          
+          // КРИТИЧЕСКАЯ ЗАЩИТА: Не перезаписываем существующие ненулевые бонусы нулем
+          // Это может произойти, если фронт после деплоя получил 0 и пытается сохранить его обратно
+          if (bonuses === 0 && currentBonusValue !== null && currentBonusValue !== undefined && currentBonusValue > 0) {
+            console.log(`⚠️ ПРЕДОТВРАЩЕНА перезапись бонусов пользователя ${userId}: было ${currentBonusValue}, пытались записать 0`);
+            // Не обновляем бонусы, оставляем существующее значение
+          } else if (currentBonusValue === null || currentBonusValue === undefined || currentBonusValue !== bonuses) {
+            // Обновляем только если:
+            // 1. Текущее значение NULL (первая инициализация)
+            // 2. Переданное значение отличается от текущего И не является нулем при ненулевом текущем значении
             await client.query(
               'UPDATE users SET bonuses = $1 WHERE id = $2',
               [bonuses, user.id]
             );
+            console.log(`✅ Обновлены бонусы пользователя ${userId}: ${currentBonusValue || 0} → ${bonuses}`);
           }
         } finally {
           client.release();
