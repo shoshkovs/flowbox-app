@@ -2745,8 +2745,9 @@ function getOrderStatusText(status) {
     case 'UNPAID':
       return 'Не оплачен';
     case 'NEW':
-    case 'PROCESSING':
       return 'В обработке';
+    case 'PROCESSING':
+      return 'Принят';
     case 'COLLECTING':
       return 'Собирается';
     case 'DELIVERING':
