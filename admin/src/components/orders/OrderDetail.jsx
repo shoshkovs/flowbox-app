@@ -119,11 +119,16 @@ export function OrderDetail({ authToken, orderId }) {
           const returnTo = location.state?.returnTo || '/orders';
           const filterStatus = location.state?.filterStatus;
           
-          if (filterStatus) {
-            // Если был фильтр по статусу, возвращаемся с ним
-            navigate(`${returnTo}?status=${filterStatus}`);
-          } else {
+          if (returnTo === '/orders' && filterStatus && filterStatus !== 'all') {
+            // Если возвращаемся на страницу заказов с фильтром, передаем его через state
+            navigate(returnTo, { 
+              state: { filterStatus: filterStatus }
+            });
+          } else if (returnTo) {
             navigate(returnTo);
+          } else {
+            // Если нет информации о возврате, используем navigate(-1) для возврата назад
+            navigate(-1);
           }
         }, 500);
       } else {
@@ -250,10 +255,14 @@ export function OrderDetail({ authToken, orderId }) {
               const returnTo = location.state?.returnTo || '/orders';
               const filterStatus = location.state?.filterStatus;
               
-              if (filterStatus) {
-                navigate(`${returnTo}?status=${filterStatus}`);
-              } else {
+              if (returnTo === '/orders' && filterStatus && filterStatus !== 'all') {
+                navigate(returnTo, { 
+                  state: { filterStatus: filterStatus }
+                });
+              } else if (returnTo) {
                 navigate(returnTo);
+              } else {
+                navigate(-1);
               }
             }}
             className="p-2 hover:bg-gray-100 rounded-lg"
