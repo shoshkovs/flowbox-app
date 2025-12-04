@@ -160,6 +160,37 @@ export function Warehouse({ authToken }) {
     }
   };
 
+  const handleClearAll = async () => {
+    if (!confirm('⚠️ ВНИМАНИЕ! Это удалит ВСЕ поставки и заказы из базы данных. Продолжить?')) {
+      return;
+    }
+    
+    if (!confirm('Вы действительно уверены? Это действие нельзя отменить!')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/warehouse/clear-all`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Ошибка очистки базы');
+      }
+      
+      const data = await response.json();
+      toast.success('База данных успешно очищена');
+      await loadWarehouseData();
+    } catch (error) {
+      console.error('Ошибка очистки базы:', error);
+      toast.error(error.message || 'Ошибка очистки базы данных');
+    }
+  };
+
   const handleSaveSupply = async (data) => {
     try {
       const response = await fetch(`${API_BASE}/api/admin/supplies`, {
