@@ -3475,16 +3475,15 @@ app.get('/api/admin/supplies', checkAdminAuth, async (req, res) => {
       `);
       
       // Получаем все поставки (партии) для товаров из supply_items
-      // Нужно найти все supplies, которые относятся к товарам из этой поставки
+      // Находим только те supplies, у которых parent_supply_id соответствует поставке
       const supplyItemsSuppliesResult = await client.query(`
         SELECT 
           s.id as supply_id,
           s.product_id,
-          si.supply_id as parent_supply_id
+          s.parent_supply_id
         FROM supplies s
-        INNER JOIN supply_items si ON s.product_id = si.product_id
-        WHERE si.supply_id IN (SELECT id FROM supplies WHERE total_amount IS NOT NULL)
-        AND s.delivery_date = (SELECT delivery_date FROM supplies WHERE id = si.supply_id)
+        WHERE s.parent_supply_id IS NOT NULL
+        AND s.parent_supply_id IN (SELECT id FROM supplies WHERE total_amount IS NOT NULL)
       `);
       
       // Создаём мапу: parent_supply_id -> product_id -> [supply_ids]
@@ -3511,10 +3510,11 @@ app.get('/api/admin/supplies', checkAdminAuth, async (req, res) => {
           itemsBySupply[item.supply_id] = [];
         }
         
-        // Находим все поставки (партии) для этого товара из этой поставки
+        // Находим все поставки (партии) для этого товара из ЭТОЙ конкретной поставки
+        // Используем только партии с parent_supply_id = item.supply_id
         const relatedSupplyIds = suppliesByParentAndProduct[`${item.supply_id}_${item.product_id}`] || [];
         
-        // Суммируем продано и списано по всем связанным партиям
+        // Суммируем продано и списано только по партиям ЭТОЙ поставки
         let sold = 0;
         let writeOff = 0;
         
