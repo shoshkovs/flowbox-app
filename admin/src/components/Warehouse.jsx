@@ -229,13 +229,47 @@ export function Warehouse({ authToken }) {
           <h1 className="text-3xl">Склад</h1>
           <p className="text-gray-600 mt-1">Партийный учет товаров и поставок</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Добавить поставку
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={async () => {
+              if (!confirm('Вы уверены, что хотите удалить все гортензии? Это действие нельзя отменить.')) {
+                return;
+              }
+              try {
+                const response = await fetch(`${API_BASE}/api/admin/warehouse/delete-hydrangeas`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                  },
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  toast.success(data.message || 'Гортензии успешно удалены');
+                  await loadWarehouseData();
+                  if (activeTab === 'supplies') {
+                    await loadSupplies();
+                  }
+                } else {
+                  const error = await response.json();
+                  toast.error(error.error || 'Ошибка удаления гортензий');
+                }
+              } catch (error) {
+                console.error('Ошибка удаления гортензий:', error);
+                toast.error('Ошибка удаления гортензий');
+              }
+            }}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"
+          >
+            Удалить гортензии
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Добавить поставку
+          </button>
+        </div>
       </div>
 
       {/* Вкладки */}
