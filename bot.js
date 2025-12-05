@@ -5746,15 +5746,19 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
       
       // Получаем обновленный баланс
       const userResult = await client.query('SELECT bonuses FROM users WHERE id = $1', [userId]);
+      const finalBalance = parseFloat(userResult.rows[0].bonuses || 0);
+      
       res.json({ 
         success: true, 
-        bonuses: userResult.rows[0].bonuses,
+        bonuses: finalBalance,
         totalEarned: totalEarned,
         totalUsed: totalUsed,
+        totalAdjustments: totalAdjustments,
         initialBonus: initialBonus,
         ordersEarned: ordersEarned,
         ordersUsed: ordersUsed,
-        calculatedBalance: totalBalance
+        calculatedBalance: totalBalance,
+        previousBalance: currentBalance
       });
     } catch (error) {
       await client.query('ROLLBACK');
