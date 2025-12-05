@@ -4075,7 +4075,8 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
         });
       }
       
-      // Удаляем все движения по этой поставке (включая SUPPLY)
+      // Удаляем все движения по этой поставке (включая SUPPLY, SALE, WRITE_OFF)
+      // Важно: удаляем движения ПЕРЕД удалением поставки, чтобы не было каскадных проблем
       await client.query('DELETE FROM stock_movements WHERE supply_id = $1', [id]);
       
       // Удаляем поставку
@@ -4089,6 +4090,99 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
       await client.query('ROLLBACK');
       console.error('Ошибка удаления поставки:', error);
       res.status(500).json({ error: error.message || 'Ошибка удаления поставки' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка подключения к БД:', error);
+    res.status(500).json({ error: 'Ошибка подключения к базе данных' });
+  }
+});
+
+// Исправление отрицательных остатков
+app.post('/api/admin/warehouse/fix-negative-stock', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Находим все товары с отрицательными остатками
+      const productsResult = await client.query(`
+        SELECT DISTINCT product_id 
+        FROM stock_movements 
+        WHERE product_id IS NOT NULL
+      `);
+      
+      let fixedCount = 0;
+      
+      for (const row of productsResult.rows) {
+        const productId = row.product_id;
+        
+        // Считаем общие движения
+        const movementsResult = await client.query(
+          `SELECT 
+            COALESCE(SUM(CASE WHEN type = 'SUPPLY' THEN quantity ELSE 0 END), 0) as supplied,
+            COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) as sold,
+            COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as written_off
+          FROM stock_movements
+          WHERE product_id = $1`,
+          [productId]
+        );
+        
+        let supplied = parseInt(movementsResult.rows[0]?.supplied || 0);
+        const sold = parseInt(movementsResult.rows[0]?.sold || 0);
+        let writtenOff = parseInt(movementsResult.rows[0]?.written_off || 0);
+        
+        // Если нет SUPPLY движений, используем supplies.quantity
+        if (supplied === 0) {
+          const suppliesResult = await client.query(
+            'SELECT COALESCE(SUM(quantity), 0) as total FROM supplies WHERE product_id = $1',
+            [productId]
+          );
+          supplied = parseInt(suppliesResult.rows[0]?.total || 0);
+        }
+        
+        const currentStock = supplied - sold - writtenOff;
+        
+        // Если остаток отрицательный, удаляем лишние WRITE_OFF движения
+        if (currentStock < 0) {
+          const excessWriteOff = Math.abs(currentStock);
+          
+          // Удаляем избыточные WRITE_OFF движения (самые последние, без привязки к поставкам)
+          await client.query(
+            `DELETE FROM stock_movements
+             WHERE id IN (
+               SELECT id
+               FROM stock_movements
+               WHERE product_id = $1
+                 AND type = 'WRITE_OFF'
+                 AND supply_id IS NULL
+               ORDER BY created_at DESC
+               LIMIT $2
+             )`,
+            [productId, excessWriteOff]
+          );
+          
+          fixedCount++;
+          console.log(`✅ Исправлен отрицательный остаток для товара ID=${productId}, удалено ${excessWriteOff} лишних списаний`);
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      res.json({ 
+        success: true, 
+        message: `Исправлено ${fixedCount} товаров с отрицательными остатками`,
+        fixed: fixedCount
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Ошибка исправления остатков:', error);
+      res.status(500).json({ error: error.message || 'Ошибка исправления остатков' });
     } finally {
       client.release();
     }

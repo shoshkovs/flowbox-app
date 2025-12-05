@@ -232,6 +232,38 @@ export function Warehouse({ authToken }) {
         <div className="flex gap-3">
           <button
             onClick={async () => {
+              if (!confirm('Исправить отрицательные остатки на складе? Это удалит лишние списания.')) {
+                return;
+              }
+              try {
+                const response = await fetch(`${API_BASE}/api/admin/warehouse/fix-negative-stock`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                  },
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  toast.success(data.message || 'Отрицательные остатки исправлены');
+                  await loadWarehouseData();
+                  if (activeTab === 'supplies') {
+                    await loadSupplies();
+                  }
+                } else {
+                  const error = await response.json();
+                  toast.error(error.error || 'Ошибка исправления остатков');
+                }
+              } catch (error) {
+                console.error('Ошибка исправления остатков:', error);
+                toast.error('Ошибка исправления остатков');
+              }
+            }}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center gap-2"
+          >
+            Исправить остатки
+          </button>
+          <button
+            onClick={async () => {
               if (!confirm('Вы уверены, что хотите удалить все гортензии? Это действие нельзя отменить.')) {
                 return;
               }
