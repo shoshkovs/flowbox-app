@@ -5555,7 +5555,12 @@ app.get('/api/admin/customers/:id', checkAdminAuth, async (req, res) => {
       // Получаем историю заказов
       const ordersResult = await client.query(
         `SELECT 
-          o.*,
+          o.id,
+          o.status,
+          o.total,
+          o.bonus_earned,
+          o.bonus_used,
+          o.created_at,
           json_agg(
             json_build_object(
               'id', oi.id,
@@ -5567,7 +5572,7 @@ app.get('/api/admin/customers/:id', checkAdminAuth, async (req, res) => {
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
         WHERE o.user_id = $1
-        GROUP BY o.id
+        GROUP BY o.id, o.status, o.total, o.bonus_earned, o.bonus_used, o.created_at
         ORDER BY o.created_at DESC`,
         [userId]
       );
@@ -5644,6 +5649,78 @@ app.put('/api/admin/customers/:id/bonuses', checkAdminAuth, async (req, res) => 
   } catch (error) {
     console.error('Ошибка обновления бонусов:', error);
     res.status(500).json({ error: 'Ошибка обновления бонусов: ' + error.message });
+  }
+});
+
+// API: Пересчитать бонусы на основе истории заказов
+app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { id } = req.params;
+  const userId = parseInt(id);
+  
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: 'Неверный ID пользователя' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Получаем все заказы пользователя
+      const ordersResult = await client.query(
+        'SELECT bonus_earned, bonus_used FROM orders WHERE user_id = $1',
+        [userId]
+      );
+      
+      // Суммируем все начисления и списания
+      let totalEarned = 0;
+      let totalUsed = 0;
+      
+      ordersResult.rows.forEach(order => {
+        totalEarned += parseFloat(order.bonus_earned || 0);
+        totalUsed += parseFloat(order.bonus_used || 0);
+      });
+      
+      // Вычисляем итоговый баланс
+      const calculatedBalance = totalEarned - totalUsed;
+      
+      // Обновляем баланс в users
+      await client.query(
+        'UPDATE users SET bonuses = $1 WHERE id = $2',
+        [calculatedBalance, userId]
+      );
+      
+      // Создаем транзакцию для записи пересчета
+      await client.query(
+        `INSERT INTO bonus_transactions (user_id, type, amount, description)
+         VALUES ($1, 'adjustment', $2, $3)`,
+        [userId, calculatedBalance, `Пересчет бонусов на основе истории заказов. Начислено: ${totalEarned.toFixed(2)}, Списано: ${totalUsed.toFixed(2)}`]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Получаем обновленный баланс
+      const userResult = await client.query('SELECT bonuses FROM users WHERE id = $1', [userId]);
+      res.json({ 
+        success: true, 
+        bonuses: userResult.rows[0].bonuses,
+        totalEarned,
+        totalUsed,
+        calculatedBalance
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка пересчета бонусов:', error);
+    res.status(500).json({ error: 'Ошибка пересчета бонусов: ' + error.message });
   }
 });
 

@@ -12,6 +12,7 @@ export function CustomerDetail({ customer, onClose, authToken }) {
   const [isEditingBonuses, setIsEditingBonuses] = useState(false);
   const [isSavingComment, setIsSavingComment] = useState(false);
   const [isAdjustingBonuses, setIsAdjustingBonuses] = useState(false);
+  const [recalculatingBonuses, setRecalculatingBonuses] = useState(false);
 
   useEffect(() => {
     if (customer?.id) {
@@ -39,6 +40,37 @@ export function CustomerDetail({ customer, onClose, authToken }) {
       toast.error('Ошибка загрузки данных клиента');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRecalculateBonuses = async () => {
+    if (!confirm('Пересчитать бонусы на основе всех заказов? Текущий баланс будет заменен на сумму всех начислений минус все списания.')) {
+      return;
+    }
+
+    setRecalculatingBonuses(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}/recalculate-bonuses`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Бонусы пересчитаны. Новый баланс: ${data.bonuses.toLocaleString()} ₽`);
+        await loadCustomerDetail();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка пересчета бонусов');
+      }
+    } catch (error) {
+      console.error('Ошибка пересчета бонусов:', error);
+      toast.error('Ошибка пересчета бонусов');
+    } finally {
+      setRecalculatingBonuses(false);
     }
   };
 
@@ -240,11 +272,24 @@ export function CustomerDetail({ customer, onClose, authToken }) {
                           <p className="text-xs text-gray-400">
                             {new Date(order.created_at).toLocaleDateString('ru-RU')}
                           </p>
-                          {bonusEarned > 0 && (
-                            <p className="text-xs text-green-600 font-medium">
-                              +{bonusEarned} ₽ бонусов
-                            </p>
-                          )}
+                          {(() => {
+                            const bonusUsed = parseInt(order.bonus_used || 0);
+                            const bonusEarned = parseInt(order.bonus_earned || 0);
+                            return (
+                              <>
+                                {bonusUsed > 0 && (
+                                  <p className="text-xs text-red-600 font-medium">
+                                    -{bonusUsed} ₽ бонусов
+                                  </p>
+                                )}
+                                {bonusEarned > 0 && (
+                                  <p className="text-xs text-green-600 font-medium">
+                                    +{bonusEarned} ₽ бонусов
+                                  </p>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                       <p className="font-medium">{parseInt(order.total || 0).toLocaleString()} ₽</p>
@@ -342,12 +387,22 @@ export function CustomerDetail({ customer, onClose, authToken }) {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Бонусы</h2>
-              <button
-                onClick={() => setIsEditingBonuses(!isEditingBonuses)}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRecalculateBonuses}
+                  disabled={recalculatingBonuses}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  title="Пересчитать бонусы на основе истории заказов"
+                >
+                  {recalculatingBonuses ? 'Пересчет...' : 'Пересчитать'}
+                </button>
+                <button
+                  onClick={() => setIsEditingBonuses(!isEditingBonuses)}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Текущий баланс</label>
