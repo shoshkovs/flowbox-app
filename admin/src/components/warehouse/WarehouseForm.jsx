@@ -380,143 +380,147 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
       {!loadingData && (
         <>
           {/* Основная информация о поставке */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold mb-6">Информация о поставке</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-            <label className="block text-sm font-medium mb-1">
-              Дата поставки <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={supplyForm.delivery_date}
-                onChange={(e) => setSupplyForm({ ...supplyForm, delivery_date: e.target.value })}
-                className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
-                style={{ WebkitAppearance: 'none' }}
-              />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  const input = e.target.closest('.relative').querySelector('input[type="date"]');
-                  if (input) {
-                    input.showPicker?.();
-                    input.focus();
-                  }
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 pointer-events-auto"
-              >
-                <Calendar className="w-5 h-5" />
-              </button>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="px-6 py-5 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Информация о поставке</h2>
             </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Дата поставки <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={supplyForm.delivery_date}
+                      onChange={(e) => setSupplyForm({ ...supplyForm, delivery_date: e.target.value })}
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                      style={{ WebkitAppearance: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const input = e.target.closest('.relative').querySelector('input[type="date"]');
+                        if (input) {
+                          input.showPicker?.();
+                          input.focus();
+                        }
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 pointer-events-auto transition-colors"
+                    >
+                      <Calendar className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <CreatableSelect
+                    value={supplyForm.supplier_id}
+                    onChange={(id) => setSupplyForm({ ...supplyForm, supplier_id: id })}
+                    options={suppliers}
+                    onCreate={handleCreateSupplier}
+                    placeholder="Выберите поставщика"
+                    label="Поставщик"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Общая сумма (₽)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={supplyForm.total_amount}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                      const parts = value.split('.');
+                      const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                      setSupplyForm({ ...supplyForm, total_amount: cleanedValue });
+                    }}
+                    onBlur={(e) => {
+                      const numValue = parseFloat(e.target.value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setSupplyForm({ ...supplyForm, total_amount: numValue.toFixed(2) });
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Цена доставки (₽)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={supplyForm.delivery_price}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                      const parts = value.split('.');
+                      const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                      setSupplyForm({ ...supplyForm, delivery_price: cleanedValue });
+                    }}
+                    onBlur={(e) => {
+                      const numValue = parseFloat(e.target.value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setSupplyForm({ ...supplyForm, delivery_price: numValue.toFixed(2) });
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Комментарий
+                  </label>
+                  <textarea
+                    value={supplyForm.comment}
+                    onChange={(e) => setSupplyForm({ ...supplyForm, comment: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors resize-none"
+                    rows={3}
+                    placeholder="Дополнительная информация о поставке"
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-            <CreatableSelect
-              value={supplyForm.supplier_id}
-              onChange={(id) => setSupplyForm({ ...supplyForm, supplier_id: id })}
-              options={suppliers}
-              onCreate={handleCreateSupplier}
-              placeholder="Выберите поставщика"
-              label="Поставщик"
-              required
-            />
-            </div>
-            <div>
-            <label className="block text-sm font-medium mb-1">
-              Общая сумма (₽)
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={supplyForm.total_amount}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                const parts = value.split('.');
-                const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                setSupplyForm({ ...supplyForm, total_amount: cleanedValue });
-              }}
-              onBlur={(e) => {
-                const numValue = parseFloat(e.target.value);
-                if (!isNaN(numValue) && numValue >= 0) {
-                  setSupplyForm({ ...supplyForm, total_amount: numValue.toFixed(2) });
-                }
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="0.00"
-            />
-            </div>
-            <div>
-            <label className="block text-sm font-medium mb-1">
-              Цена доставки (₽)
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={supplyForm.delivery_price}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                const parts = value.split('.');
-                const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                setSupplyForm({ ...supplyForm, delivery_price: cleanedValue });
-              }}
-              onBlur={(e) => {
-                const numValue = parseFloat(e.target.value);
-                if (!isNaN(numValue) && numValue >= 0) {
-                  setSupplyForm({ ...supplyForm, delivery_price: numValue.toFixed(2) });
-                }
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              placeholder="0.00"
-            />
-            </div>
-            <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">
-              Комментарий
-            </label>
-            <textarea
-              value={supplyForm.comment}
-              onChange={(e) => setSupplyForm({ ...supplyForm, comment: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              rows={3}
-              placeholder="Введите комментарий..."
-            />
-            </div>
-            </div>
-        </div>
+          </div>
 
         {/* Товары в поставке */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold">Товары в поставке</h2>
-        </div>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="px-6 py-5 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Товары в поставке</h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-6">
+              {supplyItems.map((item, index) => (
+                <div key={item.id} className="border-2 border-dashed border-gray-200 rounded-lg p-5 bg-gray-50">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="font-semibold text-base text-gray-900">Товар {index + 1}</h3>
+                    {supplyItems.length > 1 && (
+                      <button
+                        onClick={() => removeSupplyItem(item.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Удалить товар"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
 
-        <div className="space-y-6">
-          {supplyItems.map((item, index) => (
-            <div key={item.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-lg">Товар {index + 1}</h3>
-                {supplyItems.length > 1 && (
-                  <button
-                    onClick={() => removeSupplyItem(item.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                    title="Удалить товар"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1">
-                    Товар <span className="text-red-500">*</span>
-                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Название товара <span className="text-red-500">*</span>
+                      </label>
                   <div className="relative" ref={el => productDropdownRefs.current[item.id] = el}>
-                    <div
-                      onClick={() => setProductDropdownOpen(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent cursor-pointer flex items-center justify-between bg-white"
-                    >
+                      <div
+                        onClick={() => setProductDropdownOpen(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 cursor-pointer flex items-center justify-between bg-white transition-colors hover:border-gray-400"
+                      >
                       <span className={item.product_id ? 'text-gray-900' : 'text-gray-500'}>
                         {item.product_id
                           ? products.find(p => p.id === parseInt(item.product_id))?.name || 'Выберите товар'
@@ -574,123 +578,125 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Количество банчей <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.batch_count}
-                    onChange={(e) => updateSupplyItem(item.id, 'batch_count', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    placeholder="10"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Количество банчей <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.batch_count}
+                        onChange={(e) => updateSupplyItem(item.id, 'batch_count', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        placeholder="0"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Штук в банче <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.pieces_per_batch}
-                    onChange={(e) => updateSupplyItem(item.id, 'pieces_per_batch', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    placeholder="20"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Штук в банче <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.pieces_per_batch}
+                        onChange={(e) => updateSupplyItem(item.id, 'pieces_per_batch', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        placeholder="0"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Цена банча (₽) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={item.batch_price}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                      const parts = value.split('.');
-                      const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                      updateSupplyItem(item.id, 'batch_price', cleanedValue);
-                    }}
-                    onBlur={(e) => {
-                      const numValue = parseFloat(e.target.value);
-                      if (!isNaN(numValue) && numValue > 0) {
-                        updateSupplyItem(item.id, 'batch_price', numValue.toFixed(2));
-                      }
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    placeholder="1800.00"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Цена банча (₽) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={item.batch_price}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                          const parts = value.split('.');
+                          const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                          updateSupplyItem(item.id, 'batch_price', cleanedValue);
+                        }}
+                        onBlur={(e) => {
+                          const numValue = parseFloat(e.target.value);
+                          if (!isNaN(numValue) && numValue > 0) {
+                            updateSupplyItem(item.id, 'batch_price', numValue.toFixed(2));
+                          }
+                        }}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        placeholder="0"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Цена за штуку (₽)
-                  </label>
-                  <input
-                    type="text"
-                    value={item.unit_price || ''}
-                    disabled
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Цена за штуку (₽)
+                      </label>
+                      <input
+                        type="text"
+                        value={item.unit_price || ''}
+                        disabled
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Количество штук
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Количество штук
+                      </label>
+                      <input
+                        type="text"
+                        value={item.total_pieces || ''}
+                        disabled
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Кнопка добавить товар внизу */}
+            <div className="mt-6">
+              <button
+                onClick={addSupplyItem}
+                className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg bg-white text-gray-700 hover:border-pink-500 hover:text-pink-600 hover:bg-pink-50 transition-colors flex items-center justify-center gap-2 font-medium"
+              >
+                <Plus className="w-5 h-5" />
+                Добавить товар
+              </button>
+            </div>
+          </div>
+        
+            {/* Итоговые суммы */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-lg border border-gray-200">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Ваша сумма
                   </label>
-                  <input
-                    type="text"
-                    value={item.total_pieces || ''}
-                    disabled
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                  />
+                  <p className="text-3xl font-bold text-gray-900">
+                    {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Количество всех банчей × цена банча + доставка
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-5 rounded-lg border border-pink-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Сумма по чеку
+                  </label>
+                  <p className="text-3xl font-bold text-pink-700">
+                    {((parseFloat(supplyForm.total_amount) || 0) + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
+                  </p>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Общая сумма (введенная) + доставка
+                  </p>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Кнопка добавить товар внизу */}
-        <div className="mt-6">
-          <button
-            onClick={addSupplyItem}
-            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Добавить товар
-          </button>
-        </div>
-        
-        {/* Итоговые суммы */}
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Ваша сумма
-              </label>
-              <p className="text-2xl font-bold">
-                {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Количество всех банчей × цена банча + доставка
-              </p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Сумма по чеку
-              </label>
-              <p className="text-2xl font-bold">
-                {((parseFloat(supplyForm.total_amount) || 0) + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Общая сумма (введенная) + доставка
-              </p>
-            </div>
             </div>
           </div>
         </div>
