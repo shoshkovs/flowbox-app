@@ -528,7 +528,7 @@ export function Warehouse({ authToken }) {
                                   <td className="py-2 px-4 text-sm">
                                     #{batch.supplyId || batch.id}
                                     {isCurrent && (
-                                      <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-medium">
+                                      <span className="ml-2 px-2 py-0.5 bg-pink-100 text-pink-700 text-xs rounded font-medium">
                                         Текущая
                                       </span>
                                     )}

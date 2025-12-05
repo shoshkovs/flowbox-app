@@ -54,10 +54,10 @@ export function WriteOffDialog({
           </p>
         </div>
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
+          <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-pink-600 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm text-blue-900">
+              <p className="text-sm text-pink-900">
                 Доступно для списания:{' '}
                 <span className="font-medium">{batchInfo.availableQuantity} шт</span>
               </p>
