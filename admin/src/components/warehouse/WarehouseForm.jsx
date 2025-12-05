@@ -669,8 +669,7 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                 Добавить товар
               </button>
             </div>
-          </div>
-        
+            
             {/* Итоговые суммы */}
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -699,6 +698,7 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
               </div>
             </div>
           </div>
+        </div>
 
           {/* Кнопки действий */}
           <div className="flex justify-end gap-4 mt-6">
