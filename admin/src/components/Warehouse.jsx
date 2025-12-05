@@ -410,6 +410,7 @@ export function Warehouse({ authToken }) {
                         {/* Остаток справа */}
                         <div className="flex items-center gap-4">
                           <div className="text-right">
+                            <div className="text-sm text-gray-500">Доступно {Math.floor(product.totalRemaining / (product.minOrderQuantity || 1))} заказов</div>
                             <div className="text-sm text-gray-500">Остаток</div>
                             <div className="text-xl font-semibold">{product.totalRemaining} шт</div>
                           </div>
