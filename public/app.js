@@ -649,12 +649,15 @@ async function loadUserData() {
             // Это предотвращает перезапись реальных бонусов нулем, если сервер вернул 0 после деплоя
             if (data.bonuses !== undefined && data.bonuses !== null) {
                 // Обновляем только если получили валидное значение
-                accumulatedBonuses = data.bonuses;
+                accumulatedBonuses = parseFloat(data.bonuses) || 0;
+                console.log('✅ Загружены бонусы с сервера:', accumulatedBonuses);
                 updateBonusesDisplay(); // Обновляем только отображение, БЕЗ сохранения на сервер
             } else {
                 // Если сервер не вернул бонусы, оставляем текущее значение в памяти
                 // и НЕ перезаписываем его нулем
                 console.log('⚠️ Сервер не вернул бонусы, оставляем текущее значение:', accumulatedBonuses);
+                // Но все равно обновляем отображение текущего значения
+                updateBonusesDisplay();
             }
             
             // Логируем только если есть что загружать
@@ -896,9 +899,11 @@ function switchTab(tabId) {
     // Скрыть все вкладки
     tabContents.forEach(tab => tab.classList.remove('active'));
     
-    // При переключении на профиль - обновляем заказы для актуальных статусов
+    // При переключении на профиль - обновляем заказы для актуальных статусов и бонусы
     if (tabId === 'profileTab') {
         refreshOrders();
+        // Обновляем отображение бонусов при открытии профиля
+        updateBonusesDisplay();
     }
     
     // Показать выбранную вкладку
@@ -2065,6 +2070,7 @@ function loadProfile() {
     }
     
     // Обновление бонусов внизу профиля
+    // Убеждаемся, что используем актуальное значение из accumulatedBonuses
     updateBonusesDisplay();
 }
 
