@@ -5724,9 +5724,11 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
     try {
       await client.query('BEGIN');
       
-      // Получаем все транзакции бонусов (включая начальные 500)
+      // Получаем все транзакции бонусов (исключая транзакции пересчета, чтобы избежать двойного учета)
       const transactionsResult = await client.query(
-        'SELECT type, amount FROM bonus_transactions WHERE user_id = $1',
+        `SELECT type, amount FROM bonus_transactions 
+         WHERE user_id = $1 
+         AND (description IS NULL OR description NOT LIKE '%Пересчет бонусов%')`,
         [userId]
       );
       
@@ -5773,20 +5775,12 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
         ordersUsed += parseFloat(order.bonus_used || 0);
       });
       
-      // Обновляем баланс в users только если он отличается
-      if (Math.abs(totalBalance - currentBalance) > 0.01) {
-        await client.query(
-          'UPDATE users SET bonuses = $1 WHERE id = $2',
-          [totalBalance, userId]
-        );
-        
-        // Создаем транзакцию для записи пересчета только если баланс изменился
-        await client.query(
-          `INSERT INTO bonus_transactions (user_id, type, amount, description)
-           VALUES ($1, 'adjustment', $2, $3)`,
-          [userId, totalBalance - currentBalance, `Пересчет бонусов. Было: ${currentBalance.toFixed(2)}, Стало: ${totalBalance.toFixed(2)}. Начальные: ${initialBonus}, Начислено из заказов: ${ordersEarned.toFixed(2)}, Списано: ${ordersUsed.toFixed(2)}, Корректировки менеджера: ${totalAdjustments.toFixed(2)}`]
-        );
-      }
+      // Обновляем баланс в users (кэш) из рассчитанного баланса транзакций
+      // НЕ создаем транзакцию пересчета, чтобы избежать бесконечного роста при повторных пересчетах
+      await client.query(
+        'UPDATE users SET bonuses = $1 WHERE id = $2',
+        [totalBalance, userId]
+      );
       
       await client.query('COMMIT');
       
