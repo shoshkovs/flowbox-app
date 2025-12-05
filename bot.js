@@ -5726,7 +5726,7 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
       
       // Получаем все транзакции бонусов (исключая транзакции пересчета, чтобы избежать двойного учета)
       const transactionsResult = await client.query(
-        `SELECT type, amount FROM bonus_transactions 
+        `SELECT type, amount, description FROM bonus_transactions 
          WHERE user_id = $1 
          AND (description IS NULL OR description NOT LIKE '%Пересчет бонусов%')`,
         [userId]
@@ -5755,9 +5755,10 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
         
         if (transaction.type === 'accrual') {
           totalEarned += amount;
-          // Проверяем, является ли это начальными бонусами
-          if (amount === 500) {
-            initialBonus = 500;
+          // Проверяем, является ли это начальными бонусами (по описанию или по сумме 500)
+          const description = transaction.description || '';
+          if (description.includes('Начальные бонусы при регистрации') || (amount === 500 && initialBonus === 0)) {
+            initialBonus = amount;
           }
         } else if (transaction.type === 'redeem') {
           totalUsed += Math.abs(amount);
