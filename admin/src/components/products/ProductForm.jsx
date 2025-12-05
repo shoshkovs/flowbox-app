@@ -7,7 +7,7 @@ import { MultiSelect } from '../MultiSelect';
 
 const API_BASE = window.location.origin;
 
-export function ProductForm({ authToken, productId }) {
+export function ProductForm({ authToken, productId, onClose, onSave }) {
   const navigate = useNavigate();
   const isEditMode = !!productId;
   
@@ -293,7 +293,11 @@ export function ProductForm({ authToken, productId }) {
 
       if (response.ok) {
         toast.success(isEditMode ? 'Товар обновлен' : 'Товар создан');
-        navigate('/products');
+        if (onSave) {
+          onSave();
+        } else {
+          navigate('/products');
+        }
       } else {
         const error = await response.json();
         toast.error(error.error || 'Ошибка сохранения товара');
@@ -315,7 +319,13 @@ export function ProductForm({ authToken, productId }) {
       {/* Заголовок */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => {
+            if (onClose) {
+              onClose();
+            } else {
+              navigate('/products');
+            }
+          }}
           className="p-2 hover:bg-gray-100 rounded-lg"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -522,7 +532,13 @@ export function ProductForm({ authToken, productId }) {
       {/* Кнопки действий */}
       <div className="flex justify-end gap-4">
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => {
+            if (onClose) {
+              onClose();
+            } else {
+              navigate('/products');
+            }
+          }}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           disabled={loading}
         >

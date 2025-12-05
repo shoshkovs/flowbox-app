@@ -3310,6 +3310,7 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
           p.id,
           p.name,
           p.image_url,
+          p.min_order_quantity,
           pc.name as category_name,
           c.name as color_name
         FROM products p
@@ -3406,6 +3407,7 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
           category: product.category_name || 'Без категории',
           color: product.color_name || 'Без цвета',
           image: product.image_url || '',
+          minOrderQuantity: product.min_order_quantity || 1,
           totalRemaining: totalRemaining,
           batches: batches
         };

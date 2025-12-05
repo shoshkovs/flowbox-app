@@ -5,10 +5,12 @@ import { CreatableSelect } from '../CreatableSelect';
 
 const API_BASE = window.location.origin;
 
-export function WarehouseForm({ authToken, onClose, onSave }) {
+export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(!!supplyId);
+  const isEditMode = !!supplyId;
   
   // Основные поля поставки
   const [supplyForm, setSupplyForm] = useState({
@@ -38,9 +40,15 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
   const productDropdownRefs = useRef({});
 
   useEffect(() => {
-    loadProducts();
-    loadSuppliers();
-  }, []);
+    const loadData = async () => {
+      await loadProducts();
+      await loadSuppliers();
+      if (isEditMode && supplyId) {
+        await loadSupply();
+      }
+    };
+    loadData();
+  }, [supplyId, isEditMode]);
 
   // Закрываем dropdown при клике вне его
   useEffect(() => {
@@ -88,6 +96,66 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
       }
     } catch (error) {
       console.error('Ошибка загрузки поставщиков:', error);
+    }
+  };
+
+  const loadSupply = async () => {
+    setLoadingData(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/supplies`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (response.ok) {
+        const supplies = await response.json();
+        const supply = supplies.find(s => s.id === supplyId);
+        if (supply) {
+          // Находим supplier_id по имени
+          let supplierId = null;
+          if (supply.supplierName) {
+            const supplier = suppliers.find(s => s.name === supply.supplierName);
+            if (supplier) {
+              supplierId = supplier.id;
+            }
+          }
+          
+          setSupplyForm({
+            delivery_date: supply.deliveryDate.split('T')[0],
+            supplier_id: supplierId || null,
+            total_amount: supply.totalAmount?.toString() || '',
+            delivery_price: supply.deliveryPrice?.toString() || '',
+            comment: supply.comment || '',
+          });
+          
+          // Преобразуем items в формат формы
+          const items = supply.items.map((item, index) => ({
+            id: index + 1,
+            product_id: item.productId.toString(),
+            batch_count: item.batchCount?.toString() || '',
+            pieces_per_batch: item.piecesPerBatch?.toString() || '',
+            batch_price: item.batchPrice?.toString() || '',
+            unit_price: item.unitPrice?.toString() || '',
+            total_pieces: item.totalPieces?.toString() || '',
+          }));
+          setSupplyItems(items.length > 0 ? items : [{
+            id: 1,
+            product_id: '',
+            batch_count: '',
+            pieces_per_batch: '',
+            batch_price: '',
+            unit_price: '',
+            total_pieces: '',
+          }]);
+        }
+      } else {
+        toast.error('Ошибка загрузки поставки');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки поставки:', error);
+      toast.error('Ошибка загрузки поставки');
+    } finally {
+      setLoadingData(false);
     }
   };
 
@@ -236,6 +304,12 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
       return;
     }
 
+    // Редактирование поставок пока не поддерживается
+    if (isEditMode) {
+      toast.error('Редактирование поставок пока не поддерживается. Удалите старую поставку и создайте новую.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/api/admin/supplies`, {
@@ -290,10 +364,20 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold">Добавить поставку</h1>
-          <p className="text-gray-600 mt-1">Регистрация новой поставки товара</p>
+          <h1 className="text-3xl font-bold">
+            {isEditMode ? 'Редактировать поставку' : 'Добавить поставку'}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {isEditMode ? 'Изменение данных поставки' : 'Регистрация новой поставки товара'}
+          </p>
         </div>
       </div>
+
+      {loadingData && (
+        <div className="p-6 text-center text-gray-500">Загрузка данных поставки...</div>
+      )}
+
+      {!loadingData && (
 
       {/* Основная информация о поставке */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -628,6 +712,7 @@ export function WarehouseForm({ authToken, onClose, onSave }) {
           {loading ? 'Сохранение...' : 'Сохранить поставку'}
         </button>
       </div>
+      )}
     </div>
   );
 }
