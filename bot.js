@@ -1448,18 +1448,26 @@ async function createOrderInDb(orderData) {
         const productId = item.id;
         const requestedQty = item.quantity || 0;
         
-        // Рассчитываем доступный остаток по движениям
+        // Рассчитываем доступный остаток: используем SUPPLY движения или supplies.quantity
         const stockResult = await client.query(
           `SELECT 
-            COALESCE(SUM(CASE WHEN type = 'SUPPLY' THEN quantity ELSE 0 END), 0) - 
-            COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) - 
-            COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as available
+            COALESCE(
+              -- Если есть SUPPLY движения, используем их
+              (SELECT SUM(quantity) FROM stock_movements WHERE product_id = $1 AND type = 'SUPPLY'),
+              -- Иначе используем сумму из supplies
+              (SELECT SUM(quantity) FROM supplies WHERE product_id = $1)
+            , 0) as supplied,
+            COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) as sold,
+            COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as written_off
           FROM stock_movements
           WHERE product_id = $1`,
           [productId]
         );
         
-        const available = parseInt(stockResult.rows[0]?.available || 0);
+        const supplied = parseInt(stockResult.rows[0]?.supplied || 0);
+        const sold = parseInt(stockResult.rows[0]?.sold || 0);
+        const writtenOff = parseInt(stockResult.rows[0]?.written_off || 0);
+        const available = Math.max(0, supplied - sold - writtenOff); // Не допускаем отрицательные остатки
         
         if (requestedQty > available) {
           await client.query('ROLLBACK');
