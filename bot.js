@@ -1448,26 +1448,35 @@ async function createOrderInDb(orderData) {
         const productId = item.id;
         const requestedQty = item.quantity || 0;
         
-        // Рассчитываем доступный остаток: используем SUPPLY движения или supplies.quantity
-        const stockResult = await client.query(
+        // Рассчитываем доступный остаток: используем ту же логику, что и в GET /api/admin/warehouse
+        // Считаем по каждой поставке отдельно, затем суммируем
+        const suppliesResult = await client.query(
           `SELECT 
+            s.id,
             COALESCE(
-              -- Если есть SUPPLY движения, используем их
-              (SELECT SUM(quantity) FROM stock_movements WHERE product_id = $1 AND type = 'SUPPLY'),
-              -- Иначе используем сумму из supplies
-              (SELECT SUM(quantity) FROM supplies WHERE product_id = $1)
-            , 0) as supplied,
-            COALESCE(SUM(CASE WHEN type = 'SALE' THEN quantity ELSE 0 END), 0) as sold,
-            COALESCE(SUM(CASE WHEN type = 'WRITE_OFF' THEN quantity ELSE 0 END), 0) as written_off
-          FROM stock_movements
-          WHERE product_id = $1`,
+              (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
+              s.quantity
+            ) as initial_quantity,
+            COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
+            COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off
+          FROM supplies s
+          LEFT JOIN stock_movements sm ON s.id = sm.supply_id
+          WHERE s.product_id = $1
+          GROUP BY s.id, s.quantity`,
           [productId]
         );
         
-        const supplied = parseInt(stockResult.rows[0]?.supplied || 0);
-        const sold = parseInt(stockResult.rows[0]?.sold || 0);
-        const writtenOff = parseInt(stockResult.rows[0]?.written_off || 0);
-        const available = Math.max(0, supplied - sold - writtenOff); // Не допускаем отрицательные остатки
+        // Суммируем остатки по всем поставкам
+        let totalAvailable = 0;
+        for (const supply of suppliesResult.rows) {
+          const initialQty = parseInt(supply.initial_quantity || 0);
+          const sold = parseInt(supply.sold || 0);
+          const writtenOff = parseInt(supply.written_off || 0);
+          const remaining = Math.max(0, initialQty - sold - writtenOff);
+          totalAvailable += remaining;
+        }
+        
+        const available = totalAvailable;
         
         if (requestedQty > available) {
           await client.query('ROLLBACK');
