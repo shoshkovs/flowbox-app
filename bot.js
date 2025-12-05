@@ -1490,10 +1490,14 @@ async function createOrderInDb(orderData) {
         );
         
         // FIFO логика: получаем все поставки с остатками, отсортированные по дате (старые первые)
+        // Используем SUPPLY движения для получения начального количества, если они есть
         const suppliesResult = await client.query(`
           SELECT 
             s.id as supply_id,
-            s.quantity as initial_quantity,
+            COALESCE(
+              (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
+              s.quantity
+            ) as initial_quantity,
             s.delivery_date,
             COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
             COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off
@@ -1501,7 +1505,14 @@ async function createOrderInDb(orderData) {
           LEFT JOIN stock_movements sm ON s.id = sm.supply_id
           WHERE s.product_id = $1
           GROUP BY s.id, s.quantity, s.delivery_date
-          HAVING (s.quantity - COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0)) > 0
+          HAVING (
+            COALESCE(
+              (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
+              s.quantity
+            ) - 
+            COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0)
+          ) > 0
           ORDER BY s.delivery_date ASC, s.id ASC
         `, [productId]);
         
