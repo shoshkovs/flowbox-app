@@ -232,6 +232,55 @@ export function Warehouse({ authToken }) {
         <div className="flex gap-3">
           <button
             onClick={async () => {
+              try {
+                const response = await fetch(`${API_BASE}/api/admin/warehouse/diagnostics`, {
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                  },
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log('📊 Диагностика склада:', data);
+                  
+                  // Выводим в консоль и показываем уведомление
+                  const negativeProducts = data.products.filter(p => p.stock < 0);
+                  const message = `Товаров: ${data.summary.totalProducts}, Поставок: ${data.summary.totalSupplies}, Отрицательных остатков: ${data.summary.productsWithNegativeStock}`;
+                  
+                  toast.success(message, {
+                    duration: 5000,
+                  });
+                  
+                  // Выводим детали в консоль
+                  console.table(data.products.map(p => ({
+                    'Товар': p.name,
+                    'Поставлено': p.supplied,
+                    'Продано': p.sold,
+                    'Списано': p.written_off,
+                    'Остаток': p.stock
+                  })));
+                  
+                  if (negativeProducts.length > 0) {
+                    console.warn('⚠️ Товары с отрицательными остатками:');
+                    console.table(negativeProducts.map(p => ({
+                      'Товар': p.name,
+                      'Остаток': p.stock
+                    })));
+                  }
+                } else {
+                  const error = await response.json();
+                  toast.error(error.error || 'Ошибка получения диагностики');
+                }
+              } catch (error) {
+                console.error('Ошибка получения диагностики:', error);
+                toast.error('Ошибка получения диагностики');
+              }
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            Показать диагностику
+          </button>
+          <button
+            onClick={async () => {
               if (!confirm('Исправить отрицательные остатки на складе? Это удалит лишние списания.')) {
                 return;
               }

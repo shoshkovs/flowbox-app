@@ -4192,6 +4192,117 @@ app.post('/api/admin/warehouse/fix-negative-stock', checkAdminAuth, async (req, 
   }
 });
 
+// Получить текущее состояние склада (диагностика)
+app.get('/api/admin/warehouse/diagnostics', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Получаем все товары с расчетом остатков
+      const productsResult = await client.query(`
+        SELECT 
+          p.id,
+          p.name,
+          COALESCE(
+            (SELECT SUM(quantity) FROM stock_movements WHERE product_id = p.id AND type = 'SUPPLY'),
+            (SELECT SUM(quantity) FROM supplies WHERE product_id = p.id)
+          , 0) as supplied,
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off,
+          COALESCE(
+            (SELECT SUM(quantity) FROM stock_movements WHERE product_id = p.id AND type = 'SUPPLY'),
+            (SELECT SUM(quantity) FROM supplies WHERE product_id = p.id)
+          , 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as stock
+        FROM products p
+        LEFT JOIN stock_movements sm ON p.id = sm.product_id
+        WHERE p.is_active = true
+        GROUP BY p.id, p.name
+        ORDER BY p.name
+      `);
+      
+      // Получаем все поставки
+      const suppliesResult = await client.query(`
+        SELECT 
+          s.id,
+          s.product_id,
+          p.name as product_name,
+          s.quantity,
+          s.delivery_date,
+          COALESCE(
+            (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
+            s.quantity
+          ) as initial_quantity,
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off,
+          COALESCE(
+            (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
+            s.quantity
+          ) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
+          COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as remaining
+        FROM supplies s
+        LEFT JOIN products p ON s.product_id = p.id
+        LEFT JOIN stock_movements sm ON s.id = sm.supply_id
+        WHERE s.product_id IS NOT NULL
+        GROUP BY s.id, s.product_id, p.name, s.quantity, s.delivery_date
+        ORDER BY s.delivery_date DESC, s.id DESC
+      `);
+      
+      // Получаем все движения по складу
+      const movementsResult = await client.query(`
+        SELECT 
+          sm.id,
+          sm.product_id,
+          p.name as product_name,
+          sm.type,
+          sm.quantity,
+          sm.supply_id,
+          sm.order_id,
+          sm.comment,
+          sm.created_at
+        FROM stock_movements sm
+        LEFT JOIN products p ON sm.product_id = p.id
+        ORDER BY sm.created_at DESC
+        LIMIT 100
+      `);
+      
+      // Статистика по типам движений
+      const movementsStatsResult = await client.query(`
+        SELECT 
+          type,
+          COUNT(*) as count,
+          SUM(quantity) as total_quantity
+        FROM stock_movements
+        GROUP BY type
+        ORDER BY type
+      `);
+      
+      res.json({
+        products: productsResult.rows,
+        supplies: suppliesResult.rows,
+        recentMovements: movementsResult.rows,
+        movementsStats: movementsStatsResult.rows,
+        summary: {
+          totalProducts: productsResult.rows.length,
+          totalSupplies: suppliesResult.rows.length,
+          productsWithNegativeStock: productsResult.rows.filter(p => p.stock < 0).length,
+          totalMovements: movementsStatsResult.rows.reduce((sum, row) => sum + parseInt(row.count || 0), 0)
+        }
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения диагностики:', error);
+    res.status(500).json({ error: 'Ошибка получения диагностики' });
+  }
+});
+
 // Удаление всех данных по гортензиям
 app.post('/api/admin/warehouse/delete-hydrangeas', checkAdminAuth, async (req, res) => {
   if (!pool) {
