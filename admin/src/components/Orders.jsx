@@ -303,11 +303,8 @@ export function Orders({ authToken }) {
 
   const loadOrders = async () => {
     try {
-      // Формируем URL с параметрами фильтрации по датам
+      // Формируем URL с параметрами фильтрации по датам (НЕ фильтруем по статусу на сервере)
       const params = new URLSearchParams();
-      if (filterStatus && filterStatus !== 'all') {
-        params.append('status', filterStatus);
-      }
       // Отправляем даты только если фильтр не "all"
       if (dateFilter !== 'all' && dateFrom) {
         params.append('dateFrom', dateFrom);
@@ -335,7 +332,8 @@ export function Orders({ authToken }) {
           // Фильтруем по статусу (приводим к верхнему регистру для сравнения)
           const filtered = allData.filter(order => {
             const orderStatus = (order.status || '').toUpperCase();
-            const filterStatusUpper = filterStatus.toUpperCase();
+            // Для 'processing' сравниваем с 'PROCESSING'
+            const filterStatusUpper = filterStatus === 'processing' ? 'PROCESSING' : filterStatus.toUpperCase();
             return orderStatus === filterStatusUpper;
           });
           setOrders(filtered);
@@ -466,10 +464,14 @@ export function Orders({ authToken }) {
           let count = 0;
           if (key === 'all') {
             count = allOrders.length;
-          } else if (key === 'processing') {
-            count = allOrders.filter(o => o.status === 'PROCESSING').length;
           } else {
-            count = allOrders.filter(o => o.status === key).length;
+            // Считаем заказы с соответствующим статусом (приводим к верхнему регистру)
+            count = allOrders.filter(o => {
+              const orderStatus = (o.status || '').toUpperCase();
+              // Для 'processing' сравниваем с 'PROCESSING'
+              const keyUpper = key === 'processing' ? 'PROCESSING' : key.toUpperCase();
+              return orderStatus === keyUpper;
+            }).length;
           }
           
           return (
