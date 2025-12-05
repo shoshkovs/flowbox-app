@@ -5823,6 +5823,71 @@ app.put('/api/admin/customers/:id/bonuses', checkAdminAuth, async (req, res) => 
   }
 });
 
+// API: Пересчитать бонусы по telegram_id
+app.post('/api/admin/customers/telegram/:telegramId/recalculate-bonuses', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { telegramId } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Находим пользователя по telegram_id
+      const userResult = await client.query(
+        'SELECT id FROM users WHERE telegram_id = $1',
+        [telegramId]
+      );
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Клиент не найден' });
+      }
+      
+      const userId = userResult.rows[0].id;
+      
+      await client.query('BEGIN');
+      
+      // Получаем все транзакции бонусов (исключая транзакции пересчета)
+      const transactionsResult = await client.query(
+        `SELECT type, amount, description FROM bonus_transactions 
+         WHERE user_id = $1 
+         AND (description IS NULL OR description NOT LIKE '%Пересчет бонусов%')`,
+        [userId]
+      );
+      
+      // Суммируем все транзакции
+      let totalBalance = 0;
+      transactionsResult.rows.forEach(transaction => {
+        const amount = parseFloat(transaction.amount || 0);
+        totalBalance += amount;
+      });
+      
+      // Обновляем баланс в users (кэш)
+      await client.query(
+        'UPDATE users SET bonuses = $1 WHERE id = $2',
+        [totalBalance, userId]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Получаем обновленный баланс
+      const updatedUserResult = await client.query('SELECT bonuses FROM users WHERE id = $1', [userId]);
+      const finalBalance = parseFloat(updatedUserResult.rows[0].bonuses || 0);
+      
+      res.json({ success: true, bonuses: finalBalance });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка пересчета бонусов:', error);
+    res.status(500).json({ error: 'Ошибка пересчета бонусов: ' + error.message });
+  }
+});
+
 // API: Пересчитать бонусы на основе истории заказов и транзакций
 app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (req, res) => {
   if (!pool) {
@@ -5927,6 +5992,45 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
   } catch (error) {
     console.error('Ошибка пересчета бонусов:', error);
     res.status(500).json({ error: 'Ошибка пересчета бонусов: ' + error.message });
+  }
+});
+
+// API: Обновить комментарий менеджера по telegram_id
+app.put('/api/admin/customers/telegram/:telegramId/manager-comment', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { telegramId } = req.params;
+  const { comment, manager_comment } = req.body;
+  const commentText = comment || manager_comment || null;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Находим пользователя по telegram_id
+      const userResult = await client.query(
+        'SELECT id FROM users WHERE telegram_id = $1',
+        [telegramId]
+      );
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Клиент не найден' });
+      }
+      
+      const userId = userResult.rows[0].id;
+      
+      await client.query(
+        'UPDATE users SET manager_comment = $1 WHERE id = $2',
+        [commentText || null, userId]
+      );
+      res.json({ success: true });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления комментария:', error);
+    res.status(500).json({ error: 'Ошибка обновления комментария: ' + error.message });
   }
 });
 
