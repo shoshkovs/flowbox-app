@@ -293,15 +293,15 @@ export function CustomerDetail({ customer, onClose, authToken }) {
             <div className="space-y-4">
               {/* Начальные бонусы - показываем перед первым заказом */}
               {initialBonusTransaction && (
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-blue-600 font-medium">Начальные бонусы</span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                        Регистрация
+                      <span className="text-blue-600 font-medium">Регистрация</span>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                        Начисление
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600">Начальные бонусы при регистрации</p>
+                    <p className="text-sm text-gray-600">Начислено {parseInt(initialBonusTransaction.amount || 0)} бонусов</p>
                     <div className="flex items-center gap-3 mt-1">
                       <p className="text-xs text-gray-400">
                         {new Date(initialBonusTransaction.created_at).toLocaleDateString('ru-RU')}
@@ -311,7 +311,7 @@ export function CustomerDetail({ customer, onClose, authToken }) {
                       </p>
                     </div>
                   </div>
-                  <p className="font-medium text-blue-600">+{parseInt(initialBonusTransaction.amount || 0)} ₽</p>
+                  <p className="font-medium text-green-600">+{parseInt(initialBonusTransaction.amount || 0)} ₽</p>
                 </div>
               )}
               
