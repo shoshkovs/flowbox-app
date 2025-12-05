@@ -481,12 +481,12 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
               rows={3}
               placeholder="Введите комментарий..."
             />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Товары в поставке */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        {/* Товары в поставке */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="mb-6">
           <h2 className="text-xl font-semibold">Товары в поставке</h2>
         </div>
@@ -709,9 +709,9 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
           disabled={loading}
           className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50"
         >
-          {loading ? 'Сохранение...' : 'Сохранить поставку'}
-        </button>
-      </div>
+            {loading ? 'Сохранение...' : 'Сохранить поставку'}
+          </button>
+        </div>
         </>
       )}
     </div>
