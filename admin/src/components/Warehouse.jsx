@@ -419,7 +419,7 @@ export function Warehouse({ authToken }) {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <div className="text-sm text-gray-500">
-                              Остаток <span className="text-gray-400">• Доступно {Math.floor(product.totalRemaining / (product.minOrderQuantity || 1))} заказов</span>
+                              Остаток <span className="text-gray-400">• Доступно {Math.floor(product.totalRemaining / Math.max(product.minOrderQuantity || 1, 1))} заказов</span>
                             </div>
                             <div className="text-xl font-semibold">{product.totalRemaining} шт</div>
                           </div>
