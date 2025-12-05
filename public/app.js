@@ -2097,14 +2097,17 @@ const accumulatedBonusesElement = document.getElementById('accumulatedBonuses');
 
 // Обновление отображения бонусов в корзине и профиле
 function updateBonusesDisplay() {
+    // Округляем бонусы до целого числа для отображения
+    const displayBonuses = Math.round(accumulatedBonuses);
+    
     // Обновляем в корзине (на кнопке списать баллы)
     if (accumulatedBonusesElement) {
-        accumulatedBonusesElement.textContent = accumulatedBonuses;
+        accumulatedBonusesElement.textContent = displayBonuses;
     }
     
     // Обновляем в профиле
     if (profileBonusesAmount) {
-        profileBonusesAmount.textContent = accumulatedBonuses;
+        profileBonusesAmount.textContent = displayBonuses;
     }
     
     // НЕ вызываем saveUserData() здесь!
