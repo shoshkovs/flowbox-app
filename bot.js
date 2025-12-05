@@ -1581,14 +1581,21 @@ async function createOrderInDb(orderData) {
           );
         }
         
-        // Обновляем баланс бонусов пользователя
+        // Обновляем баланс бонусов пользователя с проверкой на отрицательный баланс
+        const bonusEarned = parseFloat(orderData.bonusEarned || 0);
+        
+        // Вычисляем новый баланс (actualBonusUsed уже ограничен текущим балансом)
+        const newBalance = currentBonuses - actualBonusUsed + bonusEarned;
+        const finalBalance = Math.max(0, newBalance); // Гарантируем, что баланс не будет отрицательным
+        
+        // Обновляем баланс
         await client.query(
           `UPDATE users 
-           SET bonuses = bonuses - $1 + $2
-           WHERE id = $3`,
-          [orderData.bonusUsed || 0, orderData.bonusEarned || 0, userId]
+           SET bonuses = $1
+           WHERE id = $2`,
+          [finalBalance, userId]
         );
-        console.log('✅ Бонусы пользователя обновлены, транзакции созданы');
+        console.log(`✅ Бонусы пользователя обновлены: было ${currentBonuses}, списано ${actualBonusUsed}, начислено ${bonusEarned}, стало ${finalBalance}`);
       }
       
       // Создаем запись в order_status_history
