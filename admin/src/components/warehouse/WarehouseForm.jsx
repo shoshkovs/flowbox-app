@@ -712,6 +712,7 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
           {loading ? 'Сохранение...' : 'Сохранить поставку'}
         </button>
       </div>
+        </>
       )}
     </div>
   );
