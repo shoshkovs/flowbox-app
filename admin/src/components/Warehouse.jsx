@@ -373,6 +373,14 @@ export function Warehouse({ authToken }) {
                 );
                 const totalSold = product.batches.reduce((sum, b) => sum + b.sold, 0);
                 const totalWriteOff = product.batches.reduce((sum, b) => sum + b.writeOff, 0);
+                
+                // Находим supply для этого товара (берем первую партию и ищем поставку)
+                const firstBatch = product.batches.find(b => b.remaining > 0) || product.batches[0];
+                const relatedSupply = firstBatch ? supplies.find(s => {
+                  // Проверяем по supplyId из batch или по productId в items
+                  return s.id === parseInt(firstBatch.supplyId) || 
+                         s.items.some(item => item.productId === product.productId);
+                }) : null;
 
                 return (
                   <div
@@ -410,8 +418,9 @@ export function Warehouse({ authToken }) {
                         {/* Остаток справа */}
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <div className="text-sm text-gray-500">Доступно {Math.floor(product.totalRemaining / (product.minOrderQuantity || 1))} заказов</div>
-                            <div className="text-sm text-gray-500">Остаток</div>
+                            <div className="text-sm text-gray-500">
+                              Остаток <span className="text-gray-400">• Доступно {Math.floor(product.totalRemaining / (product.minOrderQuantity || 1))} заказов</span>
+                            </div>
                             <div className="text-xl font-semibold">{product.totalRemaining} шт</div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -419,9 +428,13 @@ export function Warehouse({ authToken }) {
                               className="p-2 hover:bg-gray-100 rounded"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setEditingProductId(product.productId);
+                                if (relatedSupply) {
+                                  setEditingSupplyId(relatedSupply.id);
+                                } else {
+                                  toast.error('Не найдена поставка для этого товара');
+                                }
                               }}
-                              title="Редактировать товар"
+                              title="Редактировать поставку"
                             >
                               <Edit className="w-5 h-5 text-gray-400" />
                             </button>
@@ -542,7 +555,7 @@ export function Warehouse({ authToken }) {
                                   <td className="py-2 px-4">
                                     <div className="flex items-center justify-end gap-2">
                                       <button
-                                        className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
+                                        className="h-7 w-7 p-1 border-2 border-red-500 text-red-500 hover:bg-red-50 rounded flex items-center justify-center"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setWriteOffDialog({
@@ -579,7 +592,7 @@ export function Warehouse({ authToken }) {
       {/* Контент вкладки Поставки */}
       {activeTab === 'supplies' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {supplies.map((supply) => {
               const isExpanded = expandedSupplies.has(supply.id);
               // Проверяем, закончились ли все товары в поставке
