@@ -379,10 +379,10 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
 
       {!loadingData && (
         <>
-      {/* Основная информация о поставке */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold mb-6">Информация о поставке</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Основная информация о поставке */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold mb-6">Информация о поставке</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">
               Дата поставки <span className="text-red-500">*</span>
@@ -691,12 +691,12 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                 Общая сумма (введенная) + доставка
               </p>
             </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Кнопки действий */}
-      <div className="flex justify-end gap-4">
+        {/* Кнопки действий */}
+        <div className="flex justify-end gap-4">
         <button
           onClick={onClose}
           disabled={loading}
