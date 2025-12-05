@@ -242,6 +242,30 @@ export function CustomerDetail({ customer, onClose, authToken }) {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold mb-4">История заказов</h2>
             <div className="space-y-4">
+              {/* Начальные бонусы - показываем перед первым заказом */}
+              {initialBonusTransaction && (
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-blue-600 font-medium">Начальные бонусы</span>
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                        Регистрация
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">Начальные бонусы при регистрации</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-xs text-gray-400">
+                        {new Date(initialBonusTransaction.created_at).toLocaleDateString('ru-RU')}
+                      </p>
+                      <p className="text-xs text-green-600 font-medium">
+                        +{parseInt(initialBonusTransaction.amount || 0)} ₽ бонусов
+                      </p>
+                    </div>
+                  </div>
+                  <p className="font-medium text-blue-600">+{parseInt(initialBonusTransaction.amount || 0)} ₽</p>
+                </div>
+              )}
+              
               {orders.length > 0 ? (
                 orders.map((order) => {
                   const statusText = {
