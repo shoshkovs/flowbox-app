@@ -4079,6 +4079,81 @@ app.delete('/api/admin/supplies/:id', checkAdminAuth, async (req, res) => {
   }
 });
 
+// Удаление всех данных по гортензиям
+app.post('/api/admin/warehouse/delete-hydrangeas', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Находим все ID гортензий
+      const productsResult = await client.query(
+        `SELECT id FROM products 
+         WHERE LOWER(name) LIKE '%гортензия%' OR LOWER(name) LIKE '%hydrangea%'`
+      );
+      
+      if (productsResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.json({ success: true, message: 'Гортензии не найдены', deleted: 0 });
+      }
+      
+      const hydrangeaIds = productsResult.rows.map(row => row.id);
+      
+      // Удаляем движения по складу
+      await client.query(
+        'DELETE FROM stock_movements WHERE product_id = ANY($1)',
+        [hydrangeaIds]
+      );
+      
+      // Удаляем товары из заказов
+      await client.query(
+        'DELETE FROM order_items WHERE product_id = ANY($1)',
+        [hydrangeaIds]
+      );
+      
+      // Удаляем товары из supply_items
+      await client.query(
+        'DELETE FROM supply_items WHERE product_id = ANY($1)',
+        [hydrangeaIds]
+      );
+      
+      // Удаляем поставки
+      await client.query(
+        'DELETE FROM supplies WHERE product_id = ANY($1)',
+        [hydrangeaIds]
+      );
+      
+      // Удаляем сами товары
+      await client.query(
+        'DELETE FROM products WHERE id = ANY($1)',
+        [hydrangeaIds]
+      );
+      
+      await client.query('COMMIT');
+      
+      console.log(`✅ Удалены гортензии: ${hydrangeaIds.length} товаров`);
+      res.json({ 
+        success: true, 
+        message: `Успешно удалено ${hydrangeaIds.length} гортензий и все связанные данные`,
+        deleted: hydrangeaIds.length
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Ошибка удаления гортензий:', error);
+      res.status(500).json({ error: error.message || 'Ошибка удаления гортензий' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка подключения к БД:', error);
+    res.status(500).json({ error: 'Ошибка подключения к базе данных' });
+  }
+});
+
 // Очистка всех поставок и активных заказов (для тестирования)
 app.post('/api/admin/warehouse/clear-all', checkAdminAuth, async (req, res) => {
   if (!pool) {
