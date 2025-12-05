@@ -378,7 +378,7 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
       )}
 
       {!loadingData && (
-
+        <></>
       {/* Основная информация о поставке */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-xl font-semibold mb-6">Информация о поставке</h2>
