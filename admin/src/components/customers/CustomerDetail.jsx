@@ -160,6 +160,7 @@ export function CustomerDetail({ customer, onClose, authToken }) {
   const bonusBalance = customerData.bonuses || customer.bonuses || 0;
   const orders = customerData.orders || [];
   const addresses = customerData.addresses || [];
+  const initialBonusTransaction = customerData.initialBonusTransaction || null;
 
   // Форматируем адреса
   const formattedAddresses = addresses.map(addr => {

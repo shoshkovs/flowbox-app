@@ -5606,6 +5606,19 @@ app.get('/api/admin/customers/:id', checkAdminAuth, async (req, res) => {
       const stats = ordersStatsResult.rows[0];
       const avgCheck = stats.orders_count > 0 ? Math.round(stats.total_spent / stats.orders_count) : 0;
       
+      // Получаем начальную транзакцию бонусов (500)
+      const initialBonusResult = await client.query(
+        `SELECT id, amount, created_at, description
+         FROM bonus_transactions
+         WHERE user_id = $1 
+         AND type = 'accrual'
+         AND (description LIKE '%Начальные бонусы при регистрации%' OR (amount = 500 AND description IS NULL))
+         ORDER BY created_at ASC
+         LIMIT 1`,
+        [userId]
+      );
+      const initialBonusTransaction = initialBonusResult.rows[0] || null;
+
       // Получаем историю заказов
       const ordersResult = await client.query(
         `SELECT 
@@ -5646,7 +5659,8 @@ app.get('/api/admin/customers/:id', checkAdminAuth, async (req, res) => {
           lastOrderDate: stats.last_order_date
         },
         orders: ordersResult.rows,
-        addresses: addressesResult.rows
+        addresses: addressesResult.rows,
+        initialBonusTransaction: initialBonusTransaction
       });
     } finally {
       client.release();
