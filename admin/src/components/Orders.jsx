@@ -331,12 +331,13 @@ export function Orders({ authToken }) {
         // Фильтруем локально по статусу
         if (filterStatus === 'all') {
           setOrders(allData);
-        } else if (filterStatus === 'processing') {
-          // "В обработке" включает только PROCESSING
-          const filtered = allData.filter(order => order.status === 'PROCESSING');
-          setOrders(filtered);
         } else {
-          const filtered = allData.filter(order => order.status === filterStatus);
+          // Фильтруем по статусу (приводим к верхнему регистру для сравнения)
+          const filtered = allData.filter(order => {
+            const orderStatus = (order.status || '').toUpperCase();
+            const filterStatusUpper = filterStatus.toUpperCase();
+            return orderStatus === filterStatusUpper;
+          });
           setOrders(filtered);
         }
       }
