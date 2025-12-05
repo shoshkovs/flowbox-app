@@ -1040,6 +1040,14 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
             500 // Начальные бонусы
           ]
         );
+        
+        // Создаем транзакцию для начальных бонусов
+        const newUser = result.rows[0];
+        await client.query(
+          `INSERT INTO bonus_transactions (user_id, type, amount, description)
+           VALUES ($1, 'accrual', $2, $3)`,
+          [newUser.id, 500, 'Начальные бонусы при регистрации']
+        );
       } else {
         // Обновляем данные пользователя, если они изменились или если username отсутствует
         const user = result.rows[0];
@@ -5652,7 +5660,7 @@ app.put('/api/admin/customers/:id/bonuses', checkAdminAuth, async (req, res) => 
   }
 });
 
-// API: Пересчитать бонусы на основе истории заказов
+// API: Пересчитать бонусы на основе истории заказов и транзакций
 app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
@@ -5670,35 +5678,60 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
     try {
       await client.query('BEGIN');
       
-      // Получаем все заказы пользователя
+      // Получаем все транзакции бонусов (включая начальные 500)
+      const transactionsResult = await client.query(
+        'SELECT type, amount FROM bonus_transactions WHERE user_id = $1',
+        [userId]
+      );
+      
+      // Получаем все заказы пользователя (для информации)
       const ordersResult = await client.query(
         'SELECT bonus_earned, bonus_used FROM orders WHERE user_id = $1',
         [userId]
       );
       
-      // Суммируем все начисления и списания
+      // Суммируем все транзакции
+      let totalBalance = 0;
       let totalEarned = 0;
       let totalUsed = 0;
+      let initialBonus = 0;
       
-      ordersResult.rows.forEach(order => {
-        totalEarned += parseFloat(order.bonus_earned || 0);
-        totalUsed += parseFloat(order.bonus_used || 0);
+      transactionsResult.rows.forEach(transaction => {
+        const amount = parseFloat(transaction.amount || 0);
+        totalBalance += amount;
+        
+        if (transaction.type === 'accrual') {
+          totalEarned += amount;
+          // Проверяем, является ли это начальными бонусами
+          if (amount === 500) {
+            initialBonus = 500;
+          }
+        } else if (transaction.type === 'redeem') {
+          totalUsed += Math.abs(amount);
+        } else if (transaction.type === 'adjustment') {
+          // Корректировки учитываем как есть
+        }
       });
       
-      // Вычисляем итоговый баланс
-      const calculatedBalance = totalEarned - totalUsed;
+      // Также суммируем из заказов для информации
+      let ordersEarned = 0;
+      let ordersUsed = 0;
+      ordersResult.rows.forEach(order => {
+        ordersEarned += parseFloat(order.bonus_earned || 0);
+        ordersUsed += parseFloat(order.bonus_used || 0);
+      });
       
       // Обновляем баланс в users
       await client.query(
         'UPDATE users SET bonuses = $1 WHERE id = $2',
-        [calculatedBalance, userId]
+        [totalBalance, userId]
       );
       
       // Создаем транзакцию для записи пересчета
       await client.query(
         `INSERT INTO bonus_transactions (user_id, type, amount, description)
          VALUES ($1, 'adjustment', $2, $3)`,
-        [userId, calculatedBalance, `Пересчет бонусов на основе истории заказов. Начислено: ${totalEarned.toFixed(2)}, Списано: ${totalUsed.toFixed(2)}`]
+        [userId, totalBalance, `Пересчет бонусов. Начальные: ${initialBonus}, Начислено из заказов: ${ordersEarned.toFixed(2)}, Списано: ${ordersUsed.toFixed(2)}, Итого: ${totalBalance.toFixed(2)}`]
       );
       
       await client.query('COMMIT');
@@ -5708,9 +5741,12 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
       res.json({ 
         success: true, 
         bonuses: userResult.rows[0].bonuses,
-        totalEarned,
-        totalUsed,
-        calculatedBalance
+        totalEarned: totalEarned,
+        totalUsed: totalUsed,
+        initialBonus: initialBonus,
+        ordersEarned: ordersEarned,
+        ordersUsed: ordersUsed,
+        calculatedBalance: totalBalance
       });
     } catch (error) {
       await client.query('ROLLBACK');
