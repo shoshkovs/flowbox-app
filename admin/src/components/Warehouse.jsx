@@ -118,6 +118,24 @@ export function Warehouse({ authToken }) {
     (product) => product.totalRemaining > 0 && product.totalRemaining < 30
   ).length;
 
+  const filteredSupplies = useMemo(() => {
+    return supplies.filter((supply) => {
+      // Filter by ID
+      if (searchId && !supply.id.toString().includes(searchId)) {
+        return false;
+      }
+      // Filter by date range
+      const supplyDate = new Date(supply.deliveryDate);
+      if (startDate && supplyDate < new Date(startDate)) {
+        return false;
+      }
+      if (endDate && supplyDate > new Date(endDate)) {
+        return false;
+      }
+      return true;
+    });
+  }, [supplies, searchId, startDate, endDate]);
+
   const toggleProduct = (productId) => {
     const newExpanded = new Set(expandedProducts);
     if (newExpanded.has(productId)) {
