@@ -1010,6 +1010,49 @@ function getDefaultProducts() {
 
 // ==================== РАБОТА С БАЗОЙ ДАННЫХ ====================
 
+// Получить баланс бонусов пользователя из транзакций (единственный источник правды)
+async function getUserBonusBalance(userId) {
+  if (!pool) return 0;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT COALESCE(SUM(amount), 0) AS balance
+         FROM bonus_transactions
+         WHERE user_id = $1`,
+        [userId]
+      );
+      return parseFloat(result.rows[0]?.balance || 0);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения баланса бонусов:', error);
+    return 0;
+  }
+}
+
+// Обновить кэш баланса бонусов в users.bonuses
+async function updateUserBonusCache(userId) {
+  if (!pool) return;
+  
+  try {
+    const balance = await getUserBonusBalance(userId);
+    const client = await pool.connect();
+    try {
+      await client.query(
+        'UPDATE users SET bonuses = $1 WHERE id = $2',
+        [balance, userId]
+      );
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления кэша бонусов:', error);
+  }
+}
+
 // Получить или создать пользователя в БД
 async function getOrCreateUser(telegramId, telegramUser = null, profile = null) {
   if (!pool) return null;
@@ -1024,10 +1067,10 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
       );
       
       if (result.rows.length === 0) {
-        // Создаем нового пользователя
+        // Создаем нового пользователя БЕЗ bonuses (он будет рассчитан из транзакций)
         result = await client.query(
-          `INSERT INTO users (telegram_id, username, first_name, last_name, phone, email, bonuses)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `INSERT INTO users (telegram_id, username, first_name, last_name, phone, email)
+           VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING *`,
           [
             telegramId,
@@ -1036,18 +1079,20 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
             telegramUser?.last_name || null,
             // Приоритет: номер из профиля > номер из Telegram > null
             profile?.phone || telegramUser?.phone_number || null,
-            profile?.email || null,
-            500 // Начальные бонусы
+            profile?.email || null
           ]
         );
         
-        // Создаем транзакцию для начальных бонусов
+        // Создаем транзакцию для начальных бонусов (единственный источник правды)
         const newUser = result.rows[0];
         await client.query(
           `INSERT INTO bonus_transactions (user_id, type, amount, description)
            VALUES ($1, 'accrual', $2, $3)`,
           [newUser.id, 500, 'Начальные бонусы при регистрации']
         );
+        
+        // Обновляем кэш баланса из транзакций
+        await updateUserBonusCache(newUser.id);
       } else {
         // Обновляем данные пользователя, если они изменились или если username отсутствует
         const user = result.rows[0];
@@ -1378,7 +1423,34 @@ async function createOrderInDb(orderData) {
         deliveryZone = 'До 20 км от КАД';
       }
       
-      // Создаем заказ
+      // Рассчитываем правильные значения бонусов ДО создания заказа
+      let bonusUsed = 0;
+      let bonusEarned = 0;
+      let newBonusBalance = null;
+      
+      if (userId) {
+        // 1. Узнаём текущий баланс из транзакций (единственный источник правды)
+        const currentBalance = await getUserBonusBalance(userId);
+        
+        // 2. Сумма цветов (без доставки и сборов)
+        const flowersTotal = parseFloat(orderData.flowersTotal || 0);
+        
+        // 3. Сколько пользователь ХОЧЕТ списать (из фронта)
+        const requestedRedeem = Math.max(0, parseInt(orderData.bonusUsed) || 0);
+        
+        // 4. Реальное списание: не больше баланса и не больше суммы цветов
+        bonusUsed = Math.min(requestedRedeem, currentBalance, flowersTotal);
+        
+        // 5. Сколько начислить: если списывали - не начисляем, если нет - начисляем 1%
+        bonusEarned = bonusUsed > 0 
+          ? 0                                      // если списывали — не начисляем
+          : Math.floor(flowersTotal * 0.01);       // если нет — начисляем 1%
+      }
+      
+      // Пересчитываем итоговую сумму с учетом реального списания бонусов
+      const finalTotal = orderData.flowersTotal + (orderData.serviceFee || 450) + (orderData.deliveryPrice || 0) - bonusUsed;
+      
+      // Создаем заказ с правильными значениями бонусов
       const orderResult = await client.query(
         `INSERT INTO orders 
          (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
@@ -1391,12 +1463,12 @@ async function createOrderInDb(orderData) {
          RETURNING *`,
         [
           userId,
-          orderData.total,
+          finalTotal,
           orderData.flowersTotal,
           orderData.serviceFee || 450,
           orderData.deliveryPrice || 0,
-          orderData.bonusUsed || 0,
-          orderData.bonusEarned || 0,
+          bonusUsed,
+          bonusEarned,
           clientName,
           clientPhone,
           clientEmail,
@@ -1561,41 +1633,32 @@ async function createOrderInDb(orderData) {
       }
       console.log('✅ Позиции заказа добавлены и движения созданы, количество:', orderData.items?.length || 0);
       
-      // Обновляем бонусы пользователя и создаем транзакции
+      // Создаем транзакции бонусов и обновляем кэш
       if (userId) {
-        // Списание бонусов (если использованы)
-        if (orderData.bonusUsed > 0) {
+        // Создаем транзакции (bonusUsed и bonusEarned уже рассчитаны выше)
+        if (bonusUsed > 0) {
           await client.query(
             `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
              VALUES ($1, $2, 'redeem', -$3, $4)`,
-            [userId, order.id, orderData.bonusUsed, `Списание бонусов за заказ #${order.id}`]
+            [userId, order.id, bonusUsed, `Списание бонусов за заказ #${order.id}`]
           );
         }
         
-        // Начисление бонусов (если начислены)
-        if (orderData.bonusEarned > 0) {
+        if (bonusEarned > 0) {
           await client.query(
             `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
              VALUES ($1, $2, 'accrual', $3, $4)`,
-            [userId, order.id, orderData.bonusEarned, `Начисление бонусов за заказ #${order.id}`]
+            [userId, order.id, bonusEarned, `Начисление бонусов за заказ #${order.id}`]
           );
         }
         
-        // Обновляем баланс бонусов пользователя с проверкой на отрицательный баланс
-        const bonusEarned = parseFloat(orderData.bonusEarned || 0);
+        // Обновляем кэш users.bonuses из транзакций
+        await updateUserBonusCache(userId);
         
-        // Вычисляем новый баланс (actualBonusUsed уже ограничен текущим балансом)
-        const newBalance = currentBonuses - actualBonusUsed + bonusEarned;
-        const finalBalance = Math.max(0, newBalance); // Гарантируем, что баланс не будет отрицательным
+        // Получаем новый баланс для возврата фронту
+        newBonusBalance = await getUserBonusBalance(userId);
         
-        // Обновляем баланс
-        await client.query(
-          `UPDATE users 
-           SET bonuses = $1
-           WHERE id = $2`,
-          [finalBalance, userId]
-        );
-        console.log(`✅ Бонусы пользователя обновлены: было ${currentBonuses}, списано ${actualBonusUsed}, начислено ${bonusEarned}, стало ${finalBalance}`);
+        console.log(`✅ Бонусы обновлены: использовано=${bonusUsed}, начислено=${bonusEarned}, новый баланс=${newBonusBalance}`);
       }
       
       // Создаем запись в order_status_history
@@ -1616,7 +1679,8 @@ async function createOrderInDb(orderData) {
       
       return {
         orderId: order.id,
-        telegramOrderId: Date.now() // Для совместимости с фронтендом
+        telegramOrderId: Date.now(), // Для совместимости с фронтендом
+        bonuses: newBonusBalance !== null ? newBonusBalance : undefined // Новый баланс бонусов
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -1813,45 +1877,13 @@ app.post('/api/user-data', async (req, res) => {
         }
       }
       
-      // Обновляем бонусы ТОЛЬКО если они явно переданы и не равны undefined
-      // КРИТИЧНО: Не перезаписываем существующие бонусы нулем, если пользователь уже имеет ненулевой баланс
-      // Это предотвращает потерю бонусов после деплоя, когда фронт может отправить 0
-      if (bonuses !== undefined && bonuses !== null) {
-        const client = await pool.connect();
-        try {
-          // Проверяем текущие бонусы в БД перед обновлением
-          const currentBonuses = await client.query(
-            'SELECT bonuses FROM users WHERE id = $1',
-            [user.id]
-          );
-          
-          const currentBonusValue = currentBonuses.rows[0]?.bonuses;
-          
-          // КРИТИЧЕСКАЯ ЗАЩИТА: Не перезаписываем существующие ненулевые бонусы нулем
-          // Это может произойти, если фронт после деплоя получил 0 и пытается сохранить его обратно
-          if (bonuses === 0 && currentBonusValue !== null && currentBonusValue !== undefined && currentBonusValue > 0) {
-            console.log(`⚠️ ПРЕДОТВРАЩЕНА перезапись бонусов пользователя ${userId}: было ${currentBonusValue}, пытались записать 0`);
-            // Не обновляем бонусы, оставляем существующее значение
-          } else if (currentBonusValue === null || currentBonusValue === undefined || currentBonusValue !== bonuses) {
-            // Обновляем только если:
-            // 1. Текущее значение NULL (первая инициализация)
-            // 2. Переданное значение отличается от текущего И не является нулем при ненулевом текущем значении
-            await client.query(
-              'UPDATE users SET bonuses = $1 WHERE id = $2',
-              [bonuses, user.id]
-            );
-            console.log(`✅ Обновлены бонусы пользователя ${userId}: ${currentBonusValue || 0} → ${bonuses}`);
-          }
-        } finally {
-          client.release();
-        }
-      }
+      // Бонусы больше НЕ сохраняются из фронта - они управляются только через транзакции на бэке
+      // Фронт только читает баланс, но никогда не пишет его обратно
       
-      // Логируем только при значительных изменениях (новые адреса, заказы, изменения бонусов)
+      // Логируем только при значительных изменениях (новые адреса, заказы)
       const hasSignificantChanges = 
         (addresses !== undefined && addresses.length > 0) ||
-        (activeOrders !== undefined && activeOrders.length > 0) ||
-        (bonuses !== undefined);
+        (activeOrders !== undefined && activeOrders.length > 0);
       
       if (hasSignificantChanges) {
         console.log(`💾 Сохранены данные для пользователя ${userId} (БД): адресов=${addresses?.length || 0}, заказов=${activeOrders?.length || 0}, бонусов=${bonuses || 0}`);
@@ -1927,8 +1959,8 @@ app.post('/api/user-data/:userId', async (req, res) => {
         },
         activeOrders: activeOrders,
         completedOrders: completedOrders,
-        // Используем реальные бонусы из БД, если они есть, иначе 0 (не 500!)
-        bonuses: user.bonuses !== null && user.bonuses !== undefined ? user.bonuses : 0
+        // Баланс из транзакций (единственный источник правды)
+        bonuses: await getUserBonusBalance(user.id)
       };
       
       // Логируем загрузку данных только если есть что загружать
@@ -2006,8 +2038,8 @@ app.get('/api/user-data/:userId', async (req, res) => {
         },
         activeOrders: activeOrders,
         completedOrders: completedOrders,
-        // Используем реальные бонусы из БД, если они есть, иначе 0 (не 500!)
-        bonuses: user.bonuses !== null && user.bonuses !== undefined ? user.bonuses : 0
+        // Баланс из транзакций (единственный источник правды)
+        bonuses: await getUserBonusBalance(user.id)
       };
       
       // Логируем загрузку данных только если есть что загружать

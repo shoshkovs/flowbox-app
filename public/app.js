@@ -547,8 +547,8 @@ async function saveUserData() {
                 addresses: savedAddresses,
                 profile: profileData,
                 activeOrders: userActiveOrders,
-                completedOrders: userCompletedOrders,
-                bonuses: accumulatedBonuses
+                completedOrders: userCompletedOrders
+                // bonuses больше НЕ отправляем - они управляются только через транзакции на бэке
             })
         });
         
@@ -1860,8 +1860,11 @@ async function validateAndSubmitOrder(e) {
                 // Не критично, продолжаем обработку заказа
             }
             
-            // Обновление бонусов: списываем использованные и начисляем новые
-            accumulatedBonuses = accumulatedBonuses - bonusUsed + bonusEarned;
+            // Обновление бонусов: используем баланс из ответа сервера (единственный источник правды)
+            if (result.bonuses !== undefined && result.bonuses !== null) {
+                accumulatedBonuses = parseFloat(result.bonuses) || 0;
+                console.log('✅ Обновлен баланс бонусов из ответа сервера:', accumulatedBonuses);
+            }
             // Обновляем отображение бонусов (только UI, без сохранения)
             updateBonusesDisplay();
             
