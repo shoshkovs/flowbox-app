@@ -716,11 +716,11 @@ export function Warehouse({ authToken }) {
       {writeOffDialog && (
         <WriteOffDialog
           open={writeOffDialog.open}
-          productId={writeOffDialog.productId}
-          batchId={writeOffDialog.batchId}
-          productName={writeOffDialog.productName}
-          batchNumber={writeOffDialog.batchNumber}
-          availableQuantity={writeOffDialog.availableQuantity}
+          batchInfo={{
+            productName: writeOffDialog.productName,
+            batchNumber: writeOffDialog.batchNumber || `#${writeOffDialog.batchId}`,
+            availableQuantity: writeOffDialog.availableQuantity,
+          }}
           onClose={() => setWriteOffDialog(null)}
           onConfirm={(data) => {
             handleWriteOff(writeOffDialog.productId, writeOffDialog.batchId, data);
