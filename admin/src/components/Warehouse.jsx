@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Minus, Truck, ShoppingCart, DollarSign, XCircle } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Minus, Truck, ShoppingCart, DollarSign, XCircle, Search, Calendar } from 'lucide-react';
 import { WarehouseForm } from './warehouse/WarehouseForm';
 import { WriteOffDialog } from './warehouse/WriteOffDialog';
 import { ProductForm } from './products/ProductForm';
@@ -22,6 +22,9 @@ export function Warehouse({ authToken }) {
   const [writeOffDialog, setWriteOffDialog] = useState(null);
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingSupplyId, setEditingSupplyId] = useState(null);
+  const [searchId, setSearchId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     if (activeTab === 'products') {
@@ -556,135 +559,182 @@ export function Warehouse({ authToken }) {
 
       {/* Контент вкладки Поставки */}
       {activeTab === 'supplies' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="grid grid-cols-1 gap-4">
-            {supplies.map((supply) => {
-              const isExpanded = expandedSupplies.has(supply.id);
-              // Проверяем, закончились ли все товары в поставке
-              const allExhausted = supply.items.every(item => item.remaining === 0);
-              
-              return (
-                <div
-                  key={supply.id}
-                  className={`border rounded-lg overflow-hidden transition-all ${
-                    allExhausted 
-                      ? 'bg-gray-200 border-gray-300 opacity-60' 
-                      : 'bg-white border-gray-200 hover:shadow-md'
-                  }`}
-                >
-                  {/* Заголовок карточки */}
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Search by ID */}
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Поиск по ID</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchId}
+                    onChange={(e) => setSearchId(e.target.value)}
+                    placeholder="Введите ID поставки"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              {/* Start Date */}
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Дата от</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              {/* End Date */}
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Дата до</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Results count */}
+            {(searchId || startDate || endDate) && (
+              <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-500">
+                Найдено поставок: {filteredSupplies.length}
+              </div>
+            )}
+          </div>
+
+          {/* Supplies List */}
+          <div className="space-y-4">
+            {filteredSupplies.length > 0 ? (
+              filteredSupplies.map((supply) => {
+                const isExpanded = expandedSupplies.has(supply.id);
+                const allExhausted = supply.items.every(item => item.remaining === 0);
+                const totalQuantity = supply.items.reduce((sum, item) => sum + item.totalPieces, 0);
+                const totalSold = supply.items.reduce((sum, item) => sum + item.sold, 0);
+                const totalWrittenOff = supply.items.reduce((sum, item) => sum + item.writeOff, 0);
+                const totalRemaining = supply.items.reduce((sum, item) => sum + item.remaining, 0);
+                
+                return (
                   <div
-                    className="p-4 cursor-pointer"
-                    onClick={() => toggleSupply(supply.id)}
+                    key={supply.id}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-sm font-semibold text-gray-600">
-                            #{supply.id}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {new Date(supply.deliveryDate).toLocaleDateString('ru-RU')}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {supply.supplierName || 'Не указан'}
-                            </div>
-                          </div>
+                    {/* Header */}
+                    <div
+                      className="p-5 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleSupply(supply.id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Truck className="w-6 h-6 text-pink-600" />
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="text-gray-900">Поставка #{supply.id}</h3>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-sm text-gray-500">{supply.supplierName || 'Не указан'}</span>
+                          </div>
+                          <p className="text-sm text-gray-400">
+                            {new Date(supply.deliveryDate).toLocaleDateString('ru-RU', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-gray-900 mb-1">{supply.totalAmount.toLocaleString('ru-RU')} ₽</div>
+                          <div className="text-sm text-gray-400">{supply.items.length} товаров</div>
+                        </div>
                         <button
-                          className="p-1.5 hover:bg-gray-100 rounded"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingSupplyId(supply.id);
                           }}
+                          className="p-2 hover:bg-pink-50 rounded-lg transition-colors"
                           title="Редактировать поставку"
                         >
-                          <Edit className="w-4 h-4 text-gray-400" />
+                          <Edit className="w-4 h-4 text-gray-400 hover:text-pink-600" />
                         </button>
-                        <button className="p-1.5 hover:bg-gray-100 rounded">
+                        <div className="ml-2">
                           {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-gray-400" />
+                            <ChevronUp className="w-5 h-5 text-gray-400" />
                           ) : (
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                            <ChevronDown className="w-5 h-5 text-gray-400" />
                           )}
-                        </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right mt-2">
-                      <div className="text-lg font-semibold text-gray-900">
-                        {supply.totalAmount.toLocaleString()} ₽
-                      </div>
-                      <div className="text-xs text-gray-500">Общая стоимость</div>
-                    </div>
-                  </div>
 
-                  {/* Развернутый список товаров */}
-                  {isExpanded && supply.items.length > 0 && (
-                    <div className="border-t border-gray-200 bg-gray-50">
-                      <table className="w-full">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">
-                              Товар
-                            </th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
-                              Штук
-                            </th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
-                              Продано
-                            </th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
-                              Списано
-                            </th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
-                              Остаток
-                            </th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
-                              Цена
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {supply.items.map((item) => {
-                            const isExhausted = item.remaining === 0;
-                            return (
-                              <tr
-                                key={item.id}
-                                className={`border-b border-gray-200 ${
-                                  isExhausted ? 'bg-gray-300 opacity-50' : 'bg-white'
-                                }`}
-                              >
-                                <td className="py-2 px-3 text-xs font-medium">
-                                  {item.productName}
-                                </td>
-                                <td className="py-2 px-3 text-right text-xs">
-                                  {item.totalPieces}
-                                </td>
-                                <td className="py-2 px-3 text-right text-xs">
-                                  {item.sold}
-                                </td>
-                                <td className="py-2 px-3 text-right text-xs">
-                                  {item.writeOff}
-                                </td>
-                                <td className="py-2 px-3 text-right text-xs font-medium">
-                                  {item.remaining}
-                                </td>
-                                <td className="py-2 px-3 text-right text-xs">
-                                  {item.unitPrice.toFixed(2)} ₽
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-100">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="px-5 py-3 text-left text-xs text-gray-500">Товар</th>
+                                <th className="px-5 py-3 text-right text-xs text-gray-500">Штук</th>
+                                <th className="px-5 py-3 text-right text-xs text-gray-500">Продано</th>
+                                <th className="px-5 py-3 text-right text-xs text-gray-500">Списано</th>
+                                <th className="px-5 py-3 text-right text-xs text-gray-500">Остаток</th>
+                                <th className="px-5 py-3 text-right text-xs text-gray-500">Цена</th>
+                                <th className="px-5 py-3 text-right text-xs text-gray-500">Общая стоимость</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {supply.items.map((item, index) => (
+                                <tr key={index} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                  <td className="px-5 py-4 text-sm text-gray-900">{item.productName}</td>
+                                  <td className="px-5 py-4 text-sm text-gray-900 text-right">{item.totalPieces}</td>
+                                  <td className="px-5 py-4 text-sm text-gray-900 text-right">{item.sold}</td>
+                                  <td className="px-5 py-4 text-sm text-gray-900 text-right">{item.writeOff}</td>
+                                  <td className="px-5 py-4 text-sm text-right">
+                                    <span className={item.remaining === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                                      {item.remaining}
+                                    </span>
+                                  </td>
+                                  <td className="px-5 py-4 text-sm text-gray-900 text-right">{item.unitPrice.toFixed(2)} ₽</td>
+                                  <td className="px-5 py-4 text-sm text-gray-900 text-right">
+                                    {(item.unitPrice * item.totalPieces).toLocaleString('ru-RU')} ₽
+                                  </td>
+                                </tr>
+                              ))}
+                              {/* Total Row */}
+                              <tr className="bg-gray-50">
+                                <td className="px-5 py-4 text-sm text-gray-900">Итого</td>
+                                <td className="px-5 py-4 text-sm text-gray-900 text-right">{totalQuantity}</td>
+                                <td className="px-5 py-4 text-sm text-gray-900 text-right">{totalSold}</td>
+                                <td className="px-5 py-4 text-sm text-gray-900 text-right">{totalWrittenOff}</td>
+                                <td className="px-5 py-4 text-sm text-gray-900 text-right">{totalRemaining}</td>
+                                <td className="px-5 py-4"></td>
+                                <td className="px-5 py-4 text-sm text-gray-900 text-right">
+                                  {supply.totalAmount.toLocaleString('ru-RU')} ₽
                                 </td>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
+                <p className="text-gray-500">Поставки не найдены</p>
+                <p className="text-sm text-gray-400 mt-2">Попробуйте изменить параметры поиска</p>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -5564,6 +5564,109 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Получить клиента по telegram_id
+app.get('/api/admin/customers/telegram/:telegramId', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { telegramId } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Получаем данные клиента по telegram_id
+      const userResult = await client.query(
+        'SELECT * FROM users WHERE telegram_id = $1',
+        [telegramId]
+      );
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Клиент не найден' });
+      }
+      
+      const user = userResult.rows[0];
+      const userId = user.id;
+      
+      // Получаем статистику по заказам
+      const ordersStatsResult = await client.query(
+        `SELECT 
+          COUNT(*) FILTER (WHERE status != 'CANCELED') as orders_count,
+          COALESCE(SUM(total) FILTER (WHERE status != 'CANCELED'), 0) as total_spent,
+          MAX(created_at) FILTER (WHERE status != 'CANCELED') as last_order_date
+        FROM orders
+        WHERE user_id = $1`,
+        [userId]
+      );
+      
+      const stats = ordersStatsResult.rows[0];
+      const avgCheck = stats.orders_count > 0 ? Math.round(stats.total_spent / stats.orders_count) : 0;
+      
+      // Получаем начальную транзакцию бонусов (500)
+      const initialBonusResult = await client.query(
+        `SELECT id, amount, created_at, description
+         FROM bonus_transactions
+         WHERE user_id = $1 
+         AND type = 'accrual'
+         AND (description LIKE '%Начальные бонусы при регистрации%' OR (amount = 500 AND description IS NULL))
+         ORDER BY created_at ASC
+         LIMIT 1`,
+        [userId]
+      );
+      const initialBonusTransaction = initialBonusResult.rows[0] || null;
+
+      // Получаем историю заказов
+      const ordersResult = await client.query(
+        `SELECT 
+          o.id,
+          o.status,
+          o.total,
+          o.bonus_earned,
+          o.bonus_used,
+          o.created_at,
+          json_agg(
+            json_build_object(
+              'id', oi.id,
+              'name', oi.name,
+              'quantity', oi.quantity,
+              'price', oi.price
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.user_id = $1
+        GROUP BY o.id, o.status, o.total, o.bonus_earned, o.bonus_used, o.created_at
+        ORDER BY o.created_at DESC`,
+        [userId]
+      );
+      
+      // Получаем адреса
+      const addressesResult = await client.query(
+        'SELECT * FROM addresses WHERE user_id = $1 ORDER BY created_at DESC',
+        [userId]
+      );
+      
+      res.json({
+        ...user,
+        stats: {
+          ordersCount: parseInt(stats.orders_count || 0),
+          totalSpent: parseInt(stats.total_spent || 0),
+          avgCheck,
+          lastOrderDate: stats.last_order_date
+        },
+        orders: ordersResult.rows,
+        addresses: addressesResult.rows,
+        initialBonusTransaction: initialBonusTransaction
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения клиента:', error);
+    res.status(500).json({ error: 'Ошибка получения клиента: ' + error.message });
+  }
+});
+
 // API: Получить клиента по ID
 app.get('/api/admin/customers/:id', checkAdminAuth, async (req, res) => {
   if (!pool) {

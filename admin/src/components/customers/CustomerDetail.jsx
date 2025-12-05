@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
-export function CustomerDetail({ customer, onClose, authToken }) {
+export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   const navigate = useNavigate();
   const [customerData, setCustomerData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,15 +16,23 @@ export function CustomerDetail({ customer, onClose, authToken }) {
   const [isAdjustingBonuses, setIsAdjustingBonuses] = useState(false);
   const [recalculatingBonuses, setRecalculatingBonuses] = useState(false);
 
+  // Определяем ID клиента: либо из customer, либо из customerId (telegram_id)
+  const clientId = customer?.id || customerId;
+
   useEffect(() => {
-    if (customer?.id) {
+    if (clientId) {
       loadCustomerDetail();
     }
-  }, [customer?.id]);
+  }, [clientId]);
 
   const loadCustomerDetail = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}`, {
+      // Если customerId - это telegram_id, используем его напрямую
+      const url = customerId 
+        ? `${API_BASE}/api/admin/customers/telegram/${customerId}`
+        : `${API_BASE}/api/admin/customers/${clientId}`;
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -52,7 +60,10 @@ export function CustomerDetail({ customer, onClose, authToken }) {
 
     setRecalculatingBonuses(true);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}/recalculate-bonuses`, {
+      const url = customerId 
+        ? `${API_BASE}/api/admin/customers/telegram/${customerId}/recalculate-bonuses`
+        : `${API_BASE}/api/admin/customers/${clientId}/recalculate-bonuses`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -88,7 +99,10 @@ export function CustomerDetail({ customer, onClose, authToken }) {
 
     setIsAdjustingBonuses(true);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}/bonuses`, {
+      const url = customerId 
+        ? `${API_BASE}/api/admin/customers/telegram/${customerId}/bonuses`
+        : `${API_BASE}/api/admin/customers/${clientId}/bonuses`;
+      const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -117,7 +131,10 @@ export function CustomerDetail({ customer, onClose, authToken }) {
   const handleSaveComment = async () => {
     setIsSavingComment(true);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/customers/${customer.id}/manager-comment`, {
+      const url = customerId 
+        ? `${API_BASE}/api/admin/customers/telegram/${customerId}/manager-comment`
+        : `${API_BASE}/api/admin/customers/${clientId}/manager-comment`;
+      const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,

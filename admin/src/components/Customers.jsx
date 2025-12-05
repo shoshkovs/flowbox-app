@@ -320,7 +320,13 @@ export function Customers({ authToken }) {
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => setSelectedCustomer(customer)}
+                        onClick={() => {
+                          if (customer.telegram_id) {
+                            navigate(`/admin/customers/${customer.telegram_id}`);
+                          } else {
+                            setSelectedCustomer(customer);
+                          }
+                        }}
                         className="p-2 hover:bg-gray-100 rounded text-gray-600"
                         title="Просмотреть детали"
                       >
