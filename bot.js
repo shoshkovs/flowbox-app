@@ -2137,11 +2137,18 @@ app.post('/api/orders', async (req, res) => {
         //   );
         // }
         
-        // Возвращаем явный успешный ответ
-        res.status(200).json({ 
+        // Возвращаем явный успешный ответ с новым балансом бонусов
+        const responseData = { 
           success: true, 
           orderId: result.orderId 
-        });
+        };
+        
+        // Добавляем новый баланс бонусов, если он был рассчитан
+        if (result.bonuses !== undefined) {
+          responseData.bonuses = result.bonuses;
+        }
+        
+        res.status(200).json(responseData);
       } else {
         console.error('❌ createOrderInDb вернул null или не содержит orderId');
         throw new Error('Не удалось создать заказ в БД');
