@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Trash2 } from 'lucide-react';
 import { WarehouseForm } from './warehouse/WarehouseForm';
 import { WriteOffDialog } from './warehouse/WriteOffDialog';
 import { toast } from 'sonner';
@@ -13,7 +13,6 @@ export function Warehouse({ authToken }) {
   const [showForm, setShowForm] = useState(false);
   const [expandedProducts, setExpandedProducts] = useState(new Set());
   const [expandedSupplies, setExpandedSupplies] = useState(new Set());
-  const [hiddenItems, setHiddenItems] = useState(new Set()); // Скрытые товары в поставках
   const [showOnlyInStock, setShowOnlyInStock] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [warehouseProducts, setWarehouseProducts] = useState([]);
