@@ -383,7 +383,7 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold mb-6">Информация о поставке</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+            <div>
             <label className="block text-sm font-medium mb-1">
               Дата поставки <span className="text-red-500">*</span>
             </label>
@@ -410,8 +410,8 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                 <Calendar className="w-5 h-5" />
               </button>
             </div>
-          </div>
-          <div>
+            </div>
+            <div>
             <CreatableSelect
               value={supplyForm.supplier_id}
               onChange={(id) => setSupplyForm({ ...supplyForm, supplier_id: id })}
@@ -421,8 +421,8 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
               label="Поставщик"
               required
             />
-          </div>
-          <div>
+            </div>
+            <div>
             <label className="block text-sm font-medium mb-1">
               Общая сумма (₽)
             </label>
@@ -445,8 +445,8 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
               placeholder="0.00"
             />
-          </div>
-          <div>
+            </div>
+            <div>
             <label className="block text-sm font-medium mb-1">
               Цена доставки (₽)
             </label>
@@ -469,8 +469,8 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
               placeholder="0.00"
             />
-          </div>
-          <div className="md:col-span-2">
+            </div>
+            <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">
               Комментарий
             </label>
@@ -482,7 +482,7 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
               placeholder="Введите комментарий..."
             />
             </div>
-          </div>
+            </div>
         </div>
 
         {/* Товары в поставке */}
