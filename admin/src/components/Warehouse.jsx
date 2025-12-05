@@ -128,15 +128,6 @@ export function Warehouse({ authToken }) {
     setExpandedSupplies(newExpanded);
   };
 
-  const toggleItemVisibility = (itemId) => {
-    const newHidden = new Set(hiddenItems);
-    if (newHidden.has(itemId)) {
-      newHidden.delete(itemId);
-    } else {
-      newHidden.add(itemId);
-    }
-    setHiddenItems(newHidden);
-  };
 
   const getCurrentBatchId = (batches) => {
     // FIFO logic - find oldest batch with remaining > 0 (sorted by delivery_date ASC)
