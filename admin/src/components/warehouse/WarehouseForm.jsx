@@ -356,22 +356,13 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
   return (
     <div className="space-y-6">
       {/* Заголовок с кнопкой назад */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-lg"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold">
-            {isEditMode ? 'Редактировать поставку' : 'Добавить поставку'}
-          </h1>
-          <p className="text-gray-600 mt-1">
-            {isEditMode ? 'Изменение данных поставки' : 'Регистрация новой поставки товара'}
-          </p>
-        </div>
-      </div>
+      <button
+        onClick={onClose}
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Назад к поставкам
+      </button>
 
       {loadingData && (
         <div className="p-6 text-center text-gray-500">Загрузка данных поставки...</div>
@@ -380,12 +371,10 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
       {!loadingData && (
         <>
           {/* Основная информация о поставке */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Информация о поставке</h2>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-gray-900 mb-6">Информация о поставке</h2>
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Дата поставки <span className="text-red-500">*</span>
@@ -395,23 +384,10 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                       type="date"
                       value={supplyForm.delivery_date}
                       onChange={(e) => setSupplyForm({ ...supplyForm, delivery_date: e.target.value })}
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
-                      style={{ WebkitAppearance: 'none' }}
+                      className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      required
                     />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const input = e.target.closest('.relative').querySelector('input[type="date"]');
-                        if (input) {
-                          input.showPicker?.();
-                          input.focus();
-                        }
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 pointer-events-auto transition-colors"
-                    >
-                      <Calendar className="w-5 h-5" />
-                    </button>
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
                 <div>
@@ -426,63 +402,33 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Общая сумма (₽)
-                  </label>
+                  <label className="block text-sm text-gray-700 mb-2">Общая сумма</label>
                   <input
-                    type="text"
-                    inputMode="decimal"
+                    type="number"
                     value={supplyForm.total_amount}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                      const parts = value.split('.');
-                      const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                      setSupplyForm({ ...supplyForm, total_amount: cleanedValue });
-                    }}
-                    onBlur={(e) => {
-                      const numValue = parseFloat(e.target.value);
-                      if (!isNaN(numValue) && numValue >= 0) {
-                        setSupplyForm({ ...supplyForm, total_amount: numValue.toFixed(2) });
-                      }
-                    }}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
-                    placeholder="0.00"
+                    onChange={(e) => setSupplyForm({ ...supplyForm, total_amount: e.target.value })}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Цена доставки (₽)
-                  </label>
+                  <label className="block text-sm text-gray-700 mb-2">Цена доставки</label>
                   <input
-                    type="text"
-                    inputMode="decimal"
+                    type="number"
                     value={supplyForm.delivery_price}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                      const parts = value.split('.');
-                      const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                      setSupplyForm({ ...supplyForm, delivery_price: cleanedValue });
-                    }}
-                    onBlur={(e) => {
-                      const numValue = parseFloat(e.target.value);
-                      if (!isNaN(numValue) && numValue >= 0) {
-                        setSupplyForm({ ...supplyForm, delivery_price: numValue.toFixed(2) });
-                      }
-                    }}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
-                    placeholder="0.00"
+                    onChange={(e) => setSupplyForm({ ...supplyForm, delivery_price: e.target.value })}
+                    placeholder="0"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Комментарий
-                  </label>
+                  <label className="block text-sm text-gray-700 mb-2">Комментарий</label>
                   <textarea
                     value={supplyForm.comment}
                     onChange={(e) => setSupplyForm({ ...supplyForm, comment: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors resize-none"
-                    rows={3}
                     placeholder="Дополнительная информация о поставке"
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
                   />
                 </div>
               </div>
@@ -490,28 +436,25 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
           </div>
 
         {/* Товары в поставке */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="px-6 py-5 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Товары в поставке</h2>
-          </div>
-          <div className="p-6">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-gray-900 mb-6">Товары в поставке</h2>
+            <div>
             <div className="space-y-6">
               {supplyItems.map((item, index) => (
-                <div key={item.id} className="border-2 border-dashed border-gray-200 rounded-lg p-5 bg-gray-50">
-                  <div className="flex items-center justify-between mb-5">
-                    <h3 className="font-semibold text-base text-gray-900">Товар {index + 1}</h3>
+                <div key={item.id} className="p-5 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="text-sm text-gray-500">Товар {index + 1}</span>
                     {supplyItems.length > 1 && (
                       <button
+                        type="button"
                         onClick={() => removeSupplyItem(item.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Удалить товар"
+                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4 text-red-500" />
                       </button>
                     )}
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Название товара <span className="text-red-500">*</span>
@@ -579,79 +522,54 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                 </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Количество банчей <span className="text-red-500">*</span>
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-2">Количество банчей</label>
                       <input
                         type="number"
-                        min="1"
                         value={item.batch_count}
                         onChange={(e) => updateSupplyItem(item.id, 'batch_count', e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
                         placeholder="0"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        required
                       />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Штук в банче <span className="text-red-500">*</span>
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-2">Штук в банче</label>
                       <input
                         type="number"
-                        min="1"
                         value={item.pieces_per_batch}
                         onChange={(e) => updateSupplyItem(item.id, 'pieces_per_batch', e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
                         placeholder="0"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        required
                       />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Цена банча (₽) <span className="text-red-500">*</span>
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-2">Цена банча</label>
                       <input
-                        type="text"
-                        inputMode="decimal"
+                        type="number"
                         value={item.batch_price}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-                          const parts = value.split('.');
-                          const cleanedValue = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                          updateSupplyItem(item.id, 'batch_price', cleanedValue);
-                        }}
-                        onBlur={(e) => {
-                          const numValue = parseFloat(e.target.value);
-                          if (!isNaN(numValue) && numValue > 0) {
-                            updateSupplyItem(item.id, 'batch_price', numValue.toFixed(2));
-                          }
-                        }}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+                        onChange={(e) => updateSupplyItem(item.id, 'batch_price', e.target.value)}
                         placeholder="0"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        required
                       />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Цена за штуку (₽)
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-2">Цена за штуку</label>
                       <input
                         type="text"
                         value={item.unit_price || ''}
-                        disabled
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                        readOnly
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-100 text-gray-600"
                       />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Количество штук
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-2">Количество штук</label>
                       <input
                         type="text"
                         value={item.total_pieces || ''}
-                        disabled
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                        readOnly
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-100 text-gray-600"
                       />
                     </div>
                   </div>
@@ -662,57 +580,50 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
             {/* Кнопка добавить товар внизу */}
             <div className="mt-6">
               <button
+                type="button"
                 onClick={addSupplyItem}
-                className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg bg-white text-gray-700 hover:border-pink-500 hover:text-pink-600 hover:bg-pink-50 transition-colors flex items-center justify-center gap-2 font-medium"
+                className="mt-4 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-600 hover:border-pink-300 hover:text-pink-600 hover:bg-pink-50/50 transition-colors flex items-center justify-center gap-2"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 Добавить товар
               </button>
             </div>
             
-            {/* Итоговые суммы */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-lg border border-gray-200">
-                  <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Ваша сумма
-                  </label>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Количество всех банчей × цена банча + доставка
-                  </p>
-                </div>
-                <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-5 rounded-lg border border-pink-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Сумма по чеку
-                  </label>
-                  <p className="text-3xl font-bold text-pink-700">
-                    {((parseFloat(supplyForm.total_amount) || 0) + (parseFloat(supplyForm.delivery_price) || 0)).toFixed(2)} ₽
-                  </p>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Общая сумма (введенная) + доставка
-                  </p>
-                </div>
-              </div>
+          </div>
+        </div>
+
+        {/* Summary Blocks */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+            <div className="text-sm text-gray-600 mb-2">Ваша сумма</div>
+            <div className="text-gray-900 mb-2 text-2xl">
+              {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
             </div>
+            <div className="text-xs text-gray-500">Количество всех банчей × цена банча + доставка</div>
+          </div>
+          <div className="bg-pink-50 rounded-xl p-6 border border-pink-100">
+            <div className="text-sm text-pink-900 mb-2">Сумма по чеку</div>
+            <div className="text-pink-900 mb-2 text-2xl">
+              {((parseFloat(supplyForm.total_amount) || 0) + (parseFloat(supplyForm.delivery_price) || 0)).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
+            </div>
+            <div className="text-xs text-pink-700">Общая сумма (введенная) + доставка</div>
           </div>
         </div>
 
           {/* Кнопки действий */}
-          <div className="flex justify-end gap-4 mt-6">
+          <div className="flex gap-4">
             <button
+              type="button"
               onClick={onClose}
-              disabled={loading}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
             >
               Отменить
             </button>
             <button
+              type="button"
               onClick={handleSaveSupply}
               disabled={loading}
-              className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50 transition-colors"
+              className="flex-1 px-6 py-3 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors shadow-sm disabled:opacity-50"
             >
               {loading ? 'Сохранение...' : 'Сохранить поставку'}
             </button>

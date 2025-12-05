@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 
 export function WriteOffDialog({
   open,
@@ -38,37 +38,40 @@ export function WriteOffDialog({
 
   if (!open) return null;
 
+  const isValid = parseInt(quantity) > 0 && parseInt(quantity) <= batchInfo.availableQuantity && comment.trim().length > 0;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 relative">
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded transition-colors"
-        >
-          <X className="w-5 h-5 text-gray-600" />
-        </button>
-        <div className="mb-4">
-          <h2 className="text-xl font-bold pr-8">Списание товара</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {batchInfo.productName} • Поставка {batchInfo.batchNumber}
-          </p>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-gray-900 mb-1">Списание товара</h2>
+            <p className="text-sm text-gray-500">{batchInfo.productName} — Поставка {batchInfo.batchNumber}</p>
+          </div>
+          <button
+            onClick={handleClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-400" />
+          </button>
         </div>
-        <div className="space-y-4">
-          <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-pink-600 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm text-pink-900">
-                Доступно для списания:{' '}
-                <span className="font-medium">{batchInfo.availableQuantity} шт</span>
-              </p>
+        {/* Content */}
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="p-6 space-y-5">
+          {/* Available Info */}
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-amber-900 mb-1">Доступно к списанию</p>
+              <p className="text-amber-900">{batchInfo.availableQuantity} шт</p>
             </div>
           </div>
+          {/* Amount Input */}
           <div>
-            <label htmlFor="quantity" className="block text-sm font-medium mb-2">
-              Количество для списания *
+            <label className="block text-sm text-gray-700 mb-2">
+              Количество для списания
             </label>
             <input
-              id="quantity"
               type="number"
               min="1"
               max={batchInfo.availableQuantity}
@@ -78,48 +81,43 @@ export function WriteOffDialog({
                 setError('');
               }}
               placeholder="Введите количество"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mt-2"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              required
             />
             {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
           </div>
+          {/* Reason Input */}
           <div>
-            <label htmlFor="comment" className="block text-sm font-medium mb-2">
+            <label className="block text-sm text-gray-700 mb-2">
               Причина списания
             </label>
             <textarea
-              id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Например: брак, испорчен, просрочен..."
+              placeholder="Укажите причину списания"
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent mt-2"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+              required
             />
           </div>
-          {quantity && parseInt(quantity) > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p className="text-sm text-orange-900">
-                После списания останется:{' '}
-                <span className="font-medium">
-                  {batchInfo.availableQuantity - parseInt(quantity)} шт
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Отмена
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Списать
-          </button>
-        </div>
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={!isValid}
+              className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Списать
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
