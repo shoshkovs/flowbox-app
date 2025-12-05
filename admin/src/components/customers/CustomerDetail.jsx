@@ -60,7 +60,10 @@ export function CustomerDetail({ customer, onClose, authToken }) {
 
       if (response.ok) {
         const data = await response.json();
-        toast.success(`Бонусы пересчитаны. Новый баланс: ${data.bonuses.toLocaleString()} ₽`);
+        const message = data.previousBalance !== undefined && Math.abs(data.bonuses - data.previousBalance) > 0.01
+          ? `Бонусы пересчитаны. Было: ${data.previousBalance.toLocaleString()} ₽, Стало: ${data.bonuses.toLocaleString()} ₽`
+          : `Бонусы пересчитаны. Баланс: ${data.bonuses.toLocaleString()} ₽ (без изменений)`;
+        toast.success(message);
         await loadCustomerDetail();
       } else {
         const error = await response.json();

@@ -5690,10 +5690,15 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
         [userId]
       );
       
+      // Получаем текущий баланс из users
+      const currentUserResult = await client.query('SELECT bonuses FROM users WHERE id = $1', [userId]);
+      const currentBalance = parseFloat(currentUserResult.rows[0]?.bonuses || 0);
+      
       // Суммируем все транзакции
       let totalBalance = 0;
       let totalEarned = 0;
       let totalUsed = 0;
+      let totalAdjustments = 0;
       let initialBonus = 0;
       
       transactionsResult.rows.forEach(transaction => {
@@ -5709,7 +5714,8 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
         } else if (transaction.type === 'redeem') {
           totalUsed += Math.abs(amount);
         } else if (transaction.type === 'adjustment') {
-          // Корректировки учитываем как есть
+          // Корректировки менеджера учитываем как есть
+          totalAdjustments += amount;
         }
       });
       
@@ -5721,18 +5727,20 @@ app.post('/api/admin/customers/:id/recalculate-bonuses', checkAdminAuth, async (
         ordersUsed += parseFloat(order.bonus_used || 0);
       });
       
-      // Обновляем баланс в users
-      await client.query(
-        'UPDATE users SET bonuses = $1 WHERE id = $2',
-        [totalBalance, userId]
-      );
-      
-      // Создаем транзакцию для записи пересчета
-      await client.query(
-        `INSERT INTO bonus_transactions (user_id, type, amount, description)
-         VALUES ($1, 'adjustment', $2, $3)`,
-        [userId, totalBalance, `Пересчет бонусов. Начальные: ${initialBonus}, Начислено из заказов: ${ordersEarned.toFixed(2)}, Списано: ${ordersUsed.toFixed(2)}, Итого: ${totalBalance.toFixed(2)}`]
-      );
+      // Обновляем баланс в users только если он отличается
+      if (Math.abs(totalBalance - currentBalance) > 0.01) {
+        await client.query(
+          'UPDATE users SET bonuses = $1 WHERE id = $2',
+          [totalBalance, userId]
+        );
+        
+        // Создаем транзакцию для записи пересчета только если баланс изменился
+        await client.query(
+          `INSERT INTO bonus_transactions (user_id, type, amount, description)
+           VALUES ($1, 'adjustment', $2, $3)`,
+          [userId, totalBalance - currentBalance, `Пересчет бонусов. Было: ${currentBalance.toFixed(2)}, Стало: ${totalBalance.toFixed(2)}. Начальные: ${initialBonus}, Начислено из заказов: ${ordersEarned.toFixed(2)}, Списано: ${ordersUsed.toFixed(2)}, Корректировки менеджера: ${totalAdjustments.toFixed(2)}`]
+        );
+      }
       
       await client.query('COMMIT');
       
