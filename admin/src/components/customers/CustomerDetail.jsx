@@ -221,6 +221,8 @@ export function CustomerDetail({ customer, onClose, authToken }) {
                     ? order.items.map(item => `${item.name} ${item.quantity} шт`).join(', ')
                     : 'Товары не указаны';
 
+                  const bonusEarned = parseInt(order.bonus_earned || 0);
+                  
                   return (
                     <div
                       key={order.id}
@@ -234,9 +236,16 @@ export function CustomerDetail({ customer, onClose, authToken }) {
                           </span>
                         </div>
                         <p className="text-sm text-gray-600">{itemsText}</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(order.created_at).toLocaleDateString('ru-RU')}
-                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-gray-400">
+                            {new Date(order.created_at).toLocaleDateString('ru-RU')}
+                          </p>
+                          {bonusEarned > 0 && (
+                            <p className="text-xs text-green-600 font-medium">
+                              +{bonusEarned} ₽ бонусов
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <p className="font-medium">{parseInt(order.total || 0).toLocaleString()} ₽</p>
                     </div>
