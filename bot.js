@@ -5774,6 +5774,66 @@ app.get('/api/admin/customers/:id', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Обновить бонусы клиента по telegram_id
+app.put('/api/admin/customers/telegram/:telegramId/bonuses', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { telegramId } = req.params;
+  const { amount, description } = req.body;
+  
+  if (amount === undefined) {
+    return res.status(400).json({ error: 'Неверные параметры' });
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Находим пользователя по telegram_id
+      const userResult = await client.query(
+        'SELECT id FROM users WHERE telegram_id = $1',
+        [telegramId]
+      );
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Клиент не найден' });
+      }
+      
+      const userId = userResult.rows[0].id;
+      
+      await client.query('BEGIN');
+      
+      // Обновляем бонусы
+      await client.query(
+        'UPDATE users SET bonuses = bonuses + $1 WHERE id = $2',
+        [amount, userId]
+      );
+      
+      // Создаем транзакцию
+      await client.query(
+        `INSERT INTO bonus_transactions (user_id, type, amount, description)
+         VALUES ($1, 'adjustment', $2, $3)`,
+        [userId, amount, description || `Корректировка бонусов администратором`]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Получаем обновленные данные
+      const updatedUserResult = await client.query('SELECT bonuses FROM users WHERE id = $1', [userId]);
+      res.json({ success: true, bonuses: updatedUserResult.rows[0].bonuses });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка обновления бонусов:', error);
+    res.status(500).json({ error: 'Ошибка обновления бонусов: ' + error.message });
+  }
+});
+
 // API: Обновить бонусы клиента
 app.put('/api/admin/customers/:id/bonuses', checkAdminAuth, async (req, res) => {
   if (!pool) {
