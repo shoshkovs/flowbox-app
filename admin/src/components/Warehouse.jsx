@@ -640,19 +640,16 @@ export function Warehouse({ authToken }) {
                                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">
                                       Цена общая
                                     </th>
-                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">
-                                      Действия
-                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {supply.items.map((item) => {
-                                    const isHidden = hiddenItems.has(item.id);
+                                    const isExhausted = item.remaining === 0;
                                     return (
                                       <tr
                                         key={item.id}
                                         className={`border-b border-gray-200 ${
-                                          isHidden ? 'bg-gray-300 opacity-50' : 'bg-white'
+                                          isExhausted ? 'bg-gray-300 opacity-50' : 'bg-white'
                                         }`}
                                       >
                                         <td className="py-2 px-4 text-sm font-medium">
@@ -675,24 +672,6 @@ export function Warehouse({ authToken }) {
                                         </td>
                                         <td className="py-2 px-4 text-right text-sm font-medium">
                                           {item.totalPrice.toFixed(2)} ₽
-                                        </td>
-                                        <td className="py-2 px-4">
-                                          <div className="flex items-center justify-center">
-                                            <button
-                                              className="h-7 w-7 p-1 hover:bg-gray-100 rounded flex items-center justify-center"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleItemVisibility(item.id);
-                                              }}
-                                              title={isHidden ? 'Показать' : 'Скрыть'}
-                                            >
-                                              {isHidden ? (
-                                                <EyeOff className="w-4 h-4 text-gray-400" />
-                                              ) : (
-                                                <Eye className="w-4 h-4 text-gray-400" />
-                                              )}
-                                            </button>
-                                          </div>
                                         </td>
                                       </tr>
                                     );
