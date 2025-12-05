@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, MessageCircle, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
 export function CustomerDetail({ customer, onClose, authToken }) {
+  const navigate = useNavigate();
   const [customerData, setCustomerData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bonusAdjustment, setBonusAdjustment] = useState('');
@@ -162,6 +164,53 @@ export function CustomerDetail({ customer, onClose, authToken }) {
   const addresses = customerData.addresses || [];
   const initialBonusTransaction = customerData.initialBonusTransaction || null;
 
+  // Функции для отображения статусов
+  const getStatusLabel = (status) => {
+    const labels = {
+      UNPAID: 'Не оплачен',
+      NEW: 'Новый',
+      PROCESSING: 'В обработке',
+      PURCHASE: 'Закупка',
+      COLLECTING: 'Собирается',
+      DELIVERING: 'В пути',
+      COMPLETED: 'Доставлен',
+      CANCELED: 'Отменён',
+      // Старые статусы для обратной совместимости
+      new: 'Новый',
+      active: 'В обработке',
+      paid: 'Оплачен',
+      purchase: 'Закупка',
+      assembly: 'Сборка',
+      delivery: 'В пути',
+      completed: 'Доставлен',
+      cancelled: 'Отменён',
+    };
+    return labels[status] || status;
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      UNPAID: 'bg-gray-100 text-gray-800',
+      NEW: 'bg-yellow-100 text-yellow-800',
+      PROCESSING: 'bg-blue-100 text-blue-800',
+      PURCHASE: 'bg-orange-100 text-orange-800',
+      COLLECTING: 'bg-purple-100 text-purple-800',
+      DELIVERING: 'bg-blue-100 text-blue-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      CANCELED: 'bg-red-100 text-red-800',
+      // Старые статусы для обратной совместимости
+      new: 'bg-yellow-100 text-yellow-800',
+      active: 'bg-green-100 text-green-800',
+      paid: 'bg-green-100 text-green-800',
+      purchase: 'bg-orange-100 text-orange-800',
+      assembly: 'bg-purple-100 text-purple-800',
+      delivery: 'bg-blue-100 text-blue-800',
+      completed: 'bg-gray-100 text-gray-800',
+      cancelled: 'bg-red-100 text-red-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
   // Форматируем адреса
   const formattedAddresses = addresses.map(addr => {
     const addrData = typeof addr.address_json === 'object' ? addr.address_json : 
@@ -268,15 +317,6 @@ export function CustomerDetail({ customer, onClose, authToken }) {
               
               {orders.length > 0 ? (
                 orders.map((order) => {
-                  const statusText = {
-                    'COMPLETED': 'Завершен',
-                    'CANCELED': 'Отменен',
-                    'NEW': 'Новый',
-                    'PROCESSING': 'В обработке',
-                    'COLLECTING': 'Собирается',
-                    'DELIVERING': 'В доставке'
-                  }[order.status] || order.status;
-
                   const itemsText = order.items && Array.isArray(order.items) 
                     ? order.items.map(item => `${item.name} ${item.quantity} шт`).join(', ')
                     : 'Товары не указаны';
@@ -290,9 +330,15 @@ export function CustomerDetail({ customer, onClose, authToken }) {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-blue-600 font-medium">#{order.id}</span>
-                          <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs">
-                            {statusText}
+                          <span 
+                            className="text-blue-600 font-medium cursor-pointer hover:text-blue-800 hover:underline"
+                            onClick={() => navigate(`/orders/${order.id}`)}
+                            title="Открыть детали заказа"
+                          >
+                            #{order.id}
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
+                            {getStatusLabel(order.status)}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600">{itemsText}</p>
