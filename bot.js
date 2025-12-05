@@ -3328,9 +3328,11 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
           s.unit_purchase_price,
           s.delivery_date,
           s.supplier_id,
+          s.parent_supply_id,
           sup.name as supplier_name
         FROM supplies s
         LEFT JOIN suppliers sup ON s.supplier_id = sup.id
+        WHERE s.product_id IS NOT NULL
         ORDER BY s.delivery_date DESC, s.id DESC
       `);
       
