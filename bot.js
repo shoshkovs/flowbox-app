@@ -3416,37 +3416,36 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
           
           // Отправляем уведомление пользователю о смене статуса
           await sendOrderStatusNotification(orderId, normalizedStatus, oldStatus, status_comment || null);
-        }
-      }
-        
-        // Если статус меняется на CANCELED, откатываем бонусы
-        if (normalizedStatus === 'CANCELED' && oldOrder.user_id) {
-          try {
-            // Откатываем бонусы: возвращаем использованные, убираем начисленные
-            await client.query(
-              `UPDATE users 
-               SET bonuses = bonuses + $1 - $2
-               WHERE id = $3`,
-              [oldOrder.bonus_used || 0, oldOrder.bonus_earned || 0, oldOrder.user_id]
-            );
-            
-            // Создаем транзакции для отката бонусов
-            if (oldOrder.bonus_used > 0) {
+          
+          // Если статус меняется на CANCELED, откатываем бонусы
+          if (normalizedStatus === 'CANCELED' && oldOrder.user_id) {
+            try {
+              // Откатываем бонусы: возвращаем использованные, убираем начисленные
               await client.query(
-                `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
-                 VALUES ($1, $2, 'adjustment', $3, $4)`,
-                [oldOrder.user_id, orderId, oldOrder.bonus_used, `Возврат бонусов при отмене заказа #${orderId}`]
+                `UPDATE users 
+                 SET bonuses = bonuses + $1 - $2
+                 WHERE id = $3`,
+                [oldOrder.bonus_used || 0, oldOrder.bonus_earned || 0, oldOrder.user_id]
               );
+              
+              // Создаем транзакции для отката бонусов
+              if (oldOrder.bonus_used > 0) {
+                await client.query(
+                  `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
+                   VALUES ($1, $2, 'adjustment', $3, $4)`,
+                  [oldOrder.user_id, orderId, oldOrder.bonus_used, `Возврат бонусов при отмене заказа #${orderId}`]
+                );
+              }
+              if (oldOrder.bonus_earned > 0) {
+                await client.query(
+                  `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
+                   VALUES ($1, $2, 'adjustment', $3, $4)`,
+                  [oldOrder.user_id, orderId, -oldOrder.bonus_earned, `Списание начисленных бонусов при отмене заказа #${orderId}`]
+                );
+              }
+            } catch (bonusError) {
+              console.error('Ошибка отката бонусов:', bonusError);
             }
-            if (oldOrder.bonus_earned > 0) {
-              await client.query(
-                `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
-                 VALUES ($1, $2, 'adjustment', $3, $4)`,
-                [oldOrder.user_id, orderId, -oldOrder.bonus_earned, `Списание начисленных бонусов при отмене заказа #${orderId}`]
-              );
-            }
-          } catch (bonusError) {
-            console.error('Ошибка отката бонусов:', bonusError);
           }
         }
       }
