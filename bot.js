@@ -6396,6 +6396,29 @@ server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;
 
 // Команда /start
+// Настройка постоянного меню (Reply Keyboard)
+const setupReplyKeyboard = () => {
+  const keyboard = {
+    keyboard: [
+      [
+        {
+          text: '🛍️ Открыть магазин',
+          web_app: { url: process.env.WEBAPP_URL || `http://localhost:${PORT}` }
+        }
+      ],
+      [
+        {
+          text: '📞 Позвать менеджера'
+        }
+      ]
+    ],
+    resize_keyboard: true,
+    persistent: true // Постоянное меню
+  };
+  
+  return keyboard;
+};
+
 bot.command('start', (ctx) => {
   const webAppUrl = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
   
@@ -6414,6 +6437,169 @@ bot.command('start', (ctx) => {
       }
     }
   );
+  
+  // Устанавливаем постоянное меню после команды /start
+  ctx.reply(
+    'Используйте меню ниже для навигации:',
+    {
+      reply_markup: setupReplyKeyboard()
+    }
+  );
+});
+
+// Обработка команды /support
+bot.command('support', async (ctx) => {
+  const userId = ctx.from.id;
+  const userName = ctx.from.first_name || 'Пользователь';
+  const username = ctx.from.username ? `@${ctx.from.username}` : 'не указан';
+  
+  // Получаем информацию о пользователе из БД, если есть
+  let userInfo = '';
+  if (pool) {
+    try {
+      const client = await pool.connect();
+      try {
+        const userResult = await client.query(
+          'SELECT id, phone, email FROM users WHERE telegram_id = $1::text',
+          [String(userId)]
+        );
+        
+        if (userResult.rows.length > 0) {
+          const user = userResult.rows[0];
+          userInfo = `\n📱 Телефон: ${user.phone || 'не указан'}\n📧 Email: ${user.email || 'не указан'}`;
+        }
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Ошибка получения данных пользователя для поддержки:', error);
+    }
+  }
+  
+  // Отправляем сообщение пользователю
+  await ctx.reply(
+    `👋 Здравствуйте, ${userName}!\n\n` +
+    `Ваш запрос передан менеджеру. Мы свяжемся с вами в ближайшее время.\n\n` +
+    `Ваши данные:\n` +
+    `👤 Имя: ${userName}\n` +
+    `🆔 Telegram ID: ${userId}\n` +
+    `📝 Username: ${username}${userInfo}\n\n` +
+    `Если у вас срочный вопрос, напишите нам напрямую.`,
+    {
+      reply_markup: setupReplyKeyboard()
+    }
+  );
+  
+  // Отправляем уведомление администратору (если указан ADMIN_CHAT_ID)
+  const adminChatId = process.env.ADMIN_CHAT_ID;
+  if (adminChatId && bot) {
+    try {
+      await bot.telegram.sendMessage(
+        adminChatId,
+        `🔔 <b>Новый запрос в поддержку</b>\n\n` +
+        `👤 <b>Пользователь:</b> ${userName}\n` +
+        `🆔 <b>Telegram ID:</b> <code>${userId}</code>\n` +
+        `📝 <b>Username:</b> ${username}${userInfo}\n\n` +
+        `💬 <b>Сообщение:</b> Пользователь запросил помощь через команду /support`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: '💬 Написать пользователю',
+                  url: `https://t.me/${ctx.from.username || `user${userId}`}`
+                }
+              ]
+            ]
+          }
+        }
+      );
+      console.log(`✅ Уведомление о запросе поддержки отправлено администратору (пользователь ${userId})`);
+    } catch (error) {
+      console.error('⚠️ Ошибка отправки уведомления администратору:', error.message);
+    }
+  } else {
+    console.log(`📞 Запрос в поддержку от пользователя ${userId} (${userName})`);
+  }
+});
+
+// Обработка нажатия на кнопку "Позвать менеджера" из Reply Keyboard
+bot.hears('📞 Позвать менеджера', async (ctx) => {
+  // Просто вызываем обработчик команды /support напрямую
+  const userId = ctx.from.id;
+  const userName = ctx.from.first_name || 'Пользователь';
+  const username = ctx.from.username ? `@${ctx.from.username}` : 'не указан';
+  
+  // Получаем информацию о пользователе из БД, если есть
+  let userInfo = '';
+  if (pool) {
+    try {
+      const client = await pool.connect();
+      try {
+        const userResult = await client.query(
+          'SELECT id, phone, email FROM users WHERE telegram_id = $1::text',
+          [String(userId)]
+        );
+        
+        if (userResult.rows.length > 0) {
+          const user = userResult.rows[0];
+          userInfo = `\n📱 Телефон: ${user.phone || 'не указан'}\n📧 Email: ${user.email || 'не указан'}`;
+        }
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Ошибка получения данных пользователя для поддержки:', error);
+    }
+  }
+  
+  // Отправляем сообщение пользователю
+  await ctx.reply(
+    `👋 Здравствуйте, ${userName}!\n\n` +
+    `Ваш запрос передан менеджеру. Мы свяжемся с вами в ближайшее время.\n\n` +
+    `Ваши данные:\n` +
+    `👤 Имя: ${userName}\n` +
+    `🆔 Telegram ID: ${userId}\n` +
+    `📝 Username: ${username}${userInfo}\n\n` +
+    `Если у вас срочный вопрос, напишите нам напрямую.`,
+    {
+      reply_markup: setupReplyKeyboard()
+    }
+  );
+  
+  // Отправляем уведомление администратору (если указан ADMIN_CHAT_ID)
+  const adminChatId = process.env.ADMIN_CHAT_ID;
+  if (adminChatId && bot) {
+    try {
+      await bot.telegram.sendMessage(
+        adminChatId,
+        `🔔 <b>Новый запрос в поддержку</b>\n\n` +
+        `👤 <b>Пользователь:</b> ${userName}\n` +
+        `🆔 <b>Telegram ID:</b> <code>${userId}</code>\n` +
+        `📝 <b>Username:</b> ${username}${userInfo}\n\n` +
+        `💬 <b>Сообщение:</b> Пользователь запросил помощь через кнопку "Позвать менеджера"`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: '💬 Написать пользователю',
+                  url: `https://t.me/${ctx.from.username || `user${userId}`}`
+                }
+              ]
+            ]
+          }
+        }
+      );
+      console.log(`✅ Уведомление о запросе поддержки отправлено администратору (пользователь ${userId})`);
+    } catch (error) {
+      console.error('⚠️ Ошибка отправки уведомления администратору:', error.message);
+    }
+  } else {
+    console.log(`📞 Запрос в поддержку от пользователя ${userId} (${userName})`);
+  }
 });
 
 // Обработка данных из MiniApp
