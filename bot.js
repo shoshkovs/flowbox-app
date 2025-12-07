@@ -30,9 +30,11 @@ if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: needsSSL ? { rejectUnauthorized: false } : false,
-    max: 10, // Максимум соединений в пуле
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000
+    max: 20, // Увеличиваем максимум соединений в пуле
+    idleTimeoutMillis: 60000, // Увеличиваем таймаут простоя
+    connectionTimeoutMillis: 30000, // Увеличиваем таймаут подключения до 30 секунд
+    statement_timeout: 30000, // Таймаут выполнения запроса
+    query_timeout: 30000 // Таймаут запроса
   });
   
   pool.on('error', (err) => {
@@ -1866,8 +1868,19 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
 // Функция для отправки подтверждения заказа с информацией и кнопкой оплаты
 async function sendOrderConfirmation(orderId, telegramId, orderData) {
   if (!bot || !telegramId) {
+    console.warn(`⚠️ sendOrderConfirmation: bot=${!!bot}, telegramId=${telegramId}`);
     return;
   }
+  
+  // Приводим telegramId к числу, если это строка
+  const telegramIdNum = typeof telegramId === 'string' ? parseInt(telegramId, 10) : Number(telegramId);
+  
+  if (isNaN(telegramIdNum)) {
+    console.error(`⚠️ sendOrderConfirmation: неверный telegramId=${telegramId}`);
+    return;
+  }
+  
+  console.log(`📤 Отправка подтверждения заказа #${orderId} пользователю ${telegramIdNum}`);
   
   try {
     // Формируем информацию о заказе
@@ -1944,12 +1957,12 @@ async function sendOrderConfirmation(orderId, telegramId, orderData) {
     };
     
     // Отправляем сообщение
-    await bot.telegram.sendMessage(telegramId, message, {
+    await bot.telegram.sendMessage(telegramIdNum, message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
     
-    console.log(`✅ Подтверждение заказа отправлено пользователю ${telegramId} (заказ #${orderId})`);
+    console.log(`✅ Подтверждение заказа отправлено пользователю ${telegramIdNum} (заказ #${orderId})`);
   } catch (error) {
     // Не прерываем выполнение, если не удалось отправить сообщение
     console.error(`⚠️  Ошибка отправки подтверждения заказа #${orderId}:`, error.message);
@@ -2341,29 +2354,38 @@ app.post('/api/orders', async (req, res) => {
           }
         }
         
-        // Отправляем подтверждение заказа пользователю в Telegram
+        // Отправляем подтверждение заказа пользователю в Telegram (асинхронно, не блокируем ответ)
         if (orderData.userId && bot) {
-          try {
-            // Используем данные из orderData, которые уже есть
-            const orderDataForMessage = {
-              items: orderData.items || [],
-              total: parseFloat(orderData.total),
-              flowersTotal: parseFloat(orderData.flowersTotal || 0),
-              serviceFee: parseFloat(orderData.serviceFee || 450),
-              deliveryPrice: parseFloat(orderData.deliveryPrice || 0),
-              bonusUsed: parseFloat(orderData.bonusUsed || 0),
-              address: orderData.address || '',
-              deliveryDate: orderData.deliveryDate || null,
-              deliveryTime: orderData.deliveryTime || null,
-              comment: orderData.comment || orderData.userComment || null
-            };
-            
-            // Отправляем сообщение с подтверждением заказа
-            await sendOrderConfirmation(result.orderId, orderData.userId, orderDataForMessage);
-          } catch (notificationError) {
-            // Не прерываем выполнение, если не удалось отправить уведомление
-            console.error('⚠️  Ошибка отправки подтверждения заказа:', notificationError.message);
-          }
+          // Выполняем отправку уведомления асинхронно, не блокируя ответ сервера
+          setImmediate(async () => {
+            try {
+              console.log(`📤 Начинаем отправку подтверждения заказа #${result.orderId} пользователю ${orderData.userId}`);
+              
+              // Используем данные из orderData, которые уже есть
+              const orderDataForMessage = {
+                items: orderData.items || [],
+                total: parseFloat(orderData.total),
+                flowersTotal: parseFloat(orderData.flowersTotal || 0),
+                serviceFee: parseFloat(orderData.serviceFee || 450),
+                deliveryPrice: parseFloat(orderData.deliveryPrice || 0),
+                bonusUsed: parseFloat(orderData.bonusUsed || 0),
+                address: orderData.address || '',
+                deliveryDate: orderData.deliveryDate || null,
+                deliveryTime: orderData.deliveryTime || null,
+                comment: orderData.comment || orderData.userComment || null
+              };
+              
+              // Отправляем сообщение с подтверждением заказа
+              await sendOrderConfirmation(result.orderId, orderData.userId, orderDataForMessage);
+              console.log(`✅ Подтверждение заказа #${result.orderId} успешно отправлено`);
+            } catch (notificationError) {
+              // Не прерываем выполнение, если не удалось отправить уведомление
+              console.error('⚠️  Ошибка отправки подтверждения заказа:', notificationError.message);
+              console.error('Stack trace:', notificationError.stack);
+            }
+          });
+        } else {
+          console.warn(`⚠️ Не отправляем подтверждение: userId=${orderData.userId}, bot=${!!bot}`);
         }
         
         // Возвращаем явный успешный ответ с новым балансом бонусов
@@ -2423,6 +2445,30 @@ function checkAdminAuth(req, res, next) {
     next();
   } else {
     res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+// Функция для безопасного получения клиента из пула с обработкой таймаутов
+async function getDbClient() {
+  if (!pool) {
+    throw new Error('База данных не подключена');
+  }
+  
+  try {
+    // Пытаемся получить клиента с таймаутом
+    const client = await Promise.race([
+      pool.connect(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout exceeded when trying to connect')), 25000)
+      )
+    ]);
+    return client;
+  } catch (error) {
+    if (error.message.includes('timeout')) {
+      console.error('⚠️ Таймаут подключения к БД, возможно БД перегружена или недоступна');
+      throw new Error('База данных временно недоступна. Попробуйте позже.');
+    }
+    throw error;
   }
 }
 
@@ -4726,14 +4772,10 @@ app.post('/api/admin/stock-movements/write-off', checkAdminAuth, async (req, res
 
 // API: Получить все заказы (для админки)
 app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'База данных не подключена' });
-  }
-  
   const { status, dateFrom, dateTo } = req.query; // Опциональные фильтры
   
   try {
-    const client = await pool.connect();
+    const client = await getDbClient();
     try {
       let query = `
         SELECT 
@@ -5193,15 +5235,11 @@ app.delete('/api/admin/couriers/:id', checkAdminAuth, async (req, res) => {
 // API: Получить зоны доставки
 // API: Получить список доставок по дате с статистикой
 app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'База данных не подключена' });
-  }
-  
   const { date } = req.query; // Формат: YYYY-MM-DD
   const deliveryDate = date || new Date().toISOString().split('T')[0]; // По умолчанию сегодня
   
   try {
-    const client = await pool.connect();
+    const client = await getDbClient();
     try {
         // Получаем заказы с доставкой на указанную дату
         // Показываем заказы со статусами DELIVERING (ожидает), IN_TRANSIT (в пути), COMPLETED (доставлено)
@@ -5267,7 +5305,10 @@ app.get('/api/admin/delivery', checkAdminAuth, async (req, res) => {
     }
   } catch (error) {
     console.error('Ошибка получения доставок:', error);
-    res.status(500).json({ error: 'Ошибка получения доставок: ' + error.message });
+    const errorMessage = error.message.includes('timeout') || error.message.includes('недоступна')
+      ? 'База данных временно недоступна. Попробуйте позже.'
+      : 'Ошибка получения доставок: ' + error.message;
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -5499,12 +5540,8 @@ app.get('/api/admin/orders/:id/history', checkAdminAuth, async (req, res) => {
 
 // API: Получить всех клиентов
 app.get('/api/admin/customers', checkAdminAuth, async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'База данных не подключена' });
-  }
-  
   try {
-    const client = await pool.connect();
+    const client = await getDbClient();
     try {
       const result = await client.query(`
         SELECT 
@@ -5548,7 +5585,10 @@ app.get('/api/admin/customers', checkAdminAuth, async (req, res) => {
     }
   } catch (error) {
     console.error('Ошибка получения клиентов:', error);
-    res.status(500).json({ error: 'Ошибка получения клиентов' });
+    const errorMessage = error.message.includes('timeout') || error.message.includes('недоступна')
+      ? 'База данных временно недоступна. Попробуйте позже.'
+      : 'Ошибка получения клиентов: ' + error.message;
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -5566,7 +5606,7 @@ app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
   }
   
   try {
-    const client = await pool.connect();
+    const client = await getDbClient();
     try {
       // Проверяем существование таблицы settings
       const tableCheck = await client.query(`
@@ -5695,14 +5735,10 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
 
 // API: Аналитика
 app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'База данных не подключена' });
-  }
-  
   const { period = 'week', dateFrom: customDateFrom, dateTo: customDateTo } = req.query;
   
   try {
-    const client = await pool.connect();
+    const client = await getDbClient();
     try {
       // Определяем период
       let dateFrom = new Date();
@@ -5826,7 +5862,10 @@ app.get('/api/admin/analytics', checkAdminAuth, async (req, res) => {
     }
   } catch (error) {
     console.error('Ошибка получения аналитики:', error);
-    res.status(500).json({ error: 'Ошибка получения аналитики: ' + error.message });
+    const errorMessage = error.message.includes('timeout') || error.message.includes('недоступна')
+      ? 'База данных временно недоступна. Попробуйте позже.'
+      : 'Ошибка получения аналитики: ' + error.message;
+    res.status(500).json({ error: errorMessage });
   }
 });
 

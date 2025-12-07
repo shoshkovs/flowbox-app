@@ -2062,12 +2062,20 @@ async function validateAndSubmitOrder(e) {
         console.error('❌ Ошибка отправки заказа:', error);
         console.error('Детали ошибки:', error.message, error.stack);
         
+        // Разблокируем кнопку при ошибке
+        unlockSubmitButton();
+        
         // Показываем ошибку только если экран успеха еще не показан
         if (!successOverlay.classList.contains('active')) {
             alert('Произошла ошибка при оформлении заказа. Попробуйте еще раз.');
         } else {
             console.warn('⚠️ Ошибка произошла, но экран успеха уже показан. Возможно, заказ был создан.');
         }
+    } finally {
+        // Гарантируем разблокировку кнопки в любом случае
+        setTimeout(() => {
+            unlockSubmitButton();
+        }, 100);
     }
     
     return true;
