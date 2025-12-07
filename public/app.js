@@ -1879,26 +1879,31 @@ async function validateAndSubmitOrder(e) {
             // Обновляем отображение бонусов (только UI, без сохранения)
             updateBonusesDisplay();
             
-            // Перенаправление на страницу оплаты
+            // Показываем экран успеха ПЕРЕД перенаправлением
+            successOverlay.classList.add('active');
+            
+            // Перенаправление на страницу оплаты через небольшую задержку
             const paymentUrl = `/payment/${orderId}`;
             console.log('🔗 Перенаправление на страницу оплаты:', paymentUrl);
             
-            // Используем Telegram WebApp для открытия страницы оплаты
-            try {
-                if (tg && tg.openLink) {
-                    // Получаем полный URL для оплаты
-                    const fullPaymentUrl = window.location.origin + paymentUrl;
-                    tg.openLink(fullPaymentUrl);
-                    console.log('✅ Открыта страница оплаты через Telegram WebApp');
-                } else {
-                    // Fallback: обычное перенаправление
-                    window.location.href = paymentUrl;
-                    console.log('✅ Открыта страница оплаты через window.location');
+            // Используем Telegram WebApp для открытия страницы оплаты через 1 секунду
+            setTimeout(() => {
+                try {
+                    if (tg && tg.openLink) {
+                        // Получаем полный URL для оплаты
+                        const fullPaymentUrl = window.location.origin + paymentUrl;
+                        tg.openLink(fullPaymentUrl);
+                        console.log('✅ Открыта страница оплаты через Telegram WebApp');
+                    } else {
+                        // Fallback: обычное перенаправление
+                        window.location.href = paymentUrl;
+                        console.log('✅ Открыта страница оплаты через window.location');
+                    }
+                } catch (redirectError) {
+                    console.warn('⚠️ Ошибка перенаправления на страницу оплаты:', redirectError);
+                    // Продолжаем выполнение даже при ошибке перенаправления
                 }
-            } catch (redirectError) {
-                console.warn('⚠️ Ошибка перенаправления на страницу оплаты:', redirectError);
-                // Продолжаем выполнение даже при ошибке перенаправления
-            }
+            }, 1000);
             
             // Сохранение заказа в активные
             const order = {
@@ -1960,8 +1965,6 @@ async function validateAndSubmitOrder(e) {
             bonusUsed = 0;
             if (bonusToggle) bonusToggle.checked = false;
             
-            // Показываем экран успеха СРАЗУ, до сохранения данных
-            successOverlay.classList.add('active');
             // Скрыть форму заказа
             const orderTab = document.getElementById('orderTab');
             if (orderTab) orderTab.classList.remove('active');
