@@ -1743,6 +1743,181 @@ function getStatusForUser(status) {
   return normalized;
 }
 
+// Функция для получения текстового описания статуса для пользователя
+function getStatusText(status) {
+  const statusMap = {
+    'UNPAID': 'Не оплачен',
+    'NEW': 'Новый',
+    'PROCESSING': 'В обработке',
+    'PURCHASE': 'Закупка',
+    'COLLECTING': 'Собирается',
+    'DELIVERING': 'В пути',
+    'IN_TRANSIT': 'В пути',
+    'COMPLETED': 'Доставлен',
+    'CANCELED': 'Отменён',
+    'CANCELLED': 'Отменён'
+  };
+  
+  const normalized = normalizeOrderStatus(status);
+  return statusMap[normalized] || status;
+}
+
+// Функция для отправки уведомления о смене статуса заказа через Telegram бота
+async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null, comment = null) {
+  if (!pool || !bot) {
+    return;
+  }
+  
+  // Если статус не изменился, не отправляем уведомление
+  if (oldStatus && normalizeOrderStatus(oldStatus) === normalizeOrderStatus(newStatus)) {
+    return;
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Получаем информацию о заказе и пользователе
+      const orderResult = await client.query(
+        'SELECT user_id, total FROM orders WHERE id = $1',
+        [orderId]
+      );
+      
+      if (orderResult.rows.length === 0 || !orderResult.rows[0].user_id) {
+        // Заказ не найден или у заказа нет user_id (гостевой заказ)
+        return;
+      }
+      
+      const userId = orderResult.rows[0].user_id;
+      const orderTotal = orderResult.rows[0].total;
+      
+      // Получаем telegram_id пользователя
+      const userResult = await client.query(
+        'SELECT telegram_id, first_name FROM users WHERE id = $1',
+        [userId]
+      );
+      
+      if (userResult.rows.length === 0 || !userResult.rows[0].telegram_id) {
+        // Пользователь не найден или у него нет telegram_id
+        return;
+      }
+      
+      const telegramId = userResult.rows[0].telegram_id;
+      const userName = userResult.rows[0].first_name || 'Клиент';
+      
+      // Формируем сообщение
+      const statusText = getStatusText(newStatus);
+      let message = `📦 Заказ #${orderId}\n\n`;
+      message += `Статус заказа изменён: ${statusText}\n`;
+      message += `Сумма заказа: ${parseFloat(orderTotal).toLocaleString('ru-RU')} ₽`;
+      
+      if (comment) {
+        message += `\n\n💬 Комментарий: ${comment}`;
+      }
+      
+      // Отправляем сообщение
+      await bot.telegram.sendMessage(telegramId, message);
+      
+      console.log(`✅ Уведомление о смене статуса отправлено пользователю ${telegramId} (заказ #${orderId})`);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    // Не прерываем выполнение, если не удалось отправить уведомление
+    console.error(`⚠️  Ошибка отправки уведомления о смене статуса заказа #${orderId}:`, error.message);
+  }
+}
+
+// Функция для отправки подтверждения заказа с информацией и кнопкой оплаты
+async function sendOrderConfirmation(orderId, telegramId, orderData) {
+  if (!bot || !telegramId) {
+    return;
+  }
+  
+  try {
+    // Формируем информацию о заказе
+    let message = `📦 <b>Ваш заказ #${orderId}</b>\n\n`;
+    
+    // Состав заказа
+    if (orderData.items && orderData.items.length > 0) {
+      message += `🛍️ <b>Состав заказа:</b>\n`;
+      orderData.items.forEach((item, index) => {
+        const itemTotal = (item.price || 0) * (item.quantity || 1);
+        message += `${index + 1}. ${item.name} × ${item.quantity} = ${itemTotal.toLocaleString('ru-RU')} ₽\n`;
+      });
+      message += `\n`;
+    }
+    
+    // Суммы
+    message += `💰 <b>Итого:</b>\n`;
+    if (orderData.flowersTotal) {
+      message += `Товары: ${parseFloat(orderData.flowersTotal).toLocaleString('ru-RU')} ₽\n`;
+    }
+    if (orderData.serviceFee) {
+      message += `Сервисный сбор: ${parseFloat(orderData.serviceFee).toLocaleString('ru-RU')} ₽\n`;
+    }
+    if (orderData.deliveryPrice) {
+      message += `Доставка: ${parseFloat(orderData.deliveryPrice).toLocaleString('ru-RU')} ₽\n`;
+    }
+    if (orderData.bonusUsed) {
+      message += `Использовано бонусов: -${parseFloat(orderData.bonusUsed).toLocaleString('ru-RU')} ₽\n`;
+    }
+    message += `\n<b>К оплате: ${parseFloat(orderData.total).toLocaleString('ru-RU')} ₽</b>\n\n`;
+    
+    // Адрес доставки
+    if (orderData.address) {
+      message += `📍 <b>Адрес доставки:</b>\n${orderData.address}\n\n`;
+    }
+    
+    // Дата и время доставки
+    if (orderData.deliveryDate) {
+      const deliveryDate = new Date(orderData.deliveryDate).toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+      message += `📅 <b>Дата доставки:</b> ${deliveryDate}\n`;
+    }
+    if (orderData.deliveryTime) {
+      message += `🕐 <b>Время доставки:</b> ${orderData.deliveryTime}\n\n`;
+    }
+    
+    // Комментарий
+    if (orderData.comment || orderData.userComment) {
+      message += `💬 <b>Комментарий:</b> ${orderData.comment || orderData.userComment}\n\n`;
+    }
+    
+    message += `Статус: <b>Новый</b>\n\n`;
+    message += `Для оплаты заказа нажмите кнопку ниже 👇`;
+    
+    // Создаем inline-кнопку для оплаты
+    // Используем APP_URL или формируем URL на основе текущего домена
+    const appUrl = process.env.APP_URL || process.env.PAYMENT_URL || 'https://your-app.onrender.com';
+    const paymentUrl = `${appUrl}/payment/${orderId}`;
+    
+    const keyboard = {
+      inline_keyboard: [
+        [
+          {
+            text: '💳 Оплатить заказ',
+            url: paymentUrl
+          }
+        ]
+      ]
+    };
+    
+    // Отправляем сообщение
+    await bot.telegram.sendMessage(telegramId, message, {
+      parse_mode: 'HTML',
+      reply_markup: keyboard
+    });
+    
+    console.log(`✅ Подтверждение заказа отправлено пользователю ${telegramId} (заказ #${orderId})`);
+  } catch (error) {
+    // Не прерываем выполнение, если не удалось отправить сообщение
+    console.error(`⚠️  Ошибка отправки подтверждения заказа #${orderId}:`, error.message);
+  }
+}
+
 // Загрузка заказов пользователя
 async function loadUserOrders(userId, status = null) {
   if (!pool) return [];
@@ -2127,15 +2302,30 @@ app.post('/api/orders', async (req, res) => {
           }
         }
         
-        // Отправляем уведомление в Telegram (если нужно)
-        // const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
-        // if (ADMIN_CHAT_ID) {
-        //   bot.telegram.sendMessage(ADMIN_CHAT_ID, 
-        //     `🛍️ Новый заказ #${result.orderId}\n` +
-        //     `Сумма: ${orderData.total}₽\n` +
-        //     `Адрес: ${orderData.address}`
-        //   );
-        // }
+        // Отправляем подтверждение заказа пользователю в Telegram
+        if (orderData.userId && bot) {
+          try {
+            // Используем данные из orderData, которые уже есть
+            const orderDataForMessage = {
+              items: orderData.items || [],
+              total: parseFloat(orderData.total),
+              flowersTotal: parseFloat(orderData.flowersTotal || 0),
+              serviceFee: parseFloat(orderData.serviceFee || 450),
+              deliveryPrice: parseFloat(orderData.deliveryPrice || 0),
+              bonusUsed: parseFloat(orderData.bonusUsed || 0),
+              address: orderData.address || '',
+              deliveryDate: orderData.deliveryDate || null,
+              deliveryTime: orderData.deliveryTime || null,
+              comment: orderData.comment || orderData.userComment || null
+            };
+            
+            // Отправляем сообщение с подтверждением заказа
+            await sendOrderConfirmation(result.orderId, orderData.userId, orderDataForMessage);
+          } catch (notificationError) {
+            // Не прерываем выполнение, если не удалось отправить уведомление
+            console.error('⚠️  Ошибка отправки подтверждения заказа:', notificationError.message);
+          }
+        }
         
         // Возвращаем явный успешный ответ с новым балансом бонусов
         const responseData = { 
@@ -3195,23 +3385,23 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         paramIndex++;
       }
       
+      // Получаем старый статус ДО обновления для проверки изменений и уведомлений
+      const oldOrderResult = await client.query('SELECT status, bonus_used, bonus_earned, user_id FROM orders WHERE id = $1', [orderId]);
+      if (oldOrderResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      const oldOrder = oldOrderResult.rows[0];
+      const oldStatus = oldOrder.status;
+      
       updateQuery += ` WHERE id = $${paramIndex} RETURNING *`;
       params.push(orderId);
       
       const result = await client.query(updateQuery, params);
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Заказ не найден' });
-      }
-      
-      // Получаем старый статус для проверки изменений
-      const oldOrderResult = await client.query('SELECT status, bonus_used, bonus_earned, user_id FROM orders WHERE id = $1', [orderId]);
-      const oldOrder = oldOrderResult.rows[0];
-      
       // Записываем в историю статусов, если статус изменился
       if (status !== undefined) {
         const normalizedStatus = normalizeOrderStatus(status);
-        if (normalizedStatus !== oldOrder.status) {
+        if (normalizedStatus !== oldStatus) {
           try {
             await client.query(
               'INSERT INTO order_status_history (order_id, status, source, changed_by_id, comment) VALUES ($1, $2, $3, $4, $5)',
@@ -3223,7 +3413,11 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
               console.error('Ошибка записи в историю статусов:', historyError);
             }
           }
+          
+          // Отправляем уведомление пользователю о смене статуса
+          await sendOrderStatusNotification(orderId, normalizedStatus, oldStatus, status_comment || null);
         }
+      }
         
         // Если статус меняется на CANCELED, откатываем бонусы
         if (normalizedStatus === 'CANCELED' && oldOrder.user_id) {
@@ -4719,27 +4913,35 @@ app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
+      // Получаем старый статус ДО обновления
+      const oldOrderResult = await client.query('SELECT status FROM orders WHERE id = $1', [id]);
+      if (oldOrderResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      const oldStatus = oldOrderResult.rows[0].status;
+      
       // Обновляем статус заказа
       const result = await client.query(
         'UPDATE orders SET status = $1, updated_at = now() WHERE id = $2 RETURNING *',
         [status, id]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Заказ не найден' });
-      }
-      
       // Записываем в историю статусов (если таблица существует)
-      try {
-        await client.query(
-          'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
-          [id, status, 'admin', comment || null]
-        );
-      } catch (historyError) {
-        // Игнорируем ошибку, если таблица не существует
-        if (!historyError.message.includes('does not exist')) {
-          console.error('Ошибка записи в историю статусов:', historyError);
+      if (oldStatus !== status) {
+        try {
+          await client.query(
+            'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
+            [id, status, 'admin', comment || null]
+          );
+        } catch (historyError) {
+          // Игнорируем ошибку, если таблица не существует
+          if (!historyError.message.includes('does not exist')) {
+            console.error('Ошибка записи в историю статусов:', historyError);
+          }
         }
+        
+        // Отправляем уведомление пользователю о смене статуса
+        await sendOrderStatusNotification(id, status, oldStatus, comment || null);
       }
       
       res.json(result.rows[0]);
@@ -4777,27 +4979,36 @@ app.post('/api/admin/orders/:id/assign-courier', checkAdminAuth, async (req, res
         return res.status(400).json({ error: 'Курьер неактивен' });
       }
       
-      // Назначаем курьера и меняем статус
-      const result = await client.query(
-        'UPDATE orders SET courier_id = $1, status = $2, updated_at = now() WHERE id = $3 RETURNING *',
-        [courier_id, 'assigned', id]
-      );
-      
-      if (result.rows.length === 0) {
+      // Получаем старый статус ДО обновления
+      const oldOrderResult = await client.query('SELECT status FROM orders WHERE id = $1', [id]);
+      if (oldOrderResult.rows.length === 0) {
         return res.status(404).json({ error: 'Заказ не найден' });
       }
+      const oldStatus = oldOrderResult.rows[0].status;
+      
+      // Назначаем курьера и меняем статус (используем DELIVERING вместо assigned)
+      const newStatus = 'DELIVERING';
+      const result = await client.query(
+        'UPDATE orders SET courier_id = $1, status = $2, updated_at = now() WHERE id = $3 RETURNING *',
+        [courier_id, newStatus, id]
+      );
       
       // Записываем в историю (если таблица существует)
-      try {
-        await client.query(
-          'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
-          [id, 'assigned', 'admin', `Назначен курьер ID: ${courier_id}`]
-        );
-      } catch (historyError) {
-        // Игнорируем ошибку, если таблица не существует
-        if (!historyError.message.includes('does not exist')) {
-          console.error('Ошибка записи в историю статусов:', historyError);
+      if (oldStatus !== newStatus) {
+        try {
+          await client.query(
+            'INSERT INTO order_status_history (order_id, status, changed_by, comment) VALUES ($1, $2, $3, $4)',
+            [id, newStatus, 'admin', `Назначен курьер ID: ${courier_id}`]
+          );
+        } catch (historyError) {
+          // Игнорируем ошибку, если таблица не существует
+          if (!historyError.message.includes('does not exist')) {
+            console.error('Ошибка записи в историю статусов:', historyError);
+          }
         }
+        
+        // Отправляем уведомление пользователю о смене статуса
+        await sendOrderStatusNotification(id, newStatus, oldStatus, `Назначен курьер`);
       }
       
       res.json(result.rows[0]);
@@ -5072,6 +5283,9 @@ app.patch('/api/admin/orders/:orderId/status', checkAdminAuth, async (req, res) 
           // Игнорируем ошибки истории (таблица может не существовать)
           console.log('⚠️  Не удалось создать запись в истории статусов:', historyError.message);
         }
+        
+        // Отправляем уведомление пользователю о смене статуса
+        await sendOrderStatusNotification(orderIdInt, status, oldStatus, comment || null);
       }
       
       await client.query('COMMIT');
@@ -5119,13 +5333,21 @@ app.put('/api/admin/delivery/:id', checkAdminAuth, async (req, res) => {
   try {
     const client = await pool.connect();
     try {
+      // Получаем старый статус ДО обновления
+      const oldOrderResult = await client.query('SELECT status FROM orders WHERE id = $1', [id]);
+      if (oldOrderResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      const oldStatus = oldOrderResult.rows[0].status;
+      
       const result = await client.query(
         'UPDATE orders SET status = $1, updated_at = now() WHERE id = $2 RETURNING *',
         [orderStatus, id]
       );
       
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Заказ не найден' });
+      // Отправляем уведомление пользователю о смене статуса, если статус изменился
+      if (oldStatus !== orderStatus) {
+        await sendOrderStatusNotification(id, orderStatus, oldStatus, null);
       }
       
       res.json({ 
