@@ -1832,8 +1832,16 @@ async function validateAndSubmitOrder(e) {
 
         // Проверяем статус ответа
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Ошибка сервера' }));
+            let errorData;
+            try {
+                const text = await response.text();
+                console.error('❌ Текст ответа сервера:', text);
+                errorData = JSON.parse(text);
+            } catch (parseError) {
+                errorData = { error: `HTTP error! status: ${response.status}` };
+            }
             console.error('❌ HTTP ошибка при создании заказа:', response.status, errorData);
+            console.error('❌ Полный ответ сервера:', errorData);
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         
@@ -1853,6 +1861,9 @@ async function validateAndSubmitOrder(e) {
         
         if (isSuccess) {
             // Успешный ответ - обрабатываем заказ
+            const orderId = parseInt(result.orderId) || result.orderId; // Приводим к числу, если возможно
+            console.log('✅ Заказ успешно создан, ID:', orderId);
+            
             try {
                 tg.sendData(JSON.stringify(orderData));
             } catch (tgError) {
@@ -1868,8 +1879,28 @@ async function validateAndSubmitOrder(e) {
             // Обновляем отображение бонусов (только UI, без сохранения)
             updateBonusesDisplay();
             
+            // Перенаправление на страницу оплаты
+            const paymentUrl = `/payment/${orderId}`;
+            console.log('🔗 Перенаправление на страницу оплаты:', paymentUrl);
+            
+            // Используем Telegram WebApp для открытия страницы оплаты
+            try {
+                if (tg && tg.openLink) {
+                    // Получаем полный URL для оплаты
+                    const fullPaymentUrl = window.location.origin + paymentUrl;
+                    tg.openLink(fullPaymentUrl);
+                    console.log('✅ Открыта страница оплаты через Telegram WebApp');
+                } else {
+                    // Fallback: обычное перенаправление
+                    window.location.href = paymentUrl;
+                    console.log('✅ Открыта страница оплаты через window.location');
+                }
+            } catch (redirectError) {
+                console.warn('⚠️ Ошибка перенаправления на страницу оплаты:', redirectError);
+                // Продолжаем выполнение даже при ошибке перенаправления
+            }
+            
             // Сохранение заказа в активные
-            const orderId = parseInt(result.orderId) || result.orderId; // Приводим к числу, если возможно
             const order = {
                 id: orderId,
                 date: new Date().toLocaleDateString('ru-RU'),

@@ -1890,9 +1890,11 @@ async function sendOrderConfirmation(orderId, telegramId, orderData) {
     message += `Для оплаты заказа нажмите кнопку ниже 👇`;
     
     // Создаем inline-кнопку для оплаты
-    // Используем APP_URL или формируем URL на основе текущего домена
-    const appUrl = process.env.APP_URL || process.env.PAYMENT_URL || 'https://your-app.onrender.com';
+    // Используем WEBAPP_URL или APP_URL для формирования правильного URL
+    const appUrl = process.env.WEBAPP_URL || process.env.APP_URL || process.env.PAYMENT_URL || 'https://your-app.onrender.com';
     const paymentUrl = `${appUrl}/payment/${orderId}`;
+    
+    console.log(`🔗 URL для оплаты заказа #${orderId}: ${paymentUrl}`);
     
     const keyboard = {
       inline_keyboard: [
@@ -2356,7 +2358,13 @@ app.post('/api/orders', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Ошибка создания заказа:', error);
-    console.error('Детали ошибки:', error.message, error.stack);
+    console.error('Детали ошибки:', error.message);
+    console.error('Stack trace:', error.stack);
+    console.error('Данные заказа:', {
+      userId: orderData.userId,
+      itemsCount: orderData.items?.length || 0,
+      total: orderData.total
+    });
     res.status(500).json({ 
       success: false,
       error: error.message || 'Ошибка создания заказа' 
