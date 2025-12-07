@@ -1057,23 +1057,26 @@ async function updateUserBonusCache(userId) {
 async function getOrCreateUser(telegramId, telegramUser = null, profile = null) {
   if (!pool) return null;
   
+  // Приводим telegramId к строке для консистентности
+  const telegramIdStr = String(telegramId);
+  
   try {
     const client = await pool.connect();
     try {
       // Ищем пользователя
       let result = await client.query(
-        'SELECT * FROM users WHERE telegram_id = $1',
-        [telegramId]
+        'SELECT * FROM users WHERE telegram_id = $1::text',
+        [telegramIdStr]
       );
       
       if (result.rows.length === 0) {
         // Создаем нового пользователя БЕЗ bonuses (он будет рассчитан из транзакций)
         result = await client.query(
           `INSERT INTO users (telegram_id, username, first_name, last_name, phone, email)
-           VALUES ($1, $2, $3, $4, $5, $6)
+           VALUES ($1::text, $2, $3, $4, $5, $6)
            RETURNING *`,
           [
-            telegramId,
+            telegramIdStr,
             telegramUser?.username || profile?.username || null,
             telegramUser?.first_name || profile?.name || null,
             telegramUser?.last_name || null,
@@ -1116,28 +1119,53 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
         );
         
         if (shouldUpdateUsername || shouldUpdateOther) {
-          result = await client.query(
-            `UPDATE users 
-             SET username = CASE 
-                 WHEN $1 IS NOT NULL THEN $1 
-                 ELSE username 
-               END,
-               first_name = COALESCE($2, first_name),
-               last_name = COALESCE($3, last_name),
-               phone = COALESCE($4, phone),
-               email = COALESCE($5, email),
-               updated_at = now()
-             WHERE telegram_id = $6
-             RETURNING *`,
-            [
-              shouldUpdateUsername ? newUsername : null,
-              newFirstName,
-              newLastName,
-              newPhone,
-              newEmail,
-              telegramId
-            ]
-          );
+          // Формируем динамический запрос для обновления только нужных полей
+          const updateFields = [];
+          const updateValues = [];
+          let paramIndex = 1;
+          
+          if (shouldUpdateUsername && newUsername) {
+            updateFields.push(`username = $${paramIndex}`);
+            updateValues.push(newUsername);
+            paramIndex++;
+          }
+          
+          if (newFirstName) {
+            updateFields.push(`first_name = $${paramIndex}`);
+            updateValues.push(newFirstName);
+            paramIndex++;
+          }
+          
+          if (newLastName !== null) {
+            updateFields.push(`last_name = $${paramIndex}`);
+            updateValues.push(newLastName);
+            paramIndex++;
+          }
+          
+          if (newPhone) {
+            updateFields.push(`phone = $${paramIndex}`);
+            updateValues.push(newPhone);
+            paramIndex++;
+          }
+          
+          if (newEmail !== null) {
+            updateFields.push(`email = $${paramIndex}`);
+            updateValues.push(newEmail);
+            paramIndex++;
+          }
+          
+          if (updateFields.length > 0) {
+            updateFields.push(`updated_at = now()`);
+            updateValues.push(telegramIdStr);
+            
+            result = await client.query(
+              `UPDATE users 
+               SET ${updateFields.join(', ')}
+               WHERE telegram_id = $${paramIndex}::text
+               RETURNING *`,
+              updateValues
+            );
+          }
         }
       }
       
@@ -2039,7 +2067,8 @@ app.post('/api/user-data', async (req, res) => {
         // Если фронт отправил пустой массив, но в БД уже есть адреса - это может быть ошибка после деплоя
         // В этом случае НЕ перезаписываем существующие адреса пустым массивом
         if (addresses.length === 0 && currentAddresses.length > 0) {
-          console.log(`⚠️ ПРЕДОТВРАЩЕНА перезапись адресов пользователя ${userId}: было ${currentAddresses.length}, пытались записать 0`);
+          // Это нормальная ситуация - фронт может отправлять пустой массив при сохранении других данных
+          // Не логируем как ошибку, так как защита работает правильно
           // Не сохраняем пустой массив, оставляем существующие адреса
         } else {
           // Сохраняем адреса только если:
