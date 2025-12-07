@@ -1057,26 +1057,31 @@ async function updateUserBonusCache(userId) {
 async function getOrCreateUser(telegramId, telegramUser = null, profile = null) {
   if (!pool) return null;
   
-  // Приводим telegramId к строке для консистентности
-  const telegramIdStr = String(telegramId);
+  // Приводим telegramId к числу, так как в БД это BIGINT
+  const telegramIdNum = typeof telegramId === 'string' ? parseInt(telegramId, 10) : Number(telegramId);
+  
+  if (isNaN(telegramIdNum)) {
+    console.error('Ошибка getOrCreateUser: неверный telegramId:', telegramId);
+    return null;
+  }
   
   try {
     const client = await pool.connect();
     try {
-      // Ищем пользователя
+      // Ищем пользователя (telegram_id имеет тип BIGINT в БД)
       let result = await client.query(
-        'SELECT * FROM users WHERE telegram_id = $1::text',
-        [telegramIdStr]
+        'SELECT * FROM users WHERE telegram_id = $1::bigint',
+        [telegramIdNum]
       );
       
       if (result.rows.length === 0) {
         // Создаем нового пользователя БЕЗ bonuses (он будет рассчитан из транзакций)
         result = await client.query(
           `INSERT INTO users (telegram_id, username, first_name, last_name, phone, email)
-           VALUES ($1::text, $2, $3, $4, $5, $6)
+           VALUES ($1::bigint, $2, $3, $4, $5, $6)
            RETURNING *`,
           [
-            telegramIdStr,
+            telegramIdNum,
             telegramUser?.username || profile?.username || null,
             telegramUser?.first_name || profile?.name || null,
             telegramUser?.last_name || null,
@@ -1156,12 +1161,12 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
           
           if (updateFields.length > 0) {
             updateFields.push(`updated_at = now()`);
-            updateValues.push(telegramIdStr);
+            updateValues.push(telegramIdNum);
             
             result = await client.query(
               `UPDATE users 
                SET ${updateFields.join(', ')}
-               WHERE telegram_id = $${paramIndex}::text
+               WHERE telegram_id = $${paramIndex}::bigint
                RETURNING *`,
               updateValues
             );
@@ -1357,28 +1362,31 @@ async function createOrderInDb(orderData) {
       let userData = null;
       if (orderData.userId) {
         // Если передан username, обновляем его в БД
-        if (orderData.username) {
+        // Приводим userId к числу для работы с BIGINT
+        const userIdNum = typeof orderData.userId === 'string' ? parseInt(orderData.userId, 10) : Number(orderData.userId);
+        
+        if (orderData.username && !isNaN(userIdNum)) {
           await client.query(
             `UPDATE users 
              SET username = $1, updated_at = now()
-             WHERE telegram_id = $2 AND (username IS NULL OR username != $1)`,
-            [orderData.username, orderData.userId]
+             WHERE telegram_id = $2::bigint AND (username IS NULL OR username != $1)`,
+            [orderData.username, userIdNum]
           );
         }
         
         // Если передан phone_number, обновляем его в БД
-        if (orderData.phone_number) {
+        if (orderData.phone_number && !isNaN(userIdNum)) {
           await client.query(
             `UPDATE users 
              SET phone = $1, updated_at = now()
-             WHERE telegram_id = $2 AND (phone IS NULL OR phone != $1)`,
-            [orderData.phone_number, orderData.userId]
+             WHERE telegram_id = $2::bigint AND (phone IS NULL OR phone != $1)`,
+            [orderData.phone_number, userIdNum]
           );
         }
         
         const userResult = await client.query(
-          'SELECT id, first_name, last_name, phone, email FROM users WHERE telegram_id = $1',
-          [orderData.userId]
+          'SELECT id, first_name, last_name, phone, email FROM users WHERE telegram_id = $1::bigint',
+          [!isNaN(userIdNum) ? userIdNum : orderData.userId]
         );
         if (userResult.rows.length > 0) {
           userId = userResult.rows[0].id;
@@ -5829,14 +5837,20 @@ app.get('/api/admin/customers/telegram/:telegramId', checkAdminAuth, async (req,
   }
   
   const { telegramId } = req.params;
+  // Приводим telegramId к числу для работы с BIGINT
+  const telegramIdNum = parseInt(telegramId, 10);
+  
+  if (isNaN(telegramIdNum)) {
+    return res.status(400).json({ error: 'Неверный telegram_id' });
+  }
   
   try {
     const client = await pool.connect();
     try {
       // Получаем данные клиента по telegram_id
       const userResult = await client.query(
-        'SELECT * FROM users WHERE telegram_id = $1',
-        [telegramId]
+        'SELECT * FROM users WHERE telegram_id = $1::bigint',
+        [telegramIdNum]
       );
       
       if (userResult.rows.length === 0) {
@@ -6041,7 +6055,10 @@ app.put('/api/admin/customers/telegram/:telegramId/bonuses', checkAdminAuth, asy
   const { telegramId } = req.params;
   const { amount, description } = req.body;
   
-  if (amount === undefined) {
+  // Приводим telegramId к числу для работы с BIGINT
+  const telegramIdNum = parseInt(telegramId, 10);
+  
+  if (isNaN(telegramIdNum) || amount === undefined) {
     return res.status(400).json({ error: 'Неверные параметры' });
   }
   
@@ -6050,8 +6067,8 @@ app.put('/api/admin/customers/telegram/:telegramId/bonuses', checkAdminAuth, asy
     try {
       // Находим пользователя по telegram_id
       const userResult = await client.query(
-        'SELECT id FROM users WHERE telegram_id = $1',
-        [telegramId]
+        'SELECT id FROM users WHERE telegram_id = $1::bigint',
+        [telegramIdNum]
       );
       
       if (userResult.rows.length === 0) {
@@ -6149,13 +6166,20 @@ app.post('/api/admin/customers/telegram/:telegramId/recalculate-bonuses', checkA
   
   const { telegramId } = req.params;
   
+  // Приводим telegramId к числу для работы с BIGINT
+  const telegramIdNum = parseInt(telegramId, 10);
+  
+  if (isNaN(telegramIdNum)) {
+    return res.status(400).json({ error: 'Неверный telegram_id' });
+  }
+  
   try {
     const client = await pool.connect();
     try {
       // Находим пользователя по telegram_id
       const userResult = await client.query(
-        'SELECT id FROM users WHERE telegram_id = $1',
-        [telegramId]
+        'SELECT id FROM users WHERE telegram_id = $1::bigint',
+        [telegramIdNum]
       );
       
       if (userResult.rows.length === 0) {
@@ -6323,13 +6347,20 @@ app.put('/api/admin/customers/telegram/:telegramId/manager-comment', checkAdminA
   const { comment, manager_comment } = req.body;
   const commentText = comment || manager_comment || null;
   
+  // Приводим telegramId к числу для работы с BIGINT
+  const telegramIdNum = parseInt(telegramId, 10);
+  
+  if (isNaN(telegramIdNum)) {
+    return res.status(400).json({ error: 'Неверный telegram_id' });
+  }
+  
   try {
     const client = await pool.connect();
     try {
       // Находим пользователя по telegram_id
       const userResult = await client.query(
-        'SELECT id FROM users WHERE telegram_id = $1',
-        [telegramId]
+        'SELECT id FROM users WHERE telegram_id = $1::bigint',
+        [telegramIdNum]
       );
       
       if (userResult.rows.length === 0) {
@@ -6459,9 +6490,12 @@ bot.command('support', async (ctx) => {
     try {
       const client = await pool.connect();
       try {
+        // Приводим userId к числу для работы с BIGINT
+        const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
+        
         const userResult = await client.query(
-          'SELECT id, phone, email FROM users WHERE telegram_id = $1::text',
-          [String(userId)]
+          'SELECT id, phone, email FROM users WHERE telegram_id = $1::bigint',
+          [!isNaN(userIdNum) ? userIdNum : userId]
         );
         
         if (userResult.rows.length > 0) {
@@ -6537,9 +6571,12 @@ bot.hears('📞 Позвать менеджера', async (ctx) => {
     try {
       const client = await pool.connect();
       try {
+        // Приводим userId к числу для работы с BIGINT
+        const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
+        
         const userResult = await client.query(
-          'SELECT id, phone, email FROM users WHERE telegram_id = $1::text',
-          [String(userId)]
+          'SELECT id, phone, email FROM users WHERE telegram_id = $1::bigint',
+          [!isNaN(userIdNum) ? userIdNum : userId]
         );
         
         if (userResult.rows.length > 0) {
