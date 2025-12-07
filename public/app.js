@@ -2034,13 +2034,54 @@ if (orderForm) {
 }
 
 // Дополнительный обработчик клика на кнопку для Android (более надежный)
-const submitBtn = document.querySelector('.submit-order-btn');
-if (submitBtn) {
-    submitBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        await validateAndSubmitOrder(e);
-    }, false);
+function setupSubmitButton() {
+    const submitBtn = document.querySelector('.submit-order-btn');
+    if (submitBtn) {
+        // Удаляем старые обработчики, если они есть
+        const newSubmitBtn = submitBtn.cloneNode(true);
+        submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
+        
+        // Добавляем обработчик на новую кнопку
+        newSubmitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔘 Кнопка "Оплатить" нажата');
+            
+            // Проверяем, что кнопка не disabled
+            if (newSubmitBtn.disabled) {
+                console.warn('⚠️ Кнопка заблокирована');
+                return;
+            }
+            
+            // Временно блокируем кнопку для предотвращения двойного клика
+            newSubmitBtn.disabled = true;
+            newSubmitBtn.textContent = 'Обработка...';
+            
+            try {
+                await validateAndSubmitOrder(e);
+            } catch (error) {
+                console.error('❌ Ошибка при обработке заказа:', error);
+                // Разблокируем кнопку при ошибке
+                newSubmitBtn.disabled = false;
+                newSubmitBtn.textContent = 'Оплатить';
+            }
+        }, false);
+        
+        console.log('✅ Обработчик кнопки "Оплатить" установлен');
+    } else {
+        console.warn('⚠️ Кнопка "Оплатить" не найдена в DOM');
+    }
+}
+
+// Устанавливаем обработчик при загрузке
+setupSubmitButton();
+
+// Также устанавливаем обработчик при переключении на вкладку заказа
+const orderTabBtn = document.querySelector('[data-tab="orderTab"]');
+if (orderTabBtn) {
+    orderTabBtn.addEventListener('click', () => {
+        setTimeout(setupSubmitButton, 100); // Небольшая задержка для обновления DOM
+    });
 }
 
 // Возврат в магазин
