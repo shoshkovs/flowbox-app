@@ -4064,11 +4064,21 @@ function goToStep(step) {
     if (step > 1) {
         // Если не на первом шаге - возвращаемся на предыдущий
         tg.BackButton.show();
+        // Используем step напрямую в замыкании, чтобы избежать проблем с устаревшим currentCheckoutStep
+        const previousStep = step - 1;
         tg.BackButton.onClick(() => {
             // Дополнительная проверка, что мы все еще на orderTab
             const currentOrderTab = document.getElementById('orderTab');
             if (currentOrderTab && currentOrderTab.classList.contains('active')) {
-                goToStep(currentCheckoutStep - 1);
+                // Проверяем текущий шаг перед переходом
+                const currentStep = currentCheckoutStep;
+                if (currentStep > 1) {
+                    goToStep(currentStep - 1);
+                } else {
+                    // Если по какой-то причине мы на шаге 1, идем в корзину
+                    switchTab('cartTab');
+                    tg.BackButton.hide();
+                }
             }
         });
     } else {
@@ -4078,8 +4088,15 @@ function goToStep(step) {
             // Дополнительная проверка, что мы все еще на orderTab
             const currentOrderTab = document.getElementById('orderTab');
             if (currentOrderTab && currentOrderTab.classList.contains('active')) {
-                switchTab('cartTab');
-                tg.BackButton.hide();
+                // Дополнительная проверка текущего шага
+                const currentStep = currentCheckoutStep;
+                if (currentStep === 1) {
+                    switchTab('cartTab');
+                    tg.BackButton.hide();
+                } else {
+                    // Если мы не на шаге 1, идем на предыдущий шаг
+                    goToStep(currentStep - 1);
+                }
             }
         });
     }
