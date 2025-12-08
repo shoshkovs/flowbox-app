@@ -3652,6 +3652,7 @@ window.editAddress = editAddress;
 window.deleteAddress = deleteAddress;
 window.addAdditionalProduct = addAdditionalProduct;
 window.selectAddress = selectAddress;
+window.openOrderDetail = openOrderDetail;
 
 // ==================== ПОЭТАПНАЯ ФОРМА ОФОРМЛЕНИЯ ЗАКАЗА ====================
 

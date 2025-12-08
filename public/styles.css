@@ -1941,12 +1941,207 @@ h1, h2, h3, .font-bold {
     margin-bottom: 12px;
 }
 
+.active-orders-carousel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+}
+
+.active-orders-carousel::-webkit-scrollbar {
+    display: none;
+}
+
+.active-orders-scroll {
+    display: flex;
+    gap: 12px;
+    padding: 0 4px;
+}
+
 .active-orders, .delivery-addresses {
     background: white;
     border-radius: 12px;
     padding: 16px;
     box-shadow: var(--shadow);
     margin-bottom: 12px;
+}
+
+/* Карточка заказа в карусели */
+.order-card-carousel {
+    min-width: 280px;
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.order-card-carousel:active {
+    transform: scale(0.98);
+}
+
+.order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.order-card-header h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.order-card-info {
+    margin-bottom: 12px;
+}
+
+.order-card-date {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 4px 0;
+}
+
+.order-card-total {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.order-card-items-preview {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.order-item-preview {
+    font-size: 12px;
+    color: #666;
+    padding: 4px 8px;
+    background: #f5f5f5;
+    border-radius: 6px;
+}
+
+/* Индикаторы карусели */
+.carousel-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.carousel-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ddd;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.carousel-indicator.active {
+    background: var(--primary-color);
+}
+
+/* Кнопка добавления на главный экран */
+.add-to-home-screen-btn {
+    width: 100%;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 24px;
+}
+
+.add-to-home-screen-btn:active {
+    transform: scale(0.98);
+    background: #f9f9f9;
+}
+
+.add-to-home-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.add-to-home-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.add-to-home-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.add-to-home-hint {
+    font-size: 12px;
+    color: #999;
+}
+
+.add-to-home-content-modal {
+    padding: 20px;
+}
+
+.add-to-home-instructions {
+    margin-bottom: 20px;
+}
+
+.add-to-home-instructions h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 16px 0 8px 0;
+    color: var(--text-color);
+}
+
+.add-to-home-instructions h4:first-child {
+    margin-top: 0;
+}
+
+.add-to-home-instructions ol {
+    margin: 8px 0;
+    padding-left: 20px;
+    color: #666;
+    line-height: 1.6;
+}
+
+.add-to-home-instructions li {
+    margin-bottom: 8px;
+}
+
+.open-in-browser-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+    margin-top: 12px;
+}
+
+.open-in-browser-btn:hover {
+    background: var(--secondary-color);
+}
+
+.open-in-browser-btn:active {
+    transform: scale(0.98);
 }
 
 .no-orders, .no-addresses {
