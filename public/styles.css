@@ -74,9 +74,9 @@ h1, h2, h3, .font-bold {
 /* Header */
 .header {
     background: white;
-    padding: 12px 20px;
+    padding: 52px 20px 12px 20px; /* Увеличена высота до 52px сверху, лого выровнено к низу */
     display: flex;
-    align-items: center;
+    align-items: flex-end; /* Выравнивание к нижнему краю */
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative; /* Явно указываем relative вместо sticky */
@@ -535,7 +535,7 @@ h1, h2, h3, .font-bold {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: center;
     background: white;
     position: sticky;
     top: 0;

@@ -256,6 +256,8 @@ async function loadProducts() {
         });
         filteredProducts = [...products];
         renderProducts();
+        // Загружаем дополнительные товары из категории "корзина"
+        loadAdditionalProducts();
     } catch (error) {
         console.error('Ошибка загрузки товаров:', error);
         productsContainer.innerHTML = '<div class="loading">Ошибка загрузки товаров</div>';
@@ -876,24 +878,45 @@ function updateCartUI() {
     updateGoToCartButton();
 }
 
-// Дополнительные товары для карусели
-const additionalProducts = [
-    { id: 'secator', name: 'Секатор', price: 500, image: 'https://via.placeholder.com/150?text=Секатор' },
-    { id: 'candle', name: 'Свечка', price: 300, image: 'https://via.placeholder.com/150?text=Свечка' },
-    { id: 'vase', name: 'Ваза', price: 800, image: 'https://via.placeholder.com/150?text=Ваза' }
-];
+// Дополнительные товары для карусели (загружаются из базы данных с категорией "корзина")
+let additionalProducts = [];
+
+// Загрузка дополнительных товаров из базы данных
+async function loadAdditionalProducts() {
+    try {
+        const response = await fetch('/api/products');
+        const allProducts = await response.json();
+        // Фильтруем товары с категорией "корзина"
+        additionalProducts = allProducts.filter(p => {
+            const category = (p.category || p.type || '').toLowerCase();
+            return category === 'корзина' || category === 'cart';
+        });
+        renderAdditionalProducts();
+    } catch (error) {
+        console.error('Ошибка загрузки дополнительных товаров:', error);
+        // Fallback на пустой массив
+        additionalProducts = [];
+        renderAdditionalProducts();
+    }
+}
 
 // Рендеринг карусели дополнительных товаров
 function renderAdditionalProducts() {
     const carousel = document.getElementById('additionalProductsCarousel');
     if (!carousel) return;
     
+    if (additionalProducts.length === 0) {
+        carousel.innerHTML = '';
+        return;
+    }
+    
     carousel.innerHTML = additionalProducts.map(product => {
         const isInCart = cart.some(item => item.id === product.id);
+        const productImage = product.image || product.image_url || 'https://via.placeholder.com/150?text=' + encodeURIComponent(product.name);
         return `
             <div class="additional-product-card">
                 <div class="additional-product-image-wrapper">
-                    <img src="${product.image}" alt="${product.name}" class="additional-product-image">
+                    <img src="${productImage}" alt="${product.name}" class="additional-product-image">
                 </div>
                 <div class="additional-product-info">
                     <div class="additional-product-name">${product.name}</div>
@@ -910,20 +933,36 @@ function renderAdditionalProducts() {
 // Добавление дополнительного товара в корзину
 function addAdditionalProduct(productId) {
     const product = additionalProducts.find(p => p.id === productId);
-    if (!product) return;
-    
-    // Проверяем, нет ли уже такого товара в корзине
-    const existingItem = cart.find(item => item.id === productId);
-    if (existingItem) {
-        existingItem.quantity += 1;
+    if (!product) {
+        // Если не найден в additionalProducts, ищем в основном списке товаров
+        const productFromMain = products.find(p => p.id === productId);
+        if (!productFromMain) return;
+        
+        const minQty = getMinQty(productFromMain);
+        const existingItem = cart.find(item => item.id === productId);
+        if (existingItem) {
+            existingItem.quantity += minQty;
+        } else {
+            cart.push({
+                ...productFromMain,
+                quantity: minQty
+            });
+        }
     } else {
-        cart.push({
-            ...product,
-            quantity: 1
-        });
+        const minQty = getMinQty(product);
+        const existingItem = cart.find(item => item.id === productId);
+        if (existingItem) {
+            existingItem.quantity += minQty;
+        } else {
+            cart.push({
+                ...product,
+                quantity: minQty
+            });
+        }
     }
     
     updateCartUI();
+    saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
 }
 
@@ -2273,7 +2312,7 @@ const addressForm = document.getElementById('addressForm');
 const addressCity = document.getElementById('addressCity');
 const addressError = document.getElementById('addressError');
 const addressesBtn = document.getElementById('addressesBtn');
-const backFromAddressBtn = document.getElementById('backFromAddressBtn');
+// Кнопки "Назад" удалены - используем только BackButton от Telegram
 const addressPageTitle = document.getElementById('addressPageTitle');
 const deleteAddressBtn = document.getElementById('deleteAddressBtn');
 
@@ -2393,12 +2432,7 @@ if (addressesBtn) {
     });
 }
 
-if (backFromAddressBtn) {
-    backFromAddressBtn.addEventListener('click', () => {
-        switchTab('profileTab');
-        tg.BackButton.hide();
-    });
-}
+// Обработчик кнопки "Назад" удален - используем только BackButton от Telegram
 
 orderHistoryBtn.addEventListener('click', () => {
     orderHistoryModal.style.display = 'flex';
@@ -3788,15 +3822,7 @@ function initCheckoutSteps() {
         };
     }
     
-    // Обработчик кнопки "Назад" на странице редактирования получателя
-    const backFromEditRecipientBtn = document.getElementById('backFromEditRecipientBtn');
-    if (backFromEditRecipientBtn) {
-        backFromEditRecipientBtn.onclick = () => {
-            // Возвращаемся на страницу итого
-            document.getElementById('editRecipientTab').style.display = 'none';
-            goToStep(4);
-        };
-    }
+    // Обработчик кнопки "Назад" удален - используем только BackButton от Telegram
     
     // Обработчик сохранения получателя
     const saveRecipientBtn = document.getElementById('saveRecipientBtn');
@@ -3860,17 +3886,7 @@ function initCheckoutSteps() {
         };
     }
     
-    // Обработчик кнопки "Назад"
-    const backFromOrderBtn = document.getElementById('backFromOrder');
-    if (backFromOrderBtn) {
-        backFromOrderBtn.onclick = () => {
-            if (currentCheckoutStep > 1) {
-                goToStep(currentCheckoutStep - 1);
-            } else {
-                switchTab('cartTab');
-            }
-        };
-    }
+    // Обработчик кнопки "Назад" удален - используем только BackButton от Telegram
     
     // Инициализация даты доставки
     const deliveryDateInput = document.getElementById('deliveryDate');
