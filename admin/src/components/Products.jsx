@@ -35,9 +35,17 @@ export function Products({ authToken }) {
       });
       if (response.ok) {
         const data = await response.json();
-        // Если есть товары и все они скрыты
-        const newAllHidden = data.total > 0 && parseInt(data.active) === 0;
-        console.log('📊 Статистика товаров:', { total: data.total, active: data.active, hidden: data.hidden, allHidden: newAllHidden });
+        // Если есть товары и все они скрыты (active === 0 или active === '0')
+        const activeCount = parseInt(data.active) || 0;
+        const totalCount = parseInt(data.total) || 0;
+        const newAllHidden = totalCount > 0 && activeCount === 0;
+        console.log('📊 Статистика товаров:', { 
+          total: totalCount, 
+          active: activeCount, 
+          hidden: parseInt(data.hidden) || 0, 
+          allHidden: newAllHidden,
+          previousAllHidden: allHidden
+        });
         setAllHidden(newAllHidden);
       }
     } catch (error) {
