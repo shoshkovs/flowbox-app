@@ -3411,6 +3411,34 @@ app.post('/api/admin/products/:id/refresh', checkAdminAuth, async (req, res) => 
   }
 });
 
+// API: Скрыть все товары
+app.post('/api/admin/products/hide-all', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await getDbClient();
+    try {
+      const result = await client.query(
+        'UPDATE products SET is_active = false WHERE is_active = true RETURNING id'
+      );
+      
+      res.json({ 
+        success: true, 
+        hiddenCount: result.rows.length,
+        message: `Скрыто товаров: ${result.rows.length}`
+      });
+      console.log(`✅ Скрыто товаров: ${result.rows.length}`);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка скрытия всех товаров:', error);
+    res.status(500).json({ error: 'Ошибка скрытия товаров: ' + error.message });
+  }
+});
+
 // API: Обновить заказ
 app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
   if (!pool) {

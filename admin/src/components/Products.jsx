@@ -209,6 +209,34 @@ export function Products({ authToken }) {
     }
   };
 
+  const handleHideAll = async () => {
+    if (!confirm('Вы уверены, что хотите скрыть все товары? Это действие скроет все активные товары.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/products/hide-all`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        await loadProducts();
+        toast.success(data.message || `Скрыто товаров: ${data.hiddenCount || 0}`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка скрытия товаров');
+      }
+    } catch (error) {
+      console.error('Ошибка скрытия всех товаров:', error);
+      toast.error('Ошибка скрытия товаров');
+    }
+  };
+
   if (loading) {
     return <div className="p-6">Загрузка...</div>;
   }
@@ -220,13 +248,22 @@ export function Products({ authToken }) {
           <h1 className="text-3xl font-bold">Товары</h1>
           <p className="text-gray-600 mt-1">Управление каталогом цветов</p>
         </div>
-        <button
-          onClick={() => navigate('/products/new')}
-          className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Добавить товар
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleHideAll}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2"
+          >
+            <EyeOff className="w-4 h-4" />
+            Скрыть все
+          </button>
+          <button
+            onClick={() => navigate('/products/new')}
+            className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Добавить товар
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
