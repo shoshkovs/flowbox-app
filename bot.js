@@ -1027,6 +1027,16 @@ async function getUserBonusBalance(userId) {
   try {
     const client = await pool.connect();
     try {
+      // Получаем все транзакции для отладки
+      const allTransactions = await client.query(
+        `SELECT id, type, amount, description, order_id, created_at
+         FROM bonus_transactions
+         WHERE user_id = $1
+         ORDER BY created_at ASC`,
+        [userId]
+      );
+      
+      // Суммируем баланс
       const result = await client.query(
         `SELECT COALESCE(SUM(amount), 0) AS balance
          FROM bonus_transactions
@@ -1034,7 +1044,20 @@ async function getUserBonusBalance(userId) {
         [userId]
       );
       const balance = parseFloat(result.rows[0]?.balance || 0);
-      console.log(`💰 getUserBonusBalance для user_id=${userId}: найдено транзакций, баланс=${balance}`);
+      
+      // Логируем все транзакции для отладки
+      console.log(`💰 getUserBonusBalance для user_id=${userId}:`);
+      console.log(`   Всего транзакций: ${allTransactions.rows.length}`);
+      console.log(`   Рассчитанный баланс: ${balance}`);
+      if (allTransactions.rows.length > 0) {
+        console.log(`   Детали транзакций:`);
+        allTransactions.rows.forEach((tx, idx) => {
+          console.log(`     ${idx + 1}. ID=${tx.id}, type=${tx.type}, amount=${tx.amount}, desc="${tx.description}", order_id=${tx.order_id || 'NULL'}, date=${tx.created_at}`);
+        });
+        const sum = allTransactions.rows.reduce((acc, tx) => acc + parseFloat(tx.amount || 0), 0);
+        console.log(`   Сумма вручную: ${sum}`);
+      }
+      
       return balance;
     } finally {
       client.release();
