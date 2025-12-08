@@ -715,15 +715,26 @@ async function loadUserData() {
                 localStorage.setItem('userProfile', JSON.stringify(data.profile));
             }
             if (data.activeOrders && Array.isArray(data.activeOrders)) {
-                console.log('📥 Загружено активных заказов с сервера:', data.activeOrders.length, data.activeOrders);
-                // Фильтруем только активные статусы: NEW, PROCESSING, COLLECTING, DELIVERING
+                console.log('[loadUserData] 📥 Загружено активных заказов с сервера:', data.activeOrders.length);
+                console.log('[loadUserData] Статусы заказов:', data.activeOrders.map(o => `${o.id}:${o.status}`).join(', '));
+                // Фильтруем только активные статусы: NEW, PROCESSING, PURCHASE, COLLECTING, DELIVERING, UNPAID
                 // Исключаем CANCELED и COMPLETED - они должны быть в истории
                 userActiveOrders = data.activeOrders.filter(order => {
                     const status = order.status?.toUpperCase();
-                    return status === 'NEW' || status === 'PROCESSING' || status === 'COLLECTING' || status === 'DELIVERING' || status === 'UNPAID';
+                    const isActive = status === 'NEW' || 
+                                   status === 'PROCESSING' || 
+                                   status === 'PURCHASE' ||
+                                   status === 'COLLECTING' || 
+                                   status === 'DELIVERING' || 
+                                   status === 'UNPAID';
+                    if (!isActive) {
+                        console.log('[loadUserData] 🚫 Заказ отфильтрован (не активный):', order.id, 'статус:', status);
+                    }
+                    return isActive;
                 });
                 localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
-                console.log('📥 Отфильтровано активных заказов:', userActiveOrders.length);
+                console.log('[loadUserData] 📥 Отфильтровано активных заказов:', userActiveOrders.length);
+                console.log('[loadUserData] ID активных заказов:', userActiveOrders.map(o => o.id).join(', '));
             } else {
                 console.log('📥 Активные заказы не получены или не массив:', data.activeOrders);
             }
@@ -745,7 +756,7 @@ async function loadUserData() {
             updateCartUI();
             updateGoToCartButton();
             loadSavedAddresses();
-            console.log('📦 Вызываем loadActiveOrders после загрузки данных, активных заказов:', userActiveOrders.length);
+            console.log('[loadUserData] 📦 Вызываем loadActiveOrders после загрузки данных, активных заказов:', userActiveOrders.length);
             loadActiveOrders();
             loadProfile();
             
@@ -3176,6 +3187,8 @@ function getOrderStatusClass(status) {
 // Загрузка активных заказов
 function loadActiveOrders() {
     console.log('[loadActiveOrders] вызвана');
+    console.log('[loadActiveOrders] userActiveOrders.length =', userActiveOrders.length);
+    console.log('[loadActiveOrders] userActiveOrders:', userActiveOrders);
     
     // Показываем все заказы из userActiveOrders, включая COMPLETED и CANCELED
     // Они будут перемещены в историю при следующей загрузке данных с сервера
@@ -3799,14 +3812,31 @@ async function refreshOrders() {
             const completedAndCanceled = [];
             const trulyActive = [];
             
+            console.log('[updateOrdersPeriodically] Загружено заказов с сервера:', data.activeOrders.length);
+            console.log('[updateOrdersPeriodically] Статусы заказов:', data.activeOrders.map(o => `${o.id}:${o.status}`).join(', '));
+            
             data.activeOrders.forEach(order => {
                 const status = order.status?.toUpperCase();
                 if (status === 'COMPLETED' || status === 'CANCELED') {
                     completedAndCanceled.push(order);
                 } else {
-                    trulyActive.push(order);
+                    // Фильтруем только активные статусы
+                    const isActive = status === 'NEW' || 
+                                   status === 'PROCESSING' || 
+                                   status === 'PURCHASE' ||
+                                   status === 'COLLECTING' || 
+                                   status === 'DELIVERING' || 
+                                   status === 'UNPAID';
+                    if (isActive) {
+                        trulyActive.push(order);
+                    } else {
+                        console.log('[updateOrdersPeriodically] 🚫 Заказ отфильтрован (неизвестный статус):', order.id, 'статус:', status);
+                    }
                 }
             });
+            
+            console.log('[updateOrdersPeriodically] Активных заказов:', trulyActive.length);
+            console.log('[updateOrdersPeriodically] Завершенных заказов:', completedAndCanceled.length);
             
             const newOrdersJson = JSON.stringify(trulyActive);
             
