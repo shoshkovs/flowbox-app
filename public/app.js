@@ -3,9 +3,46 @@ const tg = window.Telegram.WebApp;
 
 // Включаем fullscreen режим сразу при загрузке (до tg.ready())
 // Это важно для корректной работы fullscreen при открытии через Direct Link или кнопку web_app
-Telegram.WebApp.expand();
+if (tg && typeof tg.expand === 'function') {
+    tg.expand();
+}
+
+// Также пробуем через глобальный объект
+if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.expand === 'function') {
+    window.Telegram.WebApp.expand();
+}
 
 tg.ready();
+
+// После ready() снова пробуем expand() для надежности
+if (tg && typeof tg.expand === 'function') {
+    tg.expand();
+    // Устанавливаем viewportStableHeight для стабильного fullscreen
+    if (typeof tg.viewportStableHeight !== 'undefined') {
+        tg.viewportStableHeight = true;
+    }
+}
+
+// Дополнительная попытка через событие загрузки
+window.addEventListener('load', () => {
+    if (tg && typeof tg.expand === 'function') {
+        tg.expand();
+    }
+});
+
+// Попытка через DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (tg && typeof tg.expand === 'function') {
+            tg.expand();
+        }
+    });
+} else {
+    // Если DOM уже загружен
+    if (tg && typeof tg.expand === 'function') {
+        tg.expand();
+    }
+}
 
 // Поиск логотипа в разных форматах
 let logoFormats = ['logo.jpg', 'logo.png', 'logo.svg', 'logo.jpeg'];
