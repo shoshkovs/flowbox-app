@@ -3223,9 +3223,23 @@ function loadActiveOrders() {
                     const carousel = document.getElementById('activeOrdersCarousel');
                     if (carousel) {
                         // Удаляем старый обработчик, если есть
-                        carousel.removeEventListener('scroll', updateCarouselIndicators);
-                        // Добавляем новый обработчик
-                        carousel.addEventListener('scroll', updateCarouselIndicators);
+                        const oldHandler = carousel._scrollHandler;
+                        if (oldHandler) {
+                            carousel.removeEventListener('scroll', oldHandler);
+                        }
+                        // Создаем новый обработчик с throttling для производительности
+                        let scrollTimeout;
+                        const scrollHandler = () => {
+                            clearTimeout(scrollTimeout);
+                            scrollTimeout = setTimeout(() => {
+                                updateCarouselIndicators();
+                            }, 50);
+                        };
+                        carousel._scrollHandler = scrollHandler;
+                        carousel.addEventListener('scroll', scrollHandler);
+                        
+                        // Вызываем сразу для установки начального состояния
+                        setTimeout(() => updateCarouselIndicators(), 100);
                     }
                 } else {
                     indicatorsContainer.style.display = 'none';
@@ -4061,19 +4075,20 @@ function goToStep(step) {
         return;
     }
     
-    if (step > 1) {
+    // Обновляем BackButton для текущего шага
+    // Используем замыкание с текущим значением step
+    const currentStep = step;
+    
+    if (currentStep > 1) {
         // Если не на первом шаге - возвращаемся на предыдущий
         tg.BackButton.show();
-        // Используем step напрямую в замыкании, чтобы избежать проблем с устаревшим currentCheckoutStep
-        const previousStep = step - 1;
         tg.BackButton.onClick(() => {
-            // Дополнительная проверка, что мы все еще на orderTab
-            const currentOrderTab = document.getElementById('orderTab');
-            if (currentOrderTab && currentOrderTab.classList.contains('active')) {
-                // Проверяем текущий шаг перед переходом
-                const currentStep = currentCheckoutStep;
-                if (currentStep > 1) {
-                    goToStep(currentStep - 1);
+            // Проверяем, что мы все еще на orderTab и на правильном шаге
+            const orderTab = document.getElementById('orderTab');
+            if (orderTab && orderTab.classList.contains('active')) {
+                // Проверяем актуальный шаг перед переходом
+                if (currentCheckoutStep > 1) {
+                    goToStep(currentCheckoutStep - 1);
                 } else {
                     // Если по какой-то причине мы на шаге 1, идем в корзину
                     switchTab('cartTab');
@@ -4085,17 +4100,16 @@ function goToStep(step) {
         // Если на первом шаге - возвращаемся в корзину
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
-            // Дополнительная проверка, что мы все еще на orderTab
-            const currentOrderTab = document.getElementById('orderTab');
-            if (currentOrderTab && currentOrderTab.classList.contains('active')) {
-                // Дополнительная проверка текущего шага
-                const currentStep = currentCheckoutStep;
-                if (currentStep === 1) {
+            // Проверяем, что мы все еще на orderTab
+            const orderTab = document.getElementById('orderTab');
+            if (orderTab && orderTab.classList.contains('active')) {
+                // Проверяем актуальный шаг
+                if (currentCheckoutStep === 1) {
                     switchTab('cartTab');
                     tg.BackButton.hide();
                 } else {
                     // Если мы не на шаге 1, идем на предыдущий шаг
-                    goToStep(currentStep - 1);
+                    goToStep(currentCheckoutStep - 1);
                 }
             }
         });
