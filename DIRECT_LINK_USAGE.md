@@ -41,11 +41,3 @@ https://t.me/FlowboxBot/flowbox_app?startapp=main&mode=fullscreen
 - ✅ Без параметра `mode=fullscreen` Mini App может открыться не в fullscreen режиме
 - ✅ Direct Link работает лучше, чем Menu Button для fullscreen
 
-## Проверка работы:
-1. Откройте ссылку: `https://t.me/FlowboxBot/flowbox_app?startapp=main&mode=fullscreen`
-2. Mini App должен открыться на весь экран ✅
-3. В коде уже настроено `Telegram.WebApp.expand()` для включения fullscreen
-4. Параметр `mode=fullscreen` в URL принудительно включает fullscreen режим
-
-## ✅ Статус: Работает!
-Mini App успешно запускается через Direct Link с параметром `mode=fullscreen`.

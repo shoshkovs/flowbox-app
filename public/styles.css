@@ -95,7 +95,7 @@ h1, h2, h3, .font-bold {
 }
 
 .logo {
-    height: 40px;
+    height: 32px; /* Уменьшено с 40px */
     width: auto;
     object-fit: contain;
 }

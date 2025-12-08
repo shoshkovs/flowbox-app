@@ -932,13 +932,20 @@ function renderAdditionalProducts() {
 
 // Добавление дополнительного товара в корзину
 function addAdditionalProduct(productId) {
+    console.log('addAdditionalProduct called with productId:', productId);
+    console.log('additionalProducts:', additionalProducts);
+    
     const product = additionalProducts.find(p => p.id === productId);
     if (!product) {
         // Если не найден в additionalProducts, ищем в основном списке товаров
         const productFromMain = products.find(p => p.id === productId);
-        if (!productFromMain) return;
+        if (!productFromMain) {
+            console.error('Товар не найден:', productId);
+            return;
+        }
         
         const minQty = getMinQty(productFromMain);
+        console.log('minQty для товара из основного списка:', minQty);
         const existingItem = cart.find(item => item.id === productId);
         if (existingItem) {
             existingItem.quantity += minQty;
@@ -950,6 +957,7 @@ function addAdditionalProduct(productId) {
         }
     } else {
         const minQty = getMinQty(product);
+        console.log('minQty для товара из additionalProducts:', minQty);
         const existingItem = cart.find(item => item.id === productId);
         if (existingItem) {
             existingItem.quantity += minQty;
@@ -1011,22 +1019,13 @@ function switchTab(tabId) {
         // Скрыть навигацию и header при открытии формы заказа
         if (bottomNav) bottomNav.style.display = 'none';
         if (header) header.style.display = 'none';
-        // Показать BackButton для возврата на предыдущий шаг или в корзину
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            if (currentCheckoutStep > 1) {
-                // Возвращаемся на предыдущий шаг
-                goToStep(currentCheckoutStep - 1);
-            } else {
-                // Если на первом шаге - возвращаемся в корзину
-                switchTab('cartTab');
-                tg.BackButton.hide();
-            }
-        });
         // Инициализировать поэтапную форму заказа
         initCheckoutSteps();
         // Убеждаемся, что мы на первом шаге
         if (currentCheckoutStep !== 1) {
+            goToStep(1);
+        } else {
+            // Обновляем BackButton для текущего шага
             goToStep(1);
         }
         // Прокрутить страницу в начало (для Android)
@@ -2452,13 +2451,12 @@ const openInBrowserBtn = document.getElementById('openInBrowserBtn');
 
 if (addToHomeScreenBtn) {
     addToHomeScreenBtn.addEventListener('click', () => {
-        if (addToHomeScreenModal) {
-            addToHomeScreenModal.style.display = 'flex';
-            lockBodyScroll();
-            tg.BackButton.show();
-            tg.BackButton.onClick(() => {
-                if (closeAddToHomeModal) closeAddToHomeModal.click();
-            });
+        // Открываем ссылку в Safari (не в боте)
+        const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
+        if (tg && tg.openLink) {
+            tg.openLink(link, { try_instant_view: false });
+        } else {
+            window.open(link, '_blank');
         }
     });
 }
