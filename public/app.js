@@ -440,32 +440,51 @@ function renderProducts() {
 
     productsContainer.innerHTML = filteredProducts.map(product => {
         const minQty = getMinQty(product);
+        const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
         // Используем сохраненное количество или minQty, округляем до кратного minQty
         const savedQty = productQuantities[product.id];
         const quantity = savedQty ? roundUpToStep(savedQty, minQty) : minQty;
         const totalPrice = product.price * quantity;
         const isMinQty = quantity <= minQty;
         
+        // Проверяем, есть ли товар в корзине
+        const cartItem = cart.find(item => item.id === product.id);
+        const isInCart = !!cartItem;
+        const cartQuantity = cartItem ? cartItem.quantity : 0;
+        
         return `
             <div class="product-card" data-product-id="${product.id}">
                 <div class="product-image-wrapper">
                     <img src="${product.image}" alt="${product.name}" class="product-image">
+                    ${isInCart ? `<div class="product-quantity-overlay">${cartQuantity}</div>` : ''}
                 </div>
                 <div class="product-info">
                     <div class="product-name">${product.name}</div>
-                    <div class="product-price-row">
-                        <div class="product-price" id="price-${product.id}">
-                            ${totalPrice} <span class="ruble">₽</span>
-                        </div>
-                        <div class="product-quantity">
-                            <button class="quantity-btn-small ${isMinQty ? 'disabled' : ''}" onclick="changeProductQuantity(${product.id}, -1)" ${isMinQty ? 'disabled' : ''}>−</button>
-                            <span class="quantity-value" id="qty-${product.id}">${quantity}</span>
-                            <button class="quantity-btn-small" onclick="changeProductQuantity(${product.id}, 1)" ${quantity >= 500 ? 'disabled' : ''}>+</button>
-                        </div>
+                    ${stemQuantity > 1 ? `<div class="product-stem-quantity">${stemQuantity} шт</div>` : ''}
+                    <div class="product-action-row">
+                        ${isInCart ? `
+                            <button class="product-minus-btn" onclick="changeCartQuantity(${product.id}, -1)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                            <div class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></div>
+                            <button class="product-plus-btn" onclick="changeCartQuantity(${product.id}, 1)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                        ` : `
+                            <button class="product-add-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
+                                <span class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                        `}
                     </div>
-                    <button class="add-to-cart-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
-                        Добавить
-                    </button>
                 </div>
             </div>
         `;
@@ -549,10 +568,8 @@ function addToCart(productId, quantity = null) {
     if (!product) return;
 
     const minQty = getMinQty(product);
-    // Используем переданное quantity или текущее количество из productQuantities
-    // НЕ округляем - используем именно то количество, которое выбрал пользователь
-    const currentQty = productQuantities[productId] || minQty;
-    const actualQty = quantity !== null ? Math.max(minQty, quantity) : Math.max(minQty, currentQty);
+    // Используем переданное quantity или минимальное количество
+    const actualQty = quantity !== null ? Math.max(minQty, quantity) : minQty;
 
     const existingItem = cart.find(item => item.id === productId);
     
@@ -561,23 +578,120 @@ function addToCart(productId, quantity = null) {
     } else {
         cart.push({
             ...product,
-            quantity: actualQty, // Используем выбранное количество, а не minQty
-            minStemQuantity: product.minStemQuantity, // Сохраняем minStemQuantity в элементе корзины
+            quantity: actualQty,
+            minStemQuantity: product.minStemQuantity,
             min_order_quantity: product.min_order_quantity,
             min_stem_quantity: product.min_stem_quantity
         });
     }
-    
-    // Сброс количества в карточке на минимальное
-    productQuantities[productId] = minQty;
 
     updateCartUI();
     updateGoToCartButton();
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
     
-    // Обновляем отображение карточки
-    renderProducts();
+    // Обновляем только эту карточку
+    updateProductCard(productId);
+}
+
+// Изменение количества товара в корзине из карточки
+function changeCartQuantity(productId, delta) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const minQty = getMinQty(product);
+    const cartItem = cart.find(item => item.id === productId);
+    
+    if (!cartItem) {
+        // Если товара нет в корзине, добавляем
+        addToCart(productId, minQty);
+        return;
+    }
+    
+    const newQty = cartItem.quantity + delta;
+    
+    if (newQty < minQty) {
+        // Удаляем из корзины, если количество меньше минимума
+        cart = cart.filter(item => item.id !== productId);
+        updateCartUI();
+        updateGoToCartButton();
+        saveUserData();
+        updateProductCard(productId);
+        tg.HapticFeedback.impactOccurred('light');
+        return;
+    }
+    
+    cartItem.quantity = newQty;
+    updateCartUI();
+    updateGoToCartButton();
+    saveUserData();
+    updateProductCard(productId);
+    tg.HapticFeedback.impactOccurred('light');
+}
+
+// Обновление одной карточки товара
+function updateProductCard(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const minQty = getMinQty(product);
+    const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
+    const cartItem = cart.find(item => item.id === productId);
+    const isInCart = !!cartItem;
+    const cartQuantity = cartItem ? cartItem.quantity : 0;
+    const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
+    
+    const card = document.querySelector(`[data-product-id="${productId}"]`);
+    if (!card) return;
+    
+    // Обновляем overlay с количеством
+    const imageWrapper = card.querySelector('.product-image-wrapper');
+    if (imageWrapper) {
+        let overlay = imageWrapper.querySelector('.product-quantity-overlay');
+        if (isInCart) {
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'product-quantity-overlay';
+                imageWrapper.appendChild(overlay);
+            }
+            overlay.textContent = cartQuantity;
+        } else {
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+    }
+    
+    // Обновляем кнопку действий
+    const actionRow = card.querySelector('.product-action-row');
+    if (actionRow) {
+        if (isInCart) {
+            actionRow.innerHTML = `
+                <button class="product-minus-btn" onclick="changeCartQuantity(${productId}, -1)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <div class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></div>
+                <button class="product-plus-btn" onclick="changeCartQuantity(${productId}, 1)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            `;
+        } else {
+            actionRow.innerHTML = `
+                <button class="product-add-btn" onclick="addToCart(${productId}, ${minQty})" id="add-btn-${productId}">
+                    <span class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            `;
+        }
+    }
 }
 
 // Обновление кнопки "Перейти в корзину"
@@ -774,6 +888,12 @@ async function loadUserData() {
             if (data.cart && Array.isArray(data.cart) && cart.length === 0) {
                 cart = data.cart;
                 saveCartToLocalStorage(cart); // Сохраняем загруженную корзину в localStorage
+                // Обновляем карточки товаров после загрузки корзины
+                setTimeout(() => {
+                    cart.forEach(item => {
+                        updateProductCard(item.id);
+                    });
+                }, 100);
             }
             if (data.addresses && Array.isArray(data.addresses)) {
                 console.log('📦 Загружены адреса с сервера:', data.addresses.length);
@@ -925,7 +1045,7 @@ function saveCart() {
 function updateCartUI() {
     // Сохранение корзины
     saveCart();
-    
+
     // Обновление счетчика в навигации
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     navCartCount.textContent = totalItems;
@@ -934,6 +1054,18 @@ function updateCartUI() {
     } else {
         navCartCount.style.display = 'block';
     }
+    
+    // Обновляем карточки товаров, которые есть в корзине или были удалены
+    cart.forEach(item => {
+        updateProductCard(item.id);
+    });
+    // Обновляем карточки товаров, которые были удалены из корзины
+    products.forEach(product => {
+        const cartItem = cart.find(item => item.id === product.id);
+        if (!cartItem) {
+            updateProductCard(product.id);
+        }
+    });
     
     // Обновление страницы корзины
     if (cart.length === 0) {
@@ -3932,6 +4064,7 @@ startOrdersAutoRefresh();
 
 // Экспорт функций для глобального доступа
 window.addToCart = addToCart;
+window.changeCartQuantity = changeCartQuantity;
 window.removeFromCart = removeFromCart;
 window.changeQuantity = changeQuantity;
 window.changeProductQuantity = changeProductQuantity;
