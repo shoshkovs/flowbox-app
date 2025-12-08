@@ -6507,8 +6507,18 @@ const setupReplyKeyboard = () => {
   return keyboard;
 };
 
-bot.command('start', (ctx) => {
+// Хранилище активных сессий поддержки: userId -> { adminChatId, startTime }
+const supportSessions = new Map();
+
+bot.command('start', async (ctx) => {
   const webAppUrl = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
+  const startParam = ctx.message?.text?.split(' ')[1]; // Параметр после /start
+  
+  // Если передан параметр support, вызываем поддержку
+  if (startParam === 'support') {
+    await handleSupportRequest(ctx, 'кнопку "Поддержка" в MiniApp');
+    return;
+  }
   
   ctx.reply(
     '🌸 Добро пожаловать в FlowBox!\n\nВыберите действие:',
@@ -6570,12 +6580,12 @@ const handleSupportRequest = async (ctx, source = 'команда /support') => 
   // Отправляем сообщение пользователю
   await ctx.reply(
     `👋 Здравствуйте, ${userName}!\n\n` +
-    `Ваш запрос передан менеджеру. Мы свяжемся с вами в ближайшее время.\n\n` +
+    `Вы подключены к службе поддержки. Напишите ваш вопрос, и менеджер ответит вам в ближайшее время.\n\n` +
     `Ваши данные:\n` +
     `👤 Имя: ${userName}\n` +
     `🆔 Telegram ID: ${userId}\n` +
     `📝 Username: ${username}${userInfo}\n\n` +
-    `Если у вас срочный вопрос, напишите нам напрямую.`,
+    `💡 Все ваши сообщения будут пересылаться менеджеру. Для завершения сессии напишите /endsupport`,
     {
       reply_markup: setupReplyKeyboard()
     }
@@ -6585,13 +6595,23 @@ const handleSupportRequest = async (ctx, source = 'команда /support') => 
   const adminChatId = process.env.ADMIN_CHAT_ID;
   if (adminChatId && bot) {
     try {
+      // Создаем активную сессию поддержки
+      supportSessions.set(userId, {
+        adminChatId: adminChatId,
+        startTime: new Date(),
+        userName: userName,
+        username: username
+      });
+      
       await bot.telegram.sendMessage(
         adminChatId,
         `🔔 <b>Новый запрос в поддержку</b>\n\n` +
         `👤 <b>Пользователь:</b> ${userName}\n` +
         `🆔 <b>Telegram ID:</b> <code>${userId}</code>\n` +
         `📝 <b>Username:</b> ${username}${userInfo}\n\n` +
-        `💬 <b>Сообщение:</b> Пользователь запросил помощь через ${source}`,
+        `💬 <b>Источник:</b> ${source}\n\n` +
+        `✅ <b>Сессия поддержки активна</b>\n` +
+        `Все сообщения от этого пользователя будут пересылаться вам. Ответьте на это сообщение, чтобы написать пользователю.`,
         {
           parse_mode: 'HTML',
           reply_markup: {
@@ -6600,13 +6620,17 @@ const handleSupportRequest = async (ctx, source = 'команда /support') => 
                 {
                   text: '💬 Написать пользователю',
                   url: `https://t.me/${ctx.from.username || `user${userId}`}`
+                },
+                {
+                  text: '❌ Завершить сессию',
+                  callback_data: `endsupport_${userId}`
                 }
               ]
             ]
           }
         }
       );
-      console.log(`✅ Уведомление о запросе поддержки отправлено администратору (пользователь ${userId})`);
+      console.log(`✅ Уведомление о запросе поддержки отправлено администратору (пользователь ${userId}), сессия активна`);
     } catch (error) {
       console.error('⚠️ Ошибка отправки уведомления администратору:', error.message);
     }
@@ -6623,6 +6647,181 @@ bot.command('support', async (ctx) => {
 // Обработка нажатия на кнопку "Поддержка" из Reply Keyboard
 bot.hears('💬 Поддержка', async (ctx) => {
   await handleSupportRequest(ctx, 'кнопку "Поддержка"');
+});
+
+// Команда для завершения сессии поддержки
+bot.command('endsupport', async (ctx) => {
+  const userId = ctx.from.id;
+  
+  if (supportSessions.has(userId)) {
+    supportSessions.delete(userId);
+    await ctx.reply('✅ Сессия поддержки завершена. Если у вас возникнут вопросы, напишите /support', {
+      reply_markup: setupReplyKeyboard()
+    });
+    console.log(`✅ Сессия поддержки завершена пользователем ${userId}`);
+  } else {
+    await ctx.reply('ℹ️ У вас нет активной сессии поддержки.', {
+      reply_markup: setupReplyKeyboard()
+    });
+  }
+});
+
+// Обработка текстовых сообщений от пользователей в режиме поддержки
+bot.on('text', async (ctx) => {
+  // Пропускаем команды
+  if (ctx.message.text && ctx.message.text.startsWith('/')) {
+    return;
+  }
+  
+  const userId = ctx.from.id;
+  const session = supportSessions.get(userId);
+  
+  // Если у пользователя активна сессия поддержки, пересылаем сообщение менеджеру
+  if (session) {
+    try {
+      const userName = ctx.from.first_name || 'Пользователь';
+      const username = ctx.from.username ? `@${ctx.from.username}` : 'не указан';
+      
+      await bot.telegram.sendMessage(
+        session.adminChatId,
+        `💬 <b>Сообщение от пользователя</b>\n\n` +
+        `👤 <b>Имя:</b> ${userName}\n` +
+        `🆔 <b>ID:</b> <code>${userId}</code>\n` +
+        `📝 <b>Username:</b> ${username}\n\n` +
+        `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: '💬 Ответить',
+                  callback_data: `reply_${userId}`
+                },
+                {
+                  text: '❌ Завершить сессию',
+                  callback_data: `endsupport_${userId}`
+                }
+              ]
+            ]
+          }
+        }
+      );
+      
+      // Сохраняем связь между сообщением менеджеру и пользователем для ответа
+      // Используем message_id для связи
+      console.log(`📤 Сообщение от пользователя ${userId} переслано менеджеру`);
+    } catch (error) {
+      console.error('⚠️ Ошибка пересылки сообщения менеджеру:', error.message);
+      await ctx.reply('⚠️ Произошла ошибка при отправке сообщения менеджеру. Попробуйте позже.');
+    }
+  }
+});
+
+// Обработка ответов менеджера (callback для ответа)
+bot.action(/^reply_(\d+)$/, async (ctx) => {
+  const userId = parseInt(ctx.match[1]);
+  const managerId = ctx.from.id;
+  const adminChatId = process.env.ADMIN_CHAT_ID;
+  
+  // Проверяем, что это менеджер
+  if (adminChatId && managerId.toString() === adminChatId.toString()) {
+    const session = supportSessions.get(userId);
+    if (session) {
+      await ctx.answerCbQuery('Напишите ответ пользователю в ответ на это сообщение');
+    } else {
+      await ctx.answerCbQuery('Сессия поддержки уже завершена');
+    }
+  }
+});
+
+// Обработка сообщений от менеджера (ответы пользователям)
+// Используем отдельный обработчик для сообщений от менеджера
+bot.use(async (ctx, next) => {
+  const managerId = ctx.from.id;
+  const adminChatId = process.env.ADMIN_CHAT_ID;
+  
+  // Проверяем, что это менеджер и есть reply_to_message
+  if (adminChatId && managerId.toString() === adminChatId.toString() && ctx.message?.reply_to_message) {
+    const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption || '';
+    
+    // Ищем ID пользователя в тексте сообщения
+    const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)/);
+    
+    if (userIdMatch) {
+      const userId = parseInt(userIdMatch[1] || userIdMatch[2]);
+      const session = supportSessions.get(userId);
+      
+      if (session) {
+        try {
+          // Отправляем ответ пользователю
+          const messageText = ctx.message.text || ctx.message.caption || '';
+          if (messageText && !messageText.startsWith('/')) {
+            await bot.telegram.sendMessage(
+              userId,
+              `💬 <b>Ответ от поддержки:</b>\n\n${messageText}`,
+              {
+                parse_mode: 'HTML',
+                reply_markup: setupReplyKeyboard()
+              }
+            );
+            console.log(`📥 Ответ менеджера отправлен пользователю ${userId}`);
+            
+            // Подтверждаем менеджеру
+            await ctx.reply('✅ Ответ отправлен пользователю');
+            return; // Не продолжаем обработку дальше
+          }
+        } catch (error) {
+          console.error('⚠️ Ошибка отправки ответа пользователю:', error.message);
+          await ctx.reply('⚠️ Не удалось отправить ответ пользователю. Возможно, он заблокировал бота.');
+          return;
+        }
+      } else {
+        await ctx.reply('⚠️ Сессия поддержки для этого пользователя уже завершена.');
+        return;
+      }
+    }
+  }
+  
+  // Продолжаем обычную обработку
+  await next();
+});
+
+// Обработка callback для завершения сессии из админки
+bot.action(/^endsupport_(\d+)$/, async (ctx) => {
+  const userId = parseInt(ctx.match[1]);
+  const managerId = ctx.from.id;
+  const adminChatId = process.env.ADMIN_CHAT_ID;
+  
+  // Проверяем, что это менеджер
+  if (adminChatId && managerId.toString() === adminChatId.toString()) {
+    const session = supportSessions.get(userId);
+    if (session) {
+      supportSessions.delete(userId);
+      await ctx.answerCbQuery('Сессия поддержки завершена');
+      await ctx.editMessageText(
+        ctx.callbackQuery.message.text + '\n\n✅ Сессия поддержки завершена менеджером',
+        { parse_mode: 'HTML' }
+      );
+      
+      // Уведомляем пользователя
+      try {
+        await bot.telegram.sendMessage(
+          userId,
+          '✅ Сессия поддержки завершена. Если у вас возникнут вопросы, напишите /support',
+          {
+            reply_markup: setupReplyKeyboard()
+          }
+        );
+      } catch (error) {
+        console.error('⚠️ Ошибка отправки уведомления пользователю:', error.message);
+      }
+      
+      console.log(`✅ Сессия поддержки завершена менеджером для пользователя ${userId}`);
+    } else {
+      await ctx.answerCbQuery('Сессия поддержки уже завершена');
+    }
+  }
 });
 
 // Обработка нажатия на кнопку "QR пополнение депозита"
@@ -6694,10 +6893,26 @@ bot.on('web_app_data', (ctx) => {
   ctx.reply('✅ Заказ принят! Мы свяжемся с вами в ближайшее время.');
 });
 
+// Сохраняем имя бота для использования в API
+let botUsername = process.env.BOT_USERNAME || 'FlowboxBot';
+
+// API endpoint для получения информации о боте
+app.get('/api/bot-info', async (req, res) => {
+  res.json({ username: botUsername });
+});
+
 // Запуск бота с обработкой ошибок
 if (process.env.BOT_TOKEN) {
-  bot.launch().then(() => {
+  bot.launch().then(async () => {
     console.log('🤖 Бот запущен!');
+    // Получаем информацию о боте для сохранения username
+    try {
+      const me = await bot.telegram.getMe();
+      botUsername = me.username;
+      console.log(`✅ Имя бота: @${botUsername}`);
+    } catch (error) {
+      console.warn('⚠️ Не удалось получить информацию о боте:', error.message);
+    }
   }).catch((err) => {
     // Ошибка 409 означает, что где-то еще запущен другой экземпляр бота
     if (err.response?.error_code === 409) {

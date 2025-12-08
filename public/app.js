@@ -2363,13 +2363,37 @@ orderHistoryBtn.addEventListener('click', () => {
     });
 });
 
-supportBtn.addEventListener('click', () => {
-    // Сворачиваем мини-апп и открываем команду /support в боте
-    tg.close();
-    // Отправляем команду в бота (если возможно)
-    if (tg.initDataUnsafe?.user) {
-        // Пытаемся открыть бота с командой
-        window.open(`https://t.me/FlowboxBot?start=support`, '_blank');
+supportBtn.addEventListener('click', async () => {
+    // Открываем бота с командой /support через Telegram WebApp API
+    // Получаем имя бота из API
+    let botUsername = 'FlowboxBot'; // Дефолтное имя
+    
+    try {
+        const response = await fetch('/api/bot-info');
+        if (response.ok) {
+            const botInfo = await response.json();
+            if (botInfo && botInfo.username) {
+                botUsername = botInfo.username;
+            }
+        }
+    } catch (e) {
+        console.log('Не удалось получить имя бота, используем дефолтное');
+    }
+    
+    const supportUrl = `https://t.me/${botUsername}?start=support`;
+    
+    if (tg && tg.openTelegramLink) {
+        // Используем Telegram WebApp API для открытия бота
+        tg.openTelegramLink(supportUrl);
+    } else if (tg && tg.openLink) {
+        // Fallback: используем openLink
+        tg.openLink(supportUrl);
+    } else {
+        // Последний fallback: закрываем MiniApp и открываем бота
+        tg.close();
+        if (tg.initDataUnsafe?.user) {
+            window.open(supportUrl, '_blank');
+        }
     }
 });
 
