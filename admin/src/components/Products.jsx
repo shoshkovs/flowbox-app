@@ -36,7 +36,9 @@ export function Products({ authToken }) {
       if (response.ok) {
         const data = await response.json();
         // Если есть товары и все они скрыты
-        setAllHidden(data.total > 0 && data.active === 0);
+        const newAllHidden = data.total > 0 && parseInt(data.active) === 0;
+        console.log('📊 Статистика товаров:', { total: data.total, active: data.active, hidden: data.hidden, allHidden: newAllHidden });
+        setAllHidden(newAllHidden);
       }
     } catch (error) {
       console.error('Ошибка загрузки статистики товаров:', error);
@@ -232,6 +234,7 @@ export function Products({ authToken }) {
 
   const handleToggleAll = async () => {
     const action = allHidden ? 'show' : 'hide';
+    console.log('🔄 Переключение всех товаров:', { allHidden, action });
 
     try {
       const response = await fetch(`${API_BASE}/api/admin/products/toggle-all`, {
@@ -245,8 +248,15 @@ export function Products({ authToken }) {
 
       if (response.ok) {
         const data = await response.json();
-        await loadProducts();
+        console.log('✅ Ответ от сервера:', data);
+        
+        // Сначала обновляем статистику, потом товары
         await loadProductStats();
+        await loadProducts();
+        
+        // Дополнительно обновляем статистику после загрузки товаров, чтобы убедиться
+        await loadProductStats();
+        
         toast.success(data.message || (action === 'hide' ? `Скрыто товаров: ${data.count || 0}` : `Показано товаров: ${data.count || 0}`));
       } else {
         const error = await response.json();
