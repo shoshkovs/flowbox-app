@@ -6519,10 +6519,8 @@ bot.command('start', async (ctx) => {
     return;
   }
   
-  // Вариант 1: Кнопка под сообщением с web_app
-  // Эта кнопка открывает Mini App в режиме Main App, где fullscreen работает корректно
-  // В отличие от Menu Button, который открывается как "плавающий" мини-апп
-  // Используем параметр mode=fullscreen для принудительного включения fullscreen
+  // Используем Direct Link для обеих кнопок, так как web_app не всегда открывает в fullscreen
+  // Direct Link с параметром mode=fullscreen гарантирует корректную работу fullscreen
   const directLinkUrl = 'https://t.me/FlowboxBot/flowbox_app?startapp=main&mode=fullscreen';
   
   ctx.reply(
@@ -6533,13 +6531,7 @@ bot.command('start', async (ctx) => {
           [
             {
               text: '🛍️ Открыть магазин',
-              web_app: { url: webAppUrl }
-            }
-          ],
-          [
-            {
-              text: '🔗 Открыть через Direct Link',
-              url: directLinkUrl
+              url: directLinkUrl  // Используем Direct Link вместо web_app для гарантированного fullscreen
             }
           ]
         ]
@@ -6547,9 +6539,9 @@ bot.command('start', async (ctx) => {
     }
   );
   
-  // Вариант 2: Direct Link (уже настроен в @BotFather)
-  // Ссылка: https://t.me/FlowboxBot/flowbox_app?startapp=main
-  // Параметр ?startapp=main важен для открытия в режиме Main App с fullscreen
+  // Примечание: Кнопка web_app не всегда открывает Mini App в fullscreen режиме
+  // Поэтому используем Direct Link с параметром mode=fullscreen для обеих кнопок
+  // Direct Link гарантирует корректную работу fullscreen
   
   // Устанавливаем постоянное меню после команды /start
   ctx.reply(
