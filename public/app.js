@@ -886,11 +886,17 @@ async function loadAdditionalProducts() {
     try {
         const response = await fetch('/api/products');
         const allProducts = await response.json();
+        console.log('Все товары загружены:', allProducts.length);
         // Фильтруем товары с категорией "корзина"
         additionalProducts = allProducts.filter(p => {
             const category = (p.category || p.type || '').toLowerCase();
-            return category === 'корзина' || category === 'cart';
+            const matches = category === 'корзина' || category === 'cart';
+            if (matches) {
+                console.log('Найден товар из категории "корзина":', p.name, p.id, 'category:', p.category || p.type);
+            }
+            return matches;
         });
+        console.log('Товаров из категории "корзина":', additionalProducts.length);
         renderAdditionalProducts();
     } catch (error) {
         console.error('Ошибка загрузки дополнительных товаров:', error);
@@ -913,6 +919,9 @@ function renderAdditionalProducts() {
     carousel.innerHTML = additionalProducts.map(product => {
         const isInCart = cart.some(item => item.id === product.id);
         const productImage = product.image || product.image_url || 'https://via.placeholder.com/150?text=' + encodeURIComponent(product.name);
+        // Экранируем ID для безопасного использования в onclick
+        const safeProductId = String(product.id).replace(/'/g, "\\'");
+        console.log('Рендеринг товара:', product.name, 'ID:', safeProductId, 'isInCart:', isInCart);
         return `
             <div class="additional-product-card">
                 <div class="additional-product-image-wrapper">
@@ -922,7 +931,7 @@ function renderAdditionalProducts() {
                     <div class="additional-product-name">${product.name}</div>
                     <div class="additional-product-price">${product.price} ₽</div>
                 </div>
-                <button class="additional-product-add-btn" onclick="addAdditionalProduct('${product.id}')" ${isInCart ? 'disabled' : ''}>
+                <button class="additional-product-add-btn" onclick="addAdditionalProduct('${safeProductId}')" ${isInCart ? 'disabled' : ''}>
                     ${isInCart ? 'В корзине' : 'Добавить'}
                 </button>
             </div>
