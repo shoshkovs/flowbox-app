@@ -322,7 +322,6 @@ function renderProducts() {
             <div class="product-card" data-product-id="${product.id}">
                 <div class="product-image-wrapper">
                     <img src="${product.image}" alt="${product.name}" class="product-image">
-                    <div class="delivery-badge">Доставим Завтра</div>
                 </div>
                 <div class="product-info">
                     <div class="product-name">${product.name}</div>
@@ -336,8 +335,12 @@ function renderProducts() {
                             <button class="quantity-btn-small" onclick="changeProductQuantity(${product.id}, 1)" ${quantity >= 500 ? 'disabled' : ''}>+</button>
                         </div>
                     </div>
-                    <button class="add-to-cart-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
-                        Добавить
+                    <button class="cart-icon-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}" title="Добавить в корзину">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
