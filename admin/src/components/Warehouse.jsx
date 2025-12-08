@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Minus, Truck, ShoppingCart, DollarSign, XCircle, Search, Calendar } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Package as PackageIcon, TrendingDown, AlertCircle, Edit, Minus, Truck, ShoppingCart, DollarSign, XCircle, Search, Calendar, Trash2 } from 'lucide-react';
 import { WarehouseForm } from './warehouse/WarehouseForm';
 import { WriteOffDialog } from './warehouse/WriteOffDialog';
 import { ProductForm } from './products/ProductForm';
@@ -232,6 +232,36 @@ export function Warehouse({ authToken }) {
     }
   };
 
+  const handleDeleteSupply = async (supplyId) => {
+    if (!confirm('Вы уверены, что хотите удалить эту поставку? Это действие нельзя отменить.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/supplies/${supplyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success('Поставка успешно удалена');
+        // Обновляем данные склада и поставок
+        await loadSupplies();
+        if (activeTab === 'products') {
+          await loadWarehouseData();
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Ошибка удаления поставки');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления поставки:', error);
+      toast.error('Ошибка удаления поставки');
+    }
+  };
+
   const handleSaveSupply = async (data) => {
     await loadSupplies();
     setShowForm(false);
@@ -427,9 +457,14 @@ export function Warehouse({ authToken }) {
                     ? 'text-amber-600' 
                     : 'text-gray-900';
                 const availableOrders = (() => {
-                  const minOrder = Number(product.minOrderQuantity) || 1;
+                  const minOrder = Number(product.minOrderQuantity);
                   const total = Number(product.totalRemaining) || 0;
-                  return minOrder > 0 ? Math.floor(total / minOrder) : 0;
+                  // Если мин заказ не установлен или равен 0, показываем 0 доступных заказов
+                  if (!minOrder || minOrder <= 0) {
+                    return 0;
+                  }
+                  // Вычисляем целую часть от деления остатка на мин заказ
+                  return Math.floor(total / minOrder);
                 })();
 
                 return (
@@ -682,6 +717,16 @@ export function Warehouse({ authToken }) {
                           title="Редактировать поставку"
                         >
                           <Edit className="w-4 h-4 text-gray-400 hover:text-pink-600" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSupply(supply.id);
+                          }}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors ml-1"
+                          title="Удалить поставку"
+                        >
+                          <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-600" />
                         </button>
                         <div className="ml-2">
                           {isExpanded ? (

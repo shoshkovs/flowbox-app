@@ -1,8 +1,10 @@
 import * as React from "react"
 
+const TabsContext = React.createContext();
+
 export function Tabs({ defaultValue, value, onValueChange, children, className = "", ...props }) {
   // Если value передан (контролируемый режим), используем его, иначе используем внутреннее состояние
-  const [internalTab, setInternalTab] = React.useState(defaultValue);
+  const [internalTab, setInternalTab] = React.useState(defaultValue || 'general');
   const activeTab = value !== undefined ? value : internalTab;
   
   const handleTabChange = (newValue) => {
@@ -11,17 +13,26 @@ export function Tabs({ defaultValue, value, onValueChange, children, className =
       setInternalTab(newValue);
     }
     // Всегда вызываем onValueChange, если он передан
-    onValueChange?.(newValue);
+    if (onValueChange) {
+      onValueChange(newValue);
+    }
   };
   
   return (
-    <div className={className} {...props}>
+    <TabsContext.Provider value={{ activeTab, onTabChange: handleTabChange }}>
+      <div className={className} {...props}>
+        {children}
+      </div>
+    </TabsContext.Provider>
+  );
+}
+
+export function TabsList({ children, className = "", ...props }) {
+  return (
+    <div className={`inline-flex gap-1 rounded-lg bg-gray-100 p-1 ${className}`} {...props}>
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-          return React.cloneElement(child, { 
-            activeTab, 
-            onTabChange: handleTabChange 
-          });
+          return React.cloneElement(child);
         }
         return child;
       })}
@@ -29,15 +40,8 @@ export function Tabs({ defaultValue, value, onValueChange, children, className =
   );
 }
 
-export function TabsList({ children, className = "", ...props }) {
-  return (
-    <div className={`inline-flex gap-1 rounded-lg bg-gray-100 p-1 ${className}`} {...props}>
-      {children}
-    </div>
-  );
-}
-
-export function TabsTrigger({ value, children, activeTab, onTabChange, className = "", ...props }) {
+export function TabsTrigger({ value, children, className = "", ...props }) {
+  const { activeTab, onTabChange } = React.useContext(TabsContext);
   const isActive = activeTab === value;
   
   return (
@@ -55,7 +59,9 @@ export function TabsTrigger({ value, children, activeTab, onTabChange, className
   );
 }
 
-export function TabsContent({ value, children, activeTab, className = "", ...props }) {
+export function TabsContent({ value, children, className = "", ...props }) {
+  const { activeTab } = React.useContext(TabsContext);
+  
   if (activeTab !== value) return null;
   
   return (
