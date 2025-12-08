@@ -232,13 +232,6 @@ export function Products({ authToken }) {
 
   const handleToggleAll = async () => {
     const action = allHidden ? 'show' : 'hide';
-    const confirmMessage = allHidden 
-      ? 'Вы уверены, что хотите показать все товары?'
-      : 'Вы уверены, что хотите скрыть все товары? Это действие скроет все активные товары.';
-    
-    if (!confirm(confirmMessage)) {
-      return;
-    }
 
     try {
       const response = await fetch(`${API_BASE}/api/admin/products/toggle-all`, {
@@ -284,7 +277,7 @@ export function Products({ authToken }) {
             {allHidden ? (
               <>
                 <Eye className="w-4 h-4" />
-                Показать все
+                Активировать все
               </>
             ) : (
               <>

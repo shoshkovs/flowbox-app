@@ -1,10 +1,16 @@
 import * as React from "react"
 
 export function Tabs({ defaultValue, value, onValueChange, children, className = "", ...props }) {
-  const [activeTab, setActiveTab] = React.useState(value || defaultValue);
+  // Если value передан (контролируемый режим), используем его, иначе используем внутреннее состояние
+  const [internalTab, setInternalTab] = React.useState(defaultValue);
+  const activeTab = value !== undefined ? value : internalTab;
   
   const handleTabChange = (newValue) => {
-    setActiveTab(newValue);
+    if (value === undefined) {
+      // Неконтролируемый режим - обновляем внутреннее состояние
+      setInternalTab(newValue);
+    }
+    // Всегда вызываем onValueChange, если он передан
     onValueChange?.(newValue);
   };
   

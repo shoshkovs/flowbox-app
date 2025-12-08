@@ -29,6 +29,7 @@ import { Directories } from './Directories';
 const API_BASE = window.location.origin;
 
 export function Settings({ authToken }) {
+  const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState({
     shopName: 'Цветочный рай',
     shopPhone: '+7 (999) 123-45-67',
@@ -117,7 +118,7 @@ export function Settings({ authToken }) {
         </p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="general">Общие</TabsTrigger>
           <TabsTrigger value="directories">
