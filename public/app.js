@@ -451,24 +451,30 @@ function renderProducts() {
         const cartItem = cart.find(item => item.id === product.id);
         const isInCart = !!cartItem;
         const cartQuantity = cartItem ? cartItem.quantity : 0;
+        // Количество банчей = количество стеблей / стеблей в банче
+        const bunchesCount = isInCart ? Math.floor(cartQuantity / stemQuantity) : 0;
         
         return `
             <div class="product-card" data-product-id="${product.id}">
                 <div class="product-image-wrapper">
                     <img src="${product.image}" alt="${product.name}" class="product-image">
-                    ${isInCart ? `<div class="product-quantity-overlay">${cartQuantity}</div>` : ''}
+                    ${isInCart && bunchesCount > 0 ? `
+                        <div class="product-quantity-overlay">
+                            <div class="product-quantity-overlay-text">${bunchesCount}</div>
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="product-info">
                     <div class="product-name">${product.name}</div>
                     ${stemQuantity > 1 ? `<div class="product-stem-quantity">${stemQuantity} шт</div>` : ''}
-                    <div class="product-action-row">
+                    <div class="product-action-row ${isInCart ? 'product-action-row-filled' : ''}">
                         ${isInCart ? `
                             <button class="product-minus-btn" onclick="changeCartQuantity(${product.id}, -1)">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
                             </button>
-                            <div class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></div>
+                            <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
                             <button class="product-plus-btn" onclick="changeCartQuantity(${product.id}, 1)">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -477,8 +483,8 @@ function renderProducts() {
                             </button>
                         ` : `
                             <button class="product-add-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
-                                <span class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <span class="product-price-semi-transparent">${totalPrice} <span class="ruble">₽</span></span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
@@ -639,22 +645,29 @@ function updateProductCard(productId) {
     const cartItem = cart.find(item => item.id === productId);
     const isInCart = !!cartItem;
     const cartQuantity = cartItem ? cartItem.quantity : 0;
+    const bunchesCount = isInCart ? Math.floor(cartQuantity / stemQuantity) : 0;
     const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
     
     const card = document.querySelector(`[data-product-id="${productId}"]`);
     if (!card) return;
     
-    // Обновляем overlay с количеством
+    // Обновляем overlay с количеством банчей
     const imageWrapper = card.querySelector('.product-image-wrapper');
     if (imageWrapper) {
         let overlay = imageWrapper.querySelector('.product-quantity-overlay');
-        if (isInCart) {
+        if (isInCart && bunchesCount > 0) {
             if (!overlay) {
                 overlay = document.createElement('div');
                 overlay.className = 'product-quantity-overlay';
+                const overlayText = document.createElement('div');
+                overlayText.className = 'product-quantity-overlay-text';
+                overlay.appendChild(overlayText);
                 imageWrapper.appendChild(overlay);
             }
-            overlay.textContent = cartQuantity;
+            const overlayText = overlay.querySelector('.product-quantity-overlay-text');
+            if (overlayText) {
+                overlayText.textContent = bunchesCount;
+            }
         } else {
             if (overlay) {
                 overlay.remove();
@@ -666,13 +679,14 @@ function updateProductCard(productId) {
     const actionRow = card.querySelector('.product-action-row');
     if (actionRow) {
         if (isInCart) {
+            actionRow.classList.add('product-action-row-filled');
             actionRow.innerHTML = `
                 <button class="product-minus-btn" onclick="changeCartQuantity(${productId}, -1)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                 </button>
-                <div class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></div>
+                <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
                 <button class="product-plus-btn" onclick="changeCartQuantity(${productId}, 1)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -681,10 +695,11 @@ function updateProductCard(productId) {
                 </button>
             `;
         } else {
+            actionRow.classList.remove('product-action-row-filled');
             actionRow.innerHTML = `
                 <button class="product-add-btn" onclick="addToCart(${productId}, ${minQty})" id="add-btn-${productId}">
-                    <span class="product-price-transparent">${totalPrice} <span class="ruble">₽</span></span>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                    <span class="product-price-semi-transparent">${totalPrice} <span class="ruble">₽</span></span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
