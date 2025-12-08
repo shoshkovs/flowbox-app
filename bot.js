@@ -3307,6 +3307,30 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   }
 });
 
+// API: Получить статистику товаров (для определения состояния кнопки)
+// ВАЖНО: Этот роут должен быть ПЕРЕД /api/admin/products/:id, чтобы не перехватывать запросы к /stats
+app.get('/api/admin/products/stats', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  try {
+    const client = await getDbClient();
+    try {
+      const result = await client.query(
+        'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE is_active = true) as active, COUNT(*) FILTER (WHERE is_active = false) as hidden FROM products'
+      );
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения статистики товаров:', error);
+    res.status(500).json({ error: 'Ошибка получения статистики: ' + error.message });
+  }
+});
+
 // API: Получить товар по ID
 app.get('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   if (!pool) {
@@ -3314,6 +3338,11 @@ app.get('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
   }
   
   const { id } = req.params;
+  
+  // Проверяем, что id - это число, а не строка "stats"
+  if (isNaN(parseInt(id))) {
+    return res.status(400).json({ error: 'Неверный ID товара' });
+  }
   
   try {
     const client = await pool.connect();
@@ -3464,28 +3493,6 @@ app.post('/api/admin/products/toggle-all', checkAdminAuth, async (req, res) => {
   }
 });
 
-// API: Получить статистику товаров (для определения состояния кнопки)
-app.get('/api/admin/products/stats', checkAdminAuth, async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'База данных не подключена' });
-  }
-  
-  try {
-    const client = await getDbClient();
-    try {
-      const result = await client.query(
-        'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE is_active = true) as active, COUNT(*) FILTER (WHERE is_active = false) as hidden FROM products'
-      );
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Ошибка получения статистики товаров:', error);
-    res.status(500).json({ error: 'Ошибка получения статистики: ' + error.message });
-  }
-});
 
 // API: Обновить заказ
 app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
@@ -5654,18 +5661,22 @@ app.get('/api/admin/customers', checkAdminAuth, async (req, res) => {
         ORDER BY last_order_date DESC NULLS LAST
       `);
       
-      // Получаем заказы для каждого клиента
+      // Получаем заказы и реальный баланс бонусов для каждого клиента
       const customers = await Promise.all(result.rows.map(async (customer) => {
         const ordersResult = await client.query(
           'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
           [customer.id]
         );
+        
+        // Получаем реальный баланс бонусов из транзакций (единственный источник правды)
+        const realBonusBalance = await getUserBonusBalance(customer.id);
+        
         return {
           id: customer.id,
           name: customer.name || null,
           phone: customer.phone || null,
           email: customer.email || null,
-          bonuses: parseInt(customer.bonuses) || 0,
+          bonuses: realBonusBalance, // Используем реальный баланс из транзакций, а не кэш
           ordersCount: parseInt(customer.orders_count) || 0,
           totalSpent: parseInt(customer.total_spent) || 0,
           lastOrderDate: customer.last_order_date || null,
