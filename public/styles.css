@@ -74,7 +74,7 @@ h1, h2, h3, .font-bold {
 /* Header */
 .header {
     background: white;
-    padding: 52px 20px 8px 20px; /* Лого еще ближе к нижнему краю (8px вместо 12px) */
+    padding: 60px 20px 12px 20px; /* Увеличен padding для большей высоты */
     display: flex;
     align-items: flex-end; /* Выравнивание к нижнему краю */
     justify-content: center;
@@ -532,6 +532,7 @@ h1, h2, h3, .font-bold {
 
 /* Order Form Page */
 .order-page-header {
+    padding-top: 0; /* Убираем верхний отступ, так как header уже видим */
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
     display: flex;

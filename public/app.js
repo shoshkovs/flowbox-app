@@ -1048,9 +1048,9 @@ function switchTab(tabId) {
     const header = document.querySelector('.header');
     
     if (tabId === 'orderTab') {
-        // Скрыть навигацию и header при открытии формы заказа
+        // Скрыть навигацию, но оставить header видимым
         if (bottomNav) bottomNav.style.display = 'none';
-        if (header) header.style.display = 'none';
+        if (header) header.style.display = 'flex'; // Header остается видимым
         // Инициализировать поэтапную форму заказа
         initCheckoutSteps();
         // Убеждаемся, что мы на первом шаге
