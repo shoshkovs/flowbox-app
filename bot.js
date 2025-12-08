@@ -1126,16 +1126,7 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
           ]
         );
         
-        // Создаем транзакцию для начальных бонусов (единственный источник правды)
         const newUser = result.rows[0];
-        await client.query(
-          `INSERT INTO bonus_transactions (user_id, type, amount, description)
-           VALUES ($1, 'accrual', $2, $3)`,
-          [newUser.id, 500, 'Начальные бонусы при регистрации']
-        );
-        
-        // Обновляем кэш баланса из транзакций
-        await updateUserBonusCache(newUser.id);
       } else {
         // Обновляем данные пользователя, если они изменились или если username отсутствует
         const user = result.rows[0];
@@ -1494,34 +1485,10 @@ async function createOrderInDb(orderData) {
         deliveryZone = 'До 20 км от КАД';
       }
       
-      // Рассчитываем правильные значения бонусов ДО создания заказа
-      let bonusUsed = 0;
-      let bonusEarned = 0;
-      let newBonusBalance = null;
+      // Итоговая сумма заказа
+      const finalTotal = orderData.flowersTotal + (orderData.serviceFee || 450) + (orderData.deliveryPrice || 0);
       
-      if (userId) {
-        // 1. Узнаём текущий баланс из транзакций (единственный источник правды)
-        const currentBalance = await getUserBonusBalance(userId);
-        
-        // 2. Сумма цветов (без доставки и сборов)
-        const flowersTotal = parseFloat(orderData.flowersTotal || 0);
-        
-        // 3. Сколько пользователь ХОЧЕТ списать (из фронта)
-        const requestedRedeem = Math.max(0, parseInt(orderData.bonusUsed) || 0);
-        
-        // 4. Реальное списание: не больше баланса и не больше суммы цветов
-        bonusUsed = Math.min(requestedRedeem, currentBalance, flowersTotal);
-        
-        // 5. Сколько начислить: если списывали - не начисляем, если нет - начисляем 1%
-        bonusEarned = bonusUsed > 0 
-          ? 0                                      // если списывали — не начисляем
-          : Math.floor(flowersTotal * 0.01);       // если нет — начисляем 1%
-      }
-      
-      // Пересчитываем итоговую сумму с учетом реального списания бонусов
-      const finalTotal = orderData.flowersTotal + (orderData.serviceFee || 450) + (orderData.deliveryPrice || 0) - bonusUsed;
-      
-      // Создаем заказ с правильными значениями бонусов
+      // Создаем заказ
       const orderResult = await client.query(
         `INSERT INTO orders 
          (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
@@ -1538,8 +1505,8 @@ async function createOrderInDb(orderData) {
           orderData.flowersTotal,
           orderData.serviceFee || 450,
           orderData.deliveryPrice || 0,
-          bonusUsed,
-          bonusEarned,
+          0, // bonus_used
+          0, // bonus_earned
           clientName,
           clientPhone,
           clientEmail,
@@ -1704,34 +1671,6 @@ async function createOrderInDb(orderData) {
       }
       console.log('✅ Позиции заказа добавлены и движения созданы, количество:', orderData.items?.length || 0);
       
-      // Создаем транзакции бонусов и обновляем кэш
-      if (userId) {
-        // Создаем транзакции (bonusUsed и bonusEarned уже рассчитаны выше)
-        if (bonusUsed > 0) {
-          await client.query(
-            `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
-             VALUES ($1, $2, 'redeem', -$3, $4)`,
-            [userId, order.id, bonusUsed, `Списание бонусов за заказ #${order.id}`]
-          );
-        }
-        
-        if (bonusEarned > 0) {
-          await client.query(
-            `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
-             VALUES ($1, $2, 'accrual', $3, $4)`,
-            [userId, order.id, bonusEarned, `Начисление бонусов за заказ #${order.id}`]
-          );
-        }
-        
-        // Обновляем кэш users.bonuses из транзакций
-        await updateUserBonusCache(userId);
-        
-        // Получаем новый баланс для возврата фронту
-        newBonusBalance = await getUserBonusBalance(userId);
-        
-        console.log(`✅ Бонусы обновлены: использовано=${bonusUsed}, начислено=${bonusEarned}, новый баланс=${newBonusBalance}`);
-      }
-      
       // Создаем запись в order_status_history
       try {
         await client.query(
@@ -1750,8 +1689,7 @@ async function createOrderInDb(orderData) {
       
       return {
         orderId: order.id,
-        telegramOrderId: Date.now(), // Для совместимости с фронтендом
-        bonuses: newBonusBalance !== null ? newBonusBalance : undefined // Новый баланс бонусов
+        telegramOrderId: Date.now() // Для совместимости с фронтендом
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -1939,9 +1877,6 @@ async function sendOrderConfirmation(orderId, telegramId, orderData) {
     }
     if (orderData.deliveryPrice) {
       message += `Доставка: ${parseFloat(orderData.deliveryPrice).toLocaleString('ru-RU')} ₽\n`;
-    }
-    if (orderData.bonusUsed) {
-      message += `Использовано бонусов: -${parseFloat(orderData.bonusUsed).toLocaleString('ru-RU')} ₽\n`;
     }
     message += `\n<b>К оплате: ${parseFloat(orderData.total).toLocaleString('ru-RU')} ₽</b>\n\n`;
     
@@ -2137,16 +2072,13 @@ app.post('/api/user-data', async (req, res) => {
         }
       }
       
-      // Бонусы больше НЕ сохраняются из фронта - они управляются только через транзакции на бэке
-      // Фронт только читает баланс, но никогда не пишет его обратно
-      
       // Логируем только при значительных изменениях (новые адреса, заказы)
       const hasSignificantChanges = 
         (addresses !== undefined && addresses.length > 0) ||
         (activeOrders !== undefined && activeOrders.length > 0);
       
       if (hasSignificantChanges) {
-        console.log(`💾 Сохранены данные для пользователя ${userId} (БД): адресов=${addresses?.length || 0}, заказов=${activeOrders?.length || 0}, бонусов=${bonuses || 0}`);
+        console.log(`💾 Сохранены данные для пользователя ${userId} (БД): адресов=${addresses?.length || 0}, заказов=${activeOrders?.length || 0}`);
       }
     } else {
       // Fallback: файловое хранилище
@@ -2288,10 +2220,6 @@ app.get('/api/user-data/:userId', async (req, res) => {
         console.log('📥 ID активных заказов:', activeOrders.map(o => o.id).join(', '));
       }
       
-      // Получаем баланс бонусов из транзакций (единственный источник правды)
-      const bonusBalance = await getUserBonusBalance(user.id);
-      console.log(`💰 Баланс бонусов для пользователя ${userId} (user_id=${user.id}) в GET: ${bonusBalance}`);
-      
       const userData = {
         cart: [], // Корзина хранится на клиенте
         addresses: addresses,
@@ -2301,13 +2229,11 @@ app.get('/api/user-data/:userId', async (req, res) => {
           email: user.email || ''
         },
         activeOrders: activeOrders,
-        completedOrders: completedOrders,
-        // Баланс из транзакций (единственный источник правды)
-        bonuses: bonusBalance
+        completedOrders: completedOrders
       };
       
       // Логируем загрузку данных
-      console.log(`📥 Загружены данные для пользователя ${userId} (user_id=${user.id}) в GET: адресов=${addresses.length}, активных заказов=${activeOrders.length}, бонусов=${bonusBalance}`);
+      console.log(`📥 Загружены данные для пользователя ${userId} (user_id=${user.id}) в GET: адресов=${addresses.length}, активных заказов=${activeOrders.length}`);
       
       res.json(userData);
     } else {
@@ -2318,7 +2244,6 @@ app.get('/api/user-data/:userId', async (req, res) => {
         profile: null,
         activeOrders: [],
         completedOrders: [],
-        bonuses: 0 // Не 500, чтобы не начислять бонусы при каждом деплое
       };
       
       console.log(`📥 Загружены данные для пользователя ${userId} (файл): адресов=${userData.addresses.length}, заказов=${userData.activeOrders.length}`);
@@ -2403,7 +2328,6 @@ app.post('/api/orders', async (req, res) => {
                 flowersTotal: parseFloat(orderData.flowersTotal || 0),
                 serviceFee: parseFloat(orderData.serviceFee || 450),
                 deliveryPrice: parseFloat(orderData.deliveryPrice || 0),
-                bonusUsed: parseFloat(orderData.bonusUsed || 0),
                 address: orderData.address || '',
                 deliveryDate: orderData.deliveryDate || null,
                 deliveryTime: orderData.deliveryTime || null,
@@ -2423,16 +2347,11 @@ app.post('/api/orders', async (req, res) => {
           console.warn(`⚠️ Не отправляем подтверждение: userId=${orderData.userId}, bot=${!!bot}`);
         }
         
-        // Возвращаем явный успешный ответ с новым балансом бонусов
+        // Возвращаем явный успешный ответ
         const responseData = { 
           success: true, 
           orderId: result.orderId 
         };
-        
-        // Добавляем новый баланс бонусов, если он был рассчитан
-        if (result.bonuses !== undefined) {
-          responseData.bonuses = result.bonuses;
-        }
         
         res.status(200).json(responseData);
       } else {
@@ -3633,36 +3552,6 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
           // Отправляем уведомление пользователю о смене статуса
           await sendOrderStatusNotification(orderId, normalizedStatus, oldStatus, status_comment || null);
           
-          // Если статус меняется на CANCELED, откатываем бонусы
-          if (normalizedStatus === 'CANCELED' && oldOrder.user_id) {
-            try {
-              // Откатываем бонусы: возвращаем использованные, убираем начисленные
-              await client.query(
-                `UPDATE users 
-                 SET bonuses = bonuses + $1 - $2
-                 WHERE id = $3`,
-                [oldOrder.bonus_used || 0, oldOrder.bonus_earned || 0, oldOrder.user_id]
-              );
-              
-              // Создаем транзакции для отката бонусов
-              if (oldOrder.bonus_used > 0) {
-                await client.query(
-                  `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
-                   VALUES ($1, $2, 'adjustment', $3, $4)`,
-                  [oldOrder.user_id, orderId, oldOrder.bonus_used, `Возврат бонусов при отмене заказа #${orderId}`]
-                );
-              }
-              if (oldOrder.bonus_earned > 0) {
-                await client.query(
-                  `INSERT INTO bonus_transactions (user_id, order_id, type, amount, description)
-                   VALUES ($1, $2, 'adjustment', $3, $4)`,
-                  [oldOrder.user_id, orderId, -oldOrder.bonus_earned, `Списание начисленных бонусов при отмене заказа #${orderId}`]
-                );
-              }
-            } catch (bonusError) {
-              console.error('Ошибка отката бонусов:', bonusError);
-            }
-          }
         }
       }
       

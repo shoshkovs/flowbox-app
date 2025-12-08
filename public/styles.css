@@ -1378,82 +1378,6 @@ h1, h2, h3, .font-bold {
     color: white;
 }
 
-/* Бонусы */
-.cart-bonuses {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: var(--shadow);
-}
-
-.bonus-toggle-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.bonus-label-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.bonus-label {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.bonus-balance {
-    font-size: 12px;
-    color: #666;
-}
-
-/* Тумблер */
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 28px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.3s;
-    border-radius: 28px;
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-}
-
-.toggle-switch input:checked + .toggle-slider {
-    background-color: var(--primary-color);
-}
-
-.toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(22px);
-}
 
 /* Итого */
 .cart-final-total {
@@ -1552,28 +1476,6 @@ h1, h2, h3, .font-bold {
     margin-left: 2px;
 }
 
-.bonus-earn-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 16px;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.bonus-earn-row > span:first-child {
-    color: var(--text-color);
-}
-
-.bonus-earn-amount {
-    color: var(--primary-color);
-    font-weight: 600;
-}
-
-.bonus-earn-label {
-    color: var(--text-color);
-    font-weight: 600;
-}
 
 .service-fee-help-content {
     padding: 20px;
@@ -1664,23 +1566,6 @@ h1, h2, h3, .font-bold {
     margin-bottom: 16px;
 }
 
-.bonus-info {
-    padding-top: 16px;
-    border-top: 1px solid #eee;
-}
-
-.bonus-info-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 14px;
-}
-
-.bonus-info-note {
-    font-size: 12px;
-    color: #666;
-    margin-top: 8px;
-}
 
 /* Страница профиля */
 .profile-page {
@@ -1906,40 +1791,8 @@ h1, h2, h3, .font-bold {
     margin-top: 16px;
 }
 
-.support-content, .bonuses-content {
+.support-content {
     padding: 20px;
-}
-
-.bonuses-amount {
-    text-align: center;
-    padding: 20px;
-    background: #f9f9f9;
-    border-radius: 12px;
-    margin-bottom: 20px;
-}
-
-.bonuses-label {
-    display: block;
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 8px;
-}
-
-.bonuses-value {
-    display: block;
-    font-size: 32px;
-    font-weight: bold;
-    color: var(--primary-color);
-}
-
-.bonuses-description {
-    color: #666;
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.bonuses-description p {
-    margin-bottom: 8px;
 }
 
 .order-history-list {
@@ -2374,35 +2227,6 @@ input[type="text"][inputmode="numeric"] {
     font-weight: normal;
 }
 
-/* Бонусы в профиле */
-.bonuses-section {
-    text-align: center;
-    padding: 20px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-}
-
-.bonuses-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-bottom: 12px;
-}
-
-.bonuses-amount-large {
-    font-size: 32px;
-    font-weight: bold;
-    color: var(--primary-color);
-    font-family: var(--font-bold);
-    margin-bottom: 8px;
-}
-
-.bonuses-description-text {
-    font-size: 12px;
-    color: #999;
-    line-height: 1.4;
-}
 
 .profile-edit-form {
     padding: 20px;

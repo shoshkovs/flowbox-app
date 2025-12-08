@@ -38,9 +38,6 @@ export function Settings({ authToken }) {
     workStart: '08:00',
     workEnd: '22:00',
     minOrder: 1000,
-    bonusProgramEnabled: true,
-    bonusPercent: 5,
-    bonusMax: 20,
     serviceFee: 450,
     deliveryZones: [
       { id: 1, name: 'Зона 1 (Центр)', price: 300, freeFrom: 3000 },
@@ -230,64 +227,6 @@ export function Settings({ authToken }) {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Бонусная программа</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Включить бонусную программу</Label>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Начисление и списание бонусов
-                  </p>
-                </div>
-                <Switch 
-                  checked={settings.bonusProgramEnabled}
-                  onChange={(checked) => setSettings({ ...settings, bonusProgramEnabled: checked })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="bonusPercent">
-                  Процент начисления (%)
-                </Label>
-                <Input
-                  id="bonusPercent"
-                  type="number"
-                  value={settings.bonusPercent}
-                  onChange={(e) => setSettings({ ...settings, bonusPercent: parseFloat(e.target.value) || 0 })}
-                  className="mt-2"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  {settings.bonusPercent}% от суммы заказа будет начислено в виде
-                  бонусов
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="bonusMax">
-                  Максимум бонусов к списанию (%)
-                </Label>
-                <Input
-                  id="bonusMax"
-                  type="number"
-                  value={settings.bonusMax}
-                  onChange={(e) => setSettings({ ...settings, bonusMax: parseInt(e.target.value) || 0 })}
-                  className="mt-2"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Клиент может оплатить бонусами до {settings.bonusMax}% от суммы
-                  заказа
-                </p>
-              </div>
-
-              <Button onClick={saveSettings}>
-                <Save className="w-4 h-4 mr-2" />
-                Сохранить изменения
-              </Button>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="delivery" className="space-y-6">

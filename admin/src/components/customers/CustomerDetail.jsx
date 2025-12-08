@@ -179,7 +179,6 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   const bonusBalance = customerData.bonuses || customer.bonuses || 0;
   const orders = customerData.orders || [];
   const addresses = customerData.addresses || [];
-  const initialBonusTransaction = customerData.initialBonusTransaction || null;
 
   // Функции для отображения статусов
   const getStatusLabel = (status) => {
@@ -308,37 +307,11 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold mb-4">История заказов</h2>
             <div className="space-y-4">
-              {/* Начальные бонусы - показываем перед первым заказом */}
-              {initialBonusTransaction && (
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-blue-600 font-medium">Регистрация</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
-                        Начисление
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">Начислено {parseInt(initialBonusTransaction.amount || 0)} бонусов</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <p className="text-xs text-gray-400">
-                        {new Date(initialBonusTransaction.created_at).toLocaleDateString('ru-RU')}
-                      </p>
-                      <p className="text-xs text-green-600 font-medium">
-                        +{parseInt(initialBonusTransaction.amount || 0)} ₽ бонусов
-                      </p>
-                    </div>
-                  </div>
-                  <p className="font-medium text-green-600">+{parseInt(initialBonusTransaction.amount || 0)} ₽</p>
-                </div>
-              )}
-              
               {orders.length > 0 ? (
                 orders.map((order) => {
                   const itemsText = order.items && Array.isArray(order.items) 
                     ? order.items.map(item => `${item.name} ${item.quantity} шт`).join(', ')
                     : 'Товары не указаны';
-
-                  const bonusEarned = parseInt(order.bonus_earned || 0);
                   
                   return (
                     <div
@@ -363,24 +336,6 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
                           <p className="text-xs text-gray-400">
                             {new Date(order.created_at).toLocaleDateString('ru-RU')}
                           </p>
-                          {(() => {
-                            const bonusUsed = parseInt(order.bonus_used || 0);
-                            const bonusEarned = parseInt(order.bonus_earned || 0);
-                            return (
-                              <>
-                                {bonusUsed > 0 && (
-                                  <p className="text-xs text-red-600 font-medium">
-                                    -{bonusUsed} ₽ бонусов
-                                  </p>
-                                )}
-                                {bonusEarned > 0 && (
-                                  <p className="text-xs text-green-600 font-medium">
-                                    +{bonusEarned} ₽ бонусов
-                                  </p>
-                                )}
-                              </>
-                            );
-                          })()}
                         </div>
                       </div>
                       <p className="font-medium">{parseInt(order.total || 0).toLocaleString()} ₽</p>
