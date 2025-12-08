@@ -2,30 +2,32 @@
 
 ## Если Mini App не открывается в fullscreen:
 
-### 1. Проверьте настройки Direct Link в @BotFather
+### 1. Проверьте настройки Mini App в @BotFather
 
-**Важно:** В настройках Direct Link должна быть включена опция **"Main App"**.
+**Важно:** Mini App должен быть правильно настроен в @BotFather.
 
 Как проверить:
-1. Откройте @BotFather
-2. Выберите вашего бота
-3. Перейдите в **Mini Apps** → **Direct Links**
-4. Найдите ваш Direct Link (`flowbox_app`)
-5. Убедитесь, что включена опция **"Main App"**
+1. Откройте @BotFather в Telegram
+2. Отправьте команду `/mybots`
+3. Выберите вашего бота (FlowboxBot)
+4. Нажмите **"Bot Settings"** (Настройки бота)
+5. Выберите **"Configure Mini App"** (Настроить Mini App)
+6. Убедитесь, что Mini App включен и указан правильный URL
 
-Если опция не включена:
-- Отредактируйте Direct Link
-- Включите **"Main App"**
-- Сохраните изменения
+**Примечание:** Опция "Main App" может отсутствовать в интерфейсе @BotFather. Это нормально - fullscreen контролируется через параметры URL.
 
-### 2. Используйте правильную ссылку с параметром
+### 2. Используйте правильную ссылку с параметрами
 
-**Обязательно** добавляйте параметр `?startapp=main`:
+**Обязательно** используйте ссылку с параметрами `?startapp=main&mode=fullscreen`:
 ```
-https://t.me/FlowboxBot/flowbox_app?startapp=main
+https://t.me/FlowboxBot/flowbox_app?startapp=main&mode=fullscreen
 ```
 
-Без параметра Mini App может открыться не в fullscreen.
+Параметры:
+- `startapp=main` - передает параметр "main" в Mini App
+- `mode=fullscreen` - **принудительно включает fullscreen режим**
+
+Без параметра `mode=fullscreen` Mini App может открыться не в fullscreen.
 
 ### 3. Проверьте версию Telegram WebApp API
 
