@@ -1090,6 +1090,28 @@ function switchTab(tabId) {
                 }
             }
         }, 150);
+    } else if (tabId === 'orderHistoryTab') {
+        // Скрыть навигацию, но оставить header видимым
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (header) header.style.display = 'flex';
+        // Показать BackButton для возврата в профиль
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            const currentHistoryTab = document.getElementById('orderHistoryTab');
+            if (currentHistoryTab && currentHistoryTab.classList.contains('active')) {
+                switchTab('profileTab');
+                tg.BackButton.hide();
+            }
+        });
+        setTimeout(() => {
+            const historyTab = document.getElementById('orderHistoryTab');
+            if (historyTab) {
+                historyTab.scrollTop = 0;
+                if (window.scrollTo) {
+                    window.scrollTo(0, 0);
+                }
+            }
+        }, 150);
     } else {
         // Показать навигацию и header для других вкладок
         if (bottomNav) bottomNav.style.display = 'flex';
@@ -2364,9 +2386,7 @@ const addressesBtn = document.getElementById('addressesBtn');
 const addressPageTitle = document.getElementById('addressPageTitle');
 const deleteAddressBtn = document.getElementById('deleteAddressBtn');
 
-const orderHistoryModal = document.getElementById('orderHistoryModal');
 const orderHistoryList = document.getElementById('orderHistoryList');
-const closeOrderHistoryModal = document.getElementById('closeOrderHistoryModal');
 const orderHistoryBtn = document.getElementById('orderHistoryBtn');
 
 const supportModal = document.getElementById('supportModal');
@@ -2483,13 +2503,8 @@ if (addressesBtn) {
 // Обработчик кнопки "Назад" удален - используем только BackButton от Telegram
 
 orderHistoryBtn.addEventListener('click', () => {
-    orderHistoryModal.style.display = 'flex';
-    lockBodyScroll();
+    switchTab('orderHistoryTab');
     loadOrderHistory();
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        closeOrderHistoryModal.click();
-    });
 });
 
 // Обработчик кнопки добавления на главный экран
@@ -2580,11 +2595,7 @@ function unlockBodyScroll() {
     document.body.style.width = '';
 }
 
-closeOrderHistoryModal.addEventListener('click', () => {
-    orderHistoryModal.style.display = 'none';
-    tg.BackButton.hide();
-    unlockBodyScroll();
-});
+// Закрытие истории заказов теперь через BackButton в switchTab
 
 closeSupportModal.addEventListener('click', () => {
     supportModal.style.display = 'none';

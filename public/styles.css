@@ -96,7 +96,7 @@ h1, h2, h3, .font-bold {
 }
 
 .logo {
-    height: 32px; /* Уменьшено с 40px */
+    height: 28px; /* Уменьшено еще немного */
     width: auto;
     object-fit: contain;
 }
@@ -2310,6 +2310,28 @@ h1, h2, h3, .font-bold {
 
 .support-content {
     padding: 20px;
+}
+
+.order-history-page {
+    min-height: 100vh;
+    background: var(--bg-color);
+}
+
+.order-history-header {
+    background: white;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 99;
+}
+
+.order-history-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-color);
+    text-align: center;
 }
 
 .order-history-list {
