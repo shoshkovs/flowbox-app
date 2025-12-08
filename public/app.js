@@ -3987,25 +3987,46 @@ async function saveStep2() {
         comment: document.getElementById('orderAddressComment').value.trim()
     };
     
-    // Сохраняем адрес
+    // Сохраняем адрес в БД
     const userId = getUserId();
     if (userId) {
         try {
-            const addressData = {
-                name: `${checkoutData.address.street}, ${checkoutData.address.house}`,
-                ...checkoutData.address
-            };
-            
-            await fetch('/api/user-data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: userId,
-                    addresses: [...savedAddresses, addressData]
-                })
+            // Проверяем, не существует ли уже такой адрес
+            const addressExists = savedAddresses.some(addr => {
+                const addrStreet = addr.street || (addr.address_json && (typeof addr.address_json === 'object' ? addr.address_json.street : JSON.parse(addr.address_json || '{}').street));
+                const addrHouse = addr.house || (addr.address_json && (typeof addr.address_json === 'object' ? addr.address_json.house : JSON.parse(addr.address_json || '{}').house));
+                return addrStreet === checkoutData.address.street && addrHouse === checkoutData.address.house;
             });
             
-            savedAddresses.push(addressData);
+            if (!addressExists) {
+                const addressData = {
+                    name: `${checkoutData.address.street}, ${checkoutData.address.house}`,
+                    city: checkoutData.address.city,
+                    street: checkoutData.address.street,
+                    house: checkoutData.address.house,
+                    apartment: checkoutData.address.apartment,
+                    floor: checkoutData.address.floor,
+                    entrance: checkoutData.address.entrance,
+                    intercom: checkoutData.address.intercom,
+                    comment: checkoutData.address.comment
+                };
+                
+                // Сохраняем адрес через API
+                await fetch('/api/user-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        addresses: [...savedAddresses, addressData]
+                    })
+                });
+                
+                // Добавляем в локальный массив
+                savedAddresses.push(addressData);
+                
+                // Обновляем отображение адресов в профиле
+                loadSavedAddresses();
+            }
         } catch (error) {
             console.error('Ошибка сохранения адреса:', error);
         }
