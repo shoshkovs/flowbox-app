@@ -30,11 +30,11 @@ if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: needsSSL ? { rejectUnauthorized: false } : false,
-    max: 20, // Увеличиваем максимум соединений в пуле
-    idleTimeoutMillis: 60000, // Увеличиваем таймаут простоя
-    connectionTimeoutMillis: 30000, // Увеличиваем таймаут подключения до 30 секунд
-    statement_timeout: 30000, // Таймаут выполнения запроса
-    query_timeout: 30000 // Таймаут запроса
+    max: 15, // Оптимальное количество соединений
+    idleTimeoutMillis: 30000, // 30 секунд простоя
+    connectionTimeoutMillis: 10000, // 10 секунд на подключение (быстрее, чем 30)
+    statement_timeout: 15000, // 15 секунд на выполнение запроса
+    query_timeout: 15000 // 15 секунд на запрос
   });
   
   pool.on('error', (err) => {
@@ -2448,27 +2448,46 @@ function checkAdminAuth(req, res, next) {
   }
 }
 
-// Функция для безопасного получения клиента из пула с обработкой таймаутов
-async function getDbClient() {
+// Функция для безопасного получения клиента из пула с обработкой таймаутов и retry логикой
+async function getDbClient(retries = 2) {
   if (!pool) {
     throw new Error('База данных не подключена');
   }
   
-  try {
-    // Пытаемся получить клиента с таймаутом
-    const client = await Promise.race([
-      pool.connect(),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('timeout exceeded when trying to connect')), 25000)
-      )
-    ]);
-    return client;
-  } catch (error) {
-    if (error.message.includes('timeout')) {
-      console.error('⚠️ Таймаут подключения к БД, возможно БД перегружена или недоступна');
-      throw new Error('База данных временно недоступна. Попробуйте позже.');
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Пытаемся получить клиента с таймаутом (10 секунд)
+      const client = await Promise.race([
+        pool.connect(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout exceeded when trying to connect')), 10000)
+        )
+      ]);
+      
+      // Если успешно получили клиента, возвращаем его
+      if (attempt > 0) {
+        console.log(`✅ Подключение к БД восстановлено (попытка ${attempt + 1})`);
+      }
+      return client;
+    } catch (error) {
+      const isLastAttempt = attempt === retries;
+      
+      if (error.message.includes('timeout') || error.message.includes('exceeded')) {
+        if (isLastAttempt) {
+          console.error(`⚠️ Таймаут подключения к БД после ${retries + 1} попыток`);
+          throw new Error('База данных временно недоступна. Попробуйте позже.');
+        } else {
+          // Ждем перед следующей попыткой (экспоненциальная задержка: 500ms, 1000ms)
+          const delay = 500 * Math.pow(2, attempt);
+          console.log(`⚠️ Таймаут подключения к БД, повтор через ${delay}ms (попытка ${attempt + 1}/${retries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      
+      // Для других ошибок сразу выбрасываем
+      throw error;
     }
-    throw error;
   }
 }
 
