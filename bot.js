@@ -1014,7 +1014,15 @@ function getDefaultProducts() {
 
 // Получить баланс бонусов пользователя из транзакций (единственный источник правды)
 async function getUserBonusBalance(userId) {
-  if (!pool) return 0;
+  if (!pool) {
+    console.log('⚠️ getUserBonusBalance: pool не подключен');
+    return 0;
+  }
+  
+  if (!userId) {
+    console.log('⚠️ getUserBonusBalance: userId не передан');
+    return 0;
+  }
   
   try {
     const client = await pool.connect();
@@ -1025,12 +1033,14 @@ async function getUserBonusBalance(userId) {
          WHERE user_id = $1`,
         [userId]
       );
-      return parseFloat(result.rows[0]?.balance || 0);
+      const balance = parseFloat(result.rows[0]?.balance || 0);
+      console.log(`💰 getUserBonusBalance для user_id=${userId}: найдено транзакций, баланс=${balance}`);
+      return balance;
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Ошибка получения баланса бонусов:', error);
+    console.error(`❌ Ошибка получения баланса бонусов для user_id=${userId}:`, error);
     return 0;
   }
 }
