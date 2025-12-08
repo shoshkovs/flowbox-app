@@ -23,6 +23,25 @@ if (tg && typeof tg.expand === 'function') {
     }
 }
 
+// Дополнительная попытка через requestFullscreen (для Menu Button)
+// Это может помочь, если Mini App открыт через Menu Button
+if (tg && typeof tg.requestFullscreen === 'function') {
+    try {
+        tg.requestFullscreen();
+    } catch (e) {
+        // Игнорируем ошибки, если метод не поддерживается
+    }
+}
+
+// Также пробуем через событие viewportChanged
+if (tg && typeof tg.onEvent === 'function') {
+    tg.onEvent('viewportChanged', () => {
+        if (tg && typeof tg.expand === 'function') {
+            tg.expand();
+        }
+    });
+}
+
 // Дополнительная попытка через событие загрузки
 window.addEventListener('load', () => {
     if (tg && typeof tg.expand === 'function') {

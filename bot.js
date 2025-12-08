@@ -6939,6 +6939,24 @@ if (process.env.BOT_TOKEN) {
       const me = await bot.telegram.getMe();
       botUsername = me.username;
       console.log(`✅ Имя бота: @${botUsername}`);
+      
+      // Настраиваем Menu Button для открытия Mini App
+      const webAppUrl = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
+      try {
+        await bot.telegram.setChatMenuButton({
+          menu_button: {
+            type: 'web_app',
+            text: '🛍️ Открыть магазин',
+            web_app: {
+              url: webAppUrl
+            }
+          }
+        });
+        console.log('✅ Menu Button настроен');
+      } catch (menuError) {
+        console.warn('⚠️ Не удалось настроить Menu Button:', menuError.message);
+        console.warn('💡 Menu Button можно настроить вручную через @BotFather');
+      }
     } catch (error) {
       console.warn('⚠️ Не удалось получить информацию о боте:', error.message);
     }
