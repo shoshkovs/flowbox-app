@@ -3963,18 +3963,33 @@ function goToStep(step) {
     currentCheckoutStep = step;
     
     // Обновляем BackButton для текущего шага
+    // Важно: проверяем, что мы все еще на вкладке orderTab
+    const orderTab = document.getElementById('orderTab');
+    if (!orderTab || !orderTab.classList.contains('active')) {
+        // Если мы не на вкладке orderTab, не устанавливаем BackButton
+        return;
+    }
+    
     if (step > 1) {
         // Если не на первом шаге - возвращаемся на предыдущий
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
-            goToStep(step - 1);
+            // Дополнительная проверка, что мы все еще на orderTab
+            const currentOrderTab = document.getElementById('orderTab');
+            if (currentOrderTab && currentOrderTab.classList.contains('active')) {
+                goToStep(currentCheckoutStep - 1);
+            }
         });
     } else {
         // Если на первом шаге - возвращаемся в корзину
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
-            switchTab('cartTab');
-            tg.BackButton.hide();
+            // Дополнительная проверка, что мы все еще на orderTab
+            const currentOrderTab = document.getElementById('orderTab');
+            if (currentOrderTab && currentOrderTab.classList.contains('active')) {
+                switchTab('cartTab');
+                tg.BackButton.hide();
+            }
         });
     }
 }
