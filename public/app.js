@@ -1309,8 +1309,7 @@ function initOrderForm() {
         
         savedAddresses.forEach(addr => {
             const shortParts = [];
-            if (addr.street) shortParts.push(addr.street);
-            if (addr.house) shortParts.push(addr.house);
+            if (addr.street) shortParts.push(addr.street); // Теперь содержит "улица + дом"
             if (addr.apartment) shortParts.push(addr.apartment);
             const shortAddress = shortParts.join(', ') || 'Адрес не заполнен';
             
@@ -1517,32 +1516,7 @@ function initOrderForm() {
     setupPhoneInput(customerPhoneField);
     setupPhoneInput(recipientPhoneField);
     
-    // Автоматическое разбиение адреса на улицу и дом
-    const streetField = document.getElementById('orderAddressStreet');
-    const houseField = document.getElementById('orderAddressHouse');
-    
-    if (streetField && houseField) {
-        streetField.addEventListener('blur', function() {
-            const value = this.value.trim();
-            if (value && !houseField.value.trim()) {
-                // Паттерн: "Улица Номер" или "Улица НомерБуква" (например, "Корпусная 9" или "Невский проспект 35Б")
-                // Ищем последнее число с возможной буквой в конце
-                const match = value.match(/^(.+?)\s+(\d+[А-Яа-яA-Za-z]*)$/);
-                if (match) {
-                    const street = match[1].trim();
-                    const house = match[2].trim();
-                    
-                    // Заполняем поля
-                    this.value = street;
-                    houseField.value = house;
-                    
-                    // Убираем ошибки валидации
-                    validateField(this, true);
-                    validateField(houseField, true);
-                }
-            }
-        });
-    }
+    // Автоматическое разбиение адреса убрано - теперь "улица + дом" в одном поле
     
     // Расчет суммы
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -1814,8 +1788,7 @@ async function validateAndSubmitOrder(e) {
     if (shouldUseForm) {
         // Проверка формы нового адреса
         const city = document.getElementById('orderAddressCity').value.trim();
-        const street = document.getElementById('orderAddressStreet').value.trim();
-        const house = document.getElementById('orderAddressHouse').value.trim();
+        const street = document.getElementById('orderAddressStreet').value.trim(); // Теперь содержит "улица + дом"
         
         // Валидация обязательных полей адреса
         const cityField = document.getElementById('orderAddressCity');
@@ -1851,16 +1824,8 @@ async function validateAndSubmitOrder(e) {
             hasAddressErrors = true;
             hasErrors = true;
         }
-        const houseField = document.getElementById('orderAddressHouse');
-        const houseAnchor = document.getElementById('anchor-orderAddressHouse');
-        if (house) {
-            validateField(houseField, true);
-        } else {
-            validateField(houseField, false);
-            if (!firstErrorField) firstErrorField = houseAnchor || houseField;
-            hasAddressErrors = true;
-            hasErrors = true;
-        }
+        
+        // Валидация дома убрана - теперь "улица + дом" в одном поле
         
         // Не делаем return здесь - нужно проверить и время доставки тоже
         // Ошибки адреса уже установлены, продолжаем проверку других полей
@@ -1868,8 +1833,7 @@ async function validateAndSubmitOrder(e) {
         addressData = {
             name: 'Новый адрес',
             city: city,
-            street: street,
-            house: house,
+            street: street, // Теперь содержит "улица + дом"
             entrance: document.getElementById('orderAddressEntrance').value.trim(),
             apartment: document.getElementById('orderAddressApartment').value.trim(),
             floor: document.getElementById('orderAddressFloor').value.trim(),
@@ -2009,10 +1973,7 @@ async function validateAndSubmitOrder(e) {
         addressString = addressData.city;
     }
     if (addressData.street) {
-        addressString += addressString ? ', ' + addressData.street : addressData.street;
-    }
-    if (addressData.house) {
-        addressString += ', д. ' + addressData.house;
+        addressString += addressString ? ', ' + addressData.street : addressData.street; // Теперь содержит "улица + дом"
     }
     if (addressData.apartment) {
         addressString += ', ' + addressData.apartment;
@@ -2157,20 +2118,18 @@ async function validateAndSubmitOrder(e) {
                 const isDuplicate = savedAddresses.some(existingAddr => {
                     const sameCity = (existingAddr.city || '').toLowerCase().trim() === (addressData.city || '').toLowerCase().trim();
                     const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (addressData.street || '').toLowerCase().trim();
-                    const sameHouse = (existingAddr.house || '').toLowerCase().trim() === (addressData.house || '').toLowerCase().trim();
                     const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (addressData.apartment || '').toLowerCase().trim();
-                    return sameCity && sameStreet && sameHouse && sameApartment;
+                    return sameCity && sameStreet && sameApartment;
                 });
                 
-                if (!isDuplicate && addressData.street && addressData.house) {
-                    // Создаем адрес с именем на основе улицы и дома
-                    const addressName = addressData.name || `${addressData.street}, ${addressData.house}`;
+                if (!isDuplicate && addressData.street) {
+                    // Создаем адрес с именем на основе улицы (теперь содержит "улица + дом")
+                    const addressName = addressData.name || addressData.street;
                     const newAddress = {
                         id: Date.now(),
                         name: addressName,
                         city: addressData.city || 'Санкт-Петербург',
-                        street: addressData.street,
-                        house: addressData.house,
+                        street: addressData.street, // Теперь содержит "улица + дом"
                         entrance: addressData.entrance || '',
                         apartment: addressData.apartment || '',
                         floor: addressData.floor || '',
@@ -2458,9 +2417,13 @@ function setAddressFormValues(address) {
     if (!address) return;
     document.getElementById('addressName').value = address.name || '';
     document.getElementById('addressCity').value = address.city || 'Санкт-Петербург';
-    document.getElementById('addressStreet').value = address.street || '';
-    const addressHouseField = document.getElementById('addressHouse');
-    if (addressHouseField) addressHouseField.value = address.house || '';
+    // Объединяем street и house для обратной совместимости со старыми адресами
+    let streetValue = address.street || '';
+    if (address.house && !streetValue.includes(address.house)) {
+        // Если house есть и не включен в street, объединяем их
+        streetValue = streetValue ? `${streetValue} ${address.house}` : address.house;
+    }
+    document.getElementById('addressStreet').value = streetValue;
     document.getElementById('addressEntrance').value = address.entrance || '';
     document.getElementById('addressApartment').value = address.apartment || '';
     document.getElementById('addressFloor').value = address.floor || '';
@@ -2830,20 +2793,17 @@ addressForm.addEventListener('submit', (e) => {
     const addressNameField = document.getElementById('addressName');
     const addressCityField = document.getElementById('addressCity');
     const addressStreetField = document.getElementById('addressStreet');
-    const addressHouseField = document.getElementById('addressHouse');
     const addressErrorElement = document.getElementById('addressError');
     
     // Сначала убираем ошибки только с правильно заполненных полей
     // Это нужно для того, чтобы при повторной проверке правильно работала валидация
     const name = addressNameField ? addressNameField.value.trim() : '';
     const city = addressCityField ? addressCityField.value.trim() : '';
-    const street = addressStreetField ? addressStreetField.value.trim() : '';
-    const house = addressHouseField ? addressHouseField.value.trim() : '';
+    const street = addressStreetField ? addressStreetField.value.trim() : ''; // Теперь содержит "улица + дом"
     
     // Убираем ошибки только с правильно заполненных полей
     if (name && addressNameField) validateField(addressNameField, true);
     if (street && addressStreetField) validateField(addressStreetField, true);
-    if (house && addressHouseField) validateField(addressHouseField, true);
     if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
         if (addressCityField) validateField(addressCityField, true);
         if (addressErrorElement) addressErrorElement.style.display = 'none';
@@ -2897,14 +2857,7 @@ addressForm.addEventListener('submit', (e) => {
         if (addressStreetField) validateField(addressStreetField, true);
     }
     
-    // Валидация дома
-    if (addressHouseField && !house) {
-        validateField(addressHouseField, false);
-        if (!firstErrorField) firstErrorField = addressHouseField;
-        hasErrors = true;
-    } else if (addressHouseField && house) {
-        validateField(addressHouseField, true);
-    }
+    // Валидация дома убрана - теперь "улица + дом" в одном поле
     
     // Если есть ошибки, прокрутить к первому полю с ошибкой
     if (hasErrors && firstErrorField) {
@@ -2959,8 +2912,7 @@ addressForm.addEventListener('submit', (e) => {
         id: editingAddressId || Date.now(),
         name: name,
         city: city,
-        street: street,
-        house: house,
+        street: street, // Теперь содержит "улица + дом"
         entrance: document.getElementById('addressEntrance').value.trim(),
         apartment: document.getElementById('addressApartment').value.trim(),
         floor: document.getElementById('addressFloor').value.trim(),
@@ -2977,13 +2929,12 @@ addressForm.addEventListener('submit', (e) => {
         editingAddressId = null;
     } else {
         // Проверка на дубликаты перед добавлением нового адреса
-        // Сравниваем по основным полям: город, улица, дом, квартира
+        // Сравниваем по основным полям: город, улица (теперь содержит "улица + дом"), квартира
         const isDuplicate = savedAddresses.some(existingAddr => {
             const sameCity = (existingAddr.city || '').toLowerCase().trim() === (address.city || '').toLowerCase().trim();
             const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (address.street || '').toLowerCase().trim();
-            const sameHouse = (existingAddr.house || '').toLowerCase().trim() === (address.house || '').toLowerCase().trim();
             const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (address.apartment || '').toLowerCase().trim();
-            return sameCity && sameStreet && sameHouse && sameApartment;
+            return sameCity && sameStreet && sameApartment;
         });
         
         if (!isDuplicate) {
@@ -3043,8 +2994,7 @@ function loadSavedAddresses() {
         } else {
             addressesList.innerHTML = savedAddresses.map(addr => {
                 const parts = [];
-                if (addr.street) parts.push(addr.street);
-                if (addr.house) parts.push(addr.house);
+                if (addr.street) parts.push(addr.street); // Теперь содержит "улица + дом"
                 if (addr.apartment) parts.push(addr.apartment);
                 const shortAddress = parts.join(', ');
                 return `
@@ -3076,7 +3026,6 @@ function fillOrderFormWithAddress(address) {
     clearOrderAddressErrors();
     const cityField = document.getElementById('orderAddressCity');
     const streetField = document.getElementById('orderAddressStreet');
-    const houseField = document.getElementById('orderAddressHouse');
     const entranceField = document.getElementById('orderAddressEntrance');
     const apartmentField = document.getElementById('orderAddressApartment');
     const floorField = document.getElementById('orderAddressFloor');
@@ -3084,8 +3033,13 @@ function fillOrderFormWithAddress(address) {
     const commentField = document.getElementById('orderAddressComment');
     
     if (cityField) cityField.value = address.city || 'Санкт-Петербург';
-    if (streetField) streetField.value = address.street || '';
-    if (houseField) houseField.value = address.house || '';
+    // Объединяем street и house для обратной совместимости со старыми адресами
+    let streetValue = address.street || '';
+    if (address.house && !streetValue.includes(address.house)) {
+        // Если house есть и не включен в street, объединяем их
+        streetValue = streetValue ? `${streetValue} ${address.house}` : address.house;
+    }
+    if (streetField) streetField.value = streetValue;
     if (entranceField) entranceField.value = address.entrance || '';
     if (apartmentField) apartmentField.value = address.apartment || '';
     if (floorField) floorField.value = address.floor || '';
@@ -3097,7 +3051,6 @@ function clearOrderAddressErrors() {
     const fields = [
         'orderAddressCity',
         'orderAddressStreet',
-        'orderAddressHouse',
         'orderAddressEntrance',
         'orderAddressApartment',
         'orderAddressFloor',
@@ -4209,26 +4162,19 @@ async function saveStep1() {
 // Валидация шага 2 (Доставка)
 function validateStep2() {
     const streetField = document.getElementById('orderAddressStreet');
-    const houseField = document.getElementById('orderAddressHouse');
-    const street = streetField.value.trim();
-    const house = houseField.value.trim();
-    
+    const street = streetField.value.trim(); // Теперь содержит "улица + дом"
+
     let isValid = true;
-    
+
     if (!street) {
         validateField(streetField, false);
         isValid = false;
     } else {
         validateField(streetField, true);
     }
-    
-    if (!house) {
-        validateField(houseField, false);
-        isValid = false;
-    } else {
-        validateField(houseField, true);
-    }
-    
+
+    // Валидация дома убрана - теперь "улица + дом" в одном поле
+
     return isValid;
 }
 
@@ -4236,8 +4182,7 @@ function validateStep2() {
 async function saveStep2() {
     checkoutData.address = {
         city: 'Санкт-Петербург',
-        street: document.getElementById('orderAddressStreet').value.trim(),
-        house: document.getElementById('orderAddressHouse').value.trim(),
+        street: document.getElementById('orderAddressStreet').value.trim(), // Теперь содержит "улица + дом"
         apartment: document.getElementById('orderAddressApartment').value.trim(),
         floor: document.getElementById('orderAddressFloor').value.trim(),
         entrance: document.getElementById('orderAddressEntrance').value.trim(),
@@ -4252,16 +4197,14 @@ async function saveStep2() {
             // Проверяем, не существует ли уже такой адрес
             const addressExists = savedAddresses.some(addr => {
                 const addrStreet = addr.street || (addr.address_json && (typeof addr.address_json === 'object' ? addr.address_json.street : JSON.parse(addr.address_json || '{}').street));
-                const addrHouse = addr.house || (addr.address_json && (typeof addr.address_json === 'object' ? addr.address_json.house : JSON.parse(addr.address_json || '{}').house));
-                return addrStreet === checkoutData.address.street && addrHouse === checkoutData.address.house;
+                return addrStreet === checkoutData.address.street; // Теперь street содержит "улица + дом"
             });
             
             if (!addressExists) {
                 const addressData = {
-                    name: `${checkoutData.address.street}, ${checkoutData.address.house}`,
+                    name: checkoutData.address.street, // Теперь street содержит "улица + дом"
                     city: checkoutData.address.city,
-                    street: checkoutData.address.street,
-                    house: checkoutData.address.house,
+                    street: checkoutData.address.street, // Теперь содержит "улица + дом"
                     apartment: checkoutData.address.apartment,
                     floor: checkoutData.address.floor,
                     entrance: checkoutData.address.entrance,
@@ -4349,8 +4292,7 @@ function renderCheckoutSummary() {
         const addr = checkoutData.address || {};
         const addressStr = [
             addr.city,
-            addr.street,
-            addr.house ? `д. ${addr.house}` : '',
+            addr.street, // Теперь содержит "улица + дом"
             addr.apartment ? `кв. ${addr.apartment}` : ''
         ].filter(Boolean).join(', ');
         summaryAddressEl.textContent = addressStr || '-';
@@ -4448,14 +4390,18 @@ function showAddressSelectModal() {
             }
             
             const city = addr.city || addrData.city || 'Санкт-Петербург';
-            const street = addr.street || addrData.street || '';
+            let street = addr.street || addrData.street || '';
             const house = addr.house || addrData.house || '';
             const apartment = addr.apartment || addrData.apartment || '';
             
+            // Объединяем street и house для обратной совместимости со старыми адресами
+            if (house && !street.includes(house)) {
+                street = street ? `${street} ${house}` : house;
+            }
+            
             const addrStr = [
                 city,
-                street,
-                house ? `д. ${house}` : '',
+                street, // Теперь содержит "улица + дом"
                 apartment ? `кв. ${apartment}` : ''
             ].filter(Boolean).join(', ');
             
@@ -4487,10 +4433,17 @@ function selectAddress(index) {
         }
     }
     
+    // Объединяем street и house для обратной совместимости со старыми адресами
+    let streetValue = addr.street || addrData.street || '';
+    const houseValue = addr.house || addrData.house || '';
+    if (houseValue && !streetValue.includes(houseValue)) {
+        // Если house есть и не включен в street, объединяем их
+        streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+    }
+    
     checkoutData.address = {
         city: addr.city || addrData.city || 'Санкт-Петербург',
-        street: addr.street || addrData.street || '',
-        house: addr.house || addrData.house || '',
+        street: streetValue, // Теперь содержит "улица + дом"
         apartment: addr.apartment || addrData.apartment || '',
         floor: addr.floor || addrData.floor || '',
         entrance: addr.entrance || addrData.entrance || '',
@@ -4515,7 +4468,7 @@ async function submitOrder() {
         return;
     }
     
-    if (!checkoutData.address.street || !checkoutData.address.house) {
+    if (!checkoutData.address.street) {
         alert('Пожалуйста, заполните адрес доставки');
         goToStep(2);
         return;
@@ -4532,7 +4485,6 @@ async function submitOrder() {
     const customerPhoneField = document.getElementById('customerPhone');
     const orderAddressCityField = document.getElementById('orderAddressCity');
     const orderAddressStreetField = document.getElementById('orderAddressStreet');
-    const orderAddressHouseField = document.getElementById('orderAddressHouse');
     const orderAddressApartmentField = document.getElementById('orderAddressApartment');
     const orderAddressFloorField = document.getElementById('orderAddressFloor');
     const orderAddressEntranceField = document.getElementById('orderAddressEntrance');
@@ -4543,8 +4495,7 @@ async function submitOrder() {
     if (customerNameField) customerNameField.value = checkoutData.recipientName;
     if (customerPhoneField) customerPhoneField.value = checkoutData.recipientPhone;
     if (orderAddressCityField) orderAddressCityField.value = checkoutData.address.city || 'Санкт-Петербург';
-    if (orderAddressStreetField) orderAddressStreetField.value = checkoutData.address.street || '';
-    if (orderAddressHouseField) orderAddressHouseField.value = checkoutData.address.house || '';
+    if (orderAddressStreetField) orderAddressStreetField.value = checkoutData.address.street || ''; // Теперь содержит "улица + дом"
     if (orderAddressApartmentField) orderAddressApartmentField.value = checkoutData.address.apartment || '';
     if (orderAddressFloorField) orderAddressFloorField.value = checkoutData.address.floor || '';
     if (orderAddressEntranceField) orderAddressEntranceField.value = checkoutData.address.entrance || '';

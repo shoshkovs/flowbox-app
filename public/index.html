@@ -236,18 +236,8 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>Улица <span class="required">*</span></label>
-                                <input type="text" id="addressStreet" required placeholder="Введите улицу">
-                            </div>
-                            <div class="address-row">
-                                <div class="form-group form-group-half">
-                                    <label>Дом <span class="required">*</span></label>
-                                    <input type="text" id="addressHouse" required placeholder="№ дома">
-                                </div>
-                                <div class="form-group form-group-half">
-                                    <label>Подъезд</label>
-                                    <input type="text" id="addressEntrance" placeholder="№">
-                                </div>
+                                <label>Улица, дом <span class="required">*</span></label>
+                                <input type="text" id="addressStreet" required placeholder="Введите улицу, дом (например: Невский проспект 10к2)">
                             </div>
                             <div class="address-row">
                                 <div class="form-group form-group-half">
@@ -259,9 +249,15 @@
                                     <input type="text" id="addressFloor" placeholder="№">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label>Домофон</label>
-                                <input type="text" id="addressIntercom" placeholder="Код домофона">
+                            <div class="address-row">
+                                <div class="form-group form-group-half">
+                                    <label>Подъезд</label>
+                                    <input type="text" id="addressEntrance" placeholder="№">
+                                </div>
+                                <div class="form-group form-group-half">
+                                    <label>Домофон</label>
+                                    <input type="text" id="addressIntercom" placeholder="Код домофона">
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>Комментарий</label>
@@ -353,32 +349,28 @@
                             <input type="text" id="orderAddressCity" required value="Санкт-Петербург" readonly>
                         </div>
                         <div class="form-group" id="anchor-orderAddressStreet">
-                            <label>Улица <span class="required">*</span></label>
-                            <input type="text" id="orderAddressStreet" required placeholder="Введите улицу">
+                            <label>Улица, дом <span class="required">*</span></label>
+                            <input type="text" id="orderAddressStreet" required placeholder="Введите улицу, дом (например: Невский проспект 10к2)">
                         </div>
                         <div class="address-row">
-                            <div class="form-group form-group-half" id="anchor-orderAddressHouse">
-                                <label>Дом <span class="required">*</span></label>
-                                <input type="text" id="orderAddressHouse" required placeholder="№ дома">
-                            </div>
                             <div class="form-group form-group-half">
                                 <label>Квартира/Офис</label>
                                 <input type="text" id="orderAddressApartment" placeholder="№">
                             </div>
-                        </div>
-                        <div class="address-row">
                             <div class="form-group form-group-half">
                                 <label>Этаж</label>
                                 <input type="text" id="orderAddressFloor" placeholder="№">
                             </div>
+                        </div>
+                        <div class="address-row">
                             <div class="form-group form-group-half">
                                 <label>Подъезд</label>
                                 <input type="text" id="orderAddressEntrance" placeholder="№">
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Домофон</label>
-                            <input type="text" id="orderAddressIntercom" placeholder="Код домофона">
+                            <div class="form-group form-group-half">
+                                <label>Домофон</label>
+                                <input type="text" id="orderAddressIntercom" placeholder="Код домофона">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Комментарий</label>
