@@ -1071,6 +1071,8 @@ function switchTab(tabId) {
         // Показать навигацию и header для других вкладок
         if (bottomNav) bottomNav.style.display = 'flex';
         if (header) header.style.display = 'flex';
+        // Скрыть BackButton для основных вкладок (меню, корзина, профиль)
+        tg.BackButton.hide();
     }
     
     // Обновить навигацию
