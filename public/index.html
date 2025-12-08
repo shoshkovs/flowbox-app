@@ -69,26 +69,11 @@
                     <div class="cart-with-items" id="cartWithItems" style="display: none;">
                         <div class="cart-items-list" id="cartItemsList"></div>
                         
-                        <!-- Доставка -->
-                        <div class="cart-delivery">
-                            <div class="delivery-title">Доставка по Санкт-Петербургу</div>
-                            <div class="delivery-options-grid">
-                                <button class="delivery-option active" data-delivery="spb-kad" data-price="500">
-                                    <div class="delivery-option-text">В пределах КАД</div>
-                                    <div class="delivery-option-price">500 ₽</div>
-                                </button>
-                                <button class="delivery-option" data-delivery="10km" data-price="900">
-                                    <div class="delivery-option-text">До 10 км от КАД</div>
-                                    <div class="delivery-option-price">900 ₽</div>
-                                </button>
-                                <button class="delivery-option" data-delivery="20km" data-price="1300">
-                                    <div class="delivery-option-text">До 20 км от КАД</div>
-                                    <div class="delivery-option-price">1300 ₽</div>
-                                </button>
-                                <button class="delivery-option" data-delivery="pickup" data-price="0">
-                                    <div class="delivery-option-text">Самовывоз</div>
-                                    <div class="delivery-option-price">0 ₽</div>
-                                </button>
+                        <!-- Дополнительные товары -->
+                        <div class="additional-products-section">
+                            <div class="additional-products-title">Добавить к заказу</div>
+                            <div class="additional-products-carousel" id="additionalProductsCarousel">
+                                <!-- Товары будут добавлены динамически -->
                             </div>
                         </div>
                         
@@ -105,10 +90,6 @@
                                         <button class="help-icon-btn" id="serviceFeeHelpBtn" type="button">?</button>
                                     </div>
                                     <span class="total-detail-value">450 ₽</span>
-                                </div>
-                                <div class="total-detail-row">
-                                    <span class="total-detail-label">Доставка</span>
-                                    <span class="total-detail-value" id="deliveryTotalAmount">500 ₽</span>
                                 </div>
                             </div>
                             <div class="final-total-row">
@@ -293,7 +274,7 @@
                 </div>
             </div>
             
-            <!-- Вкладка: Оформление заказа -->
+            <!-- Вкладка: Оформление заказа (поэтапная форма) -->
             <div class="tab-content" id="orderTab">
                 <div class="order-page-header">
                     <button class="back-btn-order" id="backFromOrder">
@@ -303,130 +284,188 @@
                     </button>
                     <h2 class="order-page-title">Оформление заказа</h2>
                 </div>
-                <form class="order-form" id="orderForm">
-                    <div class="form-group" id="anchor-customerName">
-                        <label>Ваше имя</label>
-                        <input type="text" id="customerName" required placeholder="Иван Иванов">
+                
+                <!-- Индикатор прогресса -->
+                <div class="checkout-progress">
+                    <div class="progress-step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Получатель</div>
                     </div>
-                    <div class="form-group" id="anchor-customerPhone">
-                        <label>Телефон</label>
-                        <input type="tel" id="customerPhone" required placeholder="+7 (999) 123-45-67">
+                    <div class="progress-step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Доставка</div>
                     </div>
-                    <div class="form-group" id="anchor-customerEmail">
-                        <label>E-mail</label>
-                        <input type="email" id="customerEmail" required placeholder="example@mail.com">
+                    <div class="progress-step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Дата и время</div>
                     </div>
-                    
-                    <!-- Получатель -->
-                    <div class="form-section">
-                        <h3 class="form-section-title">Получатель</h3>
-                        <div class="radio-group">
-                            <label class="radio-option">
-                                <input type="radio" name="recipient" value="self" class="radio-input" checked>
-                                <span class="radio-label">Я получу заказ</span>
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="recipient" value="other" class="radio-input">
-                                <span class="radio-label">Другой получатель</span>
-                            </label>
+                    <div class="progress-step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-label">Итого</div>
+                    </div>
+                </div>
+                
+                <!-- Вкладка 1: Получатель -->
+                <div class="checkout-step active" id="checkoutStep1">
+                    <div class="checkout-step-content">
+                        <h3 class="checkout-step-title">Получатель</h3>
+                        <div class="form-group" id="anchor-customerName">
+                            <label>Имя <span class="required">*</span></label>
+                            <input type="text" id="customerName" required placeholder="Иван Иванов">
                         </div>
-                        <div class="recipient-fields" id="recipientFields" style="display: none;">
-                            <div class="form-group" id="anchor-recipientName">
-                                <label>Имя получателя <span class="required">*</span></label>
-                                <input type="text" id="recipientName" placeholder="Введите имя получателя">
+                        <div class="form-group" id="anchor-customerPhone">
+                            <label>Телефон <span class="required">*</span></label>
+                            <input type="tel" id="customerPhone" required placeholder="+7 (999) 123-45-67">
+                        </div>
+                        <button type="button" class="checkout-continue-btn" id="continueStep1">Продолжить</button>
+                    </div>
+                </div>
+                
+                <!-- Вкладка 2: Доставка -->
+                <div class="checkout-step" id="checkoutStep2">
+                    <div class="checkout-step-content">
+                        <h3 class="checkout-step-title">Доставка</h3>
+                        <div class="form-group" id="anchor-orderAddressCity">
+                            <label>Город <span class="required">*</span></label>
+                            <input type="text" id="orderAddressCity" required value="Санкт-Петербург" readonly>
+                        </div>
+                        <div class="form-group" id="anchor-orderAddressStreet">
+                            <label>Улица <span class="required">*</span></label>
+                            <input type="text" id="orderAddressStreet" required placeholder="Введите улицу">
+                        </div>
+                        <div class="address-row">
+                            <div class="form-group form-group-half" id="anchor-orderAddressHouse">
+                                <label>Дом <span class="required">*</span></label>
+                                <input type="text" id="orderAddressHouse" required placeholder="№ дома">
                             </div>
-                            <div class="form-group" id="anchor-recipientPhone">
-                                <label>Телефон получателя <span class="required">*</span></label>
-                                <input type="tel" id="recipientPhone" placeholder="+7 (___) ___-__-__">
+                            <div class="form-group form-group-half">
+                                <label>Квартира/Офис</label>
+                                <input type="text" id="orderAddressApartment" placeholder="№">
                             </div>
                         </div>
+                        <div class="address-row">
+                            <div class="form-group form-group-half">
+                                <label>Этаж</label>
+                                <input type="text" id="orderAddressFloor" placeholder="№">
+                            </div>
+                            <div class="form-group form-group-half">
+                                <label>Подъезд</label>
+                                <input type="text" id="orderAddressEntrance" placeholder="№">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Домофон</label>
+                            <input type="text" id="orderAddressIntercom" placeholder="Код домофона">
+                        </div>
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea id="orderAddressComment" placeholder="Дополнительная информация для курьера"></textarea>
+                        </div>
+                        <button type="button" class="checkout-continue-btn" id="continueStep2">Продолжить</button>
                     </div>
-                    
-                    <!-- Адрес получателя -->
-                    <div class="form-section">
-                        <h3 class="form-section-title">Адрес получателя</h3>
-                        <div class="address-options-list" id="addressOptionsList">
-                            <!-- Сохраненные адреса будут добавлены динамически -->
+                </div>
+                
+                <!-- Вкладка 3: Дата и время -->
+                <div class="checkout-step" id="checkoutStep3">
+                    <div class="checkout-step-content">
+                        <h3 class="checkout-step-title">Дата и время доставки</h3>
+                        <div class="form-group" id="anchor-deliveryDate">
+                            <label>Дата доставки <span class="required">*</span></label>
+                            <input type="date" id="deliveryDate" required min="">
+                        </div>
+                        <div class="form-group" id="anchor-deliveryTime">
+                            <label>Время доставки <span class="required">*</span></label>
+                            <div class="delivery-time-options" id="deliveryTimeOptions">
+                                <button type="button" class="time-slot-btn" data-time="10-12">10:00 - 12:00</button>
+                                <button type="button" class="time-slot-btn" data-time="12-14">12:00 - 14:00</button>
+                                <button type="button" class="time-slot-btn" data-time="14-16">14:00 - 16:00</button>
+                                <button type="button" class="time-slot-btn" data-time="16-18">16:00 - 18:00</button>
+                                <button type="button" class="time-slot-btn" data-time="18-20">18:00 - 20:00</button>
+                                <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
+                            </div>
+                        </div>
+                        <button type="button" class="checkout-continue-btn" id="continueStep3">Продолжить</button>
+                    </div>
+                </div>
+                
+                <!-- Вкладка 4: Итого -->
+                <div class="checkout-step" id="checkoutStep4">
+                    <div class="checkout-step-content">
+                        <h3 class="checkout-step-title">Проверьте заказ</h3>
+                        
+                        <!-- Получатель (редактируемый) -->
+                        <div class="checkout-summary-item editable" id="editRecipient">
+                            <div class="summary-item-content">
+                                <div class="summary-item-label">Получатель</div>
+                                <div class="summary-item-value" id="summaryRecipient">-</div>
+                            </div>
+                            <button type="button" class="summary-edit-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                                </svg>
+                            </button>
                         </div>
                         
-                        <!-- Форма нового адреса -->
-                        <div class="new-address-form" id="newAddressForm" style="display: none;">
-                            <div class="form-group" id="anchor-orderAddressCity">
-                                <label>Город <span class="required">*</span></label>
-                                <input type="text" id="orderAddressCity" required placeholder="Введите город" list="orderCities" value="Санкт-Петербург">
-                                <datalist id="orderCities">
-                                    <option value="Санкт-Петербург">
-                                </datalist>
-                                <div class="address-error" id="orderAddressError" style="display: none;">
-                                    Извините, мы пока не доставляем в этот город
-                                </div>
+                        <!-- Адрес (редактируемый) -->
+                        <div class="checkout-summary-item editable" id="editAddress">
+                            <div class="summary-item-content">
+                                <div class="summary-item-label">Адрес доставки</div>
+                                <div class="summary-item-value" id="summaryAddress">-</div>
                             </div>
-                            <div class="form-group" id="anchor-orderAddressStreet">
-                                <label>Улица <span class="required">*</span></label>
-                                <input type="text" id="orderAddressStreet" required placeholder="Введите улицу">
-                            </div>
-                            <div class="address-row">
-                                <div class="form-group form-group-half" id="anchor-orderAddressHouse">
-                                    <label>Дом <span class="required">*</span></label>
-                                    <input type="text" id="orderAddressHouse" required placeholder="№ дома">
-                                </div>
-                                <div class="form-group form-group-half">
-                                    <label>Подъезд</label>
-                                    <input type="text" id="orderAddressEntrance" placeholder="№">
-                                </div>
-                            </div>
-                            <div class="address-row">
-                                <div class="form-group form-group-half">
-                                    <label>Квартира/Офис</label>
-                                    <input type="text" id="orderAddressApartment" placeholder="№">
-                                </div>
-                                <div class="form-group form-group-half">
-                                    <label>Этаж</label>
-                                    <input type="text" id="orderAddressFloor" placeholder="№">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Домофон</label>
-                                <input type="text" id="orderAddressIntercom" placeholder="Код домофона">
-                            </div>
-                            <div class="form-group">
-                                <label>Комментарий</label>
-                                <textarea id="orderAddressComment" placeholder="Дополнительная информация для курьера"></textarea>
+                            <button type="button" class="summary-edit-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Дата и время -->
+                        <div class="checkout-summary-item">
+                            <div class="summary-item-content">
+                                <div class="summary-item-label">Дата и время доставки</div>
+                                <div class="summary-item-value" id="summaryDateTime">-</div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Дата доставки -->
-                    <div class="form-group" id="anchor-deliveryDate">
-                        <label>Дата доставки</label>
-                        <input type="date" id="deliveryDate" required min="">
-                    </div>
-                    
-                    <!-- Время доставки -->
-                    <div class="form-group" id="anchor-deliveryTime">
-                        <label>Время доставки</label>
-                        <div class="delivery-time-options" id="deliveryTimeOptions">
-                            <button type="button" class="time-slot-btn" data-time="10-12">10:00 - 12:00</button>
-                            <button type="button" class="time-slot-btn" data-time="12-14">12:00 - 14:00</button>
-                            <button type="button" class="time-slot-btn" data-time="14-16">14:00 - 16:00</button>
-                            <button type="button" class="time-slot-btn" data-time="16-18">16:00 - 18:00</button>
-                            <button type="button" class="time-slot-btn" data-time="18-20">18:00 - 20:00</button>
-                            <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
+                        
+                        <!-- Цена доставки -->
+                        <div class="checkout-summary-item">
+                            <div class="summary-item-content">
+                                <div class="summary-item-label">Доставка</div>
+                                <div class="summary-item-value">500 ₽</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Комментарий к заказу</label>
-                        <textarea id="orderComment" placeholder="Особые пожелания к заказу"></textarea>
-                    </div>
-                    <div class="order-summary">
-                        <div class="summary-item">
-                            <span>Сумма:</span>
-                            <span id="summaryTotal" class="summary-total-amount">0 <span class="ruble-sign">₽</span></span>
+                        
+                        <!-- Корзина -->
+                        <div class="checkout-cart-summary">
+                            <div class="checkout-cart-title">Корзина</div>
+                            <div class="checkout-cart-items" id="checkoutCartItems">
+                                <!-- Товары будут добавлены динамически -->
+                            </div>
                         </div>
+                        
+                        <!-- Итого -->
+                        <div class="checkout-final-total">
+                            <div class="final-total-label">Итого:</div>
+                            <div class="final-total-amount" id="checkoutFinalTotal">0 ₽</div>
+                        </div>
+                        
+                        <button type="button" class="submit-order-btn" id="submitOrderBtn">Оплатить</button>
                     </div>
-                    <button type="submit" class="submit-order-btn">Оплатить</button>
-                </form>
+                </div>
+            </div>
+            
+            <!-- Модальное окно выбора адреса -->
+            <div class="modal-overlay" id="addressSelectModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Выберите адрес</h3>
+                        <button class="modal-close" id="closeAddressModal">✕</button>
+                    </div>
+                    <div class="address-select-list" id="addressSelectList">
+                        <!-- Адреса будут добавлены динамически -->
+                    </div>
+                    <button type="button" class="add-new-address-btn" id="addNewAddressBtn">+ Добавить новый адрес</button>
+                </div>
             </div>
 
             <!-- Вкладка: О проекте -->

@@ -55,7 +55,7 @@ function roundUpToStep(quantity, step) {
 function roundDownToStep(quantity, step) {
     return Math.floor(quantity / step) * step;
 }
-let deliveryPrice = 500; // По умолчанию "В пределах КАД"
+let deliveryPrice = 500; // По умолчанию "В пределах КАД" (используется только на итоговой странице)
 let serviceFee = 450;
 let savedAddresses = []; // Сохраненные адреса
 let userActiveOrders = []; // Активные заказы
@@ -808,16 +808,71 @@ function updateCartUI() {
         
         // Расчет итоговой суммы
         calculateFinalTotal();
+        
+        // Рендерим карусель дополнительных товаров
+        renderAdditionalProducts();
     }
     
     updateGoToCartButton();
+}
+
+// Дополнительные товары для карусели
+const additionalProducts = [
+    { id: 'secator', name: 'Секатор', price: 500, image: 'https://via.placeholder.com/150?text=Секатор' },
+    { id: 'candle', name: 'Свечка', price: 300, image: 'https://via.placeholder.com/150?text=Свечка' },
+    { id: 'vase', name: 'Ваза', price: 800, image: 'https://via.placeholder.com/150?text=Ваза' }
+];
+
+// Рендеринг карусели дополнительных товаров
+function renderAdditionalProducts() {
+    const carousel = document.getElementById('additionalProductsCarousel');
+    if (!carousel) return;
+    
+    carousel.innerHTML = additionalProducts.map(product => {
+        const isInCart = cart.some(item => item.id === product.id);
+        return `
+            <div class="additional-product-card">
+                <div class="additional-product-image-wrapper">
+                    <img src="${product.image}" alt="${product.name}" class="additional-product-image">
+                </div>
+                <div class="additional-product-info">
+                    <div class="additional-product-name">${product.name}</div>
+                    <div class="additional-product-price">${product.price} ₽</div>
+                </div>
+                <button class="additional-product-add-btn" onclick="addAdditionalProduct('${product.id}')" ${isInCart ? 'disabled' : ''}>
+                    ${isInCart ? 'В корзине' : 'Добавить'}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// Добавление дополнительного товара в корзину
+function addAdditionalProduct(productId) {
+    const product = additionalProducts.find(p => p.id === productId);
+    if (!product) return;
+    
+    // Проверяем, нет ли уже такого товара в корзине
+    const existingItem = cart.find(item => item.id === productId);
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({
+            ...product,
+            quantity: 1
+        });
+    }
+    
+    updateCartUI();
+    tg.HapticFeedback.impactOccurred('light');
 }
 
 // Расчет итоговой суммы
 function calculateFinalTotal() {
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
-    const total = flowersTotal + serviceFee + deliveryPrice;
+    // В корзине не показываем доставку, только товары и сборы
+    const total = flowersTotal + serviceFee;
     
     if (finalTotalAmount) {
         finalTotalAmount.innerHTML = `${total} <span class="ruble-sign">₽</span>`;
@@ -828,24 +883,9 @@ function calculateFinalTotal() {
     if (flowersTotalElement) {
         flowersTotalElement.textContent = `${flowersTotal} ₽`;
     }
-    
-    const deliveryTotalElement = document.getElementById('deliveryTotalAmount');
-    if (deliveryTotalElement) {
-        deliveryTotalElement.textContent = `${deliveryPrice} ₽`;
-    }
 }
 
-// Обработка доставки (используем делегирование событий для динамически созданных элементов)
-document.addEventListener('click', (e) => {
-    if (e.target.closest('.delivery-option')) {
-        const btn = e.target.closest('.delivery-option');
-        document.querySelectorAll('.delivery-option').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        deliveryPrice = parseInt(btn.dataset.price) || 0;
-        calculateFinalTotal();
-        tg.HapticFeedback.impactOccurred('light');
-    }
-});
+// Обработка доставки удалена - доставка фиксированная 500₽
 
 
 // Переключение вкладок
@@ -872,8 +912,12 @@ function switchTab(tabId) {
         // Скрыть навигацию и header при открытии формы заказа
         if (bottomNav) bottomNav.style.display = 'none';
         if (header) header.style.display = 'none';
-        // Инициализировать форму заказа
-        initOrderForm();
+        // Инициализировать поэтапную форму заказа
+        initCheckoutSteps();
+        // Убеждаемся, что мы на первом шаге
+        if (currentCheckoutStep !== 1) {
+            goToStep(1);
+        }
         // Прокрутить страницу в начало (для Android)
         setTimeout(() => {
             const orderTab = document.getElementById('orderTab');
@@ -937,6 +981,26 @@ navItems.forEach(item => {
 
 // Оформление заказа
 checkoutBtnFinal.addEventListener('click', () => {
+    // Сбрасываем на первый шаг поэтапной формы
+    currentCheckoutStep = 1;
+    goToStep(1);
+    
+    // Заполняем данные из профиля, если они есть
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+        try {
+            const profileData = JSON.parse(savedProfile);
+            if (profileData.name) {
+                document.getElementById('customerName').value = profileData.name;
+            }
+            if (profileData.phone) {
+                document.getElementById('customerPhone').value = profileData.phone;
+            }
+        } catch (e) {
+            console.error('Ошибка парсинга профиля:', e);
+        }
+    }
+    
     switchTab('orderTab');
     // Прокрутка обрабатывается в switchTab для orderTab
 });
@@ -3495,3 +3559,536 @@ window.changeProductQuantity = changeProductQuantity;
 window.switchTab = switchTab;
 window.editAddress = editAddress;
 window.deleteAddress = deleteAddress;
+window.addAdditionalProduct = addAdditionalProduct;
+window.selectAddress = selectAddress;
+
+// ==================== ПОЭТАПНАЯ ФОРМА ОФОРМЛЕНИЯ ЗАКАЗА ====================
+
+let currentCheckoutStep = 1;
+let checkoutData = {
+    recipientName: '',
+    recipientPhone: '',
+    address: {},
+    deliveryDate: '',
+    deliveryTime: ''
+};
+
+// Инициализация поэтапной формы
+function initCheckoutSteps() {
+    // Настройка поля телефона
+    const customerPhoneField = document.getElementById('customerPhone');
+    if (customerPhoneField && typeof setupPhoneInput === 'function') {
+        setupPhoneInput(customerPhoneField);
+    }
+    
+    // Обработчики кнопок "Продолжить"
+    const continueStep1Btn = document.getElementById('continueStep1');
+    if (continueStep1Btn) {
+        continueStep1Btn.onclick = () => {
+            if (validateStep1()) {
+                saveStep1();
+                goToStep(2);
+            }
+        };
+    }
+    
+    const continueStep2Btn = document.getElementById('continueStep2');
+    if (continueStep2Btn) {
+        continueStep2Btn.onclick = () => {
+            if (validateStep2()) {
+                saveStep2();
+                goToStep(3);
+            }
+        };
+    }
+    
+    const continueStep3Btn = document.getElementById('continueStep3');
+    if (continueStep3Btn) {
+        continueStep3Btn.onclick = () => {
+            if (validateStep3()) {
+                saveStep3();
+                goToStep(4);
+                renderCheckoutSummary();
+            }
+        };
+    }
+    
+    // Обработчик кнопки "Оплатить"
+    const submitOrderBtn = document.getElementById('submitOrderBtn');
+    if (submitOrderBtn) {
+        submitOrderBtn.onclick = submitOrder;
+    }
+    
+    // Обработчики редактирования на итоговой странице
+    const editRecipientBtn = document.getElementById('editRecipient');
+    if (editRecipientBtn) {
+        editRecipientBtn.onclick = () => goToStep(1);
+    }
+    
+    const editAddressBtn = document.getElementById('editAddress');
+    if (editAddressBtn) {
+        editAddressBtn.onclick = () => {
+            showAddressSelectModal();
+        };
+    }
+    
+    // Обработчик кнопки "Назад"
+    const backFromOrderBtn = document.getElementById('backFromOrder');
+    if (backFromOrderBtn) {
+        backFromOrderBtn.onclick = () => {
+            if (currentCheckoutStep > 1) {
+                goToStep(currentCheckoutStep - 1);
+            } else {
+                switchTab('cartTab');
+            }
+        };
+    }
+    
+    // Инициализация даты доставки
+    const deliveryDateInput = document.getElementById('deliveryDate');
+    if (deliveryDateInput) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        deliveryDateInput.min = tomorrow.toISOString().split('T')[0];
+    }
+    
+    // Автоматический сброс ошибок при вводе
+    const step1Fields = document.querySelectorAll('#checkoutStep1 input');
+    step1Fields.forEach(field => {
+        field.addEventListener('input', function() {
+            if (this.value.trim()) {
+                validateField(this, true);
+            }
+        });
+    });
+    
+    const step2Fields = document.querySelectorAll('#checkoutStep2 input, #checkoutStep2 textarea');
+    step2Fields.forEach(field => {
+        field.addEventListener('input', function() {
+            if (this.value.trim() && this.id !== 'orderAddressCity') {
+                validateField(this, true);
+            }
+        });
+    });
+    
+    const step3DateField = document.getElementById('deliveryDate');
+    if (step3DateField) {
+        step3DateField.addEventListener('change', function() {
+            if (this.value) {
+                validateField(this, true);
+            }
+        });
+    }
+}
+
+// Переход к шагу
+function goToStep(step) {
+    // Скрываем все шаги
+    document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
+    
+    // Показываем нужный шаг
+    const stepElement = document.getElementById(`checkoutStep${step}`);
+    if (stepElement) {
+        stepElement.classList.add('active');
+    }
+    
+    // Обновляем индикатор прогресса
+    document.querySelectorAll('.progress-step').forEach((s, index) => {
+        if (index + 1 <= step) {
+            s.classList.add('active');
+        } else {
+            s.classList.remove('active');
+        }
+    });
+    
+    currentCheckoutStep = step;
+}
+
+// Валидация шага 1 (Получатель)
+function validateStep1() {
+    const nameField = document.getElementById('customerName');
+    const phoneField = document.getElementById('customerPhone');
+    const name = nameField.value.trim();
+    const phone = phoneField.value.trim();
+    
+    let isValid = true;
+    
+    if (!name) {
+        validateField(nameField, false);
+        isValid = false;
+    } else {
+        validateField(nameField, true);
+    }
+    
+    // Проверка телефона (минимум 10 цифр)
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phone || phoneDigits.length < 10) {
+        validateField(phoneField, false);
+        isValid = false;
+    } else {
+        validateField(phoneField, true);
+    }
+    
+    return isValid;
+}
+
+// Сохранение шага 1
+async function saveStep1() {
+    checkoutData.recipientName = document.getElementById('customerName').value.trim();
+    checkoutData.recipientPhone = document.getElementById('customerPhone').value.trim();
+    
+    // Сохраняем в профиль пользователя
+    const userId = getUserId();
+    if (userId) {
+        try {
+            await fetch('/api/user-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    profile: {
+                        name: checkoutData.recipientName,
+                        phone: checkoutData.recipientPhone
+                    }
+                })
+            });
+        } catch (error) {
+            console.error('Ошибка сохранения данных получателя:', error);
+        }
+    }
+}
+
+// Валидация шага 2 (Доставка)
+function validateStep2() {
+    const streetField = document.getElementById('orderAddressStreet');
+    const houseField = document.getElementById('orderAddressHouse');
+    const street = streetField.value.trim();
+    const house = houseField.value.trim();
+    
+    let isValid = true;
+    
+    if (!street) {
+        validateField(streetField, false);
+        isValid = false;
+    } else {
+        validateField(streetField, true);
+    }
+    
+    if (!house) {
+        validateField(houseField, false);
+        isValid = false;
+    } else {
+        validateField(houseField, true);
+    }
+    
+    return isValid;
+}
+
+// Сохранение шага 2
+async function saveStep2() {
+    checkoutData.address = {
+        city: 'Санкт-Петербург',
+        street: document.getElementById('orderAddressStreet').value.trim(),
+        house: document.getElementById('orderAddressHouse').value.trim(),
+        apartment: document.getElementById('orderAddressApartment').value.trim(),
+        floor: document.getElementById('orderAddressFloor').value.trim(),
+        entrance: document.getElementById('orderAddressEntrance').value.trim(),
+        intercom: document.getElementById('orderAddressIntercom').value.trim(),
+        comment: document.getElementById('orderAddressComment').value.trim()
+    };
+    
+    // Сохраняем адрес
+    const userId = getUserId();
+    if (userId) {
+        try {
+            const addressData = {
+                name: `${checkoutData.address.street}, ${checkoutData.address.house}`,
+                ...checkoutData.address
+            };
+            
+            await fetch('/api/user-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    addresses: [...savedAddresses, addressData]
+                })
+            });
+            
+            savedAddresses.push(addressData);
+        } catch (error) {
+            console.error('Ошибка сохранения адреса:', error);
+        }
+    }
+}
+
+// Валидация шага 3 (Дата и время)
+function validateStep3() {
+    const dateField = document.getElementById('deliveryDate');
+    const date = dateField.value;
+    const timeSelected = document.querySelector('.time-slot-btn.active');
+    const timeOptions = document.getElementById('deliveryTimeOptions');
+    
+    let isValid = true;
+    
+    if (!date) {
+        validateField(dateField, false);
+        isValid = false;
+    } else {
+        validateField(dateField, true);
+    }
+    
+    if (!timeSelected) {
+        // Подсвечиваем все кнопки времени красным
+        if (timeOptions) {
+            timeOptions.querySelectorAll('.time-slot-btn').forEach(btn => {
+                btn.classList.add('error-time-slot');
+            });
+        }
+        isValid = false;
+    } else {
+        // Убираем ошибки с кнопок времени
+        if (timeOptions) {
+            timeOptions.querySelectorAll('.time-slot-btn').forEach(btn => {
+                btn.classList.remove('error-time-slot');
+            });
+        }
+    }
+    
+    return isValid;
+}
+
+// Сохранение шага 3
+function saveStep3() {
+    checkoutData.deliveryDate = document.getElementById('deliveryDate').value;
+    const timeBtn = document.querySelector('.time-slot-btn.active');
+    checkoutData.deliveryTime = timeBtn ? timeBtn.dataset.time : '';
+}
+
+// Рендеринг итоговой страницы
+function renderCheckoutSummary() {
+    // Получатель
+    const summaryRecipientEl = document.getElementById('summaryRecipient');
+    if (summaryRecipientEl) {
+        summaryRecipientEl.textContent = 
+            `${checkoutData.recipientName || '-'}, ${checkoutData.recipientPhone || '-'}`;
+    }
+    
+    // Адрес
+    const summaryAddressEl = document.getElementById('summaryAddress');
+    if (summaryAddressEl) {
+        const addr = checkoutData.address || {};
+        const addressStr = [
+            addr.city,
+            addr.street,
+            addr.house ? `д. ${addr.house}` : '',
+            addr.apartment ? `кв. ${addr.apartment}` : ''
+        ].filter(Boolean).join(', ');
+        summaryAddressEl.textContent = addressStr || '-';
+    }
+    
+    // Дата и время
+    const summaryDateTimeEl = document.getElementById('summaryDateTime');
+    if (summaryDateTimeEl && checkoutData.deliveryDate) {
+        const date = new Date(checkoutData.deliveryDate);
+        const dateStr = date.toLocaleDateString('ru-RU', { 
+            day: 'numeric', 
+            month: 'long',
+            weekday: 'short'
+        });
+        const timeStr = checkoutData.deliveryTime ? checkoutData.deliveryTime.replace('-', ' - ') : '';
+        summaryDateTimeEl.textContent = `${dateStr}, ${timeStr}`;
+    }
+    
+    // Корзина
+    const cartItemsContainer = document.getElementById('checkoutCartItems');
+    if (cartItemsContainer) {
+        if (cart.length === 0) {
+            cartItemsContainer.innerHTML = '<div class="checkout-cart-item">Корзина пуста</div>';
+        } else {
+            cartItemsContainer.innerHTML = cart.map(item => `
+                <div class="checkout-cart-item">
+                    <span>${item.name} × ${item.quantity}</span>
+                    <span>${(item.price * item.quantity).toLocaleString()} ₽</span>
+                </div>
+            `).join('');
+        }
+    }
+    
+    // Итого
+    const checkoutFinalTotalEl = document.getElementById('checkoutFinalTotal');
+    if (checkoutFinalTotalEl) {
+        const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const total = flowersTotal + serviceFee + 500; // 500 - доставка
+        checkoutFinalTotalEl.textContent = `${total.toLocaleString()} ₽`;
+    }
+}
+
+// Показ модального окна выбора адреса
+function showAddressSelectModal() {
+    const modal = document.getElementById('addressSelectModal');
+    const list = document.getElementById('addressSelectList');
+    
+    if (!modal || !list) return;
+    
+    if (savedAddresses.length === 0) {
+        list.innerHTML = '<div class="address-select-item" style="text-align: center; color: #999;">Нет сохраненных адресов</div>';
+    } else {
+        list.innerHTML = savedAddresses.map((addr, index) => {
+            // Парсим адрес из разных форматов
+            let addrData = {};
+            if (typeof addr.address_json === 'object' && addr.address_json !== null) {
+                addrData = addr.address_json;
+            } else if (typeof addr.address_json === 'string') {
+                try {
+                    addrData = JSON.parse(addr.address_json);
+                } catch (e) {
+                    addrData = {};
+                }
+            }
+            
+            const city = addr.city || addrData.city || 'Санкт-Петербург';
+            const street = addr.street || addrData.street || '';
+            const house = addr.house || addrData.house || '';
+            const apartment = addr.apartment || addrData.apartment || '';
+            
+            const addrStr = [
+                city,
+                street,
+                house ? `д. ${house}` : '',
+                apartment ? `кв. ${apartment}` : ''
+            ].filter(Boolean).join(', ');
+            
+            return `
+                <div class="address-select-item" onclick="selectAddress(${index})">
+                    ${addrStr}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    modal.style.display = 'flex';
+}
+
+// Выбор адреса
+function selectAddress(index) {
+    const addr = savedAddresses[index];
+    if (!addr) return;
+    
+    // Парсим адрес из разных форматов
+    let addrData = {};
+    if (typeof addr.address_json === 'object' && addr.address_json !== null) {
+        addrData = addr.address_json;
+    } else if (typeof addr.address_json === 'string') {
+        try {
+            addrData = JSON.parse(addr.address_json);
+        } catch (e) {
+            addrData = {};
+        }
+    }
+    
+    checkoutData.address = {
+        city: addr.city || addrData.city || 'Санкт-Петербург',
+        street: addr.street || addrData.street || '',
+        house: addr.house || addrData.house || '',
+        apartment: addr.apartment || addrData.apartment || '',
+        floor: addr.floor || addrData.floor || '',
+        entrance: addr.entrance || addrData.entrance || '',
+        intercom: addr.intercom || addrData.intercom || '',
+        comment: addr.comment || addrData.comment || ''
+    };
+    
+    const modal = document.getElementById('addressSelectModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    renderCheckoutSummary();
+}
+
+// Отправка заказа
+async function submitOrder() {
+    // Проверяем, что все данные заполнены
+    if (!checkoutData.recipientName || !checkoutData.recipientPhone) {
+        alert('Пожалуйста, заполните данные получателя');
+        goToStep(1);
+        return;
+    }
+    
+    if (!checkoutData.address.street || !checkoutData.address.house) {
+        alert('Пожалуйста, заполните адрес доставки');
+        goToStep(2);
+        return;
+    }
+    
+    if (!checkoutData.deliveryDate || !checkoutData.deliveryTime) {
+        alert('Пожалуйста, выберите дату и время доставки');
+        goToStep(3);
+        return;
+    }
+    
+    // Заполняем скрытую форму данными из поэтапной формы (для совместимости с существующей логикой)
+    const customerNameField = document.getElementById('customerName');
+    const customerPhoneField = document.getElementById('customerPhone');
+    const orderAddressCityField = document.getElementById('orderAddressCity');
+    const orderAddressStreetField = document.getElementById('orderAddressStreet');
+    const orderAddressHouseField = document.getElementById('orderAddressHouse');
+    const orderAddressApartmentField = document.getElementById('orderAddressApartment');
+    const orderAddressFloorField = document.getElementById('orderAddressFloor');
+    const orderAddressEntranceField = document.getElementById('orderAddressEntrance');
+    const orderAddressIntercomField = document.getElementById('orderAddressIntercom');
+    const orderAddressCommentField = document.getElementById('orderAddressComment');
+    const deliveryDateField = document.getElementById('deliveryDate');
+    
+    if (customerNameField) customerNameField.value = checkoutData.recipientName;
+    if (customerPhoneField) customerPhoneField.value = checkoutData.recipientPhone;
+    if (orderAddressCityField) orderAddressCityField.value = checkoutData.address.city || 'Санкт-Петербург';
+    if (orderAddressStreetField) orderAddressStreetField.value = checkoutData.address.street || '';
+    if (orderAddressHouseField) orderAddressHouseField.value = checkoutData.address.house || '';
+    if (orderAddressApartmentField) orderAddressApartmentField.value = checkoutData.address.apartment || '';
+    if (orderAddressFloorField) orderAddressFloorField.value = checkoutData.address.floor || '';
+    if (orderAddressEntranceField) orderAddressEntranceField.value = checkoutData.address.entrance || '';
+    if (orderAddressIntercomField) orderAddressIntercomField.value = checkoutData.address.intercom || '';
+    if (orderAddressCommentField) orderAddressCommentField.value = checkoutData.address.comment || '';
+    if (deliveryDateField) deliveryDateField.value = checkoutData.deliveryDate;
+    
+    // Выбираем время доставки
+    const timeBtn = document.querySelector(`.time-slot-btn[data-time="${checkoutData.deliveryTime}"]`);
+    if (timeBtn) {
+        document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
+        timeBtn.classList.add('active');
+    }
+    
+    // Вызываем существующую функцию валидации и отправки
+    const fakeEvent = { preventDefault: () => {} };
+    await validateAndSubmitOrder(fakeEvent);
+}
+
+// Инициализация поэтапной формы при загрузке
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initCheckoutStepsModal();
+    });
+} else {
+    initCheckoutStepsModal();
+}
+
+function initCheckoutStepsModal() {
+    // Обработчик закрытия модального окна адресов
+    document.getElementById('closeAddressModal')?.addEventListener('click', () => {
+        document.getElementById('addressSelectModal').style.display = 'none';
+    });
+    
+    document.getElementById('addNewAddressBtn')?.addEventListener('click', () => {
+        document.getElementById('addressSelectModal').style.display = 'none';
+        goToStep(2);
+    });
+    
+    // Обработчики выбора времени доставки (делегирование событий)
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('time-slot-btn')) {
+            document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        }
+    });
+}
