@@ -1367,11 +1367,12 @@ h1, h2, h3, .font-bold {
 
 /* Дополнительные товары */
 .additional-products-section {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: var(--shadow);
+    background: var(--bg-color); /* Фон как у основного экрана */
+    padding: 20px 16px; /* Вертикальные и горизонтальные отступы */
+    margin: 20px 0;
+    /* Убираем обводку и тень */
+    border: none;
+    box-shadow: none;
 }
 
 .additional-products-title {
@@ -1395,16 +1396,19 @@ h1, h2, h3, .font-bold {
 
 .additional-product-card {
     min-width: 140px;
-    background: #f9f9f9;
+    background: transparent; /* Убираем фон карточки */
     border-radius: 12px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* Убираем внешние тени и рамки */
+    border: none;
+    box-shadow: none;
 }
 
 .additional-product-image-wrapper {
     width: 100%;
-    aspect-ratio: 0.7;
+    aspect-ratio: 1; /* Квадратные картинки */
     overflow: hidden;
     border-radius: 12px;
 }

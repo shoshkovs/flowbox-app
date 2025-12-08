@@ -912,6 +912,18 @@ function switchTab(tabId) {
         // Скрыть навигацию и header при открытии формы заказа
         if (bottomNav) bottomNav.style.display = 'none';
         if (header) header.style.display = 'none';
+        // Показать BackButton для возврата на предыдущий шаг или в корзину
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            if (currentCheckoutStep > 1) {
+                // Возвращаемся на предыдущий шаг
+                goToStep(currentCheckoutStep - 1);
+            } else {
+                // Если на первом шаге - возвращаемся в корзину
+                switchTab('cartTab');
+                tg.BackButton.hide();
+            }
+        });
         // Инициализировать поэтапную форму заказа
         initCheckoutSteps();
         // Убеждаемся, что мы на первом шаге
@@ -2338,6 +2350,47 @@ orderHistoryBtn.addEventListener('click', () => {
     });
 });
 
+// Обработчик кнопки добавления на главный экран
+const addToHomeScreenBtn = document.getElementById('addToHomeScreenBtn');
+const addToHomeScreenModal = document.getElementById('addToHomeScreenModal');
+const closeAddToHomeModal = document.getElementById('closeAddToHomeModal');
+const openInBrowserBtn = document.getElementById('openInBrowserBtn');
+
+if (addToHomeScreenBtn) {
+    addToHomeScreenBtn.addEventListener('click', () => {
+        if (addToHomeScreenModal) {
+            addToHomeScreenModal.style.display = 'flex';
+            lockBodyScroll();
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                if (closeAddToHomeModal) closeAddToHomeModal.click();
+            });
+        }
+    });
+}
+
+if (closeAddToHomeModal) {
+    closeAddToHomeModal.addEventListener('click', () => {
+        if (addToHomeScreenModal) {
+            addToHomeScreenModal.style.display = 'none';
+            unlockBodyScroll();
+            tg.BackButton.hide();
+        }
+    });
+}
+
+if (openInBrowserBtn) {
+    openInBrowserBtn.addEventListener('click', () => {
+        // Открываем текущий URL в системном браузере
+        const currentUrl = window.location.href;
+        if (tg && tg.openLink) {
+            tg.openLink(currentUrl, { try_instant_view: false });
+        } else {
+            window.open(currentUrl, '_blank');
+        }
+    });
+}
+
 supportBtn.addEventListener('click', async () => {
     // Открываем бота с командой /support через Telegram WebApp API
     // Получаем имя бота из API
@@ -2944,11 +2997,16 @@ function loadActiveOrders() {
     console.log('📦 loadActiveOrders вызвана, активных заказов:', filteredActiveOrders.length);
     console.log('📦 Заказы:', filteredActiveOrders);
     
-    if (activeOrdersElement) {
+    const activeOrdersContainer = document.getElementById('activeOrders');
+    const indicatorsContainer = document.getElementById('activeOrdersIndicators');
+    
+    if (activeOrdersContainer) {
         if (filteredActiveOrders.length === 0) {
-            activeOrdersElement.innerHTML = '<p class="no-orders">У вас нет активных заказов</p>';
+            activeOrdersContainer.innerHTML = '<p class="no-orders">У вас нет активных заказов</p>';
+            if (indicatorsContainer) indicatorsContainer.style.display = 'none';
         } else {
-            activeOrdersElement.innerHTML = filteredActiveOrders.map(order => {
+            // Рендерим как горизонтальную карусель
+            activeOrdersContainer.innerHTML = filteredActiveOrders.map(order => {
                 const statusText = getOrderStatusText(order.status);
                 const statusClass = getOrderStatusClass(order.status);
                 console.log(`📦 Заказ #${order.id}, статус: ${order.status} -> "${statusText}"`);
@@ -2976,21 +3034,54 @@ function loadActiveOrders() {
                     }
                 }
                 
+                // Получаем первые 2 товара для мини-фото
+                const items = order.items || [];
+                const firstItems = items.slice(0, 2);
+                
                 return `
-                <div class="order-item">
-                    <div class="order-item-header">
+                <div class="order-card-carousel" onclick="openOrderDetail(${order.id})">
+                    <div class="order-card-header">
                         <h4>Заказ #${order.id}</h4>
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
-                    <p class="order-date">Дата: ${order.date}</p>
-                    <p class="order-address">Адрес: ${order.address || 'Не указан'}</p>
-                    ${deliveryDateFormatted ? `<p class="order-delivery">Доставим ${deliveryDateFormatted}${deliveryTimeFormatted ? ` с ${deliveryTimeFormatted}` : ''} по адресу</p>` : ''}
-                    <p class="order-total">Сумма: ${order.total} ₽</p>
+                    <div class="order-card-info">
+                        <p class="order-card-date">${order.date || ''}</p>
+                        <p class="order-card-total">${order.total} ₽</p>
+                    </div>
+                    ${firstItems.length > 0 ? `
+                        <div class="order-card-items-preview">
+                            ${firstItems.map(item => `
+                                <div class="order-item-preview">${item.name || 'Товар'}</div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
             `;
             }).join('');
+            
+            // Показываем индикаторы, если заказов больше одного
+            if (indicatorsContainer) {
+                if (filteredActiveOrders.length > 1) {
+                    indicatorsContainer.innerHTML = filteredActiveOrders.map((_, index) => 
+                        `<span class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
+                    ).join('');
+                    indicatorsContainer.style.display = 'flex';
+                } else {
+                    indicatorsContainer.style.display = 'none';
+                }
+            }
         }
     }
+}
+
+// Функция для открытия детального экрана заказа
+function openOrderDetail(orderId) {
+    const order = userActiveOrders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    // Показываем модальное окно с деталями заказа
+    // Можно использовать существующее модальное окно или создать новое
+    alert(`Детали заказа #${orderId}\n\nСтатус: ${getOrderStatusText(order.status)}\nСумма: ${order.total} ₽\nДата: ${order.date}`);
 }
 
 // Загрузка истории заказов
@@ -3622,13 +3713,89 @@ function initCheckoutSteps() {
     // Обработчики редактирования на итоговой странице
     const editRecipientBtn = document.getElementById('editRecipient');
     if (editRecipientBtn) {
-        editRecipientBtn.onclick = () => goToStep(1);
+        editRecipientBtn.onclick = () => {
+            // Открываем отдельный экран редактирования получателя
+            openEditRecipientPage();
+        };
     }
     
     const editAddressBtn = document.getElementById('editAddress');
     if (editAddressBtn) {
         editAddressBtn.onclick = () => {
+            // Открываем модальное окно выбора адреса
             showAddressSelectModal();
+        };
+    }
+    
+    // Обработчик кнопки "Назад" на странице редактирования получателя
+    const backFromEditRecipientBtn = document.getElementById('backFromEditRecipientBtn');
+    if (backFromEditRecipientBtn) {
+        backFromEditRecipientBtn.onclick = () => {
+            // Возвращаемся на страницу итого
+            document.getElementById('editRecipientTab').style.display = 'none';
+            goToStep(4);
+        };
+    }
+    
+    // Обработчик сохранения получателя
+    const saveRecipientBtn = document.getElementById('saveRecipientBtn');
+    if (saveRecipientBtn) {
+        saveRecipientBtn.onclick = async (e) => {
+            e.preventDefault();
+            const nameField = document.getElementById('editRecipientName');
+            const phoneField = document.getElementById('editRecipientPhone');
+            const name = nameField.value.trim();
+            const phone = phoneField.value.trim();
+            
+            // Валидация
+            let isValid = true;
+            if (!name) {
+                validateField(nameField, false);
+                isValid = false;
+            } else {
+                validateField(nameField, true);
+            }
+            
+            const phoneDigits = phone.replace(/\D/g, '');
+            if (!phone || phoneDigits.length < 10) {
+                validateField(phoneField, false);
+                isValid = false;
+            } else {
+                validateField(phoneField, true);
+            }
+            
+            if (!isValid) return;
+            
+            // Сохраняем данные
+            checkoutData.recipientName = name;
+            checkoutData.recipientPhone = phone;
+            
+            // Сохраняем в профиль пользователя в БД
+            const userId = getUserId();
+            if (userId) {
+                try {
+                    await fetch('/api/user-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: userId,
+                            profile: {
+                                name: name,
+                                phone: phone
+                            }
+                        })
+                    });
+                } catch (error) {
+                    console.error('Ошибка сохранения данных получателя:', error);
+                }
+            }
+            
+            // Обновляем отображение на странице итого
+            renderCheckoutSummary();
+            
+            // Возвращаемся на страницу итого
+            document.getElementById('editRecipientTab').style.display = 'none';
+            goToStep(4);
         };
     }
     
@@ -3686,6 +3853,12 @@ function goToStep(step) {
     // Скрываем все шаги
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
+    // Скрываем страницу редактирования получателя, если она открыта
+    const editRecipientTab = document.getElementById('editRecipientTab');
+    if (editRecipientTab) {
+        editRecipientTab.style.display = 'none';
+    }
+    
     // Показываем нужный шаг
     const stepElement = document.getElementById(`checkoutStep${step}`);
     if (stepElement) {
@@ -3702,6 +3875,22 @@ function goToStep(step) {
     });
     
     currentCheckoutStep = step;
+    
+    // Обновляем BackButton для текущего шага
+    if (step > 1) {
+        // Если не на первом шаге - возвращаемся на предыдущий
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            goToStep(step - 1);
+        });
+    } else {
+        // Если на первом шаге - возвращаемся в корзину
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            switchTab('cartTab');
+            tg.BackButton.hide();
+        });
+    }
 }
 
 // Валидация шага 1 (Получатель)
@@ -3922,6 +4111,37 @@ function renderCheckoutSummary() {
         const total = flowersTotal + serviceFee + 500; // 500 - доставка
         checkoutFinalTotalEl.textContent = `${total.toLocaleString()} ₽`;
     }
+}
+
+// Открытие страницы редактирования получателя
+function openEditRecipientPage() {
+    const editRecipientTab = document.getElementById('editRecipientTab');
+    const nameField = document.getElementById('editRecipientName');
+    const phoneField = document.getElementById('editRecipientPhone');
+    
+    if (!editRecipientTab || !nameField || !phoneField) return;
+    
+    // Заполняем поля текущими данными
+    nameField.value = checkoutData.recipientName || '';
+    phoneField.value = checkoutData.recipientPhone || '';
+    
+    // Настраиваем поле телефона
+    if (typeof setupPhoneInput === 'function') {
+        setupPhoneInput(phoneField);
+    }
+    
+    // Скрываем все шаги checkout
+    document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
+    
+    // Показываем страницу редактирования
+    editRecipientTab.style.display = 'block';
+    
+    // Настраиваем BackButton
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        editRecipientTab.style.display = 'none';
+        goToStep(4);
+    });
 }
 
 // Показ модального окна выбора адреса
