@@ -1,13 +1,11 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram.WebApp;
-tg.ready();
 
-// Включаем fullscreen режим
-// Важно: fullscreen работает корректно при открытии через:
-// 1. Direct Link (настроенный в @BotFather → Mini Apps → Direct Links)
-// 2. Inline кнопку с web_app (кнопка "Открыть магазин" в сообщении бота)
-// Menu Button может не всегда уважать fullscreen, так как открывается как "плавающий" мини-апп
-tg.expand();
+// Включаем fullscreen режим сразу при загрузке (до tg.ready())
+// Это важно для корректной работы fullscreen при открытии через Direct Link или кнопку web_app
+Telegram.WebApp.expand();
+
+tg.ready();
 
 // Поиск логотипа в разных форматах
 let logoFormats = ['logo.jpg', 'logo.png', 'logo.svg', 'logo.jpeg'];
