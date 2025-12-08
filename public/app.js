@@ -3218,12 +3218,54 @@ function loadActiveOrders() {
                         `<span class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
                     ).join('');
                     indicatorsContainer.style.display = 'flex';
+                    
+                    // Добавляем обработчик прокрутки для обновления индикаторов
+                    const carousel = document.getElementById('activeOrdersCarousel');
+                    if (carousel) {
+                        // Удаляем старый обработчик, если есть
+                        carousel.removeEventListener('scroll', updateCarouselIndicators);
+                        // Добавляем новый обработчик
+                        carousel.addEventListener('scroll', updateCarouselIndicators);
+                    }
                 } else {
                     indicatorsContainer.style.display = 'none';
                 }
             }
         }
     }
+}
+
+// Функция обновления индикаторов карусели активных заказов
+function updateCarouselIndicators() {
+    const carousel = document.getElementById('activeOrdersCarousel');
+    const indicatorsContainer = document.getElementById('activeOrdersIndicators');
+    const indicators = indicatorsContainer ? indicatorsContainer.querySelectorAll('.carousel-indicator') : [];
+    
+    if (!carousel || indicators.length === 0) return;
+    
+    // Получаем ширину одного элемента карусели
+    const scrollContainer = carousel.querySelector('.active-orders-scroll');
+    if (!scrollContainer) return;
+    
+    const firstCard = scrollContainer.querySelector('.order-card-carousel');
+    if (!firstCard) return;
+    
+    const cardWidth = firstCard.offsetWidth;
+    const gap = 12; // gap между карточками (из CSS)
+    const cardWithGap = cardWidth + gap;
+    
+    // Вычисляем текущий индекс на основе прокрутки
+    const scrollLeft = carousel.scrollLeft;
+    const currentIndex = Math.round(scrollLeft / cardWithGap);
+    
+    // Обновляем активный индикатор
+    indicators.forEach((indicator, index) => {
+        if (index === currentIndex) {
+            indicator.classList.add('active');
+        } else {
+            indicator.classList.remove('active');
+        }
+    });
 }
 
 // Функция для открытия детального экрана заказа
