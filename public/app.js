@@ -917,10 +917,15 @@ function renderAdditionalProducts() {
     }
     
     carousel.innerHTML = additionalProducts.map(product => {
-        const isInCart = cart.some(item => item.id === product.id);
+        // Проверяем, есть ли товар в корзине (сравниваем как строки и числа)
+        const isInCart = cart.some(item => {
+            const itemId = String(item.id);
+            const productId = String(product.id);
+            return itemId === productId || item.id === product.id || item.id === Number(product.id);
+        });
         const productImage = product.image || product.image_url || 'https://via.placeholder.com/150?text=' + encodeURIComponent(product.name);
         // Экранируем ID для безопасного использования в onclick
-        const safeProductId = String(product.id).replace(/'/g, "\\'");
+        const safeProductId = String(product.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         console.log('Рендеринг товара:', product.name, 'ID:', safeProductId, 'isInCart:', isInCart);
         return `
             <div class="additional-product-card">
@@ -931,7 +936,7 @@ function renderAdditionalProducts() {
                     <div class="additional-product-name">${product.name}</div>
                     <div class="additional-product-price">${product.price} ₽</div>
                 </div>
-                <button class="additional-product-add-btn" onclick="addAdditionalProduct('${safeProductId}')" ${isInCart ? 'disabled' : ''}>
+                <button class="additional-product-add-btn" onclick="addAdditionalProduct(${JSON.stringify(product.id)})" ${isInCart ? 'disabled' : ''}>
                     ${isInCart ? 'В корзине' : 'Добавить'}
                 </button>
             </div>
@@ -941,21 +946,36 @@ function renderAdditionalProducts() {
 
 // Добавление дополнительного товара в корзину
 function addAdditionalProduct(productId) {
-    console.log('addAdditionalProduct called with productId:', productId);
+    console.log('addAdditionalProduct called with productId:', productId, 'type:', typeof productId);
     console.log('additionalProducts:', additionalProducts);
     
-    const product = additionalProducts.find(p => p.id === productId);
+    // Приводим productId к строке для сравнения
+    const productIdStr = String(productId);
+    
+    // Ищем товар в additionalProducts (сравниваем как строки и числа)
+    let product = additionalProducts.find(p => {
+        const pId = String(p.id);
+        return pId === productIdStr || p.id === productId || p.id === Number(productId);
+    });
+    
     if (!product) {
         // Если не найден в additionalProducts, ищем в основном списке товаров
-        const productFromMain = products.find(p => p.id === productId);
+        const productFromMain = products.find(p => {
+            const pId = String(p.id);
+            return pId === productIdStr || p.id === productId || p.id === Number(productId);
+        });
         if (!productFromMain) {
-            console.error('Товар не найден:', productId);
+            console.error('Товар не найден:', productId, 'в additionalProducts:', additionalProducts.length, 'в products:', products.length);
+            tg.HapticFeedback.notificationOccurred('error');
             return;
         }
         
         const minQty = getMinQty(productFromMain);
         console.log('minQty для товара из основного списка:', minQty);
-        const existingItem = cart.find(item => item.id === productId);
+        const existingItem = cart.find(item => {
+            const itemId = String(item.id);
+            return itemId === productIdStr || item.id === productId || item.id === Number(productId);
+        });
         if (existingItem) {
             existingItem.quantity += minQty;
         } else {
@@ -967,7 +987,10 @@ function addAdditionalProduct(productId) {
     } else {
         const minQty = getMinQty(product);
         console.log('minQty для товара из additionalProducts:', minQty);
-        const existingItem = cart.find(item => item.id === productId);
+        const existingItem = cart.find(item => {
+            const itemId = String(item.id);
+            return itemId === productIdStr || item.id === productId || item.id === Number(productId);
+        });
         if (existingItem) {
             existingItem.quantity += minQty;
         } else {
@@ -1087,6 +1110,21 @@ function switchTab(tabId) {
     // Обновить корзину при открытии вкладки
     if (tabId === 'cartTab') {
         updateCartUI();
+        // Прокрутить страницу в начало при открытии корзины
+        setTimeout(() => {
+            const cartTab = document.getElementById('cartTab');
+            if (cartTab) {
+                cartTab.scrollTop = 0;
+                if (cartTab.scrollIntoView) {
+                    cartTab.scrollIntoView({ behavior: 'auto', block: 'start' });
+                }
+                if (window.scrollTo) {
+                    window.scrollTo(0, 0);
+                }
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+            }
+        }, 100);
     }
     
     tg.HapticFeedback.impactOccurred('light');

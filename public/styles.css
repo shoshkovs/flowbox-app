@@ -74,13 +74,14 @@ h1, h2, h3, .font-bold {
 /* Header */
 .header {
     background: white;
-    padding: 52px 20px 12px 20px; /* Увеличена высота до 52px сверху, лого выровнено к низу */
+    padding: 52px 20px 8px 20px; /* Лого еще ближе к нижнему краю (8px вместо 12px) */
     display: flex;
     align-items: flex-end; /* Выравнивание к нижнему краю */
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    position: relative; /* Явно указываем relative вместо sticky */
-    z-index: 1; /* Минимальный z-index, чтобы модальные окна были поверх */
+    position: sticky; /* Фиксированный липкий header */
+    top: 0; /* Прилипает к верху при прокрутке */
+    z-index: 100; /* Высокий z-index для отображения поверх контента */
 }
 
 /* Убеждаемся, что header всегда под модальными окнами */
