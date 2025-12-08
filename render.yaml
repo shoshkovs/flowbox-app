@@ -12,6 +12,9 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
         value: admin123
+      - key: ADMIN_CHAT_ID
+        sync: false
+        value: 1059138125
       - key: WEBAPP_URL
         fromService:
           type: web
