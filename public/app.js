@@ -176,7 +176,6 @@ const profileInitial = document.getElementById('profileInitial');
 const profileAvatarImg = document.getElementById('profileAvatarImg');
 const profileAvatarFallback = document.getElementById('profileAvatarFallback');
 const activeOrdersElement = document.getElementById('activeOrders');
-const indicatorsContainer = document.getElementById('activeOrdersIndicators');
 
 // Навигация
 const navItems = document.querySelectorAll('.nav-item');
@@ -2522,12 +2521,35 @@ const openInBrowserBtn = document.getElementById('openInBrowserBtn');
 
 if (addToHomeScreenBtn) {
     addToHomeScreenBtn.addEventListener('click', () => {
-        // Открываем ссылку в Safari (не в боте)
-        const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
-        if (tg && tg.openLink) {
-            tg.openLink(link, { try_instant_view: false });
+        // Определяем платформу
+        const platform = tg?.platform || 'unknown';
+        const isAndroid = platform === 'android' || /Android/i.test(navigator.userAgent);
+        const isIOS = platform === 'ios' || /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (isAndroid) {
+            // Для Android: открываем в системном браузере для установки PWA
+            const currentUrl = window.location.href;
+            if (tg && tg.openLink) {
+                tg.openLink(currentUrl, { try_instant_view: false });
+            } else {
+                window.open(currentUrl, '_blank');
+            }
+        } else if (isIOS) {
+            // Для iOS: открываем ссылку в Safari
+            const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
+            if (tg && tg.openLink) {
+                tg.openLink(link, { try_instant_view: false });
+            } else {
+                window.open(link, '_blank');
+            }
         } else {
-            window.open(link, '_blank');
+            // Для других платформ: открываем ссылку
+            const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
+            if (tg && tg.openLink) {
+                tg.openLink(link, { try_instant_view: false });
+            } else {
+                window.open(link, '_blank');
+            }
         }
     });
 }
@@ -2576,12 +2598,22 @@ supportBtn.addEventListener('click', async () => {
     if (tg && tg.openTelegramLink) {
         // Используем Telegram WebApp API для открытия бота
         tg.openTelegramLink(supportUrl);
+        // Закрываем мини-апп, чтобы вернуть пользователя в чат
+        if (tg.close) {
+            tg.close();
+        }
     } else if (tg && tg.openLink) {
         // Fallback: используем openLink
         tg.openLink(supportUrl);
+        // Закрываем мини-апп, чтобы вернуть пользователя в чат
+        if (tg.close) {
+            tg.close();
+        }
     } else {
         // Последний fallback: закрываем MiniApp и открываем бота
-        tg.close();
+        if (tg && tg.close) {
+            tg.close();
+        }
         if (tg.initDataUnsafe?.user) {
             window.open(supportUrl, '_blank');
         }
@@ -3139,37 +3171,14 @@ function getOrderStatusClass(status) {
 
 // Загрузка активных заказов
 function loadActiveOrders() {
-    console.log('[loadActiveOrders] вызвана');
-    console.log('[loadActiveOrders] userActiveOrders.length =', userActiveOrders.length);
-    console.log('[loadActiveOrders] userActiveOrders:', userActiveOrders);
-    
-    // Показываем все заказы из userActiveOrders, включая COMPLETED и CANCELED
-    // Они будут перемещены в историю при следующей загрузке данных с сервера
     const filteredActiveOrders = userActiveOrders;
-    
-    console.log('[loadActiveOrders] всего отфильтрованных заказов:', filteredActiveOrders.length);
-    
-    if (!indicatorsContainer) {
-        console.warn('[loadActiveOrders] indicatorsContainer не найден в DOM');
-    }
-    
-    const carousel = document.getElementById('activeOrdersCarousel');
-    if (!carousel) {
-        console.warn('[loadActiveOrders] activeOrdersCarousel не найден в DOM');
-    }
-    
     const activeOrdersContainer = document.getElementById('activeOrders');
     
     if (activeOrdersContainer) {
         if (filteredActiveOrders.length === 0) {
             activeOrdersContainer.innerHTML = '<p class="no-orders">У вас нет активных заказов</p>';
-            if (indicatorsContainer) {
-                indicatorsContainer.innerHTML = '';
-                indicatorsContainer.style.display = 'none';
-            }
-            console.log('[loadActiveOrders] индикаторы скрыты, так как заказов <= 1');
         } else {
-            // Рендерим как горизонтальную карусель
+            // Рендерим как вертикальный список
             activeOrdersContainer.innerHTML = filteredActiveOrders.map(order => {
                 const statusText = getOrderStatusText(order.status);
                 const statusClass = getOrderStatusClass(order.status);
@@ -3221,73 +3230,8 @@ function loadActiveOrders() {
                 </div>
             `;
             }).join('');
-            
-            // Показываем индикаторы, если заказов больше одного
-            if (indicatorsContainer && carousel) {
-                if (filteredActiveOrders.length > 1) {
-                    // создаём точки
-                    indicatorsContainer.innerHTML = filteredActiveOrders
-                        .map((_, index) =>
-                            `<span class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
-                        ).join('');
-                    
-                    indicatorsContainer.style.display = 'flex';
-                    
-                    console.log('[loadActiveOrders] ✅ Индикаторы созданы:', filteredActiveOrders.length, 'точек');
-                    
-                    // вешаем scroll-обработчик (один раз)
-                    // Удаляем старый обработчик, если есть
-                    const oldHandler = carousel._scrollHandler;
-                    if (oldHandler) {
-                        carousel.removeEventListener('scroll', oldHandler);
-                    }
-                    
-                    const scrollHandler = () => {
-                        console.log('[carousel] scroll event, scrollLeft =', carousel.scrollLeft);
-                        updateCarouselIndicators();
-                    };
-                    carousel._scrollHandler = scrollHandler;
-                    carousel.addEventListener('scroll', scrollHandler);
-                    
-                    // сразу обновим на всякий случай
-                    updateCarouselIndicators();
-                } else {
-                    indicatorsContainer.innerHTML = '';
-                    indicatorsContainer.style.display = 'none';
-                    console.log('[loadActiveOrders] индикаторы скрыты, так как заказов <= 1');
-                }
-            }
         }
     }
-}
-
-// Функция обновления индикаторов карусели активных заказов
-function updateCarouselIndicators() {
-    const carousel = document.getElementById('activeOrdersCarousel');
-    if (!carousel) {
-        console.warn('[updateCarouselIndicators] нет карусели');
-        return;
-    }
-    if (!indicatorsContainer) {
-        console.warn('[updateCarouselIndicators] нет indicatorsContainer');
-        return;
-    }
-    
-    const indicators = indicatorsContainer.querySelectorAll('.carousel-indicator');
-    if (!indicators.length) {
-        console.warn('[updateCarouselIndicators] индикаторов нет');
-        return;
-    }
-    
-    // Простейшая логика: ширина карусели = ширина одного слайда
-    const slideWidth = carousel.offsetWidth;
-    const index = Math.round(carousel.scrollLeft / slideWidth);
-    
-    console.log('[updateCarouselIndicators] активный индекс:', index);
-    
-    indicators.forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-    });
 }
 
 // Функция для открытия детального экрана заказа
