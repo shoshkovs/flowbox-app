@@ -1080,7 +1080,7 @@ function switchTab(tabId) {
         }, 150);
     } else if (tabId === 'addressTab') {
         if (bottomNav) bottomNav.style.display = 'none';
-        if (header) header.style.display = 'none';
+        if (header) header.style.display = 'flex'; // Header остается видимым
         setTimeout(() => {
             const addressTab = document.getElementById('addressTab');
             if (addressTab) {
