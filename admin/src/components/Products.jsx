@@ -17,12 +17,31 @@ export function Products({ authToken }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [colors, setColors] = useState([]);
   const [features, setFeatures] = useState([]);
+  const [allHidden, setAllHidden] = useState(false);
 
   useEffect(() => {
     loadColors();
     loadQualities();
     loadProducts();
+    loadProductStats();
   }, []);
+
+  const loadProductStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/products/stats`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Если есть товары и все они скрыты
+        setAllHidden(data.total > 0 && data.active === 0);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статистики товаров:', error);
+    }
+  };
 
   useEffect(() => {
     filterProducts();
@@ -76,6 +95,8 @@ export function Products({ authToken }) {
         const data = await response.json();
         setAllProducts(data);
         filterProducts(data);
+        // Обновляем статистику после загрузки товаров
+        await loadProductStats();
       }
     } catch (error) {
       console.error('Ошибка загрузки товаров:', error);
@@ -209,31 +230,38 @@ export function Products({ authToken }) {
     }
   };
 
-  const handleHideAll = async () => {
-    if (!confirm('Вы уверены, что хотите скрыть все товары? Это действие скроет все активные товары.')) {
+  const handleToggleAll = async () => {
+    const action = allHidden ? 'show' : 'hide';
+    const confirmMessage = allHidden 
+      ? 'Вы уверены, что хотите показать все товары?'
+      : 'Вы уверены, что хотите скрыть все товары? Это действие скроет все активные товары.';
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/admin/products/hide-all`, {
+      const response = await fetch(`${API_BASE}/api/admin/products/toggle-all`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ action }),
       });
 
       if (response.ok) {
         const data = await response.json();
         await loadProducts();
-        toast.success(data.message || `Скрыто товаров: ${data.hiddenCount || 0}`);
+        await loadProductStats();
+        toast.success(data.message || (action === 'hide' ? `Скрыто товаров: ${data.count || 0}` : `Показано товаров: ${data.count || 0}`));
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Ошибка скрытия товаров');
+        toast.error(error.error || `Ошибка ${action === 'hide' ? 'скрытия' : 'показа'} товаров`);
       }
     } catch (error) {
-      console.error('Ошибка скрытия всех товаров:', error);
-      toast.error('Ошибка скрытия товаров');
+      console.error(`Ошибка ${action === 'hide' ? 'скрытия' : 'показа'} всех товаров:`, error);
+      toast.error(`Ошибка ${action === 'hide' ? 'скрытия' : 'показа'} товаров`);
     }
   };
 
@@ -250,11 +278,20 @@ export function Products({ authToken }) {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleHideAll}
+            onClick={handleToggleAll}
             className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2"
           >
-            <EyeOff className="w-4 h-4" />
-            Скрыть все
+            {allHidden ? (
+              <>
+                <Eye className="w-4 h-4" />
+                Показать все
+              </>
+            ) : (
+              <>
+                <EyeOff className="w-4 h-4" />
+                Скрыть все
+              </>
+            )}
           </button>
           <button
             onClick={() => navigate('/products/new')}

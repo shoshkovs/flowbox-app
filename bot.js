@@ -3411,8 +3411,49 @@ app.post('/api/admin/products/:id/refresh', checkAdminAuth, async (req, res) => 
   }
 });
 
-// API: Скрыть все товары
-app.post('/api/admin/products/hide-all', checkAdminAuth, async (req, res) => {
+// API: Скрыть/показать все товары
+app.post('/api/admin/products/toggle-all', checkAdminAuth, async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'База данных не подключена' });
+  }
+  
+  const { action } = req.body; // 'hide' или 'show'
+  
+  try {
+    const client = await getDbClient();
+    try {
+      let result;
+      if (action === 'hide') {
+        result = await client.query(
+          'UPDATE products SET is_active = false WHERE is_active = true RETURNING id'
+        );
+        console.log(`✅ Скрыто товаров: ${result.rows.length}`);
+      } else {
+        result = await client.query(
+          'UPDATE products SET is_active = true WHERE is_active = false RETURNING id'
+        );
+        console.log(`✅ Показано товаров: ${result.rows.length}`);
+      }
+      
+      res.json({ 
+        success: true, 
+        count: result.rows.length,
+        action: action,
+        message: action === 'hide' 
+          ? `Скрыто товаров: ${result.rows.length}`
+          : `Показано товаров: ${result.rows.length}`
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error(`Ошибка ${action === 'hide' ? 'скрытия' : 'показа'} всех товаров:`, error);
+    res.status(500).json({ error: `Ошибка ${action === 'hide' ? 'скрытия' : 'показа'} товаров: ` + error.message });
+  }
+});
+
+// API: Получить статистику товаров (для определения состояния кнопки)
+app.get('/api/admin/products/stats', checkAdminAuth, async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'База данных не подключена' });
   }
@@ -3421,21 +3462,16 @@ app.post('/api/admin/products/hide-all', checkAdminAuth, async (req, res) => {
     const client = await getDbClient();
     try {
       const result = await client.query(
-        'UPDATE products SET is_active = false WHERE is_active = true RETURNING id'
+        'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE is_active = true) as active, COUNT(*) FILTER (WHERE is_active = false) as hidden FROM products'
       );
       
-      res.json({ 
-        success: true, 
-        hiddenCount: result.rows.length,
-        message: `Скрыто товаров: ${result.rows.length}`
-      });
-      console.log(`✅ Скрыто товаров: ${result.rows.length}`);
+      res.json(result.rows[0]);
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Ошибка скрытия всех товаров:', error);
-    res.status(500).json({ error: 'Ошибка скрытия товаров: ' + error.message });
+    console.error('Ошибка получения статистики товаров:', error);
+    res.status(500).json({ error: 'Ошибка получения статистики: ' + error.message });
   }
 });
 
@@ -6538,6 +6574,9 @@ const setupReplyKeyboard = () => {
 // Хранилище активных сессий поддержки: userId -> { adminChatId, startTime }
 const supportSessions = new Map();
 
+// Хранилище связи сообщений: messageId менеджера -> userId пользователя
+const messageToUserMap = new Map();
+
 bot.command('start', async (ctx) => {
   const webAppUrl = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
   const startParam = ctx.message?.text?.split(' ')[1]; // Параметр после /start
@@ -6710,7 +6749,7 @@ bot.on('text', async (ctx) => {
       const userName = ctx.from.first_name || 'Пользователь';
       const username = ctx.from.username ? `@${ctx.from.username}` : 'не указан';
       
-      await bot.telegram.sendMessage(
+      const managerMessage = await bot.telegram.sendMessage(
         session.adminChatId,
         `💬 <b>Сообщение от пользователя</b>\n\n` +
         `👤 <b>Имя:</b> ${userName}\n` +
@@ -6736,9 +6775,11 @@ bot.on('text', async (ctx) => {
         }
       );
       
-      // Сохраняем связь между сообщением менеджеру и пользователем для ответа
-      // Используем message_id для связи
-      console.log(`📤 Сообщение от пользователя ${userId} переслано менеджеру`);
+      // Сохраняем связь между message_id сообщения менеджеру и userId пользователя
+      if (managerMessage && managerMessage.message_id) {
+        messageToUserMap.set(managerMessage.message_id, userId);
+        console.log(`📤 Сообщение от пользователя ${userId} переслано менеджеру (message_id: ${managerMessage.message_id})`);
+      }
     } catch (error) {
       console.error('⚠️ Ошибка пересылки сообщения менеджеру:', error.message);
       await ctx.reply('⚠️ Произошла ошибка при отправке сообщения менеджеру. Попробуйте позже.');
@@ -6771,13 +6812,22 @@ bot.use(async (ctx, next) => {
   
   // Проверяем, что это менеджер и есть reply_to_message
   if (adminChatId && managerId.toString() === adminChatId.toString() && ctx.message?.reply_to_message) {
-    const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption || '';
+    const replyMessageId = ctx.message.reply_to_message.message_id;
     
-    // Ищем ID пользователя в тексте сообщения
-    const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)/);
+    // Пытаемся найти userId через сохраненную связь message_id -> userId
+    let userId = messageToUserMap.get(replyMessageId);
     
-    if (userIdMatch) {
-      const userId = parseInt(userIdMatch[1] || userIdMatch[2]);
+    // Если не нашли через message_id, пытаемся найти через текст сообщения
+    if (!userId) {
+      const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption || '';
+      // Ищем ID пользователя в тексте сообщения (HTML или обычный текст)
+      const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)|ID.*?(\d+)/);
+      if (userIdMatch) {
+        userId = parseInt(userIdMatch[1] || userIdMatch[2] || userIdMatch[3]);
+      }
+    }
+    
+    if (userId) {
       const session = supportSessions.get(userId);
       
       if (session) {
@@ -6793,7 +6843,7 @@ bot.use(async (ctx, next) => {
                 reply_markup: setupReplyKeyboard()
               }
             );
-            console.log(`📥 Ответ менеджера отправлен пользователю ${userId}`);
+            console.log(`📥 Ответ менеджера отправлен пользователю ${userId} (reply_to_message_id: ${replyMessageId})`);
             
             // Подтверждаем менеджеру
             await ctx.reply('✅ Ответ отправлен пользователю');
@@ -6806,8 +6856,12 @@ bot.use(async (ctx, next) => {
         }
       } else {
         await ctx.reply('⚠️ Сессия поддержки для этого пользователя уже завершена.');
+        // Удаляем из карты, если сессия завершена
+        messageToUserMap.delete(replyMessageId);
         return;
       }
+    } else {
+      console.log(`⚠️ Не удалось определить userId для reply_to_message_id: ${replyMessageId}`);
     }
   }
   
@@ -6843,6 +6897,13 @@ bot.action(/^endsupport_(\d+)$/, async (ctx) => {
         );
       } catch (error) {
         console.error('⚠️ Ошибка отправки уведомления пользователю:', error.message);
+      }
+      
+      // Очищаем связи сообщений для этого пользователя
+      for (const [messageId, mappedUserId] of messageToUserMap.entries()) {
+        if (mappedUserId === userId) {
+          messageToUserMap.delete(messageId);
+        }
       }
       
       console.log(`✅ Сессия поддержки завершена менеджером для пользователя ${userId}`);
