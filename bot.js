@@ -2265,6 +2265,10 @@ app.get('/api/user-data/:userId', async (req, res) => {
         console.log('📥 ID активных заказов:', activeOrders.map(o => o.id).join(', '));
       }
       
+      // Получаем баланс бонусов из транзакций (единственный источник правды)
+      const bonusBalance = await getUserBonusBalance(user.id);
+      console.log(`💰 Баланс бонусов для пользователя ${userId} (user_id=${user.id}) в GET: ${bonusBalance}`);
+      
       const userData = {
         cart: [], // Корзина хранится на клиенте
         addresses: addresses,
@@ -2276,13 +2280,11 @@ app.get('/api/user-data/:userId', async (req, res) => {
         activeOrders: activeOrders,
         completedOrders: completedOrders,
         // Баланс из транзакций (единственный источник правды)
-        bonuses: await getUserBonusBalance(user.id)
+        bonuses: bonusBalance
       };
       
-      // Логируем загрузку данных только если есть что загружать
-      if (addresses.length > 0 || activeOrders.length > 0) {
-        console.log(`📥 Загружены данные для пользователя ${userId} (БД): адресов=${addresses.length}, активных заказов=${activeOrders.length}`);
-      }
+      // Логируем загрузку данных
+      console.log(`📥 Загружены данные для пользователя ${userId} (user_id=${user.id}) в GET: адресов=${addresses.length}, активных заказов=${activeOrders.length}, бонусов=${bonusBalance}`);
       
       res.json(userData);
     } else {
