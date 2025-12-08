@@ -736,6 +736,12 @@ function changeQuantity(productId, delta) {
 
     const minQty = getMinQty(item);
     
+    // Если количество = 1 и нажимаем минус - удаляем из корзины
+    if (item.quantity === 1 && delta < 0) {
+        removeFromCart(productId);
+        return;
+    }
+    
     // Изменяем количество с шагом minQty
     let newQuantity;
     if (delta > 0) {
@@ -745,8 +751,8 @@ function changeQuantity(productId, delta) {
         // Уменьшаем: округляем вниз до предыдущего кратного minQty
         const decreasedQty = item.quantity + delta; // delta отрицательный
         if (decreasedQty < minQty) {
-            // Не позволяем уменьшить ниже минимума
-            tg.HapticFeedback.notificationOccurred('error');
+            // Если получилось меньше минимума, удаляем из корзины
+            removeFromCart(productId);
             return;
         }
         newQuantity = roundDownToStep(decreasedQty, minQty);
@@ -760,13 +766,9 @@ function changeQuantity(productId, delta) {
     newQuantity = Math.min(500, newQuantity);
     item.quantity = newQuantity;
     
-    if (item.quantity <= 0) {
-        removeFromCart(productId);
-    } else {
-        updateCartUI();
-        saveUserData(); // Сохраняем корзину на сервер
-        tg.HapticFeedback.impactOccurred('light');
-    }
+    updateCartUI();
+    saveUserData(); // Сохраняем корзину на сервер
+    tg.HapticFeedback.impactOccurred('light');
 }
 
 // Получение ID пользователя Telegram
@@ -1098,29 +1100,21 @@ function updateCartUI() {
             if (item.quantity < minQty) {
                 item.quantity = minQty;
             }
-            const isMinQty = item.quantity <= minQty;
+            const totalPrice = item.price * item.quantity;
             
             return `
             <div class="cart-item-new">
                 <img src="${item.image}" alt="${item.name}" class="cart-item-new-image">
                 <div class="cart-item-new-info">
                     <div class="cart-item-new-name">${item.name}</div>
-                    <div class="cart-item-new-price">${item.price} ₽</div>
+                    ${minQty > 1 ? `<div class="cart-item-new-min-qty">${minQty} шт</div>` : ''}
+                    <div class="cart-item-new-quantity-controls">
+                        <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, -1)">−</button>
+                        <span class="cart-quantity-value">${item.quantity}</span>
+                        <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, 1)">+</button>
+                    </div>
                 </div>
-                    <div class="cart-item-new-controls">
-                        <div class="cart-item-new-quantity">
-                            <button class="quantity-btn-small ${isMinQty ? 'disabled' : ''}" onclick="changeQuantity(${item.id}, -1)" ${isMinQty ? 'disabled' : ''}>−</button>
-                            <span class="quantity-value">${item.quantity}</span>
-                            <button class="quantity-btn-small" onclick="changeQuantity(${item.id}, 1)" ${item.quantity >= 500 ? 'disabled' : ''}>+</button>
-                        </div>
-                    <button class="cart-item-delete-btn" onclick="removeFromCart(${item.id})" title="Удалить">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                    </button>
-                </div>
+                <div class="cart-item-new-price">${totalPrice} <span class="ruble">₽</span></div>
             </div>
         `;
         }).join('');

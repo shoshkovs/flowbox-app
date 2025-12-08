@@ -1396,36 +1396,63 @@ h1, h2, h3, .font-bold {
     margin-bottom: 4px;
 }
 
-.cart-item-new-price {
-    font-size: 14px;
-    color: #666;
+.cart-item-new-min-qty {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 8px;
 }
 
-.cart-item-new-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.cart-item-new-quantity {
+.cart-item-new-quantity-controls {
     display: flex;
     align-items: center;
     gap: 8px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 4px 8px;
+    width: fit-content;
 }
 
-.cart-item-delete-btn {
-    background: none;
+.cart-quantity-btn {
+    width: 28px;
+    height: 28px;
     border: none;
-    padding: 4px;
-    cursor: pointer;
+    background: transparent;
+    color: var(--text-color);
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.2s;
 }
 
-.cart-item-delete-btn:active {
+.cart-quantity-btn:active {
+    background: #e0e0e0;
     transform: scale(0.9);
+}
+
+.cart-quantity-value {
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.cart-item-new-price {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.cart-item-new-price .ruble {
+    font-size: 16px;
 }
 
 /* Сервисный сбор */
