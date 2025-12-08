@@ -5661,22 +5661,19 @@ app.get('/api/admin/customers', checkAdminAuth, async (req, res) => {
         ORDER BY last_order_date DESC NULLS LAST
       `);
       
-      // Получаем заказы и реальный баланс бонусов для каждого клиента
+      // Получаем заказы для каждого клиента
       const customers = await Promise.all(result.rows.map(async (customer) => {
         const ordersResult = await client.query(
           'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
           [customer.id]
         );
         
-        // Получаем реальный баланс бонусов из транзакций (единственный источник правды)
-        const realBonusBalance = await getUserBonusBalance(customer.id);
-        
         return {
           id: customer.id,
           name: customer.name || null,
           phone: customer.phone || null,
           email: customer.email || null,
-          bonuses: realBonusBalance, // Используем реальный баланс из транзакций, а не кэш
+          bonuses: parseInt(customer.bonuses) || 0, // Используем значение из поля users.bonuses
           ordersCount: parseInt(customer.orders_count) || 0,
           totalSpent: parseInt(customer.total_spent) || 0,
           lastOrderDate: customer.last_order_date || null,
