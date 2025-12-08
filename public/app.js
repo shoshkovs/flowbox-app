@@ -74,6 +74,40 @@ if (tg && typeof tg.onEvent === 'function') {
     });
 }
 
+// Сохранение корзины при закрытии мини-аппа
+function saveCartOnClose() {
+    // Сохраняем корзину в localStorage и на сервер
+    try {
+        saveCart();
+        console.log('Корзина сохранена при закрытии мини-аппа');
+    } catch (e) {
+        console.error('Ошибка сохранения корзины при закрытии:', e);
+        // В случае ошибки хотя бы сохраняем в localStorage
+        try {
+            localStorage.setItem('cart', JSON.stringify(cart));
+        } catch (localError) {
+            console.error('Ошибка сохранения в localStorage:', localError);
+        }
+    }
+}
+
+// Обработчик закрытия страницы
+window.addEventListener('beforeunload', () => {
+    saveCartOnClose();
+});
+
+// Обработчик скрытия страницы (для мобильных устройств)
+window.addEventListener('pagehide', () => {
+    saveCartOnClose();
+});
+
+// Обработчик изменения видимости (когда мини-апп сворачивается)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        saveCartOnClose();
+    }
+});
+
 // Дополнительная попытка через событие загрузки
 window.addEventListener('load', () => {
     if (tg && typeof tg.expand === 'function') {
@@ -2519,36 +2553,61 @@ const addToHomeScreenModal = document.getElementById('addToHomeScreenModal');
 const closeAddToHomeModal = document.getElementById('closeAddToHomeModal');
 const openInBrowserBtn = document.getElementById('openInBrowserBtn');
 
+// Переменная для хранения события beforeinstallprompt
+let deferredPrompt = null;
+
+// Обработчик события beforeinstallprompt (для PWA)
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Предотвращаем автоматическое показ диалога
+    e.preventDefault();
+    // Сохраняем событие для использования позже
+    deferredPrompt = e;
+    console.log('PWA install prompt доступен');
+});
+
 if (addToHomeScreenBtn) {
-    addToHomeScreenBtn.addEventListener('click', () => {
-        // Определяем платформу
-        const platform = tg?.platform || 'unknown';
-        const isAndroid = platform === 'android' || /Android/i.test(navigator.userAgent);
-        const isIOS = platform === 'ios' || /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        
-        if (isAndroid) {
-            // Для Android: открываем в системном браузере для установки PWA
-            const currentUrl = window.location.href;
-            if (tg && tg.openLink) {
-                tg.openLink(currentUrl, { try_instant_view: false });
-            } else {
-                window.open(currentUrl, '_blank');
-            }
-        } else if (isIOS) {
-            // Для iOS: открываем ссылку в Safari
-            const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
-            if (tg && tg.openLink) {
-                tg.openLink(link, { try_instant_view: false });
-            } else {
-                window.open(link, '_blank');
-            }
+    addToHomeScreenBtn.addEventListener('click', async () => {
+        // Если есть сохраненное событие beforeinstallprompt (PWA)
+        if (deferredPrompt) {
+            // Показываем системный диалог установки
+            deferredPrompt.prompt();
+            
+            // Ждем ответа пользователя
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('Пользователь выбрал:', outcome);
+            
+            // Очищаем сохраненное событие
+            deferredPrompt = null;
         } else {
-            // Для других платформ: открываем ссылку
-            const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
-            if (tg && tg.openLink) {
-                tg.openLink(link, { try_instant_view: false });
+            // Если PWA уже установлен или событие недоступно
+            const platform = tg?.platform || 'unknown';
+            const isAndroid = platform === 'android' || /Android/i.test(navigator.userAgent);
+            const isIOS = platform === 'ios' || /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            
+            if (isAndroid) {
+                // Для Android: открываем в системном браузере для установки PWA
+                const currentUrl = window.location.href;
+                if (tg && tg.openLink) {
+                    tg.openLink(currentUrl, { try_instant_view: false });
+                } else {
+                    window.open(currentUrl, '_blank');
+                }
+            } else if (isIOS) {
+                // Для iOS: открываем ссылку в Safari
+                const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
+                if (tg && tg.openLink) {
+                    tg.openLink(link, { try_instant_view: false });
+                } else {
+                    window.open(link, '_blank');
+                }
             } else {
-                window.open(link, '_blank');
+                // Для других платформ: открываем ссылку
+                const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
+                if (tg && tg.openLink) {
+                    tg.openLink(link, { try_instant_view: false });
+                } else {
+                    window.open(link, '_blank');
+                }
             }
         }
     });
