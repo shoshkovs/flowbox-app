@@ -84,7 +84,7 @@ function saveCartOnClose() {
         console.error('Ошибка сохранения корзины при закрытии:', e);
         // В случае ошибки хотя бы сохраняем в localStorage
         try {
-            localStorage.setItem('cart', JSON.stringify(cart));
+            saveCartToLocalStorage(cart);
         } catch (localError) {
             console.error('Ошибка сохранения в localStorage:', localError);
         }
@@ -152,7 +152,7 @@ window.tryNextLogoFormat = tryNextLogoFormat;
 
 // Состояние приложения
 let products = [];
-let cart = [];
+let cart = loadCart(); // Загружаем корзину из localStorage при старте
 let filteredProducts = [];
 let activeFilters = {
     type: ['all'], // По умолчанию выбран "Все"
@@ -645,12 +645,47 @@ function getUserId() {
     return tg.initDataUnsafe?.user?.id || null;
 }
 
+// Получение ключа для сохранения корзины (с привязкой к user_id)
+function getCartKey() {
+    const userId = getUserId();
+    return userId ? `flowbox_cart_${userId}` : 'flowbox_cart_anon';
+}
+
+// Загрузка корзины из localStorage
+function loadCart() {
+    try {
+        const cartKey = getCartKey();
+        const raw = localStorage.getItem(cartKey);
+        if (!raw) {
+            console.log('[cart] корзина не найдена в localStorage');
+            return [];
+        }
+        const cart = JSON.parse(raw);
+        console.log('[cart] загружена из localStorage:', cart);
+        return Array.isArray(cart) ? cart : [];
+    } catch (e) {
+        console.error('[cart] ошибка парсинга корзины:', e);
+        return [];
+    }
+}
+
+// Сохранение корзины в localStorage
+function saveCartToLocalStorage(cart) {
+    try {
+        const cartKey = getCartKey();
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+        console.log('[cart] сохранена в localStorage:', cart);
+    } catch (e) {
+        console.error('[cart] ошибка сохранения в localStorage:', e);
+    }
+}
+
 // Сохранение всех данных пользователя на сервер
 async function saveUserData() {
     const userId = getUserId();
     if (!userId) {
         // Если нет userId, сохраняем только локально
-        localStorage.setItem('cart', JSON.stringify(cart));
+        saveCartToLocalStorage(cart);
         localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
         localStorage.setItem('userProfile', JSON.stringify(localStorage.getItem('userProfile') ? JSON.parse(localStorage.getItem('userProfile')) : null));
         localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
@@ -684,7 +719,7 @@ async function saveUserData() {
         // Убрали избыточное логирование - данные сохраняются автоматически
         
         // Также сохраняем локально как резервную копию
-        localStorage.setItem('cart', JSON.stringify(cart));
+        saveCartToLocalStorage(cart);
         localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
         if (profileData) {
             localStorage.setItem('userProfile', JSON.stringify(profileData));
@@ -694,7 +729,7 @@ async function saveUserData() {
     } catch (error) {
         console.error('Ошибка сохранения данных на сервер:', error);
         // Сохраняем локально при ошибке
-        localStorage.setItem('cart', JSON.stringify(cart));
+        saveCartToLocalStorage(cart);
         localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
         localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
         localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
@@ -734,7 +769,12 @@ async function loadUserData() {
             const data = await response.json();
             
             // Загружаем данные с сервера, если они есть
-            if (data.cart && Array.isArray(data.cart)) cart = data.cart;
+            // Используем корзину с сервера только если локальная корзина пуста
+            // Иначе используем локальную (более актуальную)
+            if (data.cart && Array.isArray(data.cart) && cart.length === 0) {
+                cart = data.cart;
+                saveCartToLocalStorage(cart); // Сохраняем загруженную корзину в localStorage
+            }
             if (data.addresses && Array.isArray(data.addresses)) {
                 console.log('📦 Загружены адреса с сервера:', data.addresses.length);
                 savedAddresses = data.addresses;
@@ -799,18 +839,10 @@ async function loadUserData() {
         }
     }
     
-    // Если нет userId или ошибка, загружаем из localStorage
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-        try {
-            cart = JSON.parse(savedCart);
-            updateCartUI();
-            updateGoToCartButton();
-        } catch (e) {
-            console.error('Ошибка загрузки корзины:', e);
-            cart = [];
-        }
-    }
+    // Если нет userId или ошибка, загружаем из localStorage (уже загружено при старте через loadCart())
+    // Обновляем UI корзины
+    updateCartUI();
+    updateGoToCartButton();
     
     // Загружаем адреса из localStorage
     const savedAddressesLocal = localStorage.getItem('savedAddresses');
@@ -885,7 +917,8 @@ async function loadUserData() {
 
 // Сохранение корзины (обновленная функция)
 function saveCart() {
-    saveUserData();
+    saveCartToLocalStorage(cart); // Сохраняем в localStorage с ключом по user_id
+    saveUserData(); // Сохраняем на сервер
 }
 
 // Обновление UI корзины
@@ -2553,60 +2586,79 @@ const addToHomeScreenModal = document.getElementById('addToHomeScreenModal');
 const closeAddToHomeModal = document.getElementById('closeAddToHomeModal');
 const openInBrowserBtn = document.getElementById('openInBrowserBtn');
 
-// Переменная для хранения события beforeinstallprompt
-let deferredPrompt = null;
+// Функция для добавления на главный экран через Telegram WebApp API
+async function maybeAskAddToHome() {
+    if (!tg || !tg.checkHomeScreenStatus || !tg.addToHomeScreen) {
+        console.log('[home] API недоступно');
+        return false;
+    }
 
-// Обработчик события beforeinstallprompt (для PWA)
-window.addEventListener('beforeinstallprompt', (e) => {
-    // Предотвращаем автоматическое показ диалога
-    e.preventDefault();
-    // Сохраняем событие для использования позже
-    deferredPrompt = e;
-    console.log('PWA install prompt доступен');
-});
+    try {
+        // Узнаём статус
+        const status = await tg.checkHomeScreenStatus();
+        console.log('[home] status =', status);
+        // варианты: 'unsupported' | 'unknown' | 'added' | 'can_be_added'
+
+        if (status === 'can_be_added') {
+            console.log('[home] показываем диалог добавления на главный экран');
+            tg.addToHomeScreen();
+            return true;
+        } else if (status === 'added') {
+            console.log('[home] уже добавлено на главный экран');
+            return false;
+        } else {
+            console.log('[home] статус:', status);
+            return false;
+        }
+    } catch (e) {
+        console.error('[home] ошибка при проверке статуса:', e);
+        return false;
+    }
+}
 
 if (addToHomeScreenBtn) {
     addToHomeScreenBtn.addEventListener('click', async () => {
-        // Если есть сохраненное событие beforeinstallprompt (PWA)
-        if (deferredPrompt) {
-            // Показываем системный диалог установки
-            deferredPrompt.prompt();
-            
-            // Ждем ответа пользователя
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log('Пользователь выбрал:', outcome);
-            
-            // Очищаем сохраненное событие
-            deferredPrompt = null;
-        } else {
-            // Если PWA уже установлен или событие недоступно
-            const platform = tg?.platform || 'unknown';
-            const isAndroid = platform === 'android' || /Android/i.test(navigator.userAgent);
-            const isIOS = platform === 'ios' || /iPhone|iPad|iPod/i.test(navigator.userAgent);
-            
-            if (isAndroid) {
-                // Для Android: открываем в системном браузере для установки PWA
-                const currentUrl = window.location.href;
-                if (tg && tg.openLink) {
-                    tg.openLink(currentUrl, { try_instant_view: false });
-                } else {
-                    window.open(currentUrl, '_blank');
+        const platform = tg?.platform || 'unknown';
+        console.log('[home] платформа:', platform);
+
+        if (platform === 'android') {
+            // Для Android используем нативный метод Telegram WebApp
+            const success = await maybeAskAddToHome();
+            if (!success) {
+                // Если метод не сработал, показываем инструкции
+                if (addToHomeScreenModal) {
+                    addToHomeScreenModal.style.display = 'flex';
+                    lockBodyScroll();
+                    if (tg && tg.BackButton) {
+                        tg.BackButton.show();
+                        tg.BackButton.onClick(() => {
+                            addToHomeScreenModal.style.display = 'none';
+                            unlockBodyScroll();
+                            tg.BackButton.hide();
+                        });
+                    }
                 }
-            } else if (isIOS) {
-                // Для iOS: открываем ссылку в Safari
-                const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
-                if (tg && tg.openLink) {
-                    tg.openLink(link, { try_instant_view: false });
-                } else {
-                    window.open(link, '_blank');
-                }
+            }
+        } else if (platform === 'ios') {
+            // Для iOS: открываем ссылку в Safari
+            const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
+            if (tg && tg.openLink) {
+                tg.openLink(link, { try_instant_view: false });
             } else {
-                // Для других платформ: открываем ссылку
-                const link = 'https://t.me/FlowboxBot/?startapp&addToHomeScreen';
-                if (tg && tg.openLink) {
-                    tg.openLink(link, { try_instant_view: false });
-                } else {
-                    window.open(link, '_blank');
+                window.open(link, '_blank');
+            }
+        } else {
+            // Для других платформ: показываем инструкции
+            if (addToHomeScreenModal) {
+                addToHomeScreenModal.style.display = 'flex';
+                lockBodyScroll();
+                if (tg && tg.BackButton) {
+                    tg.BackButton.show();
+                    tg.BackButton.onClick(() => {
+                        addToHomeScreenModal.style.display = 'none';
+                        unlockBodyScroll();
+                        tg.BackButton.hide();
+                    });
                 }
             }
         }
