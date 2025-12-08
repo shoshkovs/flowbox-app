@@ -3303,6 +3303,11 @@ function loadSavedAddresses() {
     if (typeof window.renderAddressOptions === 'function') {
         window.renderAddressOptions();
     }
+    
+    // Обновляем список адресов на шаге 2, если он активен
+    if (currentCheckoutStep === 2) {
+        renderCheckoutAddresses();
+    }
 }
 
 // Заполнение формы заказа адресом
@@ -4081,6 +4086,8 @@ window.switchTab = switchTab;
 window.editAddress = editAddress;
 window.deleteAddress = deleteAddress;
 window.addAdditionalProduct = addAdditionalProduct;
+window.selectCheckoutAddress = selectCheckoutAddress;
+window.showCheckoutAddressForm = showCheckoutAddressForm;
 window.selectAddress = selectAddress;
 window.openOrderDetail = openOrderDetail;
 
@@ -4115,11 +4122,19 @@ function initCheckoutSteps() {
     
     const continueStep2Btn = document.getElementById('continueStep2');
     if (continueStep2Btn) {
-        continueStep2Btn.onclick = () => {
+        continueStep2Btn.onclick = async () => {
             if (validateStep2()) {
-                saveStep2();
+                await saveStep2();
                 goToStep(3);
             }
+        };
+    }
+    
+    // Обработчик кнопки "Добавить новый адрес"
+    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+    if (addNewAddressBtn) {
+        addNewAddressBtn.onclick = () => {
+            showCheckoutAddressForm();
         };
     }
     
@@ -4290,6 +4305,11 @@ function goToStep(step) {
     
     currentCheckoutStep = step;
     
+    // Если переходим на шаг 2, проверяем сохраненные адреса
+    if (step === 2) {
+        renderCheckoutAddresses();
+    }
+    
     // Обновляем BackButton для текущего шага
     if (tg && tg.BackButton) {
         if (step > 1) {
@@ -4300,6 +4320,111 @@ function goToStep(step) {
             console.log('[goToStep] BackButton.hide()');
         }
     }
+}
+
+// Рендеринг списка адресов на шаге 2
+function renderCheckoutAddresses() {
+    const addressesList = document.getElementById('checkoutAddressesList');
+    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+    const addressForm = document.getElementById('checkoutAddressForm');
+    
+    if (!addressesList || !addNewAddressBtn || !addressForm) return;
+    
+    // Если есть сохраненные адреса - показываем список
+    if (savedAddresses && savedAddresses.length > 0) {
+        addressesList.style.display = 'block';
+        addNewAddressBtn.style.display = 'block';
+        addressForm.style.display = 'none';
+        
+        // Рендерим список адресов с радио-кнопками
+        addressesList.innerHTML = savedAddresses.map((addr, index) => {
+            // Объединяем street и house для обратной совместимости
+            let street = addr.street || '';
+            const house = addr.house || '';
+            if (house && !street.includes(house)) {
+                street = street ? `${street} ${house}` : house;
+            }
+            
+            const addressStr = [
+                addr.city || 'Санкт-Петербург',
+                street,
+                addr.apartment ? `кв. ${addr.apartment}` : ''
+            ].filter(Boolean).join(', ');
+            
+            // Проверяем, выбран ли этот адрес
+            const currentStreet = checkoutData.address ? checkoutData.address.street : '';
+            const currentCity = checkoutData.address ? (checkoutData.address.city || 'Санкт-Петербург') : '';
+            const addrStreet = street;
+            const addrCity = addr.city || 'Санкт-Петербург';
+            
+            const isSelected = checkoutData.address && 
+                              currentStreet === addrStreet &&
+                              currentCity === addrCity;
+            
+            return `
+                <label class="checkout-address-option">
+                    <input type="radio" name="checkoutAddress" value="${addr.id}" ${isSelected ? 'checked' : ''} onchange="selectCheckoutAddress(${addr.id})">
+                    <div class="checkout-address-option-content">
+                        <div class="checkout-address-text">${addressStr}</div>
+                    </div>
+                </label>
+            `;
+        }).join('');
+        
+        // Если адрес еще не выбран, выбираем первый
+        if (!checkoutData.address || !checkoutData.address.street) {
+            const firstAddress = savedAddresses[0];
+            if (firstAddress) {
+                selectCheckoutAddress(firstAddress.id);
+            }
+        }
+    } else {
+        // Если адресов нет - показываем форму
+        addressesList.style.display = 'none';
+        addNewAddressBtn.style.display = 'none';
+        addressForm.style.display = 'block';
+    }
+}
+
+// Выбор адреса на шаге 2
+function selectCheckoutAddress(addressId) {
+    const address = savedAddresses.find(addr => String(addr.id) === String(addressId));
+    if (!address) return;
+    
+    // Объединяем street и house для обратной совместимости со старыми адресами
+    let streetValue = address.street || '';
+    const houseValue = address.house || '';
+    if (houseValue && !streetValue.includes(houseValue)) {
+        // Если house есть и не включен в street, объединяем их
+        streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+    }
+    
+    // Заполняем checkoutData.address
+    checkoutData.address = {
+        city: address.city || 'Санкт-Петербург',
+        street: streetValue, // Теперь содержит "улица + дом"
+        apartment: address.apartment || '',
+        floor: address.floor || '',
+        entrance: address.entrance || '',
+        intercom: address.intercom || '',
+        comment: address.comment || ''
+    };
+    
+    console.log('[selectCheckoutAddress] выбран адрес:', checkoutData.address);
+}
+
+// Показ формы добавления нового адреса на шаге 2
+function showCheckoutAddressForm() {
+    const addressesList = document.getElementById('checkoutAddressesList');
+    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+    const addressForm = document.getElementById('checkoutAddressForm');
+    
+    if (addressesList) addressesList.style.display = 'none';
+    if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+    if (addressForm) addressForm.style.display = 'block';
+    
+    // Очищаем форму
+    clearOrderAddressFields();
 }
 
 // Валидация шага 1 (Получатель)
@@ -4358,34 +4483,89 @@ async function saveStep1() {
 
 // Валидация шага 2 (Доставка)
 function validateStep2() {
-    const streetField = document.getElementById('orderAddressStreet');
-    const street = streetField.value.trim(); // Теперь содержит "улица + дом"
+    // Проверяем, есть ли выбранный адрес из списка
+    const selectedAddressRadio = document.querySelector('input[name="checkoutAddress"]:checked');
+    
+    if (selectedAddressRadio) {
+        // Адрес выбран из списка - валидация не нужна
+        return true;
+    }
+    
+    // Если адрес не выбран из списка, проверяем форму
+    const addressForm = document.getElementById('checkoutAddressForm');
+    if (addressForm && addressForm.style.display !== 'none') {
+        const streetField = document.getElementById('orderAddressStreet');
+        const street = streetField ? streetField.value.trim() : '';
 
-    let isValid = true;
-
-    if (!street) {
-        validateField(streetField, false);
-        isValid = false;
+        if (!street) {
+            if (streetField) validateField(streetField, false);
+            return false;
+        } else {
+            if (streetField) validateField(streetField, true);
+        }
     } else {
-        validateField(streetField, true);
+        // Если форма скрыта и адрес не выбран - ошибка
+        return false;
     }
 
-    // Валидация дома убрана - теперь "улица + дом" в одном поле
-
-    return isValid;
+    return true;
 }
 
 // Сохранение шага 2
 async function saveStep2() {
-    checkoutData.address = {
-        city: 'Санкт-Петербург',
-        street: document.getElementById('orderAddressStreet').value.trim(), // Теперь содержит "улица + дом"
-        apartment: document.getElementById('orderAddressApartment').value.trim(),
-        floor: document.getElementById('orderAddressFloor').value.trim(),
-        entrance: document.getElementById('orderAddressEntrance').value.trim(),
-        intercom: document.getElementById('orderAddressIntercom').value.trim(),
-        comment: document.getElementById('orderAddressComment').value.trim()
-    };
+    // Проверяем, есть ли выбранный адрес из списка
+    const selectedAddressRadio = document.querySelector('input[name="checkoutAddress"]:checked');
+    
+    if (selectedAddressRadio) {
+        // Адрес уже выбран и сохранен в checkoutData.address через selectCheckoutAddress
+        // Ничего не делаем, адрес уже в checkoutData.address
+        console.log('[saveStep2] используется выбранный адрес из списка');
+    } else {
+        // Сохраняем данные из формы
+        checkoutData.address = {
+            city: 'Санкт-Петербург',
+            street: document.getElementById('orderAddressStreet').value.trim(), // Теперь содержит "улица + дом"
+            apartment: document.getElementById('orderAddressApartment').value.trim(),
+            floor: document.getElementById('orderAddressFloor').value.trim(),
+            entrance: document.getElementById('orderAddressEntrance').value.trim(),
+            intercom: document.getElementById('orderAddressIntercom').value.trim(),
+            comment: document.getElementById('orderAddressComment').value.trim()
+        };
+        
+        // Сохраняем новый адрес в базу данных
+        const userId = getUserId();
+        if (userId && checkoutData.address.street) {
+            try {
+                const newAddress = {
+                    id: Date.now(),
+                    name: checkoutData.address.street,
+                    city: checkoutData.address.city,
+                    street: checkoutData.address.street,
+                    apartment: checkoutData.address.apartment,
+                    floor: checkoutData.address.floor,
+                    entrance: checkoutData.address.entrance,
+                    intercom: checkoutData.address.intercom,
+                    comment: checkoutData.address.comment
+                };
+                
+                // Проверяем, не является ли это дубликатом
+                const isDuplicate = savedAddresses.some(existingAddr => {
+                    const sameCity = (existingAddr.city || '').toLowerCase().trim() === (newAddress.city || '').toLowerCase().trim();
+                    const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (newAddress.street || '').toLowerCase().trim();
+                    const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (newAddress.apartment || '').toLowerCase().trim();
+                    return sameCity && sameStreet && sameApartment;
+                });
+                
+                if (!isDuplicate) {
+                    savedAddresses.push(newAddress);
+                    await saveUserData();
+                    console.log('[saveStep2] новый адрес сохранен');
+                }
+            } catch (e) {
+                console.error('[saveStep2] ошибка сохранения адреса:', e);
+            }
+        }
+    }
     
     // Сохраняем адрес в БД
     const userId = getUserId();

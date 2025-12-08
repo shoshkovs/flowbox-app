@@ -1926,6 +1926,72 @@ h1, h2, h3, .font-bold {
     transform: scale(0.98);
 }
 
+/* Список адресов на шаге 2 */
+.checkout-addresses-list {
+    margin-bottom: 16px;
+}
+
+.checkout-address-option {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.checkout-address-option:hover {
+    background: #f9f9f9;
+}
+
+.checkout-address-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checkout-address-option-content {
+    flex: 1;
+}
+
+.checkout-address-text {
+    font-size: 14px;
+    color: var(--text-color);
+    line-height: 1.4;
+}
+
+.checkout-address-option input[type="radio"]:checked + .checkout-address-option-content .checkout-address-text {
+    font-weight: 600;
+}
+
+.checkout-add-address-btn {
+    width: 100%;
+    padding: 12px;
+    background: white;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 24px;
+}
+
+.checkout-add-address-btn:active {
+    transform: scale(0.98);
+    background: #fff5f8;
+}
+
+.checkout-address-form {
+    display: none;
+}
+
 /* Итоговая страница */
 .checkout-summary-item {
     background: white;
