@@ -191,6 +191,7 @@ h1, h2, h3, .font-bold {
     width: 100%;
     aspect-ratio: 0.7;
     overflow: hidden;
+    border-radius: 12px 12px 0 0;
 }
 
 .product-image {
@@ -198,6 +199,7 @@ h1, h2, h3, .font-bold {
     height: 100%;
     object-fit: cover;
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    border-radius: 12px 12px 0 0;
 }
 
 
@@ -206,7 +208,6 @@ h1, h2, h3, .font-bold {
     flex: 1;
     display: flex;
     flex-direction: column;
-    position: relative;
 }
 
 .product-name {
@@ -221,8 +222,7 @@ h1, h2, h3, .font-bold {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0;
-    margin-top: auto;
+    margin-bottom: 8px;
 }
 
 .product-price {
@@ -288,32 +288,26 @@ h1, h2, h3, .font-bold {
     font-size: 14px;
 }
 
-.cart-icon-btn {
-    width: 44px;
-    height: 44px;
-    padding: 0;
+.add-to-cart-btn {
+    width: 100%;
+    padding: 10px;
     background: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
-    position: absolute;
-    bottom: 12px;
-    right: 12px;
-    flex-shrink: 0;
+    transition: background 0.3s;
+    margin-top: auto;
 }
 
-.cart-icon-btn:hover {
+.add-to-cart-btn:hover {
     background: var(--secondary-color);
-    transform: scale(1.05);
 }
 
-.cart-icon-btn:active {
-    transform: scale(0.95);
+.add-to-cart-btn:active {
+    transform: scale(0.98);
 }
 
 /* Кнопка перейти в корзину */
