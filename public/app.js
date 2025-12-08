@@ -1,5 +1,8 @@
 // Инициализация Telegram WebApp
-const tg = window.Telegram.WebApp;
+const tg = window.Telegram?.WebApp;
+
+// Глобальные переменные состояния
+let currentCheckoutStep = 1; // Текущий шаг оформления заказа
 
 // Включаем fullscreen режим сразу при загрузке (до tg.ready())
 // Это важно для корректной работы fullscreen при открытии через Direct Link или кнопку web_app
@@ -12,7 +15,36 @@ if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.e
     window.Telegram.WebApp.expand();
 }
 
-tg.ready();
+if (tg) {
+    tg.ready();
+    
+    // Инициализация BackButton один раз при старте
+    if (tg.BackButton && typeof tg.BackButton.onClick === 'function') {
+        console.log('[init] Telegram WebApp найден');
+        
+        tg.BackButton.onClick(() => {
+            console.log('[BackButton] 🔙 нажата, текущий шаг =', currentCheckoutStep);
+            
+            const orderTab = document.getElementById('orderTab');
+            
+            if (orderTab && orderTab.classList.contains('active')) {
+                if (currentCheckoutStep > 1) {
+                    console.log('[BackButton] переходим на шаг', currentCheckoutStep - 1);
+                    goToStep(currentCheckoutStep - 1);
+                } else {
+                    console.log('[BackButton] на первом шаге, переходим в корзину');
+                    switchTab('cartTab');
+                }
+            } else {
+                console.log('[BackButton] orderTab не активен, можно сделать другое действие');
+            }
+        });
+    } else {
+        console.warn('[init] BackButton не поддерживается в этой версии Telegram WebApp');
+    }
+} else {
+    console.warn('[init] Telegram WebApp (tg) не найден, BackButton работать не будет');
+}
 
 // После ready() снова пробуем expand() для надежности
 if (tg && typeof tg.expand === 'function') {
@@ -144,6 +176,7 @@ const profileInitial = document.getElementById('profileInitial');
 const profileAvatarImg = document.getElementById('profileAvatarImg');
 const profileAvatarFallback = document.getElementById('profileAvatarFallback');
 const activeOrdersElement = document.getElementById('activeOrders');
+const indicatorsContainer = document.getElementById('activeOrdersIndicators');
 
 // Навигация
 const navItems = document.querySelectorAll('.nav-item');
@@ -3142,26 +3175,38 @@ function getOrderStatusClass(status) {
 
 // Загрузка активных заказов
 function loadActiveOrders() {
+    console.log('[loadActiveOrders] вызвана');
+    
     // Показываем все заказы из userActiveOrders, включая COMPLETED и CANCELED
     // Они будут перемещены в историю при следующей загрузке данных с сервера
     const filteredActiveOrders = userActiveOrders;
     
-    console.log('📦 loadActiveOrders вызвана, активных заказов:', filteredActiveOrders.length);
-    console.log('📦 Заказы:', filteredActiveOrders);
+    console.log('[loadActiveOrders] всего отфильтрованных заказов:', filteredActiveOrders.length);
+    
+    if (!indicatorsContainer) {
+        console.warn('[loadActiveOrders] indicatorsContainer не найден в DOM');
+    }
+    
+    const carousel = document.getElementById('activeOrdersCarousel');
+    if (!carousel) {
+        console.warn('[loadActiveOrders] activeOrdersCarousel не найден в DOM');
+    }
     
     const activeOrdersContainer = document.getElementById('activeOrders');
-    const indicatorsContainer = document.getElementById('activeOrdersIndicators');
     
     if (activeOrdersContainer) {
         if (filteredActiveOrders.length === 0) {
             activeOrdersContainer.innerHTML = '<p class="no-orders">У вас нет активных заказов</p>';
-            if (indicatorsContainer) indicatorsContainer.style.display = 'none';
+            if (indicatorsContainer) {
+                indicatorsContainer.innerHTML = '';
+                indicatorsContainer.style.display = 'none';
+            }
+            console.log('[loadActiveOrders] индикаторы скрыты, так как заказов <= 1');
         } else {
             // Рендерим как горизонтальную карусель
             activeOrdersContainer.innerHTML = filteredActiveOrders.map(order => {
                 const statusText = getOrderStatusText(order.status);
                 const statusClass = getOrderStatusClass(order.status);
-                console.log(`📦 Заказ #${order.id}, статус: ${order.status} -> "${statusText}"`);
                 
                 // Форматируем дату доставки для отображения
                 let deliveryDateFormatted = '';
@@ -3212,37 +3257,38 @@ function loadActiveOrders() {
             }).join('');
             
             // Показываем индикаторы, если заказов больше одного
-            if (indicatorsContainer) {
+            if (indicatorsContainer && carousel) {
                 if (filteredActiveOrders.length > 1) {
-                    indicatorsContainer.innerHTML = filteredActiveOrders.map((_, index) => 
-                        `<span class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
-                    ).join('');
+                    // создаём точки
+                    indicatorsContainer.innerHTML = filteredActiveOrders
+                        .map((_, index) =>
+                            `<span class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
+                        ).join('');
+                    
                     indicatorsContainer.style.display = 'flex';
                     
-                    // Добавляем обработчик прокрутки для обновления индикаторов
-                    const carousel = document.getElementById('activeOrdersCarousel');
-                    if (carousel) {
-                        // Удаляем старый обработчик, если есть
-                        const oldHandler = carousel._scrollHandler;
-                        if (oldHandler) {
-                            carousel.removeEventListener('scroll', oldHandler);
-                        }
-                        // Создаем новый обработчик с throttling для производительности
-                        let scrollTimeout;
-                        const scrollHandler = () => {
-                            clearTimeout(scrollTimeout);
-                            scrollTimeout = setTimeout(() => {
-                                updateCarouselIndicators();
-                            }, 50);
-                        };
-                        carousel._scrollHandler = scrollHandler;
-                        carousel.addEventListener('scroll', scrollHandler);
-                        
-                        // Вызываем сразу для установки начального состояния
-                        setTimeout(() => updateCarouselIndicators(), 100);
+                    console.log('[loadActiveOrders] ✅ Индикаторы созданы:', filteredActiveOrders.length, 'точек');
+                    
+                    // вешаем scroll-обработчик (один раз)
+                    // Удаляем старый обработчик, если есть
+                    const oldHandler = carousel._scrollHandler;
+                    if (oldHandler) {
+                        carousel.removeEventListener('scroll', oldHandler);
                     }
+                    
+                    const scrollHandler = () => {
+                        console.log('[carousel] scroll event, scrollLeft =', carousel.scrollLeft);
+                        updateCarouselIndicators();
+                    };
+                    carousel._scrollHandler = scrollHandler;
+                    carousel.addEventListener('scroll', scrollHandler);
+                    
+                    // сразу обновим на всякий случай
+                    updateCarouselIndicators();
                 } else {
+                    indicatorsContainer.innerHTML = '';
                     indicatorsContainer.style.display = 'none';
+                    console.log('[loadActiveOrders] индикаторы скрыты, так как заказов <= 1');
                 }
             }
         }
@@ -3252,33 +3298,29 @@ function loadActiveOrders() {
 // Функция обновления индикаторов карусели активных заказов
 function updateCarouselIndicators() {
     const carousel = document.getElementById('activeOrdersCarousel');
-    const indicatorsContainer = document.getElementById('activeOrdersIndicators');
-    const indicators = indicatorsContainer ? indicatorsContainer.querySelectorAll('.carousel-indicator') : [];
+    if (!carousel) {
+        console.warn('[updateCarouselIndicators] нет карусели');
+        return;
+    }
+    if (!indicatorsContainer) {
+        console.warn('[updateCarouselIndicators] нет indicatorsContainer');
+        return;
+    }
     
-    if (!carousel || indicators.length === 0) return;
+    const indicators = indicatorsContainer.querySelectorAll('.carousel-indicator');
+    if (!indicators.length) {
+        console.warn('[updateCarouselIndicators] индикаторов нет');
+        return;
+    }
     
-    // Получаем ширину одного элемента карусели
-    const scrollContainer = carousel.querySelector('.active-orders-scroll');
-    if (!scrollContainer) return;
+    // Простейшая логика: ширина карусели = ширина одного слайда
+    const slideWidth = carousel.offsetWidth;
+    const index = Math.round(carousel.scrollLeft / slideWidth);
     
-    const firstCard = scrollContainer.querySelector('.order-card-carousel');
-    if (!firstCard) return;
+    console.log('[updateCarouselIndicators] активный индекс:', index);
     
-    const cardWidth = firstCard.offsetWidth;
-    const gap = 12; // gap между карточками (из CSS)
-    const cardWithGap = cardWidth + gap;
-    
-    // Вычисляем текущий индекс на основе прокрутки
-    const scrollLeft = carousel.scrollLeft;
-    const currentIndex = Math.round(scrollLeft / cardWithGap);
-    
-    // Обновляем активный индикатор
-    indicators.forEach((indicator, index) => {
-        if (index === currentIndex) {
-            indicator.classList.add('active');
-        } else {
-            indicator.classList.remove('active');
-        }
+    indicators.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
     });
 }
 
@@ -3864,7 +3906,6 @@ window.openOrderDetail = openOrderDetail;
 
 // ==================== ПОЭТАПНАЯ ФОРМА ОФОРМЛЕНИЯ ЗАКАЗА ====================
 
-let currentCheckoutStep = 1;
 let checkoutData = {
     recipientName: '',
     recipientPhone: '',
@@ -4041,6 +4082,8 @@ function initCheckoutSteps() {
 
 // Переход к шагу
 function goToStep(step) {
+    console.log('[goToStep] переход на шаг', step);
+    
     // Скрываем все шаги
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
@@ -4068,51 +4111,14 @@ function goToStep(step) {
     currentCheckoutStep = step;
     
     // Обновляем BackButton для текущего шага
-    // Важно: проверяем, что мы все еще на вкладке orderTab
-    const orderTab = document.getElementById('orderTab');
-    if (!orderTab || !orderTab.classList.contains('active')) {
-        // Если мы не на вкладке orderTab, не устанавливаем BackButton
-        return;
-    }
-    
-    // Обновляем BackButton для текущего шага
-    // Используем замыкание с текущим значением step
-    const currentStep = step;
-    
-    if (currentStep > 1) {
-        // Если не на первом шаге - возвращаемся на предыдущий
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            // Проверяем, что мы все еще на orderTab и на правильном шаге
-            const orderTab = document.getElementById('orderTab');
-            if (orderTab && orderTab.classList.contains('active')) {
-                // Проверяем актуальный шаг перед переходом
-                if (currentCheckoutStep > 1) {
-                    goToStep(currentCheckoutStep - 1);
-                } else {
-                    // Если по какой-то причине мы на шаге 1, идем в корзину
-                    switchTab('cartTab');
-                    tg.BackButton.hide();
-                }
-            }
-        });
-    } else {
-        // Если на первом шаге - возвращаемся в корзину
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            // Проверяем, что мы все еще на orderTab
-            const orderTab = document.getElementById('orderTab');
-            if (orderTab && orderTab.classList.contains('active')) {
-                // Проверяем актуальный шаг
-                if (currentCheckoutStep === 1) {
-                    switchTab('cartTab');
-                    tg.BackButton.hide();
-                } else {
-                    // Если мы не на шаге 1, идем на предыдущий шаг
-                    goToStep(currentCheckoutStep - 1);
-                }
-            }
-        });
+    if (tg && tg.BackButton) {
+        if (step > 1) {
+            tg.BackButton.show();
+            console.log('[goToStep] BackButton.show()');
+        } else {
+            tg.BackButton.hide();
+            console.log('[goToStep] BackButton.hide()');
+        }
     }
 }
 
