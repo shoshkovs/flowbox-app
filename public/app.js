@@ -1952,9 +1952,36 @@ function initOrderForm() {
                 
                 daysContainer.appendChild(dayEl);
                 daysAdded++;
+                
+                // Отладочный вывод для первых нескольких дней
+                if (day <= 3) {
+                    console.log(`[renderCalendar] День ${day}:`, {
+                        text: dayEl.textContent,
+                        classes: dayEl.className,
+                        disabled: dayEl.classList.contains('disabled'),
+                        available: dayEl.classList.contains('available'),
+                        selected: dayEl.classList.contains('selected')
+                    });
+                }
             }
             
             console.log('[renderCalendar] Добавлено дней:', daysAdded, 'всего элементов в контейнере:', daysContainer.children.length);
+            
+            // Проверяем видимость элементов
+            const firstAvailableDay = daysContainer.querySelector('.calendar-day.available');
+            if (firstAvailableDay) {
+                console.log('[renderCalendar] Первая доступная дата найдена:', firstAvailableDay.textContent);
+                const styles = window.getComputedStyle(firstAvailableDay);
+                console.log('[renderCalendar] Стили первой доступной даты:', {
+                    display: styles.display,
+                    visibility: styles.visibility,
+                    opacity: styles.opacity,
+                    width: styles.width,
+                    height: styles.height
+                });
+            } else {
+                console.warn('[renderCalendar] Нет доступных дат в календаре!');
+            }
             
             // Обновляем состояние кнопок навигации
             const prevBtn = document.getElementById('calendarPrevMonth');
