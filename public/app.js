@@ -72,6 +72,21 @@ if (tg && typeof tg.onEvent === 'function') {
             tg.expand();
         }
     });
+    
+    // Обработчик закрытия мини-аппа
+    tg.onEvent('close', () => {
+        if (cart && cart.length > 0) {
+            // Показываем предупреждение через alert (так как beforeunload не работает в Telegram WebApp)
+            if (confirm('Изменения могут быть потеряны. Вы уверены, что хотите закрыть?')) {
+                saveCartOnClose();
+            } else {
+                // Отменяем закрытие (если возможно)
+                return false;
+            }
+        } else {
+            saveCartOnClose();
+        }
+    });
 }
 
 // Сохранение корзины при закрытии мини-аппа
@@ -94,10 +109,12 @@ function saveCartOnClose() {
 // Обработчик закрытия страницы
 window.addEventListener('beforeunload', (e) => {
     saveCartOnClose();
-    // Показываем предупреждение о возможной потере данных
-    e.preventDefault();
-    e.returnValue = 'Изменения могут быть потеряны. Вы уверены, что хотите закрыть?';
-    return e.returnValue;
+    // Показываем предупреждение только если есть товары в корзине
+    if (cart && cart.length > 0) {
+        e.preventDefault();
+        e.returnValue = 'Изменения могут быть потеряны. Вы уверены, что хотите закрыть?';
+        return e.returnValue;
+    }
 });
 
 // Обработчик скрытия страницы (для мобильных устройств)
@@ -474,13 +491,13 @@ function renderProducts() {
                     <div class="product-action-row ${isInCart ? 'product-action-row-filled' : ''}">
                         ${isInCart ? `
                             <button class="product-minus-btn" onclick="changeCartQuantity(${product.id}, -1)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
                             </button>
                             <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
                             <button class="product-plus-btn" onclick="changeCartQuantity(${product.id}, 1)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
@@ -687,13 +704,13 @@ function updateProductCard(productId) {
             actionRow.classList.add('product-action-row-filled');
             actionRow.innerHTML = `
                 <button class="product-minus-btn" onclick="changeCartQuantity(${productId}, -1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                 </button>
                 <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
                 <button class="product-plus-btn" onclick="changeCartQuantity(${productId}, 1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
@@ -3264,15 +3281,21 @@ function loadSavedAddresses() {
             addressesList.innerHTML = '<p class="no-addresses">У вас нет сохраненных адресов доставки</p>';
         } else {
             addressesList.innerHTML = savedAddresses.map(addr => {
-                const parts = [];
-                if (addr.street) parts.push(addr.street); // Теперь содержит "улица + дом"
-                if (addr.apartment) parts.push(addr.apartment);
-                const shortAddress = parts.join(', ');
+                // Название (жирным): улица, дом
+                const streetName = addr.street || 'Адрес не заполнен';
+                
+                // Детали (серым): кв., эт., №
+                const details = [];
+                if (addr.apartment) details.push(`кв. ${addr.apartment}`);
+                if (addr.floor) details.push(`эт. ${addr.floor}`);
+                if (addr.entrance) details.push(`№ ${addr.entrance}`);
+                const detailsStr = details.join(', ');
+                
                 return `
                 <div class="address-item">
                     <div class="address-item-content">
-                        <div class="address-item-name">${addr.name || 'Без названия'}</div>
-                        <div class="address-item-details">${shortAddress || 'Адрес не заполнен'}</div>
+                        <div class="address-item-name">${streetName}</div>
+                        ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
                     </div>
                     <button class="address-edit-icon-btn" onclick="editAddress(${JSON.stringify(addr.id)})" title="Изменить">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
