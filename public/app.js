@@ -67,11 +67,14 @@ if (tg) {
 
 // После ready() снова пробуем expand() только на мобильных устройствах
 if (tg && shouldExpand() && typeof tg.expand === 'function') {
+    console.log('[init] Вызываем tg.expand() после ready()');
     tg.expand();
     // Устанавливаем viewportStableHeight для стабильного fullscreen
     if (typeof tg.viewportStableHeight !== 'undefined') {
         tg.viewportStableHeight = true;
     }
+} else {
+    console.log('[init] НЕ вызываем tg.expand() - десктоп или tg.expand недоступен');
 }
 
 // Дополнительная попытка через requestFullscreen только на мобильных устройствах
@@ -82,11 +85,14 @@ if (tg && shouldExpand() && typeof tg.requestFullscreen === 'function') {
     } catch (e) {
         // Игнорируем ошибки, если метод не поддерживается
     }
+} else {
+    console.log('[init] НЕ вызываем tg.requestFullscreen() - десктоп или метод недоступен');
 }
 
 // Также пробуем через событие viewportChanged только на мобильных устройствах
 if (tg && typeof tg.onEvent === 'function') {
     tg.onEvent('viewportChanged', () => {
+        console.log('[viewportChanged] Событие viewportChanged, shouldExpand:', shouldExpand());
         if (tg && shouldExpand() && typeof tg.expand === 'function') {
             tg.expand();
         }
