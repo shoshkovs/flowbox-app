@@ -5008,9 +5008,13 @@ function goToStep(step) {
     // Скрываем все шаги
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
-    // Скрываем все вкладки (включая редактирование адреса, получателя, список адресов)
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'none';
+    // Скрываем только вкладки редактирования (не основные вкладки меню/корзина/профиль)
+    const editingTabs = ['editRecipientTab', 'editAddressTab', 'myAddressesTab'];
+    editingTabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.style.display = 'none';
+        }
     });
     
     // Показываем нужный шаг
@@ -5019,6 +5023,12 @@ function goToStep(step) {
         stepElement.classList.add('active');
         // Убеждаемся, что шаг видим
         stepElement.style.display = '';
+    }
+    
+    // Убеждаемся, что вкладка оформления заказа видна
+    const orderTab = document.getElementById('orderTab');
+    if (orderTab) {
+        orderTab.style.display = 'block';
     }
     
     // Обновляем индикатор прогресса

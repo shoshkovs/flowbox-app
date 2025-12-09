@@ -748,6 +748,7 @@ if (process.env.DATABASE_URL) {
               const columns = columnsCheck.rows.map(r => r.column_name);
               const hasThreadId = columns.includes('message_thread_id');
               const hasTopicName = columns.includes('topic_name');
+              const hasUpdatedAt = columns.includes('updated_at');
               
               if (!hasThreadId) {
                 console.log('🔄 Добавляем колонку message_thread_id в таблицу support_topics...');
@@ -780,6 +781,20 @@ if (process.env.DATABASE_URL) {
                   console.log('✅ Колонка topic_name добавлена');
                 } catch (alterError) {
                   console.log('⚠️  Ошибка добавления колонки topic_name:', alterError.message);
+                }
+              }
+              
+              if (!hasUpdatedAt) {
+                console.log('🔄 Добавляем колонку updated_at в таблицу support_topics...');
+                try {
+                  await client.query(`
+                    ALTER TABLE support_topics
+                    ADD COLUMN updated_at TIMESTAMPTZ DEFAULT now()
+                  `);
+                  
+                  console.log('✅ Колонка updated_at добавлена');
+                } catch (alterError) {
+                  console.log('⚠️  Ошибка добавления колонки updated_at:', alterError.message);
                 }
               }
             }
@@ -6865,12 +6880,15 @@ async function getOrCreateSupportTopic(userId, userName, username) {
       const columnsCheckSave = await client.query(`
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_name = 'support_topics' AND column_name IN ('message_thread_id', 'topic_name')
+        WHERE table_name = 'support_topics' AND column_name IN ('message_thread_id', 'topic_name', 'updated_at')
       `);
       const availableColumnsSave = columnsCheckSave.rows.map(r => r.column_name);
       const hasTopicNameColumn = availableColumnsSave.includes('topic_name');
+      const hasUpdatedAtColumn = availableColumnsSave.includes('updated_at');
       
-      if (hasTopicNameColumn) {
+      // Формируем SQL запрос в зависимости от доступных колонок
+      if (hasTopicNameColumn && hasUpdatedAtColumn) {
+        // Все колонки доступны
         await client.query(
           `INSERT INTO support_topics (user_id, message_thread_id, topic_name, updated_at)
            VALUES ($1::bigint, $2::integer, $3::text, now())
@@ -6884,7 +6902,8 @@ async function getOrCreateSupportTopic(userId, userName, username) {
              updated_at = now()`,
           [userId, messageThreadId, topicName]
         );
-      } else {
+      } else if (hasUpdatedAtColumn) {
+        // Без topic_name, но с updated_at
         await client.query(
           `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
            VALUES ($1::bigint, $2::integer, now())
@@ -6896,22 +6915,59 @@ async function getOrCreateSupportTopic(userId, userName, username) {
              updated_at = now()`,
           [userId, messageThreadId]
         );
+      } else if (hasTopicNameColumn) {
+        // С topic_name, но без updated_at
+        await client.query(
+          `INSERT INTO support_topics (user_id, message_thread_id, topic_name)
+           VALUES ($1::bigint, $2::integer, $3::text)
+           ON CONFLICT (user_id) DO UPDATE SET
+             message_thread_id = EXCLUDED.message_thread_id,
+             topic_name = EXCLUDED.topic_name
+           ON CONFLICT (message_thread_id) DO UPDATE SET
+             user_id = EXCLUDED.user_id,
+             topic_name = EXCLUDED.topic_name`,
+          [userId, messageThreadId, topicName]
+        );
+      } else {
+        // Минимальный вариант - только user_id и message_thread_id
+        await client.query(
+          `INSERT INTO support_topics (user_id, message_thread_id)
+           VALUES ($1::bigint, $2::integer)
+           ON CONFLICT (user_id) DO UPDATE SET
+             message_thread_id = EXCLUDED.message_thread_id
+           ON CONFLICT (message_thread_id) DO UPDATE SET
+             user_id = EXCLUDED.user_id`,
+          [userId, messageThreadId]
+        );
       }
       
       // Дополнительно: обновляем связь по message_thread_id на случай, если топик уже существовал
-      // Это важно для случаев, когда топик был создан ранее, но связь не сохранилась
       try {
-        if (hasTopicNameColumn) {
+        if (hasTopicNameColumn && hasUpdatedAtColumn) {
           await client.query(
             `UPDATE support_topics 
              SET user_id = $1::bigint, topic_name = $3::text, updated_at = now()
              WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
             [userId, messageThreadId, topicName]
           );
-        } else {
+        } else if (hasUpdatedAtColumn) {
           await client.query(
             `UPDATE support_topics 
              SET user_id = $1::bigint, updated_at = now()
+             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+            [userId, messageThreadId]
+          );
+        } else if (hasTopicNameColumn) {
+          await client.query(
+            `UPDATE support_topics 
+             SET user_id = $1::bigint, topic_name = $3::text
+             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+            [userId, messageThreadId, topicName]
+          );
+        } else {
+          await client.query(
+            `UPDATE support_topics 
+             SET user_id = $1::bigint
              WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
             [userId, messageThreadId]
           );
@@ -7251,12 +7307,13 @@ bot.on('message', async (ctx) => {
                   const columnsCheck = await client.query(`
                     SELECT column_name 
                     FROM information_schema.columns 
-                    WHERE table_name = 'support_topics' AND column_name IN ('message_thread_id', 'topic_name')
+                    WHERE table_name = 'support_topics' AND column_name IN ('message_thread_id', 'topic_name', 'updated_at')
                   `);
                   const availableColumns = columnsCheck.rows.map(r => r.column_name);
                   const hasTopicNameColumn = availableColumns.includes('topic_name');
+                  const hasUpdatedAtColumn = availableColumns.includes('updated_at');
                   
-                  if (hasTopicNameColumn) {
+                  if (hasTopicNameColumn && hasUpdatedAtColumn) {
                     await client.query(
                       `INSERT INTO support_topics (user_id, message_thread_id, topic_name, updated_at)
                        VALUES ($1::bigint, $2::integer, $3::text, now())
@@ -7266,13 +7323,30 @@ bot.on('message', async (ctx) => {
                          updated_at = now()`,
                       [foundUserId, messageThreadId, `Тикет ${foundUserId}`]
                     );
-                  } else {
+                  } else if (hasUpdatedAtColumn) {
                     await client.query(
                       `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
                        VALUES ($1::bigint, $2::integer, now())
                        ON CONFLICT (message_thread_id) DO UPDATE SET
                          user_id = EXCLUDED.user_id,
                          updated_at = now()`,
+                      [foundUserId, messageThreadId]
+                    );
+                  } else if (hasTopicNameColumn) {
+                    await client.query(
+                      `INSERT INTO support_topics (user_id, message_thread_id, topic_name)
+                       VALUES ($1::bigint, $2::integer, $3::text)
+                       ON CONFLICT (message_thread_id) DO UPDATE SET
+                         user_id = EXCLUDED.user_id,
+                         topic_name = EXCLUDED.topic_name`,
+                      [foundUserId, messageThreadId, `Тикет ${foundUserId}`]
+                    );
+                  } else {
+                    await client.query(
+                      `INSERT INTO support_topics (user_id, message_thread_id)
+                       VALUES ($1::bigint, $2::integer)
+                       ON CONFLICT (message_thread_id) DO UPDATE SET
+                         user_id = EXCLUDED.user_id`,
                       [foundUserId, messageThreadId]
                     );
                   }
