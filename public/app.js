@@ -2976,10 +2976,10 @@ async function validateAndSubmitOrder(e) {
                     
                     // Если house пустое, пытаемся извлечь из street
                     if (!house && street) {
-                        const houseMatch = street.match(/(\d+[а-яА-ЯкК]*)$/);
-                        if (houseMatch) {
-                            house = normalize(houseMatch[1]);
-                            street = street.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+                        const houseMatch = street.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+                        if (houseMatch && houseMatch[1]) {
+                            house = normalize(houseMatch[1].trim());
+                            street = street.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
                         }
                     }
                     

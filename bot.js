@@ -1357,15 +1357,17 @@ function parseStreetAndHouse(streetValue) {
     return { street: streetValue || '', house: '' };
   }
   
-  // Упрощенный regex: ищем номер дома в конце строки (цифры + опциональные буквы/корпус)
+  // Улучшенный regex: ищем номер дома в конце строки после пробела
   // Примеры: "Невский проспект 10" -> {street: "Невский проспект", house: "10"}
+  //          "Кемская 7" -> {street: "Кемская", house: "7"}
   //          "Невский проспект 10к2" -> {street: "Невский проспект", house: "10к2"}
   const trimmed = streetValue.trim();
-  const houseMatch = trimmed.match(/\s+(\d+[а-яА-Яa-zA-ZкК]*)$/);
+  // Паттерн: пробел + одна или более цифр + опционально буквы/корпус
+  const houseMatch = trimmed.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
   
-  if (houseMatch) {
-    const house = houseMatch[1];
-    const street = trimmed.replace(/\s+\d+[а-яА-Яa-zA-ZкК]*$/, '').trim();
+  if (houseMatch && houseMatch[1]) {
+    const house = houseMatch[1].trim();
+    const street = trimmed.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
     return { street, house };
   }
   
