@@ -2401,10 +2401,13 @@ async function validateAndSubmitOrder(e) {
     const name = nameField ? nameField.value.trim() : '';
     const phone = phoneField ? phoneField.value.trim() : '';
     const email = emailField ? emailField.value.trim() : '';
-    const comment = commentField ? commentField.value.trim() : '';
+    // Используем комментарий из checkoutData (синхронизирован с полем на шаге 4)
+    const comment = checkoutData.orderComment || (commentField ? commentField.value.trim() : '');
     const deliveryDate = deliveryDateField ? deliveryDateField.value : '';
     const selectedTimeSlot = document.querySelector('.time-slot-btn.active');
     const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : null;
+    // Используем значение из checkoutData (синхронизирован с чекбоксом на шаге 3)
+    const leaveAtDoor = checkoutData.leaveAtDoor || false;
     
     console.log('[validateAndSubmitOrder] 📝 Проверка полей:');
     console.log('[validateAndSubmitOrder]   - name:', name);
@@ -2755,6 +2758,8 @@ async function validateAndSubmitOrder(e) {
         deliveryDate: deliveryDate,
         deliveryTime: deliveryTime,
         comment: comment, // Особые пожелания к заказу (user_comment)
+        userComment: comment, // Дублируем для совместимости с сервером
+        leaveAtDoor: leaveAtDoor, // Оставить у двери
         courierComment: addressData?.comment || null, // Комментарий для курьера (courier_comment)
         userId: tg.initDataUnsafe?.user?.id || null,
         username: tg.initDataUnsafe?.user?.username || null,
@@ -4724,6 +4729,10 @@ window.changeProductQuantity = changeProductQuantity;
 window.switchTab = switchTab;
 window.editAddress = editAddress;
 window.deleteAddress = deleteAddress;
+window.selectAddressFromMyAddresses = selectAddressFromMyAddresses;
+window.editAddressFromMyAddresses = editAddressFromMyAddresses;
+window.deleteAddressFromMyAddresses = deleteAddressFromMyAddresses;
+window.toggleAddressMenu = toggleAddressMenu;
 window.addAdditionalProduct = addAdditionalProduct;
 window.selectCheckoutAddress = selectCheckoutAddress;
 window.showCheckoutAddressForm = showCheckoutAddressForm;
@@ -4737,7 +4746,9 @@ let checkoutData = {
     recipientPhone: '',
     address: {},
     deliveryDate: '',
-    deliveryTime: ''
+    deliveryTime: '',
+    orderComment: '', // Комментарий. Особые пожелания к заказу
+    leaveAtDoor: false // Оставить у двери
 };
 
 // Инициализация поэтапной формы
@@ -4812,8 +4823,22 @@ function initCheckoutSteps() {
     const editAddressBtn = document.getElementById('editAddress');
     if (editAddressBtn) {
         editAddressBtn.onclick = () => {
-            // Открываем страницу редактирования адреса
-            openEditAddressPage();
+            // Открываем вкладку со списком адресов
+            openMyAddressesPage();
+        };
+    }
+    
+    // Обработчик кнопки "Добавить новый адрес" из списка адресов
+    const addNewAddressFromListBtn = document.getElementById('addNewAddressFromListBtn');
+    if (addNewAddressFromListBtn) {
+        addNewAddressFromListBtn.onclick = () => {
+            // Переходим на вкладку адресов для создания нового
+            switchTab('addressTab');
+            // Скрываем вкладку со списком адресов
+            const myAddressesTab = document.getElementById('myAddressesTab');
+            if (myAddressesTab) {
+                myAddressesTab.style.display = 'none';
+            }
         };
     }
     
@@ -4824,6 +4849,33 @@ function initCheckoutSteps() {
             e.preventDefault();
             await saveEditAddress();
         };
+    }
+    
+    // Синхронизация комментария к заказу
+    const orderCommentField = document.getElementById('orderCommentField');
+    if (orderCommentField) {
+        // Заполняем поле из checkoutData при загрузке
+        if (checkoutData.orderComment) {
+            orderCommentField.value = checkoutData.orderComment;
+        }
+        
+        // Обновляем checkoutData при изменении
+        orderCommentField.addEventListener('input', () => {
+            checkoutData.orderComment = orderCommentField.value.trim();
+        });
+    }
+    
+    // Синхронизация чекбокса "Оставить у двери"
+    const leaveAtDoorCheckbox = document.getElementById('leaveAtDoorCheckbox');
+    if (leaveAtDoorCheckbox) {
+        // Заполняем чекбокс из checkoutData при загрузке
+        leaveAtDoorCheckbox.checked = checkoutData.leaveAtDoor || false;
+        
+        // Обновляем checkoutData при изменении
+        leaveAtDoorCheckbox.addEventListener('change', () => {
+            checkoutData.leaveAtDoor = leaveAtDoorCheckbox.checked;
+            renderCheckoutSummary(); // Обновляем отображение на шаге 4
+        });
     }
     
     // Обработчик кнопки "Назад" удален - используем только BackButton от Telegram
@@ -4958,6 +5010,19 @@ function goToStep(step) {
     });
     
     currentCheckoutStep = step;
+    
+    // Если переходим на шаг 3, синхронизируем чекбокс "Оставить у двери"
+    if (step === 3) {
+        const leaveAtDoorCheckbox = document.getElementById('leaveAtDoorCheckbox');
+        if (leaveAtDoorCheckbox) {
+            leaveAtDoorCheckbox.checked = checkoutData.leaveAtDoor || false;
+        }
+    }
+    
+    // Если переходим на шаг 4, обновляем отображение (включая комментарий и "Оставить у двери")
+    if (step === 4) {
+        renderCheckoutSummary();
+    }
     
     // Если переходим на шаг 2, проверяем сохраненные адреса
     if (step === 2) {
@@ -5401,6 +5466,18 @@ function renderCheckoutSummary() {
         summaryDateTimeEl.textContent = `${dateStr}, ${timeStr}`;
     }
     
+    // Оставить у двери
+    const summaryLeaveAtDoorEl = document.getElementById('summaryLeaveAtDoor');
+    if (summaryLeaveAtDoorEl) {
+        summaryLeaveAtDoorEl.textContent = checkoutData.leaveAtDoor ? 'Да' : 'Нет';
+    }
+    
+    // Комментарий к заказу
+    const orderCommentField = document.getElementById('orderCommentField');
+    if (orderCommentField) {
+        orderCommentField.value = checkoutData.orderComment || '';
+    }
+    
     // Корзина
     const cartItemsContainer = document.getElementById('checkoutCartItems');
     if (cartItemsContainer) {
@@ -5456,8 +5533,202 @@ function openEditRecipientPage() {
     });
 }
 
-// Открытие страницы редактирования адреса доставки
-function openEditAddressPage() {
+// Открытие страницы "Мои адреса" (для выбора/редактирования на шаге 4)
+function openMyAddressesPage() {
+    const myAddressesTab = document.getElementById('myAddressesTab');
+    const myAddressesList = document.getElementById('myAddressesList');
+    
+    if (!myAddressesTab || !myAddressesList) return;
+    
+    // Рендерим список адресов с кнопками редактирования и удаления
+    renderMyAddressesList();
+    
+    // Скрываем все шаги checkout
+    document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
+    
+    // Скрываем все вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        if (tab.id !== 'myAddressesTab') {
+            tab.style.display = 'none';
+        }
+    });
+    
+    // Показываем вкладку со списком адресов
+    myAddressesTab.style.display = 'block';
+    
+    // Настраиваем BackButton
+    if (tg && tg.BackButton) {
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            myAddressesTab.style.display = 'none';
+            goToStep(4);
+        });
+    }
+}
+
+// Рендеринг списка адресов на странице "Мои адреса"
+function renderMyAddressesList() {
+    const myAddressesList = document.getElementById('myAddressesList');
+    if (!myAddressesList) return;
+    
+    if (savedAddresses.length === 0) {
+        myAddressesList.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">Нет сохраненных адресов</div>';
+        return;
+    }
+    
+    myAddressesList.innerHTML = savedAddresses.map((addr) => {
+        // Формируем строку адреса
+        let street = addr.street || '';
+        const house = addr.house || '';
+        if (house && !street.includes(house)) {
+            street = street ? `${street} ${house}` : house;
+        }
+        
+        const addressStr = [
+            addr.city || 'Санкт-Петербург',
+            street,
+            addr.apartment ? `кв. ${addr.apartment}` : ''
+        ].filter(Boolean).join(', ');
+        
+        const addressId = addr.id;
+        
+        // Проверяем, выбран ли этот адрес
+        const isSelected = checkoutData.address && 
+                          checkoutData.address.street === street &&
+                          checkoutData.address.city === (addr.city || 'Санкт-Петербург');
+        
+        return `
+            <div class="address-item" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #eee; cursor: pointer; ${isSelected ? 'background-color: #f9f9f9;' : ''}" onclick="selectAddressFromMyAddresses(${addressId})">
+                <div style="flex: 1;">
+                    <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
+                    ${isSelected ? '<div style="font-size: 12px; color: var(--primary-color);">Выбран</div>' : ''}
+                </div>
+                <div class="address-menu" style="position: relative;">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="5" r="1"/>
+                            <circle cx="12" cy="12" r="1"/>
+                            <circle cx="12" cy="19" r="1"/>
+                        </svg>
+                    </button>
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px; margin-top: 4px;">
+                        <button onclick="event.stopPropagation(); editAddressFromMyAddresses(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                            Изменить
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteAddressFromMyAddresses(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Переключение меню адреса (три точки)
+function toggleAddressMenu(addressId) {
+    // Закрываем все открытые меню
+    document.querySelectorAll('.address-menu-dropdown').forEach(menu => {
+        if (menu.id !== `addressMenu${addressId}`) {
+            menu.style.display = 'none';
+        }
+    });
+    
+    // Переключаем текущее меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Выбор адреса из списка "Мои адреса"
+function selectAddressFromMyAddresses(addressId) {
+    const addr = savedAddresses.find(a => String(a.id) === String(addressId));
+    if (!addr) return;
+    
+    // Парсим адрес
+    let streetValue = addr.street || '';
+    const houseValue = addr.house || '';
+    if (houseValue && !streetValue.includes(houseValue)) {
+        streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+    }
+    
+    // Обновляем checkoutData.address
+    checkoutData.address = {
+        city: addr.city || 'Санкт-Петербург',
+        street: streetValue,
+        house: houseValue,
+        apartment: addr.apartment || '',
+        floor: addr.floor || '',
+        entrance: addr.entrance || '',
+        intercom: addr.intercom || '',
+        comment: addr.comment || ''
+    };
+    
+    // Закрываем вкладку со списком адресов
+    const myAddressesTab = document.getElementById('myAddressesTab');
+    if (myAddressesTab) {
+        myAddressesTab.style.display = 'none';
+    }
+    
+    // Обновляем отображение и возвращаемся на шаг 4
+    renderCheckoutSummary();
+    goToStep(4);
+}
+
+// Редактирование адреса из списка "Мои адреса"
+function editAddressFromMyAddresses(addressId) {
+    const addr = savedAddresses.find(a => String(a.id) === String(addressId));
+    if (!addr) return;
+    
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
+    // Закрываем вкладку со списком адресов
+    const myAddressesTab = document.getElementById('myAddressesTab');
+    if (myAddressesTab) {
+        myAddressesTab.style.display = 'none';
+    }
+    
+    // Открываем форму редактирования с данными выбранного адреса
+    openEditAddressPageFromList(addr);
+}
+
+// Удаление адреса из списка "Мои адреса"
+async function deleteAddressFromMyAddresses(addressId) {
+    if (!confirm('Вы уверены, что хотите удалить этот адрес?')) {
+        return;
+    }
+    
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
+    // Удаляем адрес из списка
+    savedAddresses = savedAddresses.filter(a => String(a.id) !== String(addressId));
+    
+    // Сохраняем на сервер
+    await saveUserData();
+    
+    // Обновляем список адресов
+    loadSavedAddresses();
+    
+    // Обновляем отображение списка
+    renderMyAddressesList();
+    
+    // Тактильная обратная связь
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
+// Открытие страницы редактирования адреса доставки из списка
+function openEditAddressPageFromList(address) {
     const editAddressTab = document.getElementById('editAddressTab');
     const cityField = document.getElementById('editAddressCity');
     const streetField = document.getElementById('editAddressStreet');
@@ -5467,24 +5738,37 @@ function openEditAddressPage() {
     const intercomField = document.getElementById('editAddressIntercom');
     const commentField = document.getElementById('editAddressComment');
     
-    if (!editAddressTab || !cityField || !streetField) return;
+    if (!editAddressTab || !cityField || !streetField || !address) return;
     
-    // Заполняем поля текущими данными из checkoutData.address
-    const address = checkoutData.address || {};
+    // Сохраняем ID редактируемого адреса для последующего обновления
+    editAddressTab.dataset.editingAddressId = address.id;
     
-    // Формируем street из street и house, если нужно
-    let streetValue = address.street || '';
-    if (address.house && !streetValue.includes(address.house)) {
-        streetValue = streetValue ? `${streetValue} ${address.house}` : address.house;
+    // Парсим адрес из разных форматов
+    let addrData = {};
+    if (typeof address.address_json === 'object' && address.address_json !== null) {
+        addrData = address.address_json;
+    } else if (typeof address.address_json === 'string') {
+        try {
+            addrData = JSON.parse(address.address_json);
+        } catch (e) {
+            addrData = {};
+        }
     }
     
-    cityField.value = address.city || 'Санкт-Петербург';
+    // Формируем street из street и house
+    let streetValue = address.street || addrData.street || '';
+    const houseValue = address.house || addrData.house || '';
+    if (houseValue && !streetValue.includes(houseValue)) {
+        streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+    }
+    
+    cityField.value = address.city || addrData.city || 'Санкт-Петербург';
     streetField.value = streetValue;
-    apartmentField.value = address.apartment || '';
-    floorField.value = address.floor || '';
-    entranceField.value = address.entrance || '';
-    intercomField.value = address.intercom || '';
-    commentField.value = address.comment || '';
+    apartmentField.value = address.apartment || addrData.apartment || '';
+    floorField.value = address.floor || addrData.floor || '';
+    entranceField.value = address.entrance || addrData.entrance || '';
+    intercomField.value = address.intercom || addrData.intercom || '';
+    commentField.value = address.comment || addrData.comment || '';
     
     // Скрываем все шаги checkout
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
@@ -5504,13 +5788,21 @@ function openEditAddressPage() {
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
             editAddressTab.style.display = 'none';
-            goToStep(4);
+            // Возвращаемся к списку адресов
+            openMyAddressesPage();
         });
     }
 }
 
+// Открытие страницы редактирования адреса доставки (из checkoutData)
+function openEditAddressPage() {
+    const address = checkoutData.address || {};
+    openEditAddressPageFromList(address);
+}
+
 // Сохранение отредактированного адреса
 async function saveEditAddress() {
+    const editAddressTab = document.getElementById('editAddressTab');
     const cityField = document.getElementById('editAddressCity');
     const streetField = document.getElementById('editAddressStreet');
     const apartmentField = document.getElementById('editAddressApartment');
@@ -5541,6 +5833,32 @@ async function saveEditAddress() {
         streetValue = street.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
     }
     
+    // Проверяем, редактируется ли существующий адрес
+    const editingAddressId = editAddressTab?.dataset.editingAddressId;
+    if (editingAddressId) {
+        // Обновляем существующий адрес в savedAddresses
+        const addressIndex = savedAddresses.findIndex(a => String(a.id) === String(editingAddressId));
+        if (addressIndex !== -1) {
+            savedAddresses[addressIndex] = {
+                ...savedAddresses[addressIndex],
+                city: city,
+                street: streetValue,
+                house: houseValue,
+                apartment: apartmentField.value.trim() || null,
+                floor: floorField.value.trim() || null,
+                entrance: entranceField.value.trim() || null,
+                intercom: intercomField.value.trim() || null,
+                comment: commentField.value.trim() || null
+            };
+            
+            // Сохраняем на сервер
+            await saveUserData();
+            
+            // Обновляем список адресов
+            loadSavedAddresses();
+        }
+    }
+    
     // Обновляем checkoutData.address
     checkoutData.address = {
         city: city,
@@ -5554,9 +5872,9 @@ async function saveEditAddress() {
     };
     
     // Скрываем страницу редактирования
-    const editAddressTab = document.getElementById('editAddressTab');
     if (editAddressTab) {
         editAddressTab.style.display = 'none';
+        delete editAddressTab.dataset.editingAddressId;
     }
     
     // Обновляем отображение и возвращаемся на шаг 4

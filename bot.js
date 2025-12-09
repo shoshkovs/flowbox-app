@@ -748,6 +748,38 @@ if (process.env.DATABASE_URL) {
           // Игнорируем ошибки при миграции
         }
       }, 8000);
+      
+      // Миграция: добавление поля leave_at_door в таблицу orders
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            // Проверяем, существует ли поле
+            const columnCheck = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'orders' AND column_name = 'leave_at_door'
+            `);
+            
+            if (columnCheck.rows.length === 0) {
+              console.log('🔄 Добавляем поле leave_at_door в таблицу orders...');
+              await client.query(`
+                ALTER TABLE orders
+                ADD COLUMN leave_at_door BOOLEAN NOT NULL DEFAULT FALSE
+              `);
+              console.log('✅ Поле leave_at_door добавлено в таблицу orders');
+            }
+          } catch (migrationError) {
+            if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
+              console.log('⚠️  Миграция leave_at_door:', migrationError.message);
+            }
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      }, 9000);
     }); // Закрываем первый setTimeout
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
@@ -1659,6 +1691,9 @@ async function createOrderInDb(orderData) {
       // Итоговая сумма заказа
       const finalTotal = orderData.flowersTotal + (orderData.serviceFee || 450) + (orderData.deliveryPrice || 0);
       
+      // Получаем значение leave_at_door из orderData
+      const leaveAtDoor = orderData.leaveAtDoor || false;
+      
       // Создаем заказ
       const orderResult = await client.query(
         `INSERT INTO orders 
@@ -1667,8 +1702,8 @@ async function createOrderInDb(orderData) {
           recipient_name, recipient_phone, 
           address_id, address_string, address_json, 
           delivery_zone, delivery_date, delivery_time,
-          user_comment, courier_comment, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'NEW')
+          user_comment, courier_comment, leave_at_door, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW')
          RETURNING *`,
         [
           userId,
@@ -1690,7 +1725,8 @@ async function createOrderInDb(orderData) {
           orderData.deliveryDate || null,
           orderData.deliveryTime || null,
           userComment,
-          courierComment
+          courierComment,
+          leaveAtDoor
         ]
       );
       
@@ -5129,6 +5165,7 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         customer_email: order.client_email || order.customer_email,
         user_comment: order.user_comment || null,
         status_comment: order.status_comment || null,
+        leave_at_door: order.leave_at_door || false,
         customer_telegram_username: order.customer_telegram_username,
         customer_telegram_id: order.customer_telegram_id,
         items: itemsResult.rows.map(row => ({

@@ -455,6 +455,16 @@ export function OrderDetail({ authToken, orderId }) {
                   </p>
                 </div>
               </div>
+              {order.leave_at_door && (
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 mt-0.5 flex-shrink-0 flex items-center justify-center">
+                    <span className="text-lg">🚪</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-pink-600">Оставить у двери</p>
+                  </div>
+                </div>
+              )}
               {order.courier_comment && (
                 <div className="flex items-start gap-3">
                   <MessageSquare className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />

@@ -246,7 +246,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Улица, дом <span class="required">*</span></label>
-                                <input type="text" id="addressStreet" required placeholder="Введите улицу, дом (например: Невский проспект 10к2)">
+                                <input type="text" id="addressStreet" required placeholder="Например Невский проспект, 10к2">
                             </div>
                             <div class="address-row">
                                 <div class="form-group form-group-half">
@@ -372,7 +372,7 @@
                             </div>
                             <div class="form-group" id="anchor-orderAddressStreet">
                                 <label>Улица, дом <span class="required">*</span></label>
-                                <input type="text" id="orderAddressStreet" required placeholder="Введите улицу, дом (например: Невский проспект 10к2)">
+                                <input type="text" id="orderAddressStreet" required placeholder="Например Невский проспект, 10к2">
                             </div>
                             <div class="address-row">
                                 <div class="form-group form-group-half">
@@ -449,6 +449,15 @@
                                 <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
                             </div>
                         </div>
+                        
+                        <!-- Оставить у двери -->
+                        <div class="form-group" style="margin-top: 16px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="leaveAtDoorCheckbox" style="width: 20px; height: 20px; cursor: pointer;">
+                                <span>Оставить у двери</span>
+                            </label>
+                        </div>
+                        
                         <button type="button" class="checkout-continue-btn" id="continueStep3">Продолжить</button>
                     </div>
                 </div>
@@ -492,6 +501,14 @@
                             </div>
                         </div>
                         
+                        <!-- Оставить у двери -->
+                        <div class="checkout-summary-item">
+                            <div class="summary-item-content">
+                                <div class="summary-item-label">Оставить у двери</div>
+                                <div class="summary-item-value" id="summaryLeaveAtDoor">Нет</div>
+                            </div>
+                        </div>
+                        
                         <!-- Цена доставки -->
                         <div class="checkout-summary-item">
                             <div class="summary-item-content">
@@ -505,6 +522,14 @@
                             <div class="checkout-cart-title">Корзина</div>
                             <div class="checkout-cart-items" id="checkoutCartItems">
                                 <!-- Товары будут добавлены динамически -->
+                            </div>
+                        </div>
+                        
+                        <!-- Комментарий к заказу -->
+                        <div class="checkout-summary-item">
+                            <div class="summary-item-content" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                                <div class="summary-item-label">Комментарий</div>
+                                <textarea id="orderCommentField" placeholder="Особые пожелания к заказу" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
                             </div>
                         </div>
                         
@@ -563,7 +588,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Улица, дом <span class="required">*</span></label>
-                                <input type="text" id="editAddressStreet" required placeholder="Введите улицу, дом (например: Невский проспект 10к2)">
+                                <input type="text" id="editAddressStreet" required placeholder="Например Невский проспект, 10к2">
                             </div>
                             <div class="address-row">
                                 <div class="form-group form-group-half">
@@ -593,6 +618,23 @@
                     </div>
                     <div class="address-page-footer">
                         <button type="submit" form="editAddressForm" class="submit-address-btn" id="saveEditAddressBtn">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Вкладка: Мои адреса (для выбора/редактирования на шаге 4) -->
+            <div class="tab-content" id="myAddressesTab" style="display: none;">
+                <div class="address-page">
+                    <div class="address-page-header">
+                        <h2>Мои адреса</h2>
+                    </div>
+                    <div class="address-page-body">
+                        <div class="addresses-list" id="myAddressesList">
+                            <!-- Адреса будут добавлены динамически -->
+                        </div>
+                    </div>
+                    <div class="address-page-footer">
+                        <button type="button" class="submit-address-btn" id="addNewAddressFromListBtn">+ Добавить новый адрес</button>
                     </div>
                 </div>
             </div>
