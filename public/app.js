@@ -2985,8 +2985,46 @@ async function validateAndSubmitOrder(e) {
                     return cityMatch && streetMatch && apartmentMatch && houseMatch;
                 });
                 
-                if (!isDuplicate && addressData.street) {
-                    // Создаем адрес с именем на основе улицы (теперь содержит "улица + дом")
+                // Проверяем, не является ли это редактированием существующего адреса из checkoutData
+                // Если адрес был отредактирован и имеет ID, обновляем существующий вместо создания нового
+                const existingAddressFromCheckout = checkoutData.address && checkoutData.address.id 
+                    ? savedAddresses.find(a => String(a.id) === String(checkoutData.address.id))
+                    : null;
+                
+                if (existingAddressFromCheckout) {
+                    // Обновляем существующий адрес вместо создания нового
+                    const addressIndex = savedAddresses.findIndex(a => String(a.id) === String(checkoutData.address.id));
+                    if (addressIndex !== -1) {
+                        // Парсим street и house
+                        let houseValue = addressData.house || '';
+                        let streetValue = addressData.street || '';
+                        
+                        // Если house пустое, но в street есть номер дома
+                        if (!houseValue && streetValue) {
+                            const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
+                            if (houseMatch) {
+                                houseValue = houseMatch[1];
+                                streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+                            }
+                        }
+                        
+                        // Обновляем существующий адрес с сохранением ID
+                        savedAddresses[addressIndex] = {
+                            ...savedAddresses[addressIndex],
+                            id: savedAddresses[addressIndex].id, // ВАЖНО: сохраняем ID
+                            city: addressData.city || 'Санкт-Петербург',
+                            street: streetValue || addressData.street,
+                            house: houseValue,
+                            entrance: addressData.entrance || '',
+                            apartment: addressData.apartment || '',
+                            floor: addressData.floor || '',
+                            intercom: addressData.intercom || '',
+                            comment: addressData.comment || ''
+                        };
+                        console.log('📦 Обновлен существующий адрес в сохраненных (из checkoutData):', savedAddresses[addressIndex]);
+                    }
+                } else if (!isDuplicate && addressData.street) {
+                    // Создаем новый адрес только если это не дубликат и не редактирование существующего
                     // Пытаемся извлечь номер дома из street для совместимости с БД
                     let houseValue = addressData.house || '';
                     let streetValue = addressData.street || '';
@@ -3002,7 +3040,7 @@ async function validateAndSubmitOrder(e) {
                     }
                     
                     const newAddress = {
-                        id: Date.now(),
+                        id: Date.now(), // Временный ID, будет заменен на реальный после сохранения на сервер
                         name: addressData.street || 'Адрес',
                         city: addressData.city || 'Санкт-Петербург',
                         street: streetValue || addressData.street, // Название улицы без номера дома
@@ -3016,7 +3054,7 @@ async function validateAndSubmitOrder(e) {
                     savedAddresses.push(newAddress);
                     console.log('📦 Добавлен новый адрес в сохраненные:', newAddress);
                 } else {
-                    console.log('📦 Адрес не добавлен (дубликат или неполные данные):', addressData);
+                    console.log('📦 Адрес не добавлен (дубликат, редактирование существующего или неполные данные):', addressData);
                 }
             }
             
