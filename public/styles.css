@@ -1221,7 +1221,7 @@ h1, h2, h3, .font-bold {
 
 .calendar-day {
     aspect-ratio: 1;
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     font-size: 14px;
@@ -1233,6 +1233,8 @@ h1, h2, h3, .font-bold {
     user-select: none;
     position: relative;
     border: 2px solid transparent;
+    min-height: 32px;
+    min-width: 32px;
 }
 
 /* Круглая обводка для доступных дат (завтра - 2 недели) */
