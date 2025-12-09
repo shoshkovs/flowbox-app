@@ -5314,7 +5314,7 @@ function goToStep(step) {
     if (step === 3) {
         // Небольшая задержка, чтобы убедиться, что DOM обновлен и шаг видим
         setTimeout(() => {
-            console.log('[goToStep] Инициализация календаря на шаге 3');
+            console.log('[goToStep] 📅 Инициализация календаря на шаге 3');
             const stepElement = document.getElementById(`checkoutStep${step}`);
             const calendarContainer = document.getElementById('customCalendar');
             const deliveryDateInput = document.getElementById('deliveryDate');
@@ -5323,45 +5323,45 @@ function goToStep(step) {
             console.log('[goToStep] calendarContainer:', !!calendarContainer, 'deliveryDateInput:', !!deliveryDateInput);
             
             if (!stepElement) {
-                console.error('[goToStep] Элемент шага 3 не найден!');
-                return;
-            }
-            
-            if (!stepElement.classList.contains('active')) {
-                console.warn('[goToStep] Шаг 3 не активен, ждем еще...');
-                setTimeout(() => {
-                    if (typeof window.initCustomCalendar === 'function') {
-                        window.initCustomCalendar();
-                    }
-                }, 100);
+                console.error('[goToStep] ❌ Элемент шага 3 не найден!');
                 return;
             }
             
             if (calendarContainer && deliveryDateInput) {
+                // Сначала пробуем вызвать initOrderForm, чтобы убедиться, что функция определена
+                if (typeof initOrderForm === 'function') {
+                    initOrderForm();
+                }
+                
+                // Затем вызываем календарь
                 if (typeof window.initCustomCalendar === 'function') {
-                    console.log('[goToStep] Вызываем window.initCustomCalendar');
+                    console.log('[goToStep] ✅ Вызываем window.initCustomCalendar');
                     window.initCustomCalendar();
                 } else {
-                    console.warn('[goToStep] window.initCustomCalendar не определена, вызываем initOrderForm');
-                    // Вызываем initOrderForm, которая определит функцию
-                    if (typeof initOrderForm === 'function') {
-                        initOrderForm();
-                        // После вызова initOrderForm функция должна быть определена
-                        if (typeof window.initCustomCalendar === 'function') {
-                            window.initCustomCalendar();
-                        }
-                    } else {
-                        console.error('[goToStep] initOrderForm тоже не определена!');
-                    }
+                    console.error('[goToStep] ❌ window.initCustomCalendar не определена после initOrderForm!');
+                    console.error('[goToStep] Проверяем доступность функций:', {
+                        initOrderForm: typeof initOrderForm,
+                        windowInitCustom: typeof window.initCustomCalendar
+                    });
                 }
             } else {
-                console.warn('[goToStep] Элементы календаря не найдены в DOM');
+                console.warn('[goToStep] ⚠️ Элементы календаря не найдены в DOM');
                 console.warn('[goToStep] Проверяем все элементы формы заказа:');
                 console.warn('[goToStep] - checkoutStep3:', !!document.getElementById('checkoutStep3'));
                 console.warn('[goToStep] - customCalendar:', !!document.getElementById('customCalendar'));
                 console.warn('[goToStep] - deliveryDate:', !!document.getElementById('deliveryDate'));
+                
+                // Пробуем еще раз через небольшую задержку
+                setTimeout(() => {
+                    const retryCalendarContainer = document.getElementById('customCalendar');
+                    const retryDeliveryDateInput = document.getElementById('deliveryDate');
+                    if (retryCalendarContainer && retryDeliveryDateInput && typeof window.initCustomCalendar === 'function') {
+                        console.log('[goToStep] ✅ Повторная попытка инициализации календаря');
+                        window.initCustomCalendar();
+                    }
+                }, 200);
             }
-        }, 300);
+        }, 100);
     }
     
     // Обновляем BackButton для текущего шага
