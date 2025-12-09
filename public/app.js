@@ -2115,7 +2115,16 @@ function initOrderForm() {
     // Инициализация кастомного календаря
     // Экспортируем функцию для повторной инициализации
     window.initCustomCalendar = initCustomCalendar;
-    initCustomCalendar();
+    
+    // Пробуем инициализировать сразу (если форма уже загружена)
+    const calendarContainer = document.getElementById('customCalendar');
+    const deliveryDateInput = document.getElementById('deliveryDate');
+    if (calendarContainer && deliveryDateInput) {
+        console.log('[init] Календарь найден при загрузке, инициализируем');
+        initCustomCalendar();
+    } else {
+        console.log('[init] Календарь не найден при загрузке (форма еще не открыта), будет инициализирован при переходе на шаг 3');
+    }
     
     // Инициализация обработчиков времени доставки (если они уже есть в DOM)
     const existingTimeSlots = document.querySelectorAll('.time-slot-btn');
@@ -4904,12 +4913,30 @@ function goToStep(step) {
     
     // Если переходим на шаг 3, инициализируем календарь (если еще не инициализирован)
     if (step === 3) {
-        // Небольшая задержка, чтобы убедиться, что DOM обновлен
+        // Небольшая задержка, чтобы убедиться, что DOM обновлен и шаг видим
         setTimeout(() => {
             console.log('[goToStep] Инициализация календаря на шаге 3');
+            const stepElement = document.getElementById(`checkoutStep${step}`);
             const calendarContainer = document.getElementById('customCalendar');
             const deliveryDateInput = document.getElementById('deliveryDate');
+            
+            console.log('[goToStep] stepElement:', !!stepElement, 'active:', stepElement?.classList.contains('active'));
             console.log('[goToStep] calendarContainer:', !!calendarContainer, 'deliveryDateInput:', !!deliveryDateInput);
+            
+            if (!stepElement) {
+                console.error('[goToStep] Элемент шага 3 не найден!');
+                return;
+            }
+            
+            if (!stepElement.classList.contains('active')) {
+                console.warn('[goToStep] Шаг 3 не активен, ждем еще...');
+                setTimeout(() => {
+                    if (typeof window.initCustomCalendar === 'function') {
+                        window.initCustomCalendar();
+                    }
+                }, 100);
+                return;
+            }
             
             if (calendarContainer && deliveryDateInput) {
                 if (typeof window.initCustomCalendar === 'function') {
@@ -4920,8 +4947,12 @@ function goToStep(step) {
                 }
             } else {
                 console.warn('[goToStep] Элементы календаря не найдены в DOM');
+                console.warn('[goToStep] Проверяем все элементы формы заказа:');
+                console.warn('[goToStep] - checkoutStep3:', !!document.getElementById('checkoutStep3'));
+                console.warn('[goToStep] - customCalendar:', !!document.getElementById('customCalendar'));
+                console.warn('[goToStep] - deliveryDate:', !!document.getElementById('deliveryDate'));
             }
-        }, 200);
+        }, 300);
     }
     
     // Обновляем BackButton для текущего шага
