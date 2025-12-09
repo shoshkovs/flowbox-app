@@ -298,7 +298,7 @@ h1, h2, h3, .font-bold {
 .product-action-row {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     margin-top: auto;
     gap: 8px;
 }
@@ -414,11 +414,10 @@ h1, h2, h3, .font-bold {
 
 .product-action-row-filled .product-price-filled {
     padding: 0 12px;
-    flex: 1; /* Кнопка с ценой может расширяться */
-    min-width: 0; /* Позволяет сжиматься при необходимости */
+    flex: 0 0 auto; /* Кнопка с ценой не расширяется, фиксированная ширина */
+    min-width: fit-content; /* Минимальная ширина по содержимому */
     white-space: nowrap; /* Текст не переносится */
-    overflow: hidden; /* Скрываем переполнение */
-    text-overflow: ellipsis; /* Добавляем многоточие при переполнении (на всякий случай) */
+    overflow: visible; /* Показываем весь текст */
 }
 
 /* Overlay с количеством банчей на изображении (полупрозрачный фильтр) */

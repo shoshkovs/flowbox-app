@@ -181,6 +181,7 @@ let activeFilters = {
     feature: []
 };
 let productQuantities = {}; // Количество для каждого товара в карточке
+let isSubmittingOrder = false; // Флаг для предотвращения двойной отправки заказа
 
 // Утилита для получения минимального количества товара
 function getMinQty(product) {
@@ -505,7 +506,7 @@ function renderProducts() {
                         ` : `
                             <button class="product-add-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
                                 <span class="product-price-semi-transparent">${totalPrice} <span class="ruble">₽</span></span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.5">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
@@ -1891,10 +1892,20 @@ function validateEmail(email) {
 
 // Функция валидации и отправки заказа (вынесена отдельно для использования из разных обработчиков)
 async function validateAndSubmitOrder(e) {
+    // Защита от двойного вызова
+    if (isSubmittingOrder) {
+        console.log('[validateAndSubmitOrder] ⚠️ Заказ уже отправляется, игнорируем повторный вызов');
+        return;
+    }
+    
     if (e) {
         e.preventDefault();
         e.stopPropagation();
     }
+    
+    // Устанавливаем флаг отправки
+    isSubmittingOrder = true;
+    console.log('[validateAndSubmitOrder] 🔒 Флаг отправки установлен');
     
     // Сброс всех ошибок
     document.querySelectorAll('#orderForm .form-group input, #orderForm .form-group textarea, #orderForm .form-group select').forEach(field => {
@@ -2226,6 +2237,10 @@ async function validateAndSubmitOrder(e) {
             }
         }
         
+        // Сбрасываем флаг отправки при ошибках валидации
+        isSubmittingOrder = false;
+        console.log('[validateAndSubmitOrder] 🔓 Флаг отправки сброшен (ошибки валидации)');
+        
         // Важно: возвращаем false для предотвращения отправки формы
         return false;
     }
@@ -2527,6 +2542,10 @@ async function validateAndSubmitOrder(e) {
         // Разблокируем кнопку при ошибке
         unlockSubmitButton();
         
+        // Сбрасываем флаг отправки при ошибке
+        isSubmittingOrder = false;
+        console.log('[validateAndSubmitOrder] 🔓 Флаг отправки сброшен (ошибка)');
+        
         // Показываем ошибку только если экран успеха еще не показан
         if (!successOverlay.classList.contains('active')) {
             alert('Произошла ошибка при оформлении заказа. Попробуйте еще раз.');
@@ -2539,6 +2558,10 @@ async function validateAndSubmitOrder(e) {
             unlockSubmitButton();
         }, 100);
     }
+    
+    // Сбрасываем флаг отправки при успешном завершении
+    isSubmittingOrder = false;
+    console.log('[validateAndSubmitOrder] 🔓 Флаг отправки сброшен (успех)');
     
     return true;
 }
