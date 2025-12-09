@@ -372,7 +372,7 @@ h1, h2, h3, .font-bold {
 
 .product-minus-btn svg,
 .product-plus-btn svg {
-    stroke-width: 2;
+    stroke-width: 1.5;
 }
 
 .product-minus-btn:active,
@@ -479,7 +479,7 @@ h1, h2, h3, .font-bold {
     justify-content: center;
     gap: 4px;
     transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 12px rgba(255, 105, 180, 0.4);
+    box-shadow: 0 4px 12px rgba(255, 105, 180, 0.4), 0 0 20px rgba(255, 105, 180, 0.3);
 }
 
 .go-to-cart-btn-small:hover {
@@ -1980,6 +1980,7 @@ h1, h2, h3, .font-bold {
     margin-right: 12px;
     cursor: pointer;
     flex-shrink: 0;
+    accent-color: var(--primary-color);
 }
 
 .checkout-address-option-content {

@@ -491,13 +491,13 @@ function renderProducts() {
                     <div class="product-action-row ${isInCart ? 'product-action-row-filled' : ''}">
                         ${isInCart ? `
                             <button class="product-minus-btn" onclick="changeCartQuantity(${product.id}, -1)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
                             </button>
-                            <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
+                            <div class="product-price-filled" style="min-width: fit-content; padding: 0 12px;">${totalPrice} <span class="ruble">₽</span></div>
                             <button class="product-plus-btn" onclick="changeCartQuantity(${product.id}, 1)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
@@ -704,13 +704,13 @@ function updateProductCard(productId) {
             actionRow.classList.add('product-action-row-filled');
             actionRow.innerHTML = `
                 <button class="product-minus-btn" onclick="changeCartQuantity(${productId}, -1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                 </button>
-                <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
+                <div class="product-price-filled" style="min-width: fit-content; padding: 0 12px;">${totalPrice} <span class="ruble">₽</span></div>
                 <button class="product-plus-btn" onclick="changeCartQuantity(${productId}, 1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
@@ -2061,12 +2061,15 @@ async function validateAndSubmitOrder(e) {
             name: 'Новый адрес',
             city: city,
             street: street, // Теперь содержит "улица + дом"
+            house: '', // Пустое поле для совместимости с БД (дом теперь в street)
             entrance: document.getElementById('orderAddressEntrance').value.trim(),
             apartment: document.getElementById('orderAddressApartment').value.trim(),
             floor: document.getElementById('orderAddressFloor').value.trim(),
             intercom: document.getElementById('orderAddressIntercom').value.trim(),
             comment: document.getElementById('orderAddressComment').value.trim()
         };
+        
+        console.log('[validateAndSubmitOrder] 📦 addressData сформирован:', JSON.stringify(addressData, null, 2));
     } else {
         const addressId = selectedAddressRadio.value;
         addressData = savedAddresses.find(a => String(a.id) === String(addressId));
@@ -2244,8 +2247,21 @@ async function validateAndSubmitOrder(e) {
         username: tg.initDataUnsafe?.user?.username || null,
         phone_number: tg.initDataUnsafe?.user?.phone_number || null // Номер телефона из Telegram (если доступен)
     };
+    
+    console.log('[validateAndSubmitOrder] 📦 orderData подготовлен для отправки:');
+    console.log('[validateAndSubmitOrder]   - items:', orderData.items.length, 'товаров');
+    console.log('[validateAndSubmitOrder]   - total:', orderData.total);
+    console.log('[validateAndSubmitOrder]   - name:', orderData.name);
+    console.log('[validateAndSubmitOrder]   - phone:', orderData.phone);
+    console.log('[validateAndSubmitOrder]   - addressData:', JSON.stringify(orderData.addressData, null, 2));
+    console.log('[validateAndSubmitOrder]   - address:', orderData.address);
+    console.log('[validateAndSubmitOrder]   - deliveryDate:', orderData.deliveryDate);
+    console.log('[validateAndSubmitOrder]   - deliveryTime:', orderData.deliveryTime);
 
     try {
+        console.log('[validateAndSubmitOrder] 🚀 Отправка запроса на /api/orders');
+        console.log('[validateAndSubmitOrder] 📤 Тело запроса:', JSON.stringify(orderData, null, 2));
+        
         const response = await fetch('/api/orders', {
             method: 'POST',
             headers: {
@@ -2253,6 +2269,8 @@ async function validateAndSubmitOrder(e) {
             },
             body: JSON.stringify(orderData)
         });
+        
+        console.log('[validateAndSubmitOrder] 📥 Получен ответ от сервера. Status:', response.status, response.statusText);
 
         // Проверяем статус ответа
         if (!response.ok) {
@@ -3284,11 +3302,11 @@ function loadSavedAddresses() {
                 // Название (жирным): улица, дом
                 const streetName = addr.street || 'Адрес не заполнен';
                 
-                // Детали (серым): кв., эт., №
+                // Детали (серым): кв., эт., под.
                 const details = [];
                 if (addr.apartment) details.push(`кв. ${addr.apartment}`);
                 if (addr.floor) details.push(`эт. ${addr.floor}`);
-                if (addr.entrance) details.push(`№ ${addr.entrance}`);
+                if (addr.entrance) details.push(`под. ${addr.entrance}`);
                 const detailsStr = details.join(', ');
                 
                 return `
@@ -4387,11 +4405,11 @@ function renderCheckoutAddresses() {
             `;
         }).join('');
         
-        // Если адрес еще не выбран, выбираем первый
+        // Если адрес еще не выбран, выбираем последний (самый свежий)
         if (!checkoutData.address || !checkoutData.address.street) {
-            const firstAddress = savedAddresses[0];
-            if (firstAddress) {
-                selectCheckoutAddress(firstAddress.id);
+            const lastAddress = savedAddresses[savedAddresses.length - 1];
+            if (lastAddress) {
+                selectCheckoutAddress(lastAddress.id);
             }
         }
     } else {
@@ -4854,24 +4872,32 @@ function selectAddress(index) {
 
 // Отправка заказа
 async function submitOrder() {
+    console.log('[submitOrder] 🚀 Начало отправки заказа');
+    console.log('[submitOrder] checkoutData:', JSON.stringify(checkoutData, null, 2));
+    
     // Проверяем, что все данные заполнены
     if (!checkoutData.recipientName || !checkoutData.recipientPhone) {
+        console.error('[submitOrder] ❌ Не заполнены данные получателя');
         alert('Пожалуйста, заполните данные получателя');
         goToStep(1);
         return;
     }
     
-    if (!checkoutData.address.street) {
+    if (!checkoutData.address || !checkoutData.address.street) {
+        console.error('[submitOrder] ❌ Не заполнен адрес доставки');
         alert('Пожалуйста, заполните адрес доставки');
         goToStep(2);
         return;
     }
     
     if (!checkoutData.deliveryDate || !checkoutData.deliveryTime) {
+        console.error('[submitOrder] ❌ Не выбраны дата и время доставки');
         alert('Пожалуйста, выберите дату и время доставки');
         goToStep(3);
         return;
     }
+    
+    console.log('[submitOrder] ✅ Все данные проверены');
     
     // Заполняем скрытую форму данными из поэтапной формы (для совместимости с существующей логикой)
     const customerNameField = document.getElementById('customerName');
@@ -4896,16 +4922,38 @@ async function submitOrder() {
     if (orderAddressCommentField) orderAddressCommentField.value = checkoutData.address.comment || '';
     if (deliveryDateField) deliveryDateField.value = checkoutData.deliveryDate;
     
+    console.log('[submitOrder] 📝 Заполнены поля формы:');
+    console.log('[submitOrder]   - customerName:', customerNameField?.value);
+    console.log('[submitOrder]   - customerPhone:', customerPhoneField?.value);
+    console.log('[submitOrder]   - orderAddressCity:', orderAddressCityField?.value);
+    console.log('[submitOrder]   - orderAddressStreet:', orderAddressStreetField?.value);
+    console.log('[submitOrder]   - orderAddressApartment:', orderAddressApartmentField?.value);
+    console.log('[submitOrder]   - orderAddressFloor:', orderAddressFloorField?.value);
+    console.log('[submitOrder]   - orderAddressEntrance:', orderAddressEntranceField?.value);
+    console.log('[submitOrder]   - orderAddressIntercom:', orderAddressIntercomField?.value);
+    console.log('[submitOrder]   - orderAddressComment:', orderAddressCommentField?.value);
+    console.log('[submitOrder]   - deliveryDate:', deliveryDateField?.value);
+    
     // Выбираем время доставки
     const timeBtn = document.querySelector(`.time-slot-btn[data-time="${checkoutData.deliveryTime}"]`);
     if (timeBtn) {
         document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
         timeBtn.classList.add('active');
+        console.log('[submitOrder] ✅ Время доставки выбрано:', checkoutData.deliveryTime);
+    } else {
+        console.error('[submitOrder] ❌ Кнопка времени не найдена для:', checkoutData.deliveryTime);
     }
     
     // Вызываем существующую функцию валидации и отправки
+    console.log('[submitOrder] 🔄 Вызываем validateAndSubmitOrder');
     const fakeEvent = { preventDefault: () => {} };
-    await validateAndSubmitOrder(fakeEvent);
+    try {
+        await validateAndSubmitOrder(fakeEvent);
+        console.log('[submitOrder] ✅ validateAndSubmitOrder завершена успешно');
+    } catch (error) {
+        console.error('[submitOrder] ❌ Ошибка в validateAndSubmitOrder:', error);
+        throw error;
+    }
 }
 
 // Инициализация поэтапной формы при загрузке
