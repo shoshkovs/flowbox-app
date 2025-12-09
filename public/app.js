@@ -1864,8 +1864,11 @@ function initOrderForm() {
                 dayEl.textContent = day;
                 
                 // Проверяем, доступна ли дата (от завтра до 2 недель вперед)
-                const isBeforeMin = dayDate < minDate;
-                const isAfterMax = dayDate > maxDate;
+                // Сбрасываем время для корректного сравнения дат
+                const dayDateNormalized = new Date(year, month, day);
+                dayDateNormalized.setHours(0, 0, 0, 0);
+                const isBeforeMin = dayDateNormalized < minDate;
+                const isAfterMax = dayDateNormalized > maxDate;
                 
                 if (isBeforeMin || isAfterMax) {
                     dayEl.classList.add('disabled');
@@ -4806,6 +4809,16 @@ function goToStep(step) {
     // Если переходим на шаг 2, проверяем сохраненные адреса
     if (step === 2) {
         renderCheckoutAddresses();
+    }
+    
+    // Если переходим на шаг 3, инициализируем календарь (если еще не инициализирован)
+    if (step === 3) {
+        // Небольшая задержка, чтобы убедиться, что DOM обновлен
+        setTimeout(() => {
+            if (typeof window.initCustomCalendar === 'function') {
+                window.initCustomCalendar();
+            }
+        }, 100);
     }
     
     // Обновляем BackButton для текущего шага
