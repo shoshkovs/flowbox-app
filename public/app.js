@@ -2633,14 +2633,17 @@ async function validateAndSubmitOrder(e) {
         // Ошибки адреса уже установлены, продолжаем проверку других полей
         
         // Парсим street и house из поля "улица, дом"
-        let streetValue = street;
+        // Пользователь вводит "Кемская 7" - нужно правильно извлечь "7"
+        let streetValue = street.trim();
         let houseValue = '';
         
         // Пытаемся извлечь номер дома из street
-        const houseMatch = street.match(/(\d+[а-яА-ЯкК]*)$/);
-        if (houseMatch) {
-            houseValue = houseMatch[1];
-            streetValue = street.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+        // Паттерн: пробел + одна или более цифр + опционально буквы/корпус
+        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+        if (houseMatch && houseMatch[1]) {
+            houseValue = houseMatch[1].trim();
+            // Убираем номер дома из street, оставляя только название улицы
+            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
         }
         
         addressData = {
@@ -3022,10 +3025,10 @@ async function validateAndSubmitOrder(e) {
                         
                         // Если house пустое, но в street есть номер дома
                         if (!houseValue && streetValue) {
-                            const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
-                            if (houseMatch) {
-                                houseValue = houseMatch[1];
-                                streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+                            const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+                            if (houseMatch && houseMatch[1]) {
+                                houseValue = houseMatch[1].trim();
+                                streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
                             }
                         }
                         
@@ -3052,11 +3055,11 @@ async function validateAndSubmitOrder(e) {
                     
                     // Если house пустое, но в street есть номер дома (последние цифры/буквы после пробела)
                     if (!houseValue && streetValue) {
-                        const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
-                        if (houseMatch) {
-                            houseValue = houseMatch[1];
+                        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+                        if (houseMatch && houseMatch[1]) {
+                            houseValue = houseMatch[1].trim();
                             // Убираем номер дома из street, оставляя только название улицы
-                            streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+                            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
                         }
                     }
                     
@@ -3086,12 +3089,10 @@ async function validateAndSubmitOrder(e) {
             }
             
             
-            // Скрыть форму заказа
-            const orderTab = document.getElementById('orderTab');
-            if (orderTab) {
-                orderTab.classList.remove('active');
-                orderTab.style.display = 'none';
-            }
+            // Очистка корзины
+            cart = [];
+            saveCart(); // Сохраняем пустую корзину
+            updateCartUI();
             
             // Скрываем все шаги оформления
             document.querySelectorAll('.checkout-step').forEach(s => {
@@ -3099,13 +3100,54 @@ async function validateAndSubmitOrder(e) {
                 s.style.display = 'none';
             });
             
-            // Очистка корзины
-            cart = [];
-            saveCart(); // Сохраняем пустую корзину
-            updateCartUI();
+            // Скрываем все вкладки редактирования
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
             
-            // Возвращаемся в меню
-            switchTab('menuTab');
+            // Скрываем форму заказа
+            const orderTab = document.getElementById('orderTab');
+            if (orderTab) {
+                orderTab.classList.remove('active');
+                orderTab.style.display = 'none';
+            }
+            
+            // Сбрасываем checkoutData
+            checkoutData = {
+                recipientName: '',
+                recipientPhone: '',
+                address: {},
+                deliveryDate: '',
+                deliveryTime: '',
+                orderComment: '',
+                leaveAtDoor: false
+            };
+            currentCheckoutStep = 1;
+            
+            // Показываем меню
+            const menuTab = document.getElementById('menuTab');
+            if (menuTab) {
+                menuTab.style.display = 'block';
+                menuTab.classList.add('active');
+            }
+            
+            // Показываем навигацию
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) bottomNav.style.display = 'flex';
+            
+            // Прокрутка в начало страницы
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+            if (menuTab) {
+                menuTab.scrollTop = 0;
+                setTimeout(() => {
+                    if (menuTab.scrollIntoView) {
+                        menuTab.scrollIntoView({ behavior: 'auto', block: 'start' });
+                    }
+                }, 100);
+            }
             
             // Показываем сообщение об успехе
             if (tg && tg.showAlert) {
@@ -3942,11 +3984,11 @@ addressForm.addEventListener('submit', (e) => {
     
     // Если в street есть номер дома (последние цифры/буквы после пробела)
     if (streetValue) {
-        const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
-        if (houseMatch) {
-            houseValue = houseMatch[1];
+        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+        if (houseMatch && houseMatch[1]) {
+            houseValue = houseMatch[1].trim();
             // Убираем номер дома из street, оставляя только название улицы
-            streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
         }
     }
     
@@ -5168,6 +5210,20 @@ function goToStep(step) {
     // Если переходим на шаг 4, обновляем отображение (включая комментарий и "Оставить у двери")
     if (step === 4) {
         renderCheckoutSummary();
+        
+        // Прокрутка в начало шага 4
+        setTimeout(() => {
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+            const orderTab = document.getElementById('orderTab');
+            if (orderTab) {
+                orderTab.scrollTop = 0;
+                if (orderTab.scrollIntoView) {
+                    orderTab.scrollIntoView({ behavior: 'auto', block: 'start' });
+                }
+            }
+        }, 100);
     }
     
     // Если переходим на шаг 2, проверяем сохраненные адреса
@@ -5943,12 +5999,25 @@ function openEditAddressPageFromList(address) {
         }
     }
     
-    // Формируем street из street и house
+    // Формируем street из street и house для отображения в поле ввода
+    // В поле пользователь видит "Кемская 7" (street + house)
     let streetValue = address.street || addrData.street || '';
     const houseValue = address.house || addrData.house || '';
-    if (houseValue && !streetValue.includes(houseValue)) {
-        streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+    
+    // Объединяем street и house только если house есть и еще не включен в street
+    if (houseValue) {
+        // Проверяем, не содержится ли house уже в street (на случай, если данные уже объединены)
+        if (!streetValue.includes(houseValue)) {
+            streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+        }
     }
+    
+    console.log('[openEditAddressPageFromList] 📍 Адрес для редактирования:', { 
+        street: streetValue, 
+        house: houseValue,
+        originalStreet: address.street,
+        originalHouse: address.house
+    });
     
     cityField.value = address.city || addrData.city || 'Санкт-Петербург';
     streetField.value = streetValue;
@@ -5970,6 +6039,19 @@ function openEditAddressPageFromList(address) {
     
     // Показываем страницу редактирования
     editAddressTab.style.display = 'block';
+    
+    // Прокрутка в начало страницы редактирования
+    setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        if (editAddressTab) {
+            editAddressTab.scrollTop = 0;
+            if (editAddressTab.scrollIntoView) {
+                editAddressTab.scrollIntoView({ behavior: 'auto', block: 'start' });
+            }
+        }
+    }, 50);
     
     // Настраиваем BackButton
     if (tg && tg.BackButton) {
@@ -6011,15 +6093,25 @@ async function saveEditAddress() {
     }
     
     // Парсим street и house
-    let streetValue = street;
+    // ВАЖНО: пользователь вводит "Кемская 7" - нужно правильно извлечь "7"
+    // Regex ищет: пробел + цифры + опциональные буквы/корпус в конце строки
+    let streetValue = street.trim();
     let houseValue = '';
     
     // Пытаемся извлечь номер дома из street
-    const houseMatch = street.match(/(\d+[а-яА-ЯкК]*)$/);
-    if (houseMatch) {
-        houseValue = houseMatch[1];
-        streetValue = street.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+    // Паттерн: пробел + одна или более цифр + опционально буквы/корпус (к, к2, лит А и т.д.)
+    const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+    if (houseMatch && houseMatch[1]) {
+        houseValue = houseMatch[1].trim();
+        // Убираем номер дома из street, оставляя только название улицы
+        streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
     }
+    
+    console.log('[saveEditAddress] 📍 Парсинг адреса:', { 
+        original: street, 
+        street: streetValue, 
+        house: houseValue 
+    });
     
     // Проверяем, редактируется ли существующий адрес
     const editingAddressId = editAddressTab?.dataset.editingAddressId;
