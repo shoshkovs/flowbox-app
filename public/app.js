@@ -2019,6 +2019,8 @@ function initOrderForm() {
     }
     
     // Инициализация кастомного календаря
+    // Экспортируем функцию для повторной инициализации
+    window.initCustomCalendar = initCustomCalendar;
     initCustomCalendar();
     
     // Инициализация обработчиков времени доставки (если они уже есть в DOM)
