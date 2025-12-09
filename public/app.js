@@ -5375,9 +5375,14 @@ function renderCheckoutSummary() {
     const summaryAddressEl = document.getElementById('summaryAddress');
     if (summaryAddressEl) {
         const addr = checkoutData.address || {};
+        // Формируем строку адреса: street может содержать "улица + дом" или только "улица"
+        let streetStr = addr.street || '';
+        if (addr.house && !streetStr.includes(addr.house)) {
+            streetStr = streetStr ? `${streetStr} ${addr.house}` : addr.house;
+        }
         const addressStr = [
             addr.city,
-            addr.street, // Теперь содержит "улица + дом"
+            streetStr,
             addr.apartment ? `кв. ${addr.apartment}` : ''
         ].filter(Boolean).join(', ');
         summaryAddressEl.textContent = addressStr || '-';
@@ -5548,15 +5553,14 @@ async function saveEditAddress() {
         comment: commentField.value.trim()
     };
     
-    // Обновляем отображение адреса на шаге 4
-    updateCheckoutStep4();
-    
-    // Скрываем страницу редактирования и возвращаемся на шаг 4
+    // Скрываем страницу редактирования
     const editAddressTab = document.getElementById('editAddressTab');
     if (editAddressTab) {
         editAddressTab.style.display = 'none';
     }
     
+    // Обновляем отображение и возвращаемся на шаг 4
+    renderCheckoutSummary();
     goToStep(4);
 }
 
