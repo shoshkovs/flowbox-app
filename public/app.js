@@ -156,22 +156,34 @@ document.addEventListener('visibilitychange', () => {
 
 // Дополнительная попытка через событие загрузки только на мобильных устройствах
 window.addEventListener('load', () => {
+    console.log('[load] Событие load, shouldExpand:', shouldExpand());
     if (tg && shouldExpand() && typeof tg.expand === 'function') {
+        console.log('[load] Вызываем tg.expand()');
         tg.expand();
+    } else {
+        console.log('[load] НЕ вызываем tg.expand() - десктоп или метод недоступен');
     }
 });
 
 // Попытка через DOMContentLoaded только на мобильных устройствах
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+        console.log('[DOMContentLoaded] Событие DOMContentLoaded, shouldExpand:', shouldExpand());
         if (tg && shouldExpand() && typeof tg.expand === 'function') {
+            console.log('[DOMContentLoaded] Вызываем tg.expand()');
             tg.expand();
+        } else {
+            console.log('[DOMContentLoaded] НЕ вызываем tg.expand() - десктоп или метод недоступен');
         }
     });
 } else {
     // Если DOM уже загружен
+    console.log('[init] DOM уже загружен, shouldExpand:', shouldExpand());
     if (tg && shouldExpand() && typeof tg.expand === 'function') {
+        console.log('[init] Вызываем tg.expand()');
         tg.expand();
+    } else {
+        console.log('[init] НЕ вызываем tg.expand() - десктоп или метод недоступен');
     }
 }
 
