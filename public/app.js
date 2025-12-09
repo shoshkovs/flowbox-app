@@ -1714,7 +1714,7 @@ function initOrderForm() {
             if (newAddressForm) newAddressForm.style.display = 'block';
         });
         
-            addressOptionsList.appendChild(newOption);
+        addressOptionsList.appendChild(newOption);
             
             console.log('[renderAddressOptions] ✅ Рендеринг завершен, добавлено', savedAddresses.length, 'адресов + опция "Новый адрес"');
     };
@@ -1799,7 +1799,7 @@ function initOrderForm() {
     
     function initCustomCalendar() {
         const calendarContainer = document.getElementById('customCalendar');
-        const deliveryDateInput = document.getElementById('deliveryDate');
+    const deliveryDateInput = document.getElementById('deliveryDate');
         
         console.log('[initCustomCalendar] Инициализация кастомного календаря');
         console.log('[initCustomCalendar] calendarContainer:', !!calendarContainer);
@@ -2074,7 +2074,7 @@ function initOrderForm() {
                             deliveryTimeOptions.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
                             if (tg && tg.HapticFeedback) {
-                                tg.HapticFeedback.impactOccurred('light');
+                            tg.HapticFeedback.impactOccurred('light');
                             }
                         });
                     });
@@ -2930,7 +2930,12 @@ async function validateAndSubmitOrder(e) {
             cart = [];
             saveCart(); // Сохраняем пустую корзину
             updateCartUI();
-            orderForm.reset();
+            
+            // Сброс формы заказа (если она существует)
+            const orderForm = document.getElementById('orderForm');
+            if (orderForm) {
+                orderForm.reset();
+            }
             
             // Устанавливаем город по умолчанию после reset
             const cityField = document.getElementById('orderAddressCity');
