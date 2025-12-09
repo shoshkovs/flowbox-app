@@ -2653,6 +2653,16 @@ async function validateAndSubmitOrder(e) {
                 firstErrorField = addressOptionsList;
             }
             hasErrors = true;
+        } else {
+            // ВАЖНО: Если адрес был отредактирован через checkoutData, используем его
+            // Это предотвращает создание дубликата при оплате
+            if (checkoutData.address && checkoutData.address.id && String(checkoutData.address.id) === String(addressId)) {
+                console.log('[validateAndSubmitOrder] ✅ Используем отредактированный адрес из checkoutData');
+                addressData = {
+                    ...addressData, // Базовые данные из savedAddresses
+                    ...checkoutData.address // Обновленные данные из checkoutData (включая house)
+                };
+            }
         }
     }
     
