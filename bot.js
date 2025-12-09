@@ -1607,11 +1607,15 @@ async function createOrderInDb(orderData) {
       let deliveryTimeFrom = null;
       let deliveryTimeTo = null;
       if (orderData.deliveryTime) {
-        // Формат: "10:00-12:00" или "10:00 - 12:00"
-        const timeMatch = orderData.deliveryTime.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/);
+        // Формат: "10:00-12:00" или "10:00 - 12:00" или "14-16" (без минут)
+        const timeMatch = orderData.deliveryTime.match(/(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?/);
         if (timeMatch) {
-          deliveryTimeFrom = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-          deliveryTimeTo = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
+          const fromHour = timeMatch[1].padStart(2, '0');
+          const fromMin = timeMatch[2] || '00';
+          const toHour = timeMatch[3].padStart(2, '0');
+          const toMin = timeMatch[4] || '00';
+          deliveryTimeFrom = `${fromHour}:${fromMin}`;
+          deliveryTimeTo = `${toHour}:${toMin}`;
         }
       }
       
