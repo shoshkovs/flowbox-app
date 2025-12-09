@@ -1916,51 +1916,68 @@ async function validateAndSubmitOrder(e) {
     let firstErrorField = null;
     
     // Проверка основных полей покупателя
-    const name = document.getElementById('customerName').value.trim();
-    const phone = document.getElementById('customerPhone').value.trim();
-    const email = document.getElementById('customerEmail').value.trim();
-    const comment = document.getElementById('orderComment').value.trim();
-    const deliveryDate = document.getElementById('deliveryDate').value;
+    const nameField = document.getElementById('customerName');
+    const phoneField = document.getElementById('customerPhone');
+    const emailField = document.getElementById('customerEmail');
+    const commentField = document.getElementById('orderComment');
+    const deliveryDateField = document.getElementById('deliveryDate');
+    
+    const name = nameField ? nameField.value.trim() : '';
+    const phone = phoneField ? phoneField.value.trim() : '';
+    const email = emailField ? emailField.value.trim() : '';
+    const comment = commentField ? commentField.value.trim() : '';
+    const deliveryDate = deliveryDateField ? deliveryDateField.value : '';
     const selectedTimeSlot = document.querySelector('.time-slot-btn.active');
     const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : null;
     
+    console.log('[validateAndSubmitOrder] 📝 Проверка полей:');
+    console.log('[validateAndSubmitOrder]   - name:', name);
+    console.log('[validateAndSubmitOrder]   - phone:', phone);
+    console.log('[validateAndSubmitOrder]   - email:', email || '(не заполнено)');
+    console.log('[validateAndSubmitOrder]   - comment:', comment || '(не заполнено)');
+    console.log('[validateAndSubmitOrder]   - deliveryDate:', deliveryDate);
+    console.log('[validateAndSubmitOrder]   - deliveryTime:', deliveryTime);
+    
     // Валидация имени (минимум 2 символа)
-    const nameField = document.getElementById('customerName');
     const nameAnchor = document.getElementById('anchor-customerName');
     if (!name || name.length < 2) {
-        validateField(nameField, false);
+        if (nameField) validateField(nameField, false);
         if (!firstErrorField) firstErrorField = nameAnchor || nameField;
         hasErrors = true;
     }
     
     // Валидация телефона (минимум 10 цифр)
-    const phoneField = document.getElementById('customerPhone');
     const phoneAnchor = document.getElementById('anchor-customerPhone');
     const phoneDigits = phone.replace(/\D/g, ''); // Убираем все нецифровые символы
     if (!phone || phoneDigits.length < 10) {
-        validateField(phoneField, false);
+        if (phoneField) validateField(phoneField, false);
         if (!firstErrorField) firstErrorField = phoneAnchor || phoneField;
         hasErrors = true;
     }
     
     // Валидация email (улучшенная: должна быть @ и точка, нельзя белеберду)
-    const emailField = document.getElementById('customerEmail');
     const emailAnchor = document.getElementById('anchor-customerEmail');
     // Более строгая проверка: должна быть @, точка после @, и валидные символы
     // Используем строгую валидацию email
-    if (!email) {
-        // Пустое поле - ошибка
-        validateField(emailField, false);
-        if (!firstErrorField) firstErrorField = emailAnchor || emailField;
-        hasErrors = true;
-    } else if (!validateEmail(email)) {
-        // Email заполнен, но невалидный
-        validateField(emailField, false);
-        if (!firstErrorField) firstErrorField = emailAnchor || emailField;
-        hasErrors = true;
+    // Email необязателен в новой поэтапной форме, но если поле существует - валидируем
+    if (emailField) {
+        if (!email) {
+            // Пустое поле - ошибка
+            validateField(emailField, false);
+            if (!firstErrorField) firstErrorField = emailAnchor || emailField;
+            hasErrors = true;
+        } else if (!validateEmail(email)) {
+            // Email заполнен, но невалидный
+            validateField(emailField, false);
+            if (!firstErrorField) firstErrorField = emailAnchor || emailField;
+            hasErrors = true;
+        } else {
+            // Email валидный
+            validateField(emailField, true);
+        }
     } else {
-        // Email валидный
-        validateField(emailField, true);
+        // Поле email не существует в форме - используем пустое значение
+        console.log('[validateAndSubmitOrder] ⚠️ Поле customerEmail не найдено, используем пустое значение');
     }
     
     // Проверка получателя, если выбран "Другой получатель"
@@ -4962,7 +4979,10 @@ async function submitOrder() {
     
     // Вызываем существующую функцию валидации и отправки
     console.log('[submitOrder] 🔄 Вызываем validateAndSubmitOrder');
-    const fakeEvent = { preventDefault: () => {} };
+    const fakeEvent = { 
+        preventDefault: () => {},
+        stopPropagation: () => {}
+    };
     try {
         await validateAndSubmitOrder(fakeEvent);
         console.log('[submitOrder] ✅ validateAndSubmitOrder завершена успешно');
