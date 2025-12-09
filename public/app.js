@@ -1669,14 +1669,85 @@ function initOrderForm() {
     console.log('[init] 🔄 Вызываем renderAddressOptions при инициализации');
     window.renderAddressOptions();
     
-    // Установка минимальной даты (завтра)
+    // Функции для работы с датами
+    function addDays(date, days) {
+        const d = new Date(date);
+        d.setDate(d.getDate() + days);
+        return d;
+    }
+    
+    function toInputValue(date) {
+        // YYYY-MM-DD
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    
+    function todayWithoutTime() {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+    
+    function isSameDay(d1, d2) {
+        return d1.getFullYear() === d2.getFullYear() &&
+               d1.getMonth() === d2.getMonth() &&
+               d1.getDate() === d2.getDate();
+    }
+    
+    const monthNames = [
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    
+    const weekdayShort = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+    
+    function formatDeliveryDate(date) {
+        const today = todayWithoutTime();
+        const tomorrow = addDays(today, 1);
+        const day = date.getDate();
+        const month = monthNames[date.getMonth()];
+        const weekday = weekdayShort[date.getDay()];
+        
+        if (isSameDay(date, today)) {
+            return `сегодня, ${day} ${month}`;
+        }
+        
+        if (isSameDay(date, tomorrow)) {
+            return `завтра, ${day} ${month}`;
+        }
+        
+        // Дальше – "пн, 30 декабря"
+        return `${weekday}, ${day} ${month}`;
+    }
+    
+    function updateDeliveryLabel(date) {
+        const dateLabel = document.getElementById('deliveryDateLabel');
+        if (!dateLabel) return;
+        
+        if (!date) {
+            dateLabel.textContent = '';
+            return;
+        }
+        
+        dateLabel.textContent = formatDeliveryDate(date);
+    }
+    
+    // Установка ограничений даты (от завтра до 2 недель вперед)
     const deliveryDateInput = document.getElementById('deliveryDate');
     if (deliveryDateInput) {
-        const today = new Date();
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        deliveryDateInput.min = tomorrow.toISOString().split('T')[0];
-        deliveryDateInput.value = tomorrow.toISOString().split('T')[0];
+        const today = todayWithoutTime();
+        const minDate = addDays(today, 1);     // завтра
+        const maxDate = addDays(minDate, 13);  // всего 14 дней (завтра + 13)
+        
+        // Ограничиваем input
+        deliveryDateInput.min = toInputValue(minDate);
+        deliveryDateInput.max = toInputValue(maxDate);
+        
+        // Устанавливаем дефолт = завтра
+        deliveryDateInput.value = toInputValue(minDate);
+        updateDeliveryLabel(minDate);
         
         // Функция обновления времени доставки
         function updateDeliveryTimeOptions() {
@@ -1716,7 +1787,11 @@ function initOrderForm() {
         updateDeliveryTimeOptions();
         
         // Обработка изменения даты
-        deliveryDateInput.addEventListener('change', () => {
+        deliveryDateInput.addEventListener('change', (e) => {
+            if (e.target.value) {
+                const selectedDate = new Date(e.target.value);
+                updateDeliveryLabel(selectedDate);
+            }
             updateDeliveryTimeOptions();
         });
     }

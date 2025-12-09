@@ -1122,6 +1122,50 @@ h1, h2, h3, .font-bold {
     border-color: var(--primary-color);
 }
 
+/* Стили для календаря доставки */
+.form-group input[type="date"] {
+    background-color: white;
+    cursor: pointer;
+}
+
+/* Подсветка выбранной даты в календаре (розовый цвет) */
+.form-group input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 1;
+    filter: invert(0);
+}
+
+/* Стили для label с красивой датой */
+.delivery-date-label {
+    margin-top: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    padding: 8px 12px;
+    background-color: rgba(217, 93, 131, 0.1);
+    border-radius: 8px;
+    text-align: center;
+    min-height: 20px;
+}
+
+/* Подсветка выбранного дня в календаре через псевдоэлементы */
+.form-group input[type="date"]:focus::-webkit-calendar-picker-indicator {
+    background-color: var(--primary-color);
+    border-radius: 4px;
+}
+
+/* Для мобильных устройств - улучшенная подсветка */
+@media (max-width: 480px) {
+    .form-group input[type="date"] {
+        font-size: 16px; /* Предотвращает зум на iOS */
+    }
+    
+    .delivery-date-label {
+        font-size: 15px;
+        padding: 10px;
+    }
+}
+
 .form-group input[type="date"]::-webkit-calendar-picker-indicator {
     opacity: 1;
     cursor: pointer;
