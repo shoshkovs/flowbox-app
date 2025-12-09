@@ -348,6 +348,8 @@ h1, h2, h3, .font-bold {
     display: flex;
     align-items: center;
     gap: 2px;
+    min-width: fit-content;
+    padding: 0 12px;
 }
 
 .product-price-filled .ruble {

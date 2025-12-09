@@ -931,8 +931,24 @@ async function loadUserData() {
                 // Синхронизируем с localStorage
                 localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
                 console.log('📦 Адреса сохранены в localStorage:', savedAddresses.length);
+                if (savedAddresses.length > 0) {
+                    console.log('📦 ID адресов:', savedAddresses.map(a => a.id).join(', '));
+                }
             } else {
-                console.log('📦 Адреса не получены с сервера или не массив');
+                console.log('📦 Адреса не получены с сервера или не массив. Получено:', data.addresses);
+                // Если адреса не получены с сервера, пробуем загрузить из localStorage
+                const savedAddressesLocal = localStorage.getItem('savedAddresses');
+                if (savedAddressesLocal) {
+                    try {
+                        savedAddresses = JSON.parse(savedAddressesLocal);
+                        console.log('📦 Адреса загружены из localStorage:', savedAddresses.length);
+                    } catch (e) {
+                        console.error('📦 Ошибка загрузки адресов из localStorage:', e);
+                        savedAddresses = [];
+                    }
+                } else {
+                    savedAddresses = [];
+                }
             }
             if (data.profile) {
                 localStorage.setItem('userProfile', JSON.stringify(data.profile));
