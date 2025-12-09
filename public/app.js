@@ -1801,11 +1801,23 @@ function initOrderForm() {
         const calendarContainer = document.getElementById('customCalendar');
         const deliveryDateInput = document.getElementById('deliveryDate');
         
-        if (!calendarContainer || !deliveryDateInput) return;
+        console.log('[initCustomCalendar] Инициализация кастомного календаря');
+        console.log('[initCustomCalendar] calendarContainer:', !!calendarContainer);
+        console.log('[initCustomCalendar] deliveryDateInput:', !!deliveryDateInput);
+        
+        if (!calendarContainer || !deliveryDateInput) {
+            console.warn('[initCustomCalendar] Календарь или поле не найдены, выходим');
+            return;
+        }
         
         const today = todayWithoutTime();
         const minDate = addDays(today, 1);     // завтра
         const maxDate = addDays(minDate, 13);  // всего 14 дней (завтра + 13)
+        
+        console.log('[initCustomCalendar] Диапазон дат:');
+        console.log('[initCustomCalendar]   - Сегодня:', today.toISOString().split('T')[0]);
+        console.log('[initCustomCalendar]   - Минимум (завтра):', minDate.toISOString().split('T')[0]);
+        console.log('[initCustomCalendar]   - Максимум (через 14 дней):', maxDate.toISOString().split('T')[0]);
         
         // Проверяем, есть ли сохраненная дата
         let initialDate = minDate;
@@ -1825,6 +1837,8 @@ function initOrderForm() {
         
         // Функция отрисовки календаря
         function renderCalendar(date) {
+            console.log('[renderCalendar] Отрисовка календаря для даты:', date);
+            
             const year = date.getFullYear();
             const month = date.getMonth();
             
@@ -1839,14 +1853,22 @@ function initOrderForm() {
             const lastDay = new Date(year, month + 1, 0);
             const daysInMonth = lastDay.getDate();
             
+            console.log('[renderCalendar] Дней в месяце:', daysInMonth);
+            
             // День недели первого дня (0 = воскресенье, нужно преобразовать: 0 -> 6, 1-6 -> 0-5)
             let firstDayOfWeek = firstDay.getDay();
             firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Понедельник = 0
             
+            console.log('[renderCalendar] Первый день недели:', firstDayOfWeek);
+            
             // Контейнер для дней
             const daysContainer = document.getElementById('calendarDays');
-            if (!daysContainer) return;
+            if (!daysContainer) {
+                console.error('[renderCalendar] Контейнер calendarDays не найден!');
+                return;
+            }
             
+            console.log('[renderCalendar] Контейнер найден, очищаем и заполняем');
             daysContainer.innerHTML = '';
             
             // Пустые ячейки до первого дня месяца
@@ -1856,12 +1878,18 @@ function initOrderForm() {
                 daysContainer.appendChild(emptyDay);
             }
             
+            // Получаем текущие ограничения дат
+            const today = todayWithoutTime();
+            const minDate = addDays(today, 1);     // завтра
+            const maxDate = addDays(minDate, 13);  // всего 14 дней (завтра + 13)
+            
             // Дни месяца
+            let daysAdded = 0;
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayDate = new Date(year, month, day);
                 const dayEl = document.createElement('div');
                 dayEl.className = 'calendar-day';
-                dayEl.textContent = day;
+                dayEl.textContent = day.toString(); // Явно преобразуем в строку
                 
                 // Проверяем, доступна ли дата (от завтра до 2 недель вперед)
                 // Сбрасываем время для корректного сравнения дат
@@ -1874,12 +1902,12 @@ function initOrderForm() {
                     dayEl.classList.add('disabled');
                 } else {
                     // Проверяем, является ли это сегодня
-                    if (isSameDay(dayDate, today)) {
+                    if (isSameDay(dayDateNormalized, today)) {
                         dayEl.classList.add('today');
                     }
                     
                     // Проверяем, выбрана ли эта дата
-                    if (selectedDate && isSameDay(dayDate, selectedDate)) {
+                    if (selectedDate && isSameDay(dayDateNormalized, selectedDate)) {
                         dayEl.classList.add('selected');
                     }
                     
@@ -1893,7 +1921,10 @@ function initOrderForm() {
                             
                             // Выделяем новую дату
                             dayEl.classList.add('selected');
-                            selectedDate = new Date(dayDate);
+                            // Создаем нормализованную дату без времени
+                            const clickedDate = new Date(year, month, day);
+                            clickedDate.setHours(0, 0, 0, 0);
+                            selectedDate = clickedDate;
                             deliveryDateInput.value = toInputValue(selectedDate);
                             updateDeliveryLabel(selectedDate);
                             updateDeliveryTimeOptions();
@@ -1907,7 +1938,10 @@ function initOrderForm() {
                 }
                 
                 daysContainer.appendChild(dayEl);
+                daysAdded++;
             }
+            
+            console.log('[renderCalendar] Добавлено дней:', daysAdded);
             
             // Обновляем состояние кнопок навигации
             const prevBtn = document.getElementById('calendarPrevMonth');
