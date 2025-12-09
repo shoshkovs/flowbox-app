@@ -701,7 +701,7 @@ if (process.env.DATABASE_URL) {
       }
       }, 7000); // Ждем 7 секунд после подключения
       
-      // Миграция: создание таблицы support_messages для системы поддержки
+      // Миграция: создание таблицы support_topics для системы поддержки (форум-топики)
       setTimeout(async () => {
         try {
           const client = await pool.connect();
@@ -710,36 +710,36 @@ if (process.env.DATABASE_URL) {
               SELECT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_name = 'support_messages'
+                AND table_name = 'support_topics'
               )
             `);
             
             if (!tableCheck.rows[0].exists) {
-              console.log('🔄 Создаем таблицу support_messages...');
+              console.log('🔄 Создаем таблицу support_topics...');
               await client.query(`
-                CREATE TABLE support_messages (
+                CREATE TABLE support_topics (
                   id SERIAL PRIMARY KEY,
-                  support_msg_id BIGINT NOT NULL,
                   user_id BIGINT NOT NULL,
-                  user_msg_id BIGINT,
-                  manager_id BIGINT,
-                  manager_msg_id BIGINT,
+                  message_thread_id INTEGER NOT NULL,
+                  topic_name TEXT,
                   created_at TIMESTAMPTZ DEFAULT now(),
-                  UNIQUE(support_msg_id)
+                  updated_at TIMESTAMPTZ DEFAULT now(),
+                  UNIQUE(user_id),
+                  UNIQUE(message_thread_id)
                 )
               `);
               
               // Индексы для быстрого поиска
               await client.query(`
-                CREATE INDEX idx_support_messages_user_id ON support_messages(user_id);
-                CREATE INDEX idx_support_messages_support_msg_id ON support_messages(support_msg_id);
+                CREATE INDEX idx_support_topics_user_id ON support_topics(user_id);
+                CREATE INDEX idx_support_topics_message_thread_id ON support_topics(message_thread_id);
               `);
               
-              console.log('✅ Таблица support_messages создана');
+              console.log('✅ Таблица support_topics создана');
             }
           } catch (migrationError) {
             if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
-              console.log('⚠️  Миграция support_messages:', migrationError.message);
+              console.log('⚠️  Миграция support_topics:', migrationError.message);
             }
           } finally {
             client.release();
@@ -6704,48 +6704,90 @@ const setupReplyKeyboard = () => {
   return keyboard;
 };
 
-// ID чата поддержки (группа или супергруппа для менеджеров)
+// ID чата поддержки (должен быть форум-чатом с включенными Topics)
 // Получить ID: добавь бота в группу, отправь любое сообщение, в логах будет ctx.chat.id
 const SUPPORT_CHAT_ID = process.env.SUPPORT_CHAT_ID ? parseInt(process.env.SUPPORT_CHAT_ID) : null;
 
 if (SUPPORT_CHAT_ID) {
   console.log(`✅ Чат поддержки настроен: ${SUPPORT_CHAT_ID}`);
+  console.log('💡 Убедитесь, что:');
+  console.log('   1. Чат является форумом (Topics включены)');
+  console.log('   2. Бот имеет права администратора');
+  console.log('   3. У бота есть права "Manage Topics" и "Send messages"');
 } else {
   console.log('⚠️  SUPPORT_CHAT_ID не установлен. Система поддержки будет недоступна.');
   console.log('💡 Для настройки:');
-  console.log('   1. Создай группу/супергруппу в Telegram');
-  console.log('   2. Добавь туда бота и дай ему права администратора');
-  console.log('   3. Отправь любое сообщение в группу');
-  console.log('   4. В логах найди chat.id (будет отрицательное число)');
-  console.log('   5. Добавь SUPPORT_CHAT_ID=<chat_id> в переменные окружения');
+  console.log('   1. Создай супергруппу в Telegram');
+  console.log('   2. Включи режим "Topics" (Форум) в настройках чата');
+  console.log('   3. Добавь туда бота и дай ему права администратора с "Manage Topics"');
+  console.log('   4. Отправь любое сообщение в группу');
+  console.log('   5. В логах найди chat.id (будет отрицательное число)');
+  console.log('   6. Добавь SUPPORT_CHAT_ID=<chat_id> в переменные окружения');
 }
 
-// Функция для сохранения связи сообщения поддержки с пользователем
-async function saveSupportMessage(supportMsgId, userId, userMsgId = null) {
-  if (!pool) {
-    console.warn('⚠️ БД не подключена, связь сообщения не сохранена');
-    return;
+// Функция для получения или создания форум-топика для пользователя
+async function getOrCreateSupportTopic(userId, userName, username) {
+  if (!pool || !SUPPORT_CHAT_ID) {
+    return null;
   }
   
   try {
     const client = await pool.connect();
     try {
-      await client.query(
-        `INSERT INTO support_messages (support_msg_id, user_id, user_msg_id) 
-         VALUES ($1::bigint, $2::bigint, $3::bigint)
-         ON CONFLICT (support_msg_id) DO NOTHING`,
-        [supportMsgId, userId, userMsgId]
+      // Проверяем, есть ли уже топик для этого пользователя
+      const existingTopic = await client.query(
+        'SELECT message_thread_id, topic_name FROM support_topics WHERE user_id = $1::bigint',
+        [userId]
       );
+      
+      if (existingTopic.rows.length > 0) {
+        console.log(`[support] Найден существующий топик для пользователя ${userId}: ${existingTopic.rows[0].message_thread_id}`);
+        return existingTopic.rows[0].message_thread_id;
+      }
+      
+      // Создаем новый топик
+      console.log(`[support] Создаем новый топик для пользователя ${userId}`);
+      const topicName = `Тикет ${userId} (${username || userName || 'Пользователь'})`;
+      
+      const topic = await bot.telegram.callApi('createForumTopic', {
+        chat_id: SUPPORT_CHAT_ID,
+        name: topicName
+      });
+      
+      const messageThreadId = topic.message_thread_id;
+      
+      // Сохраняем топик в БД
+      await client.query(
+        `INSERT INTO support_topics (user_id, message_thread_id, topic_name, updated_at)
+         VALUES ($1::bigint, $2::integer, $3::text, now())
+         ON CONFLICT (user_id) DO UPDATE SET
+           message_thread_id = EXCLUDED.message_thread_id,
+           topic_name = EXCLUDED.topic_name,
+           updated_at = now()`,
+        [userId, messageThreadId, topicName]
+      );
+      
+      console.log(`[support] ✅ Топик создан: ${messageThreadId} для пользователя ${userId}`);
+      return messageThreadId;
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Ошибка сохранения связи сообщения поддержки:', error);
+    console.error('❌ Ошибка создания/получения топика:', error);
+    // Если ошибка связана с тем, что чат не форум, выводим понятное сообщение
+    if (error.description && error.description.includes('FORUM')) {
+      console.error('⚠️  ВАЖНО: Чат поддержки должен быть форумом с включенными Topics!');
+      console.error('   Проверьте настройки чата: Профиль чата → Edit → Topics → Enable');
+    }
+    if (error.description && error.description.includes('ADMIN')) {
+      console.error('⚠️  ВАЖНО: Бот должен быть администратором с правами "Manage Topics"!');
+    }
+    return null;
   }
 }
 
-// Функция для получения userId по support_msg_id
-async function getUserIdBySupportMessage(supportMsgId) {
+// Функция для получения userId по message_thread_id
+async function getUserIdByThreadId(messageThreadId) {
   if (!pool) {
     return null;
   }
@@ -6754,15 +6796,15 @@ async function getUserIdBySupportMessage(supportMsgId) {
     const client = await pool.connect();
     try {
       const result = await client.query(
-        'SELECT user_id FROM support_messages WHERE support_msg_id = $1::bigint',
-        [supportMsgId]
+        'SELECT user_id FROM support_topics WHERE message_thread_id = $1::integer',
+        [messageThreadId]
       );
       return result.rows.length > 0 ? result.rows[0].user_id : null;
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Ошибка получения userId по support_msg_id:', error);
+    console.error('Ошибка получения userId по message_thread_id:', error);
     return null;
   }
 }
@@ -6864,6 +6906,15 @@ bot.on('message', async (ctx) => {
       const lastName = from.last_name || '';
       const username = from.username ? `@${from.username}` : '';
       
+      // Получаем или создаем форум-топик для пользователя
+      const messageThreadId = await getOrCreateSupportTopic(userId, userName, username);
+      
+      if (!messageThreadId) {
+        console.error('❌ Не удалось получить/создать топик для пользователя', userId);
+        await ctx.reply('⚠️ Произошла ошибка при создании обращения в поддержку. Попробуйте позже.');
+        return;
+      }
+      
       // Получаем информацию о пользователе из БД
       let userInfo = '';
       if (pool) {
@@ -6889,44 +6940,79 @@ bot.on('message', async (ctx) => {
         }
       }
       
-      // Формируем шапку с информацией о пользователе
-      const header = [
-        `👤 <b>Новый запрос в поддержку</b>`,
-        ``,
-        `👤 <b>Имя:</b> ${userName}${lastName ? ' ' + lastName : ''}`,
-        `🆔 <b>ID:</b> <code>${userId}</code>`,
-        username ? `📝 <b>Username:</b> ${username}` : '',
-        userInfo
-      ].filter(Boolean).join('\n');
+      // Формируем шапку с информацией о пользователе (только для первого сообщения в топике)
+      // Проверяем, был ли топик только что создан (тогда отправляем шапку)
+      let shouldSendHeader = false;
+      try {
+        const client = await pool.connect();
+        try {
+          const topicCheck = await client.query(
+            'SELECT created_at, updated_at FROM support_topics WHERE user_id = $1::bigint',
+            [userId]
+          );
+          if (topicCheck.rows.length > 0) {
+            const topicCreated = new Date(topicCheck.rows[0].created_at);
+            const topicUpdated = new Date(topicCheck.rows[0].updated_at);
+            const now = new Date();
+            // Если топик был создан или обновлен менее 5 секунд назад, отправляем шапку
+            // Это означает, что топик только что создан или переиспользован
+            const timeDiff = Math.min(now - topicCreated, now - topicUpdated);
+            shouldSendHeader = timeDiff < 5000;
+          } else {
+            shouldSendHeader = true;
+          }
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибку, отправляем шапку в любом случае
+        shouldSendHeader = true;
+      }
       
-      // Отправляем шапку в чат поддержки
-      const headerMessage = await bot.telegram.sendMessage(
-        SUPPORT_CHAT_ID,
-        header,
-        { parse_mode: 'HTML' }
-      );
+      if (shouldSendHeader) {
+        const header = [
+          `👤 <b>Новый запрос в поддержку</b>`,
+          ``,
+          `👤 <b>Имя:</b> ${userName}${lastName ? ' ' + lastName : ''}`,
+          `🆔 <b>ID:</b> <code>${userId}</code>`,
+          username ? `📝 <b>Username:</b> ${username}` : '',
+          userInfo
+        ].filter(Boolean).join('\n');
+        
+        // Отправляем шапку в топик
+        await bot.telegram.sendMessage(
+          SUPPORT_CHAT_ID,
+          header,
+          {
+            parse_mode: 'HTML',
+            message_thread_id: messageThreadId
+          }
+        );
+      }
       
-      // Сохраняем связь шапки с пользователем
-      await saveSupportMessage(headerMessage.message_id, userId);
-      
-      // Отправляем само сообщение пользователя в чат поддержки
-      let forwardedMessage = null;
+      // Отправляем само сообщение пользователя в топик
       try {
         // Для текстовых сообщений используем sendMessage
         if (ctx.message.text) {
-          forwardedMessage = await bot.telegram.sendMessage(
+          await bot.telegram.sendMessage(
             SUPPORT_CHAT_ID,
             `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
-            { parse_mode: 'HTML' }
+            {
+              parse_mode: 'HTML',
+              message_thread_id: messageThreadId
+            }
           );
         } 
         // Для медиа пытаемся скопировать
         else if (ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.voice) {
           try {
-            forwardedMessage = await bot.telegram.copyMessage(
+            await bot.telegram.copyMessage(
               SUPPORT_CHAT_ID,
               userId,
-              ctx.message.message_id
+              ctx.message.message_id,
+              {
+                message_thread_id: messageThreadId
+              }
             );
           } catch (copyError) {
             // Если не удалось скопировать, отправляем текстовое описание
@@ -6936,34 +7022,34 @@ bot.on('message', async (ctx) => {
                              ctx.message.video ? '🎥 Видео' :
                              ctx.message.voice ? '🎤 Голосовое сообщение' : 'Медиа-файл';
             
-            forwardedMessage = await bot.telegram.sendMessage(
+            await bot.telegram.sendMessage(
               SUPPORT_CHAT_ID,
               `📨 <b>Сообщение:</b>\n${mediaType}${ctx.message.caption ? '\n\n' + ctx.message.caption : ''}`,
-              { parse_mode: 'HTML' }
+              {
+                parse_mode: 'HTML',
+                message_thread_id: messageThreadId
+              }
             );
           }
         } else {
           // Неизвестный тип сообщения
-          forwardedMessage = await bot.telegram.sendMessage(
+          await bot.telegram.sendMessage(
             SUPPORT_CHAT_ID,
             `📨 <b>Сообщение:</b>\n(тип сообщения не поддерживается)`,
-            { parse_mode: 'HTML' }
+            {
+              parse_mode: 'HTML',
+              message_thread_id: messageThreadId
+            }
           );
-        }
-        
-        // Сохраняем связь скопированного сообщения с пользователем
-        if (forwardedMessage && forwardedMessage.message_id) {
-          await saveSupportMessage(forwardedMessage.message_id, userId, ctx.message.message_id);
         }
       } catch (sendError) {
         console.error('Ошибка отправки сообщения в чат поддержки:', sendError);
         throw sendError; // Пробрасываем ошибку дальше, чтобы показать пользователю
       }
       
-      // Подтверждаем пользователю
-      await ctx.reply('✅ Ваше сообщение передано в поддержку 🌸 Менеджер ответит здесь же.');
+      // НЕ отправляем подтверждающее сообщение пользователю (по требованию)
       
-      console.log(`📤 Сообщение от пользователя ${userId} (${userName}) переслано в чат поддержки`);
+      console.log(`📤 Сообщение от пользователя ${userId} (${userName}) отправлено в топик ${messageThreadId}`);
     } catch (error) {
       console.error('⚠️ Ошибка пересылки сообщения в чат поддержки:', error);
       await ctx.reply('⚠️ Произошла ошибка при отправке сообщения в поддержку. Попробуйте позже.');
@@ -6971,19 +7057,25 @@ bot.on('message', async (ctx) => {
     return; // Не обрабатываем дальше
   }
   
-  // 2) Сообщение в чате поддержки - обрабатываем ответы менеджеров
-  if (SUPPORT_CHAT_ID && chat.id === SUPPORT_CHAT_ID && ctx.message.reply_to_message) {
+  // 2) Сообщение в чате поддержки (форум) - обрабатываем ответы менеджеров
+  if (SUPPORT_CHAT_ID && chat.id === SUPPORT_CHAT_ID) {
+    // Проверяем, что сообщение находится в топике (message_thread_id присутствует)
+    const messageThreadId = ctx.message.message_thread_id;
+    
+    if (!messageThreadId) {
+      // Сообщение не в топике, игнорируем
+      return;
+    }
+    
     try {
-      const replyMessageId = ctx.message.reply_to_message.message_id;
+      console.log(`[support] Обработка ответа менеджера в топике ${messageThreadId}`);
       
-      console.log(`[support] Обработка ответа менеджера на сообщение ${replyMessageId}`);
-      
-      // Получаем userId из БД
-      const userId = await getUserIdBySupportMessage(replyMessageId);
+      // Получаем userId по message_thread_id из БД
+      const userId = await getUserIdByThreadId(messageThreadId);
       
       if (!userId) {
-        // Пытаемся найти userId в тексте сообщения (fallback)
-        const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption || '';
+        // Пытаемся найти userId в тексте первого сообщения топика (fallback)
+        const replyText = ctx.message.reply_to_message?.text || ctx.message.reply_to_message?.caption || ctx.message.text || '';
         console.log(`[support] userId не найден в БД, ищем в тексте:`, replyText.substring(0, 100));
         
         const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)/);
@@ -6991,15 +7083,33 @@ bot.on('message', async (ctx) => {
           const foundUserId = parseInt(userIdMatch[1] || userIdMatch[2]);
           if (foundUserId) {
             console.log(`[support] Найден userId в тексте: ${foundUserId}`);
-            // Сохраняем связь для будущего использования
-            await saveSupportMessage(replyMessageId, foundUserId);
+            // Сохраняем связь топика с пользователем
+            if (pool) {
+              try {
+                const client = await pool.connect();
+                try {
+                  await client.query(
+                    `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
+                     VALUES ($1::bigint, $2::integer, now())
+                     ON CONFLICT (message_thread_id) DO UPDATE SET
+                       user_id = EXCLUDED.user_id,
+                       updated_at = now()`,
+                    [foundUserId, messageThreadId]
+                  );
+                } finally {
+                  client.release();
+                }
+              } catch (error) {
+                console.error('Ошибка сохранения связи топика:', error);
+              }
+            }
             await sendManagerReplyToUser(ctx, foundUserId);
             return;
           }
         }
         
-        console.log(`⚠️ Не удалось найти userId для сообщения ${replyMessageId} в чате поддержки`);
-        await ctx.reply('⚠️ Не удалось определить пользователя для этого сообщения. Убедитесь, что вы отвечаете на сообщение от бота.', {
+        console.log(`⚠️ Не удалось найти userId для топика ${messageThreadId} в чате поддержки`);
+        await ctx.reply('⚠️ Не удалось определить пользователя для этого топика. Убедитесь, что вы отвечаете в правильном топике.', {
           reply_to_message_id: ctx.message.message_id
         });
         return;
