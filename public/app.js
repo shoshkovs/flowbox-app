@@ -2632,11 +2632,22 @@ async function validateAndSubmitOrder(e) {
         // Не делаем return здесь - нужно проверить и время доставки тоже
         // Ошибки адреса уже установлены, продолжаем проверку других полей
         
+        // Парсим street и house из поля "улица, дом"
+        let streetValue = street;
+        let houseValue = '';
+        
+        // Пытаемся извлечь номер дома из street
+        const houseMatch = street.match(/(\d+[а-яА-ЯкК]*)$/);
+        if (houseMatch) {
+            houseValue = houseMatch[1];
+            streetValue = street.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+        }
+        
         addressData = {
             name: 'Новый адрес',
             city: city,
-            street: street, // Теперь содержит "улица + дом"
-            house: '', // Пустое поле для совместимости с БД (дом теперь в street)
+            street: streetValue, // Название улицы без номера дома
+            house: houseValue, // Номер дома отдельно
             entrance: document.getElementById('orderAddressEntrance').value.trim(),
             apartment: document.getElementById('orderAddressApartment').value.trim(),
             floor: document.getElementById('orderAddressFloor').value.trim(),
