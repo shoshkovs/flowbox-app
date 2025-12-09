@@ -5671,6 +5671,11 @@ function selectAddressFromMyAddresses(addressId) {
         myAddressesTab.style.display = 'none';
     }
     
+    // Скрываем все вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
     // Обновляем отображение и возвращаемся на шаг 4
     renderCheckoutSummary();
     goToStep(4);
@@ -5836,11 +5841,12 @@ async function saveEditAddress() {
     // Проверяем, редактируется ли существующий адрес
     const editingAddressId = editAddressTab?.dataset.editingAddressId;
     if (editingAddressId) {
-        // Обновляем существующий адрес в savedAddresses
+        // Обновляем существующий адрес в savedAddresses с сохранением ID
         const addressIndex = savedAddresses.findIndex(a => String(a.id) === String(editingAddressId));
         if (addressIndex !== -1) {
+            // Сохраняем ID при обновлении
             savedAddresses[addressIndex] = {
-                ...savedAddresses[addressIndex],
+                id: savedAddresses[addressIndex].id, // ВАЖНО: сохраняем ID
                 city: city,
                 street: streetValue,
                 house: houseValue,
@@ -5848,14 +5854,20 @@ async function saveEditAddress() {
                 floor: floorField.value.trim() || null,
                 entrance: entranceField.value.trim() || null,
                 intercom: intercomField.value.trim() || null,
-                comment: commentField.value.trim() || null
+                comment: commentField.value.trim() || null,
+                name: streetValue || 'Адрес', // Добавляем name для совместимости
+                isDefault: savedAddresses[addressIndex].isDefault || false
             };
+            
+            console.log('[saveEditAddress] ✅ Обновлен адрес с ID:', editingAddressId, savedAddresses[addressIndex]);
             
             // Сохраняем на сервер
             await saveUserData();
             
             // Обновляем список адресов
-            loadSavedAddresses();
+            await loadSavedAddresses();
+        } else {
+            console.error('[saveEditAddress] ❌ Адрес с ID', editingAddressId, 'не найден в savedAddresses');
         }
     }
     
@@ -5876,6 +5888,11 @@ async function saveEditAddress() {
         editAddressTab.style.display = 'none';
         delete editAddressTab.dataset.editingAddressId;
     }
+    
+    // Скрываем все вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
     
     // Обновляем отображение и возвращаемся на шаг 4
     renderCheckoutSummary();

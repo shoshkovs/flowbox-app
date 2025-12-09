@@ -706,6 +706,7 @@ if (process.env.DATABASE_URL) {
         try {
           const client = await pool.connect();
           try {
+            // Проверяем существование таблицы
             const tableCheck = await client.query(`
               SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -736,6 +737,36 @@ if (process.env.DATABASE_URL) {
               `);
               
               console.log('✅ Таблица support_topics создана');
+            } else {
+              // Проверяем структуру таблицы - есть ли нужные колонки
+              const columnsCheck = await client.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'support_topics'
+              `);
+              
+              const columns = columnsCheck.rows.map(r => r.column_name);
+              const hasThreadId = columns.includes('message_thread_id');
+              
+              if (!hasThreadId) {
+                console.log('🔄 Добавляем колонку message_thread_id в таблицу support_topics...');
+                try {
+                  await client.query(`
+                    ALTER TABLE support_topics
+                    ADD COLUMN message_thread_id INTEGER
+                  `);
+                  
+                  await client.query(`
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_support_topics_message_thread_id 
+                    ON support_topics(message_thread_id)
+                    WHERE message_thread_id IS NOT NULL
+                  `);
+                  
+                  console.log('✅ Колонка message_thread_id добавлена');
+                } catch (alterError) {
+                  console.log('⚠️  Ошибка добавления колонки:', alterError.message);
+                }
+              }
             }
           } catch (migrationError) {
             if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
@@ -745,7 +776,7 @@ if (process.env.DATABASE_URL) {
             client.release();
           }
         } catch (error) {
-          // Игнорируем ошибки при миграции
+          console.error('❌ Критическая ошибка при миграции support_topics:', error);
         }
       }, 8000);
       
@@ -1425,7 +1456,8 @@ async function saveUserAddresses(userId, addresses) {
       const existingAddresses = await loadUserAddresses(userId);
       
       // Подготавливаем адреса для сохранения: парсим street и house, проверяем дубликаты
-      const addressesToSave = [];
+      const addressesToUpdate = []; // Адреса с ID для UPDATE
+      const addressesToInsert = []; // Адреса без ID для INSERT
       const addressesToKeep = []; // Адреса, которые уже есть в БД и не нужно удалять
       
       for (let i = 0; i < addresses.length; i++) {
@@ -1447,25 +1479,38 @@ async function saveUserAddresses(userId, addresses) {
           house: houseValue
         };
         
-        // Проверяем дубликаты среди существующих адресов
-        const isDuplicateInExisting = existingAddresses.some(existing => 
-          isAddressDuplicate(normalizedAddr, existing)
-        );
-        
-        // Проверяем дубликаты среди новых адресов (внутри массива)
-        const isDuplicateInNew = addressesToSave.some(addrToSave => 
-          isAddressDuplicate(normalizedAddr, addrToSave)
-        );
-        
-        if (!isDuplicateInExisting && !isDuplicateInNew) {
-          addressesToSave.push(normalizedAddr);
-        } else if (isDuplicateInExisting) {
-          // Сохраняем ID существующего адреса, чтобы не удалить его
-          const existingAddr = existingAddresses.find(existing => 
+        // Если у адреса есть ID - обновляем существующий
+        if (addr.id && typeof addr.id === 'number') {
+          // Проверяем, существует ли адрес с таким ID
+          const existingAddr = existingAddresses.find(existing => existing.id === addr.id);
+          if (existingAddr) {
+            // Обновляем существующий адрес
+            addressesToUpdate.push(normalizedAddr);
+            addressesToKeep.push(addr.id);
+          } else {
+            // ID есть, но адреса нет в БД - добавляем как новый (но сохраняем ID, если возможно)
+            addressesToInsert.push(normalizedAddr);
+          }
+        } else {
+          // Адреса без ID - проверяем дубликаты
+          const isDuplicateInExisting = existingAddresses.some(existing => 
             isAddressDuplicate(normalizedAddr, existing)
           );
-          if (existingAddr) {
-            addressesToKeep.push(existingAddr.id);
+          
+          const isDuplicateInNew = addressesToInsert.some(addrToInsert => 
+            isAddressDuplicate(normalizedAddr, addrToInsert)
+          );
+          
+          if (!isDuplicateInExisting && !isDuplicateInNew) {
+            addressesToInsert.push(normalizedAddr);
+          } else if (isDuplicateInExisting) {
+            // Сохраняем ID существующего адреса, чтобы не удалить его
+            const existingAddr = existingAddresses.find(existing => 
+              isAddressDuplicate(normalizedAddr, existing)
+            );
+            if (existingAddr) {
+              addressesToKeep.push(existingAddr.id);
+            }
           }
         }
       }
@@ -1481,14 +1526,43 @@ async function saveUserAddresses(userId, addresses) {
         await client.query('DELETE FROM addresses WHERE user_id = $1', [userId]);
       }
       
-      // Добавляем новые адреса
-      let addedCount = 0;
+      // Обновляем существующие адреса
+      let updatedCount = 0;
+      for (const addr of addressesToUpdate) {
+        await client.query(
+          `UPDATE addresses SET
+           name = $2, city = $3, street = $4, house = $5, entrance = $6, 
+           apartment = $7, floor = $8, intercom = $9, comment = $10, is_default = $11,
+           updated_at = now()
+           WHERE id = $1 AND user_id = (SELECT id FROM users WHERE telegram_id = $12 LIMIT 1)`,
+          [
+            addr.id,
+            addr.name || addr.street || 'Новый адрес',
+            addr.city || '',
+            addr.street || '',
+            addr.house || '',
+            addr.entrance || null,
+            addr.apartment || null,
+            addr.floor || null,
+            addr.intercom || null,
+            addr.comment || null,
+            addr.isDefault || false,
+            userId
+          ]
+        );
+        updatedCount++;
+      }
       
-      for (const addr of addressesToSave) {
+      // Добавляем новые адреса
+      let insertedCount = 0;
+      for (const addr of addressesToInsert) {
         await client.query(
           `INSERT INTO addresses 
            (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+           VALUES (
+             (SELECT id FROM users WHERE telegram_id = $1 LIMIT 1),
+             $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+           )`,
           [
             userId,
             addr.name || addr.street || 'Новый адрес',
@@ -1503,8 +1577,10 @@ async function saveUserAddresses(userId, addresses) {
             addr.isDefault || false
           ]
         );
-        addedCount++;
+        insertedCount++;
       }
+      
+      const addedCount = updatedCount + insertedCount;
       
       const skippedCount = addresses.length - addedCount;
       
@@ -1513,7 +1589,7 @@ async function saveUserAddresses(userId, addresses) {
         console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
       }
       
-      console.log(`✅ saveUserAddresses: добавлено ${addedCount} адресов для user_id=${userId}, пропущено дубликатов=${skippedCount}`);
+      console.log(`✅ saveUserAddresses: обновлено ${updatedCount}, добавлено ${insertedCount}, всего ${addedCount} адресов для user_id=${userId}, пропущено дубликатов=${skippedCount}`);
       
       await client.query('COMMIT');
       return true;
