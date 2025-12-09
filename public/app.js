@@ -1593,36 +1593,38 @@ function switchTab(tabId) {
 
 // Обработчики навигации
 // Инициализация навигации с делегированием событий (обработчики не теряются)
-function initNavigation() {
-    // Используем делегирование событий для навигации
-    // Это гарантирует, что обработчики работают даже после пересоздания DOM
-    document.addEventListener('click', (e) => {
-        const navItem = e.target.closest('.nav-item');
-        if (navItem && navItem.dataset.tab) {
-            const tabId = navItem.dataset.tab;
-            console.log('[navigation] Клик по навигации:', tabId);
-            switchTab(tabId);
-        }
-    });
-    
-    // Также устанавливаем обработчики напрямую на элементы (для обратной совместимости)
-    navItems.forEach(item => {
+// Используем делегирование событий на document - это гарантирует работу даже после пересоздания DOM
+document.addEventListener('click', (e) => {
+    const navItem = e.target.closest('.nav-item');
+    if (navItem && navItem.dataset.tab) {
+        const tabId = navItem.dataset.tab;
+        console.log('[navigation] ✅ Клик по навигации:', tabId);
+        e.preventDefault();
+        e.stopPropagation();
+        switchTab(tabId);
+    }
+});
+
+// Также устанавливаем обработчики напрямую на элементы (для надежности)
+const initNavigation = () => {
+    const items = document.querySelectorAll('.nav-item');
+    items.forEach(item => {
         // Удаляем старые обработчики через клон
         const newItem = item.cloneNode(true);
         item.parentNode.replaceChild(newItem, item);
         
         // Добавляем новый обработчик
-        newItem.addEventListener('click', () => {
+        newItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const tabId = newItem.dataset.tab;
-            console.log('[navigation] Прямой клик по навигации:', tabId);
+            console.log('[navigation] ✅ Прямой клик по навигации:', tabId);
             switchTab(tabId);
         });
     });
     
-    // Обновляем ссылку на navItems после клонирования
-    const updatedNavItems = document.querySelectorAll('.nav-item');
-    console.log('[navigation] Инициализирована навигация, элементов:', updatedNavItems.length);
-}
+    console.log('[navigation] ✅ Инициализирована навигация, элементов:', items.length);
+};
 
 // Инициализируем навигацию при загрузке
 initNavigation();
@@ -4965,6 +4967,56 @@ let checkoutData = {
     orderComment: '', // Комментарий. Особые пожелания к заказу
     leaveAtDoor: false // Оставить у двери
 };
+
+// Инициализация чекбокса "Оставить у двери"
+function initLeaveAtDoorCheckbox() {
+    const checkbox = document.getElementById('leaveAtDoorCheckbox');
+    if (!checkbox) {
+        console.warn('[leaveAtDoor] ⚠️ Чекбокс не найден в DOM');
+        return;
+    }
+    
+    // На всякий случай снимаем disabled
+    checkbox.disabled = false;
+    
+    // Начальное состояние из checkoutData
+    checkbox.checked = !!checkoutData.leaveAtDoor;
+    
+    // Удаляем все старые обработчики, заменяя родительский элемент
+    const label = checkbox.closest('label');
+    if (label) {
+        const newLabel = label.cloneNode(true);
+        const newCheckbox = newLabel.querySelector('#leaveAtDoorCheckbox');
+        label.parentNode.replaceChild(newLabel, label);
+        
+        if (newCheckbox) {
+            newCheckbox.disabled = false;
+            newCheckbox.checked = !!checkoutData.leaveAtDoor;
+            
+            newCheckbox.addEventListener('change', function() {
+                checkoutData.leaveAtDoor = this.checked;
+                console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
+                
+                // Обновляем отображение на шаге 4
+                if (typeof renderCheckoutSummary === 'function') {
+                    renderCheckoutSummary();
+                }
+            });
+            
+            console.log('[leaveAtDoor] ✅ Чекбокс инициализирован, начальное состояние:', newCheckbox.checked);
+        }
+    } else {
+        // Если label нет, работаем напрямую
+        checkbox.addEventListener('change', function() {
+            checkoutData.leaveAtDoor = this.checked;
+            console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
+            
+            if (typeof renderCheckoutSummary === 'function') {
+                renderCheckoutSummary();
+            }
+        });
+    }
+}
 
 // Инициализация поэтапной формы
 function initCheckoutSteps() {
