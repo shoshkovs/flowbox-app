@@ -7339,11 +7339,10 @@ bot.on('message', async (ctx) => {
       }
       
       if (shouldSendHeader) {
-        const displayName = `${userName}${lastName ? ' ' + lastName : ''}`;
         const header = [
           `👤 <b>Новый запрос в поддержку</b>`,
           ``,
-          `👤 <b>Имя:</b> ${displayName}`,
+          `👤 <b>Имя:</b> ${userName}${lastName ? ' ' + lastName : ''}`,
           `🆔 <b>ID:</b> <code>${userId}</code>`,
           username ? `📝 <b>Username:</b> ${username}` : '',
           userInfo
@@ -7360,17 +7359,6 @@ bot.on('message', async (ctx) => {
         );
         
         console.log(`[support] ✅ Шапка отправлена в топик ${messageThreadId}, message_id: ${headerMessage.message_id}`);
-        
-        // Закрепляем шапку в топике
-        try {
-          await bot.telegram.pinChatMessage(SUPPORT_CHAT_ID, headerMessage.message_id, {
-            disable_notification: true   // чтобы не спамить уведомлениями
-          });
-          console.log(`[support] 📌 Шапка закреплена в топике ${messageThreadId}`);
-        } catch (pinError) {
-          console.error(`[support] ❌ Не удалось закрепить сообщение в топике ${messageThreadId}:`, pinError.message);
-          // Не критично, продолжаем работу
-        }
       }
       
       // Отправляем само сообщение пользователя в топик
