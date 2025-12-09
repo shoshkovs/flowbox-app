@@ -333,8 +333,14 @@ async function loadFilters() {
             if (allBtn) {
                 categoryContainer.appendChild(allBtn);
             }
-            // Добавляем категории
+            // Добавляем категории (исключаем категорию "корзина")
             categories.forEach(category => {
+                // Пропускаем категорию "корзина" - она не должна быть в фильтрах главного меню
+                const categoryNameLower = category.name.toLowerCase();
+                if (categoryNameLower === 'корзина' || categoryNameLower === 'cart') {
+                    return;
+                }
+                
                 const btn = document.createElement('button');
                 btn.className = 'filter-btn filter-btn-large';
                 btn.setAttribute('data-filter', category.name.toLowerCase().replace(/\s+/g, '-'));
@@ -392,7 +398,15 @@ async function loadFilters() {
 async function loadProducts() {
     try {
         const response = await fetch('/api/products');
-        products = await response.json();
+        const allProducts = await response.json();
+        
+        // Исключаем товары с категорией "корзина" из основного списка товаров
+        // Эти товары должны отображаться только на вкладке корзины
+        products = allProducts.filter(p => {
+            const category = (p.category || p.type || '').toLowerCase();
+            return category !== 'корзина' && category !== 'cart';
+        });
+        
         // Инициализация количества для каждого товара с учетом minStemQuantity
         products.forEach(p => {
             const minQty = getMinQty(p);
@@ -400,7 +414,7 @@ async function loadProducts() {
         });
         filteredProducts = [...products];
         renderProducts();
-        // Загружаем дополнительные товары из категории "корзина"
+        // Загружаем дополнительные товары из категории "корзина" для вкладки корзины
         loadAdditionalProducts();
     } catch (error) {
         console.error('Ошибка загрузки товаров:', error);
@@ -411,12 +425,18 @@ async function loadProducts() {
 // Фильтрация товаров
 function applyFilters() {
     filteredProducts = products.filter(product => {
+        // Исключаем товары с категорией "корзина" из отображения в главном меню
+        const productCategory = (product.category || product.type || '').toLowerCase();
+        if (productCategory === 'корзина' || productCategory === 'cart') {
+            return false;
+        }
+        
         // Фильтр по категории (типу)
         if (activeFilters.type.length > 0 && !activeFilters.type.includes('all')) {
             // Сравниваем по названию категории (приводим к нижнему регистру и заменяем пробелы на дефисы)
-            const productCategory = (product.category || product.type || '').toLowerCase().replace(/\s+/g, '-');
+            const normalizedProductCategory = productCategory.replace(/\s+/g, '-');
             const filterCategory = activeFilters.type[0].toLowerCase().replace(/\s+/g, '-');
-            if (productCategory !== filterCategory) return false;
+            if (normalizedProductCategory !== filterCategory) return false;
         }
         
         // Фильтр по цвету (только один выбор)
@@ -1977,8 +1997,11 @@ function initOrderForm() {
         // Инициализация времени доставки
         updateDeliveryTimeOptions();
         
+        // Сохраняем ссылку на функцию для использования извне
+        calendarRenderFunction = renderCalendar;
+        
         // Первоначальная отрисовка календаря
-        calendarRenderFunction(currentCalendarDate);
+        renderCalendar(currentCalendarDate);
         
         // Экспортируем функцию для обновления календаря извне
         window.updateCustomCalendar = function(dateValue) {
