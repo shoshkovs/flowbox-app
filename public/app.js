@@ -5,15 +5,27 @@ const tg = window.Telegram?.WebApp;
 let currentCheckoutStep = 1; // Текущий шаг оформления заказа
 
 // Определяем, нужно ли разворачивать мини-апп
-// На десктопе (Telegram Desktop) не разворачиваем, оставляем встроенный режим
+// На десктопе (Telegram Desktop/Web) НЕ разворачиваем, оставляем встроенный режим
 function shouldExpand() {
-    if (!tg) return false;
-    const platform = tg.platform || '';
-    const isDesktop = platform.toLowerCase().includes('desktop') || 
-                     platform.toLowerCase().includes('web') ||
-                     (window.innerWidth > 600 && window.innerHeight < 1000); // Широкий и невысокий = десктоп
+    if (!tg) {
+        console.log('[shouldExpand] tg не найден, возвращаем false');
+        return false;
+    }
     
-    // Не разворачиваем на десктопе
+    const platform = (tg.platform || '').toLowerCase();
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    // Определяем десктоп более строго
+    const isDesktop = platform.includes('desktop') || 
+                     platform.includes('web') ||
+                     userAgent.includes('windows') ||
+                     userAgent.includes('macintosh') ||
+                     userAgent.includes('linux') ||
+                     (window.innerWidth > 768 && window.innerHeight < 1200); // Широкий и невысокий = десктоп
+    
+    console.log('[shouldExpand] Platform:', platform, 'isDesktop:', isDesktop, 'viewport:', window.innerWidth, 'x', window.innerHeight);
+    
+    // НЕ разворачиваем на десктопе
     return !isDesktop;
 }
 

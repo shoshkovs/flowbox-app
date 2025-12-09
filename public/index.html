@@ -13,18 +13,33 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         // Определяем, нужно ли разворачивать мини-апп
-        // На десктопе (Telegram Desktop) не разворачиваем, оставляем встроенный режим
+        // На десктопе (Telegram Desktop/Web) НЕ разворачиваем, оставляем встроенный режим
         (function() {
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
-                const platform = tg.platform || '';
-                const isDesktop = platform.toLowerCase().includes('desktop') || 
-                                 platform.toLowerCase().includes('web') ||
-                                 window.innerWidth > 600; // Широкий экран = вероятно десктоп
+                const platform = (tg.platform || '').toLowerCase();
+                const userAgent = navigator.userAgent.toLowerCase();
                 
-                // Разворачиваем только на мобильных устройствах
-                if (!isDesktop && typeof tg.expand === 'function') {
-                    tg.expand();
+                // Определяем десктоп более строго
+                const isDesktop = platform.includes('desktop') || 
+                                 platform.includes('web') ||
+                                 userAgent.includes('windows') ||
+                                 userAgent.includes('macintosh') ||
+                                 userAgent.includes('linux') ||
+                                 (window.innerWidth > 768 && window.innerHeight < 1200); // Широкий и невысокий = десктоп
+                
+                console.log('[init] Platform:', platform, 'isDesktop:', isDesktop, 'viewport:', window.innerWidth, 'x', window.innerHeight);
+                
+                // НЕ разворачиваем на десктопе - оставляем встроенный режим
+                if (isDesktop) {
+                    console.log('[init] Десктоп обнаружен, НЕ разворачиваем мини-апп');
+                    // Явно не вызываем tg.expand() на десктопе
+                } else {
+                    console.log('[init] Мобильное устройство, разворачиваем мини-апп');
+                    // Разворачиваем только на мобильных устройствах
+                    if (typeof tg.expand === 'function') {
+                        tg.expand();
+                    }
                 }
             }
         })();
