@@ -6765,6 +6765,7 @@ bot.on('message', async (ctx) => {
     
     // Проверяем, что чат поддержки настроен
     if (!SUPPORT_CHAT_ID) {
+      console.error('⚠️ SUPPORT_CHAT_ID не установлен, невозможно переслать сообщение');
       await ctx.reply('⚠️ Система поддержки временно недоступна. Попробуйте позже.');
       return;
     }
