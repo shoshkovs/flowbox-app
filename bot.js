@@ -6679,6 +6679,53 @@ if (SUPPORT_CHAT_ID) {
   console.log('   5. Добавь SUPPORT_CHAT_ID=<chat_id> в переменные окружения');
 }
 
+// Функция для сохранения связи сообщения поддержки с пользователем
+async function saveSupportMessage(supportMsgId, userId, userMsgId = null) {
+  if (!pool) {
+    console.warn('⚠️ БД не подключена, связь сообщения не сохранена');
+    return;
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query(
+        `INSERT INTO support_messages (support_msg_id, user_id, user_msg_id) 
+         VALUES ($1::bigint, $2::bigint, $3::bigint)
+         ON CONFLICT (support_msg_id) DO NOTHING`,
+        [supportMsgId, userId, userMsgId]
+      );
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка сохранения связи сообщения поддержки:', error);
+  }
+}
+
+// Функция для получения userId по support_msg_id
+async function getUserIdBySupportMessage(supportMsgId) {
+  if (!pool) {
+    return null;
+  }
+  
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT user_id FROM support_messages WHERE support_msg_id = $1::bigint',
+        [supportMsgId]
+      );
+      return result.rows.length > 0 ? result.rows[0].user_id : null;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения userId по support_msg_id:', error);
+    return null;
+  }
+}
+
 bot.command('start', async (ctx) => {
   const webAppUrl = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
   const startParam = ctx.message?.text?.split(' ')[1]; // Параметр после /start
