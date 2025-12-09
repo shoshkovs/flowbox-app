@@ -2871,13 +2871,48 @@ async function validateAndSubmitOrder(e) {
             console.log('📦 Активных заказов после добавления:', userActiveOrders.length);
             
             // Сохранение адреса из заказа в сохраненные адреса (если это новый адрес и его еще нет)
-            if (addressData && shouldUseForm) {
+            // НЕ сохраняем адрес, если он был выбран из сохраненных (имеет id)
+            if (addressData && shouldUseForm && !addressData.id) {
+                // Нормализуем адрес для сравнения
+                const normalize = (str) => (str || '').toLowerCase().trim();
+                const normalizeAddress = (addr) => {
+                    // Извлекаем house из street если нужно
+                    let street = normalize(addr.street || '');
+                    let house = normalize(addr.house || '');
+                    
+                    // Если house пустое, пытаемся извлечь из street
+                    if (!house && street) {
+                        const houseMatch = street.match(/(\d+[а-яА-ЯкК]*)$/);
+                        if (houseMatch) {
+                            house = normalize(houseMatch[1]);
+                            street = street.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+                        }
+                    }
+                    
+                    return {
+                        city: normalize(addr.city),
+                        street: street,
+                        house: house,
+                        apartment: normalize(addr.apartment)
+                    };
+                };
+                
+                const newAddrNormalized = normalizeAddress(addressData);
+                
                 // Проверяем, не является ли это дубликатом существующего адреса
                 const isDuplicate = savedAddresses.some(existingAddr => {
-                    const sameCity = (existingAddr.city || '').toLowerCase().trim() === (addressData.city || '').toLowerCase().trim();
-                    const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (addressData.street || '').toLowerCase().trim();
-                    const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (addressData.apartment || '').toLowerCase().trim();
-                    return sameCity && sameStreet && sameApartment;
+                    const existingNormalized = normalizeAddress(existingAddr);
+                    
+                    const cityMatch = newAddrNormalized.city === existingNormalized.city;
+                    const streetMatch = newAddrNormalized.street === existingNormalized.street;
+                    const apartmentMatch = newAddrNormalized.apartment === existingNormalized.apartment;
+                    
+                    // house: совпадает если оба пустые ИЛИ оба не пустые и равны
+                    const houseMatch = (!newAddrNormalized.house && !existingNormalized.house) || 
+                                     (newAddrNormalized.house && existingNormalized.house && 
+                                      newAddrNormalized.house === existingNormalized.house);
+                    
+                    return cityMatch && streetMatch && apartmentMatch && houseMatch;
                 });
                 
                 if (!isDuplicate && addressData.street) {
