@@ -2921,7 +2921,20 @@ async function validateAndSubmitOrder(e) {
             }
             console.error('❌ HTTP ошибка при создании заказа:', response.status, errorData);
             console.error('❌ Полный ответ сервера:', errorData);
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            
+            // Проверяем, является ли ошибка связанной с недостатком товара
+            const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+            if (errorMessage.includes('Недостаточно товара')) {
+                // Показываем понятное сообщение пользователю
+                if (tg && tg.showAlert) {
+                    tg.showAlert(`❌ ${errorMessage}\n\nПожалуйста, уменьшите количество товара или выберите другой товар.`);
+                } else {
+                    alert(`❌ ${errorMessage}\n\nПожалуйста, уменьшите количество товара или выберите другой товар.`);
+                }
+                throw new Error(errorMessage);
+            }
+            
+            throw new Error(errorMessage);
         }
         
         const result = await response.json();

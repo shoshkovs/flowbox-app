@@ -2753,9 +2753,15 @@ app.post('/api/orders', async (req, res) => {
       itemsCount: orderData.items?.length || 0,
       total: orderData.total
     });
-    res.status(500).json({ 
+    
+    // Определяем статус код в зависимости от типа ошибки
+    const isStockError = error.message && error.message.includes('Недостаточно товара');
+    const statusCode = isStockError ? 400 : 500; // 400 для ошибок нехватки товара, 500 для остальных
+    
+    res.status(statusCode).json({ 
       success: false,
-      error: error.message || 'Ошибка создания заказа' 
+      error: error.message || 'Ошибка создания заказа',
+      errorType: isStockError ? 'stock_insufficient' : 'general_error'
     });
   }
 });
