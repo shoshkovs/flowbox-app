@@ -4812,8 +4812,17 @@ function initCheckoutSteps() {
     const editAddressBtn = document.getElementById('editAddress');
     if (editAddressBtn) {
         editAddressBtn.onclick = () => {
-            // Открываем модальное окно выбора адреса
-            showAddressSelectModal();
+            // Открываем страницу редактирования адреса
+            openEditAddressPage();
+        };
+    }
+    
+    // Обработчик сохранения редактируемого адреса
+    const saveEditAddressBtn = document.getElementById('saveEditAddressBtn');
+    if (saveEditAddressBtn) {
+        saveEditAddressBtn.onclick = async (e) => {
+            e.preventDefault();
+            await saveEditAddress();
         };
     }
     
@@ -5440,6 +5449,115 @@ function openEditRecipientPage() {
         editRecipientTab.style.display = 'none';
         goToStep(4);
     });
+}
+
+// Открытие страницы редактирования адреса доставки
+function openEditAddressPage() {
+    const editAddressTab = document.getElementById('editAddressTab');
+    const cityField = document.getElementById('editAddressCity');
+    const streetField = document.getElementById('editAddressStreet');
+    const apartmentField = document.getElementById('editAddressApartment');
+    const floorField = document.getElementById('editAddressFloor');
+    const entranceField = document.getElementById('editAddressEntrance');
+    const intercomField = document.getElementById('editAddressIntercom');
+    const commentField = document.getElementById('editAddressComment');
+    
+    if (!editAddressTab || !cityField || !streetField) return;
+    
+    // Заполняем поля текущими данными из checkoutData.address
+    const address = checkoutData.address || {};
+    
+    // Формируем street из street и house, если нужно
+    let streetValue = address.street || '';
+    if (address.house && !streetValue.includes(address.house)) {
+        streetValue = streetValue ? `${streetValue} ${address.house}` : address.house;
+    }
+    
+    cityField.value = address.city || 'Санкт-Петербург';
+    streetField.value = streetValue;
+    apartmentField.value = address.apartment || '';
+    floorField.value = address.floor || '';
+    entranceField.value = address.entrance || '';
+    intercomField.value = address.intercom || '';
+    commentField.value = address.comment || '';
+    
+    // Скрываем все шаги checkout
+    document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
+    
+    // Скрываем все вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        if (tab.id !== 'editAddressTab') {
+            tab.style.display = 'none';
+        }
+    });
+    
+    // Показываем страницу редактирования
+    editAddressTab.style.display = 'block';
+    
+    // Настраиваем BackButton
+    if (tg && tg.BackButton) {
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            editAddressTab.style.display = 'none';
+            goToStep(4);
+        });
+    }
+}
+
+// Сохранение отредактированного адреса
+async function saveEditAddress() {
+    const cityField = document.getElementById('editAddressCity');
+    const streetField = document.getElementById('editAddressStreet');
+    const apartmentField = document.getElementById('editAddressApartment');
+    const floorField = document.getElementById('editAddressFloor');
+    const entranceField = document.getElementById('editAddressEntrance');
+    const intercomField = document.getElementById('editAddressIntercom');
+    const commentField = document.getElementById('editAddressComment');
+    
+    if (!cityField || !streetField) return;
+    
+    const city = cityField.value.trim();
+    const street = streetField.value.trim();
+    
+    // Валидация
+    if (!city || !street) {
+        alert('Пожалуйста, заполните город и улицу');
+        return;
+    }
+    
+    // Парсим street и house
+    let streetValue = street;
+    let houseValue = '';
+    
+    // Пытаемся извлечь номер дома из street
+    const houseMatch = street.match(/(\d+[а-яА-ЯкК]*)$/);
+    if (houseMatch) {
+        houseValue = houseMatch[1];
+        streetValue = street.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+    }
+    
+    // Обновляем checkoutData.address
+    checkoutData.address = {
+        city: city,
+        street: streetValue,
+        house: houseValue,
+        apartment: apartmentField.value.trim(),
+        floor: floorField.value.trim(),
+        entrance: entranceField.value.trim(),
+        intercom: intercomField.value.trim(),
+        comment: commentField.value.trim()
+    };
+    
+    // Обновляем отображение адреса на шаге 4
+    updateCheckoutStep4();
+    
+    // Скрываем страницу редактирования и возвращаемся на шаг 4
+    const editAddressTab = document.getElementById('editAddressTab');
+    if (editAddressTab) {
+        editAddressTab.style.display = 'none';
+    }
+    
+    goToStep(4);
 }
 
 // Показ модального окна выбора адреса
