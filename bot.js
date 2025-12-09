@@ -7064,32 +7064,31 @@ bot.on('message', async (ctx) => {
         }
       }
       
-      // Формируем шапку с информацией о пользователе (только для первого сообщения в топике)
-      // Проверяем, был ли топик только что создан (тогда отправляем шапку)
-      let shouldSendHeader = false;
+      // Формируем шапку с информацией о пользователе (отправляем всегда для первого сообщения)
+      // Проверяем, есть ли уже сообщения в топике, отправляя шапку только если топик новый
+      let shouldSendHeader = true;
       try {
         const client = await pool.connect();
         try {
+          // Проверяем, когда топик был создан
           const topicCheck = await client.query(
             'SELECT created_at, updated_at FROM support_topics WHERE user_id = $1::bigint',
             [userId]
           );
           if (topicCheck.rows.length > 0) {
             const topicCreated = new Date(topicCheck.rows[0].created_at);
-            const topicUpdated = new Date(topicCheck.rows[0].updated_at);
             const now = new Date();
-            // Если топик был создан или обновлен менее 5 секунд назад, отправляем шапку
-            // Это означает, что топик только что создан или переиспользован
-            const timeDiff = Math.min(now - topicCreated, now - topicUpdated);
-            shouldSendHeader = timeDiff < 5000;
-          } else {
-            shouldSendHeader = true;
+            // Если топик был создан более 10 секунд назад, не отправляем шапку
+            // (значит, это не первое сообщение)
+            const timeDiff = now - topicCreated;
+            shouldSendHeader = timeDiff < 10000;
           }
         } finally {
           client.release();
         }
       } catch (error) {
-        // Игнорируем ошибку, отправляем шапку в любом случае
+        // При ошибке отправляем шапку
+        console.error('[support] Ошибка проверки времени создания топика:', error);
         shouldSendHeader = true;
       }
       
@@ -7212,14 +7211,35 @@ bot.on('message', async (ctx) => {
               try {
                 const client = await pool.connect();
                 try {
-                  await client.query(
-                    `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
-                     VALUES ($1::bigint, $2::integer, now())
-                     ON CONFLICT (message_thread_id) DO UPDATE SET
-                       user_id = EXCLUDED.user_id,
-                       updated_at = now()`,
-                    [foundUserId, messageThreadId]
-                  );
+                  // Проверяем, какие колонки доступны
+                  const columnsCheck = await client.query(`
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'support_topics' AND column_name IN ('message_thread_id', 'topic_name')
+                  `);
+                  const availableColumns = columnsCheck.rows.map(r => r.column_name);
+                  const hasTopicNameColumn = availableColumns.includes('topic_name');
+                  
+                  if (hasTopicNameColumn) {
+                    await client.query(
+                      `INSERT INTO support_topics (user_id, message_thread_id, topic_name, updated_at)
+                       VALUES ($1::bigint, $2::integer, $3::text, now())
+                       ON CONFLICT (message_thread_id) DO UPDATE SET
+                         user_id = EXCLUDED.user_id,
+                         topic_name = EXCLUDED.topic_name,
+                         updated_at = now()`,
+                      [foundUserId, messageThreadId, `Тикет ${foundUserId}`]
+                    );
+                  } else {
+                    await client.query(
+                      `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
+                       VALUES ($1::bigint, $2::integer, now())
+                       ON CONFLICT (message_thread_id) DO UPDATE SET
+                         user_id = EXCLUDED.user_id,
+                         updated_at = now()`,
+                      [foundUserId, messageThreadId]
+                    );
+                  }
                 } finally {
                   client.release();
                 }

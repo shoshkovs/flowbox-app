@@ -3905,6 +3905,9 @@ let editingAddressId = null;
 
 // Загрузка сохраненных адресов
 function loadSavedAddresses() {
+    // Сначала фильтруем адреса без ID
+    savedAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+    
     console.log('[loadSavedAddresses] 🚀 Начало загрузки адресов');
     console.log('[loadSavedAddresses] 📦 savedAddresses.length:', savedAddresses.length);
     console.log('[loadSavedAddresses] 📦 savedAddresses:', JSON.stringify(savedAddresses, null, 2));
@@ -5005,16 +5008,17 @@ function goToStep(step) {
     // Скрываем все шаги
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
-    // Скрываем страницу редактирования получателя, если она открыта
-    const editRecipientTab = document.getElementById('editRecipientTab');
-    if (editRecipientTab) {
-        editRecipientTab.style.display = 'none';
-    }
+    // Скрываем все вкладки (включая редактирование адреса, получателя, список адресов)
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
     
     // Показываем нужный шаг
     const stepElement = document.getElementById(`checkoutStep${step}`);
     if (stepElement) {
         stepElement.classList.add('active');
+        // Убеждаемся, что шаг видим
+        stepElement.style.display = '';
     }
     
     // Обновляем индикатор прогресса
@@ -5900,8 +5904,10 @@ async function saveEditAddress() {
         }
     }
     
-    // Обновляем checkoutData.address
+    // Обновляем checkoutData.address с сохранением ID, если редактировали существующий
+    const existingAddressId = editingAddressId || checkoutData.address?.id;
     checkoutData.address = {
+        id: existingAddressId || null, // Сохраняем ID, если есть
         city: city,
         street: streetValue,
         house: houseValue,
