@@ -4944,10 +4944,20 @@ function goToStep(step) {
             
             if (calendarContainer && deliveryDateInput) {
                 if (typeof window.initCustomCalendar === 'function') {
-                    console.log('[goToStep] Вызываем initCustomCalendar');
+                    console.log('[goToStep] Вызываем window.initCustomCalendar');
                     window.initCustomCalendar();
                 } else {
-                    console.warn('[goToStep] window.initCustomCalendar не определена');
+                    console.warn('[goToStep] window.initCustomCalendar не определена, вызываем initOrderForm');
+                    // Вызываем initOrderForm, которая определит функцию
+                    if (typeof initOrderForm === 'function') {
+                        initOrderForm();
+                        // После вызова initOrderForm функция должна быть определена
+                        if (typeof window.initCustomCalendar === 'function') {
+                            window.initCustomCalendar();
+                        }
+                    } else {
+                        console.error('[goToStep] initOrderForm тоже не определена!');
+                    }
                 }
             } else {
                 console.warn('[goToStep] Элементы календаря не найдены в DOM');
