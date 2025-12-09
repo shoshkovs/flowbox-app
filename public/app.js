@@ -1831,9 +1831,9 @@ function initOrderForm() {
         
         // Устанавливаем дефолт = завтра или сохраненная дата
         selectedDate = initialDate;
-        currentCalendarDate = new Date(initialDate);
+        // Календарь открывается на текущем месяце (не на месяце выбранной даты)
+        currentCalendarDate = new Date(today);
         deliveryDateInput.value = toInputValue(initialDate);
-        updateDeliveryLabel(initialDate);
         
         // Функция отрисовки календаря
         function renderCalendar(date) {
@@ -1901,6 +1901,9 @@ function initOrderForm() {
                 if (isBeforeMin || isAfterMax) {
                     dayEl.classList.add('disabled');
                 } else {
+                    // Добавляем класс для доступных дат (для обводки)
+                    dayEl.classList.add('available');
+                    
                     // Проверяем, является ли это сегодня
                     if (isSameDay(dayDateNormalized, today)) {
                         dayEl.classList.add('today');
@@ -1926,7 +1929,6 @@ function initOrderForm() {
                             clickedDate.setHours(0, 0, 0, 0);
                             selectedDate = clickedDate;
                             deliveryDateInput.value = toInputValue(selectedDate);
-                            updateDeliveryLabel(selectedDate);
                             updateDeliveryTimeOptions();
                             
                             // Тактильная обратная связь
@@ -1947,18 +1949,25 @@ function initOrderForm() {
             const prevBtn = document.getElementById('calendarPrevMonth');
             const nextBtn = document.getElementById('calendarNextMonth');
             
+            // Пересчитываем ограничения для кнопок навигации
+            const todayForNav = todayWithoutTime();
+            const minDateForNav = addDays(todayForNav, 1);
+            const maxDateForNav = addDays(minDateForNav, 13);
+            
             if (prevBtn) {
-                // Отключаем кнопку "назад", если следующий месяц не содержит доступных дат
+                // Отключаем кнопку "назад", если предыдущий месяц не содержит доступных дат
                 const prevMonth = new Date(year, month - 1, 1);
                 const prevMonthLastDay = new Date(year, month, 0);
-                prevBtn.disabled = prevMonthLastDay < minDate;
+                prevBtn.disabled = prevMonthLastDay < minDateForNav;
             }
             
             if (nextBtn) {
                 // Отключаем кнопку "вперед", если следующий месяц не содержит доступных дат
                 const nextMonth = new Date(year, month + 1, 1);
-                nextBtn.disabled = nextMonth > maxDate;
+                nextBtn.disabled = nextMonth > maxDateForNav;
             }
+            
+            console.log('[renderCalendar] Календарь отрисован, добавлено элементов:', daysContainer.children.length);
         }
         
         // Сохраняем ссылку на функцию для использования извне
