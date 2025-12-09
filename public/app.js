@@ -2067,7 +2067,8 @@ function initOrderForm() {
                 if (!isNaN(date.getTime())) {
                     selectedDate = date;
                     // Календарь открывается на текущем месяце, но выделяет выбранную дату
-                    currentCalendarDate = new Date(today);
+                    const todayForUpdate = todayWithoutTime();
+                    currentCalendarDate = new Date(todayForUpdate);
                     deliveryDateInput.value = toInputValue(date);
                     calendarRenderFunction(currentCalendarDate);
                 }
