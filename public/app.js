@@ -866,6 +866,48 @@ function getUserId() {
     return tg.initDataUnsafe?.user?.id || null;
 }
 
+// Дедупликация адресов: нормализация ключа адреса
+function normalizeAddressKey(addr) {
+    if (!addr) return '';
+    return [
+        (addr.city || '').trim().toLowerCase(),
+        (addr.street || '').trim().toLowerCase(),
+        (addr.house || '').trim().toLowerCase(),
+        (addr.apartment || '').trim().toLowerCase(),
+        (addr.entrance || '').trim().toLowerCase(),
+        (addr.floor || '').trim().toLowerCase(),
+        (addr.intercom || '').trim().toLowerCase(),
+    ].join('|');
+}
+
+// Дедупликация адресов: оставляем только уникальные по набору полей
+function dedupeAddresses(addresses) {
+    if (!addresses || !Array.isArray(addresses)) return [];
+    
+    const map = new Map();
+    for (const addr of addresses) {
+        // Пропускаем полностью пустые адреса
+        if (!addr || (!addr.city && !addr.street && !addr.house)) {
+            continue;
+        }
+        
+        const key = normalizeAddressKey(addr);
+        
+        // Если такой адрес уже есть - оставляем тот, у которого есть ID (приоритет)
+        if (!map.has(key)) {
+            map.set(key, addr);
+        } else {
+            const existing = map.get(key);
+            // Если новый адрес имеет ID, а старый нет - заменяем
+            if (addr.id && !existing.id) {
+                map.set(key, addr);
+            }
+        }
+    }
+    
+    return Array.from(map.values());
+}
+
 // Получение ключа для сохранения корзины (с привязкой к user_id)
 function getCartKey() {
     const userId = getUserId();
@@ -919,10 +961,12 @@ async function saveUserData() {
         
         // Фильтруем адреса - убираем адреса без ID перед отправкой
         // Адреса без ID могут создавать дубликаты
-        // ОТПРАВЛЯЕМ ВСЕ АДРЕСА на сервер (включая без ID)
-        // Фильтрация мусора происходит на бэкенде
-        // Адреса без ID будут созданы как новые (INSERT), с ID - обновлены (UPDATE)
-        const addressesToSave = savedAddresses.filter(addr => {
+        // ДЕДУПЛИКАЦИЯ: удаляем дубликаты перед отправкой на сервер
+        const deduplicatedAddresses = dedupeAddresses(savedAddresses);
+        console.log(`[saveUserData] 📦 Адресов до дедупликации: ${savedAddresses.length}, после: ${deduplicatedAddresses.length}`);
+        
+        // Фильтруем только невалидные адреса
+        const addressesToSave = deduplicatedAddresses.filter(addr => {
             // Фильтруем только полностью пустые/невалидные адреса
             if (!addr || (!addr.city && !addr.street && !addr.house)) {
                 console.warn('[saveUserData] ⚠️ Пропущен невалидный адрес:', addr);

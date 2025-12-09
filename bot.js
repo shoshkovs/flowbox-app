@@ -1471,6 +1471,13 @@ async function addUserAddress(userId, address) {
 async function saveUserAddresses(userId, addresses) {
   if (!pool) return false;
   
+  // Валидация userId
+  console.log(`[saveUserAddresses] 🚀 userId = ${userId}, typeof = ${typeof userId}`);
+  if (!userId || userId === null || userId === undefined) {
+    console.error(`[saveUserAddresses] ❌ userId is null/undefined, не можем сохранить адреса`);
+    return false;
+  }
+  
   // Защита от случайной очистки: если передан пустой массив, не удаляем адреса
   if (!addresses || addresses.length === 0) {
     console.log(`⚠️  saveUserAddresses: передан пустой массив адресов для user_id=${userId}, пропускаем сохранение`);
@@ -1481,6 +1488,21 @@ async function saveUserAddresses(userId, addresses) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      
+      // Получаем user_id из таблицы users по telegram_id
+      const userResult = await client.query(
+        'SELECT id FROM users WHERE telegram_id = $1::bigint LIMIT 1',
+        [userId]
+      );
+      
+      if (userResult.rows.length === 0) {
+        console.error(`[saveUserAddresses] ❌ Пользователь с telegram_id=${userId} не найден в таблице users`);
+        await client.query('ROLLBACK');
+        return false;
+      }
+      
+      const user_id = userResult.rows[0].id;
+      console.log(`[saveUserAddresses] ✅ Найден user_id=${user_id} для telegram_id=${userId}`);
       
       // Загружаем существующие адреса для проверки дубликатов (ДО удаления!)
       const existingAddresses = await loadUserAddresses(userId);
@@ -1549,11 +1571,11 @@ async function saveUserAddresses(userId, addresses) {
       if (addressesToKeep.length > 0) {
         await client.query(
           'DELETE FROM addresses WHERE user_id = $1 AND id != ALL($2::int[])',
-          [userId, addressesToKeep]
+          [user_id, addressesToKeep]
         );
       } else {
         // Если нет адресов для сохранения, удаляем все
-        await client.query('DELETE FROM addresses WHERE user_id = $1', [userId]);
+        await client.query('DELETE FROM addresses WHERE user_id = $1', [user_id]);
       }
       
       // Обновляем существующие адреса
@@ -1564,7 +1586,7 @@ async function saveUserAddresses(userId, addresses) {
            name = $2, city = $3, street = $4, house = $5, entrance = $6, 
            apartment = $7, floor = $8, intercom = $9, comment = $10, is_default = $11,
            updated_at = now()
-           WHERE id = $1 AND user_id = (SELECT id FROM users WHERE telegram_id = $12 LIMIT 1)`,
+           WHERE id = $1 AND user_id = $12`,
           [
             addr.id,
             addr.name || addr.street || 'Новый адрес',
@@ -1577,7 +1599,7 @@ async function saveUserAddresses(userId, addresses) {
             addr.intercom || null,
             addr.comment || null,
             addr.isDefault || false,
-            userId
+            user_id
           ]
         );
         updatedCount++;
@@ -1586,15 +1608,23 @@ async function saveUserAddresses(userId, addresses) {
       // Добавляем новые адреса
       let insertedCount = 0;
       for (const addr of addressesToInsert) {
+        // Проверяем, что адрес действительно новый (нет такого же в БД)
+        const isDuplicate = existingAddresses.some(existing => 
+          isAddressDuplicate(addr, existing)
+        );
+        
+        if (isDuplicate) {
+          console.log(`[saveUserAddresses] ⚠️ Пропущен дубликат адреса: ${addr.city}, ${addr.street}, ${addr.house}, ${addr.apartment}`);
+          continue;
+        }
+        
         await client.query(
           `INSERT INTO addresses 
            (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
-           VALUES (
-             (SELECT id FROM users WHERE telegram_id = $1 LIMIT 1),
-             $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-           )`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           RETURNING id`,
           [
-            userId,
+            user_id, // КРИТИЧНО: используем user_id из таблицы users, а не telegram_id
             addr.name || addr.street || 'Новый адрес',
             addr.city || '',
             addr.street || '',
@@ -1608,6 +1638,7 @@ async function saveUserAddresses(userId, addresses) {
           ]
         );
         insertedCount++;
+        console.log(`[saveUserAddresses] ✅ Добавлен новый адрес: ${addr.city}, ${addr.street}, ${addr.house}`);
       }
       
       const addedCount = updatedCount + insertedCount;
@@ -1619,7 +1650,7 @@ async function saveUserAddresses(userId, addresses) {
         console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
       }
       
-      console.log(`✅ saveUserAddresses: обновлено ${updatedCount}, добавлено ${insertedCount}, всего ${addedCount} адресов для user_id=${userId}, пропущено дубликатов=${skippedCount}`);
+      console.log(`✅ saveUserAddresses: обновлено ${updatedCount}, добавлено ${insertedCount}, всего ${addedCount} адресов для telegram_id=${userId} (user_id=${user_id}), пропущено дубликатов=${skippedCount}`);
       
       await client.query('COMMIT');
       return true;
