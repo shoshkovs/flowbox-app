@@ -1148,16 +1148,130 @@ h1, h2, h3, .font-bold {
     min-height: 20px;
 }
 
-/* Подсветка выбранного дня в календаре через псевдоэлементы */
-.form-group input[type="date"]:focus::-webkit-calendar-picker-indicator {
-    background-color: var(--primary-color);
-    border-radius: 4px;
+/* Кастомный календарь */
+.custom-calendar {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Для мобильных устройств - улучшенная подсветка */
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.calendar-nav-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-nav-btn:hover {
+    background-color: rgba(217, 93, 131, 0.1);
+}
+
+.calendar-nav-btn:active {
+    background-color: rgba(217, 93, 131, 0.2);
+}
+
+.calendar-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.calendar-month-year {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    text-transform: capitalize;
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.calendar-weekday {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #999;
+    padding: 8px 4px;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    position: relative;
+}
+
+.calendar-day:hover:not(.disabled):not(.selected) {
+    background-color: rgba(217, 93, 131, 0.1);
+}
+
+.calendar-day.disabled {
+    color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.calendar-day.other-month {
+    color: #ccc;
+    opacity: 0.5;
+}
+
+.calendar-day.selected {
+    background-color: var(--primary-color);
+    color: #fff;
+    font-weight: 600;
+}
+
+.calendar-day.today:not(.selected) {
+    background-color: rgba(217, 93, 131, 0.15);
+    font-weight: 600;
+}
+
+/* Для мобильных устройств */
 @media (max-width: 480px) {
-    .form-group input[type="date"] {
-        font-size: 16px; /* Предотвращает зум на iOS */
+    .custom-calendar {
+        padding: 12px;
+    }
+    
+    .calendar-month-year {
+        font-size: 16px;
+    }
+    
+    .calendar-day {
+        font-size: 13px;
     }
     
     .delivery-date-label {

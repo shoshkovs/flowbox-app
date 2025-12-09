@@ -31,7 +31,10 @@ function shouldExpand() {
 
 // Включаем fullscreen режим только на мобильных устройствах
 if (tg && shouldExpand() && typeof tg.expand === 'function') {
+    console.log('[init] Вызываем tg.expand() при инициализации');
     tg.expand();
+} else {
+    console.log('[init] НЕ вызываем tg.expand() при инициализации - десктоп или метод недоступен');
 }
 
 if (tg) {
@@ -1764,24 +1767,177 @@ function initOrderForm() {
         dateLabel.textContent = formatDeliveryDate(date);
     }
     
-    // Установка ограничений даты (от завтра до 2 недель вперед)
-    const deliveryDateInput = document.getElementById('deliveryDate');
-    if (deliveryDateInput) {
+    // Кастомный календарь
+    const monthNamesFull = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ];
+    
+    let currentCalendarDate = null; // Текущая дата, отображаемая в календаре
+    let selectedDate = null; // Выбранная дата пользователем
+    let calendarRenderFunction = null; // Функция для перерисовки календаря
+    
+    function initCustomCalendar() {
+        const calendarContainer = document.getElementById('customCalendar');
+        const deliveryDateInput = document.getElementById('deliveryDate');
+        
+        if (!calendarContainer || !deliveryDateInput) return;
+        
         const today = todayWithoutTime();
         const minDate = addDays(today, 1);     // завтра
         const maxDate = addDays(minDate, 13);  // всего 14 дней (завтра + 13)
         
-        // Ограничиваем input
-        deliveryDateInput.min = toInputValue(minDate);
-        deliveryDateInput.max = toInputValue(maxDate);
+        // Проверяем, есть ли сохраненная дата
+        let initialDate = minDate;
+        if (deliveryDateInput.value) {
+            const savedDate = new Date(deliveryDateInput.value);
+            // Проверяем, что сохраненная дата в допустимом диапазоне
+            if (savedDate >= minDate && savedDate <= maxDate) {
+                initialDate = savedDate;
+            }
+        }
         
-        // Устанавливаем дефолт = завтра
-        deliveryDateInput.value = toInputValue(minDate);
-        updateDeliveryLabel(minDate);
+        // Устанавливаем дефолт = завтра или сохраненная дата
+        selectedDate = initialDate;
+        currentCalendarDate = new Date(initialDate);
+        deliveryDateInput.value = toInputValue(initialDate);
+        updateDeliveryLabel(initialDate);
+        
+        // Функция отрисовки календаря
+        calendarRenderFunction = function renderCalendar(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            
+            // Обновляем заголовок месяца/года
+            const monthYearEl = document.getElementById('calendarMonthYear');
+            if (monthYearEl) {
+                monthYearEl.textContent = `${monthNamesFull[month]} ${year}`;
+            }
+            
+            // Первый день месяца и количество дней в месяце
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            
+            // День недели первого дня (0 = воскресенье, нужно преобразовать: 0 -> 6, 1-6 -> 0-5)
+            let firstDayOfWeek = firstDay.getDay();
+            firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Понедельник = 0
+            
+            // Контейнер для дней
+            const daysContainer = document.getElementById('calendarDays');
+            if (!daysContainer) return;
+            
+            daysContainer.innerHTML = '';
+            
+            // Пустые ячейки до первого дня месяца
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day';
+                daysContainer.appendChild(emptyDay);
+            }
+            
+            // Дни месяца
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDate = new Date(year, month, day);
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
+                
+                // Проверяем, доступна ли дата (от завтра до 2 недель вперед)
+                const isBeforeMin = dayDate < minDate;
+                const isAfterMax = dayDate > maxDate;
+                
+                if (isBeforeMin || isAfterMax) {
+                    dayEl.classList.add('disabled');
+                } else {
+                    // Проверяем, является ли это сегодня
+                    if (isSameDay(dayDate, today)) {
+                        dayEl.classList.add('today');
+                    }
+                    
+                    // Проверяем, выбрана ли эта дата
+                    if (selectedDate && isSameDay(dayDate, selectedDate)) {
+                        dayEl.classList.add('selected');
+                    }
+                    
+                    // Обработчик клика
+                    dayEl.addEventListener('click', () => {
+                        if (!dayEl.classList.contains('disabled')) {
+                            // Убираем выделение с предыдущей даты
+                            daysContainer.querySelectorAll('.calendar-day.selected').forEach(el => {
+                                el.classList.remove('selected');
+                            });
+                            
+                            // Выделяем новую дату
+                            dayEl.classList.add('selected');
+                            selectedDate = new Date(dayDate);
+                            deliveryDateInput.value = toInputValue(selectedDate);
+                            updateDeliveryLabel(selectedDate);
+                            updateDeliveryTimeOptions();
+                            
+                            // Тактильная обратная связь
+                            if (tg && tg.HapticFeedback) {
+                                tg.HapticFeedback.impactOccurred('light');
+                            }
+                        }
+                    });
+                }
+                
+                daysContainer.appendChild(dayEl);
+            }
+            
+            // Обновляем состояние кнопок навигации
+            const prevBtn = document.getElementById('calendarPrevMonth');
+            const nextBtn = document.getElementById('calendarNextMonth');
+            
+            if (prevBtn) {
+                // Отключаем кнопку "назад", если следующий месяц не содержит доступных дат
+                const prevMonth = new Date(year, month - 1, 1);
+                const prevMonthLastDay = new Date(year, month, 0);
+                prevBtn.disabled = prevMonthLastDay < minDate;
+            }
+            
+            if (nextBtn) {
+                // Отключаем кнопку "вперед", если следующий месяц не содержит доступных дат
+                const nextMonth = new Date(year, month + 1, 1);
+                nextBtn.disabled = nextMonth > maxDate;
+            }
+        }
+        
+        // Навигация по месяцам
+        const prevBtn = document.getElementById('calendarPrevMonth');
+        const nextBtn = document.getElementById('calendarNextMonth');
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                const newDate = new Date(currentCalendarDate);
+                newDate.setMonth(newDate.getMonth() - 1);
+                currentCalendarDate = newDate;
+                calendarRenderFunction(newDate);
+                
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+            });
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const newDate = new Date(currentCalendarDate);
+                newDate.setMonth(newDate.getMonth() + 1);
+                currentCalendarDate = newDate;
+                calendarRenderFunction(newDate);
+                
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+            });
+        }
         
         // Функция обновления времени доставки
         function updateDeliveryTimeOptions() {
-            const selectedDate = new Date(deliveryDateInput.value);
+            if (!selectedDate) return;
+            
             const todayStr = today.toISOString().split('T')[0];
             const selectedDateStr = selectedDate.toISOString().split('T')[0];
             const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
@@ -1806,7 +1962,9 @@ function initOrderForm() {
                         btn.addEventListener('click', () => {
                             deliveryTimeOptions.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
-                            tg.HapticFeedback.impactOccurred('light');
+                            if (tg && tg.HapticFeedback) {
+                                tg.HapticFeedback.impactOccurred('light');
+                            }
                         });
                     });
                 }
@@ -1816,15 +1974,26 @@ function initOrderForm() {
         // Инициализация времени доставки
         updateDeliveryTimeOptions();
         
-        // Обработка изменения даты
-        deliveryDateInput.addEventListener('change', (e) => {
-            if (e.target.value) {
-                const selectedDate = new Date(e.target.value);
-                updateDeliveryLabel(selectedDate);
+        // Первоначальная отрисовка календаря
+        calendarRenderFunction(currentCalendarDate);
+        
+        // Экспортируем функцию для обновления календаря извне
+        window.updateCustomCalendar = function(dateValue) {
+            if (dateValue && calendarRenderFunction) {
+                const date = new Date(dateValue);
+                if (!isNaN(date.getTime())) {
+                    selectedDate = date;
+                    currentCalendarDate = new Date(date);
+                    deliveryDateInput.value = toInputValue(date);
+                    updateDeliveryLabel(date);
+                    calendarRenderFunction(currentCalendarDate);
+                }
             }
-            updateDeliveryTimeOptions();
-        });
+        };
     }
+    
+    // Инициализация кастомного календаря
+    initCustomCalendar();
     
     // Инициализация обработчиков времени доставки (если они уже есть в DOM)
     const existingTimeSlots = document.querySelectorAll('.time-slot-btn');
@@ -5187,7 +5356,13 @@ async function submitOrder() {
     if (orderAddressEntranceField) orderAddressEntranceField.value = checkoutData.address.entrance || '';
     if (orderAddressIntercomField) orderAddressIntercomField.value = checkoutData.address.intercom || '';
     if (orderAddressCommentField) orderAddressCommentField.value = checkoutData.address.comment || '';
-    if (deliveryDateField) deliveryDateField.value = checkoutData.deliveryDate;
+    if (deliveryDateField) {
+        deliveryDateField.value = checkoutData.deliveryDate;
+        // Обновляем кастомный календарь, если он существует
+        if (typeof window.updateCustomCalendar === 'function' && checkoutData.deliveryDate) {
+            window.updateCustomCalendar(checkoutData.deliveryDate);
+        }
+    }
     
     console.log('[submitOrder] 📝 Заполнены поля формы:');
     console.log('[submitOrder]   - customerName:', customerNameField?.value);
