@@ -2279,23 +2279,40 @@ app.post('/api/orders', async (req, res) => {
               phone_number: orderData.phone_number || null
             } : null;
             const user = await getOrCreateUser(orderData.userId, telegramUser);
-            if (user && orderData.addressData.street && orderData.addressData.house) {
+            if (user && orderData.addressData && orderData.addressData.street) {
               // Проверяем, не является ли это дубликатом
               const existingAddresses = await loadUserAddresses(user.id);
               const isDuplicate = existingAddresses.some(existing => {
                 const sameCity = (existing.city || '').toLowerCase().trim() === (orderData.addressData.city || '').toLowerCase().trim();
                 const sameStreet = (existing.street || '').toLowerCase().trim() === (orderData.addressData.street || '').toLowerCase().trim();
-                const sameHouse = (existing.house || '').toLowerCase().trim() === (orderData.addressData.house || '').toLowerCase().trim();
+                // house может быть пустым, так как теперь street содержит "улица + дом"
+                const sameHouse = (!existing.house && !orderData.addressData.house) || 
+                                 ((existing.house || '').toLowerCase().trim() === (orderData.addressData.house || '').toLowerCase().trim());
                 const sameApartment = (existing.apartment || '').toLowerCase().trim() === (orderData.addressData.apartment || '').toLowerCase().trim();
                 return sameCity && sameStreet && sameHouse && sameApartment;
               });
               
               if (!isDuplicate) {
+                // Если house пустое, но street содержит "улица + дом", пытаемся извлечь house из street
+                let houseValue = orderData.addressData.house || '';
+                let streetValue = orderData.addressData.street || '';
+                
+                // Если house пустое, но в street есть номер дома (последние цифры/буквы после пробела)
+                if (!houseValue && streetValue) {
+                  // Пытаемся извлечь номер дома из конца строки (например, "Невский проспект 10к2" -> "10к2")
+                  const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
+                  if (houseMatch) {
+                    houseValue = houseMatch[1];
+                    // Убираем номер дома из street, оставляя только название улицы
+                    streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+                  }
+                }
+                
                 const addressToSave = [{
-                  name: orderData.addressData.name || `${orderData.addressData.street}, ${orderData.addressData.house}`,
+                  name: orderData.addressData.name || orderData.addressData.street || 'Новый адрес',
                   city: orderData.addressData.city || 'Санкт-Петербург',
-                  street: orderData.addressData.street,
-                  house: orderData.addressData.house,
+                  street: streetValue || orderData.addressData.street,
+                  house: houseValue,
                   entrance: orderData.addressData.entrance || '',
                   apartment: orderData.addressData.apartment || '',
                   floor: orderData.addressData.floor || '',
@@ -2303,7 +2320,7 @@ app.post('/api/orders', async (req, res) => {
                   comment: orderData.addressData.comment || ''
                 }];
                 await saveUserAddresses(user.id, addressToSave);
-                console.log('✅ Адрес из заказа сохранен в БД');
+                console.log('✅ Адрес из заказа сохранен в БД:', { street: streetValue, house: houseValue });
               } else {
                 console.log('ℹ️  Адрес из заказа уже существует, пропускаем');
               }

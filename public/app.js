@@ -1553,7 +1553,12 @@ function initOrderForm() {
         
         savedAddresses.forEach(addr => {
             const shortParts = [];
-            if (addr.street) shortParts.push(addr.street); // Теперь содержит "улица + дом"
+            // Объединяем street и house для отображения
+            let streetValue = addr.street || '';
+            if (addr.house && !streetValue.includes(addr.house)) {
+                streetValue = streetValue ? `${streetValue} ${addr.house}` : addr.house;
+            }
+            if (streetValue) shortParts.push(streetValue);
             if (addr.apartment) shortParts.push(addr.apartment);
             const shortAddress = shortParts.join(', ') || 'Адрес не заполнен';
             
@@ -2417,11 +2422,26 @@ async function validateAndSubmitOrder(e) {
                 
                 if (!isDuplicate && addressData.street) {
                     // Создаем адрес с именем на основе улицы (теперь содержит "улица + дом")
+                    // Пытаемся извлечь номер дома из street для совместимости с БД
+                    let houseValue = addressData.house || '';
+                    let streetValue = addressData.street || '';
+                    
+                    // Если house пустое, но в street есть номер дома (последние цифры/буквы после пробела)
+                    if (!houseValue && streetValue) {
+                        const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
+                        if (houseMatch) {
+                            houseValue = houseMatch[1];
+                            // Убираем номер дома из street, оставляя только название улицы
+                            streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+                        }
+                    }
+                    
                     const newAddress = {
                         id: Date.now(),
                         name: addressData.street || 'Адрес',
                         city: addressData.city || 'Санкт-Петербург',
-                        street: addressData.street, // Теперь содержит "улица + дом"
+                        street: streetValue || addressData.street, // Название улицы без номера дома
+                        house: houseValue, // Номер дома отдельно для совместимости с БД
                         entrance: addressData.entrance || '',
                         apartment: addressData.apartment || '',
                         floor: addressData.floor || '',
@@ -3270,11 +3290,26 @@ addressForm.addEventListener('submit', (e) => {
         return;
     }
     
+    // Пытаемся извлечь номер дома из street для совместимости с БД
+    let houseValue = '';
+    let streetValue = street || '';
+    
+    // Если в street есть номер дома (последние цифры/буквы после пробела)
+    if (streetValue) {
+        const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
+        if (houseMatch) {
+            houseValue = houseMatch[1];
+            // Убираем номер дома из street, оставляя только название улицы
+            streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
+        }
+    }
+    
     const address = {
         id: editingAddressId || Date.now(),
-        name: name,
+        name: name || street || 'Адрес',
         city: city,
-        street: street, // Теперь содержит "улица + дом"
+        street: streetValue || street, // Название улицы без номера дома
+        house: houseValue, // Номер дома отдельно для совместимости с БД
         entrance: document.getElementById('addressEntrance').value.trim(),
         apartment: document.getElementById('addressApartment').value.trim(),
         floor: document.getElementById('addressFloor').value.trim(),
@@ -3355,8 +3390,12 @@ function loadSavedAddresses() {
             addressesList.innerHTML = '<p class="no-addresses">У вас нет сохраненных адресов доставки</p>';
         } else {
             addressesList.innerHTML = savedAddresses.map(addr => {
-                // Название (жирным): улица, дом
-                const streetName = addr.street || 'Адрес не заполнен';
+                // Название (жирным): улица, дом - объединяем street и house
+                let streetName = addr.street || '';
+                if (addr.house && !streetName.includes(addr.house)) {
+                    streetName = streetName ? `${streetName} ${addr.house}` : addr.house;
+                }
+                if (!streetName) streetName = 'Адрес не заполнен';
                 
                 // Детали (серым): кв., эт., под.
                 const details = [];
