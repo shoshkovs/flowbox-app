@@ -1055,10 +1055,15 @@ function updateCartUI() {
     // Сохранение корзины
     saveCart();
 
-    // Обновление счетчика в навигации
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    navCartCount.textContent = totalItems;
-    if (totalItems === 0) {
+    // Обновление счетчика в навигации (показываем количество "банчей", а не общее количество)
+    let totalBunches = 0;
+    cart.forEach(item => {
+        const minQty = getMinQty(item);
+        const bunches = Math.floor(item.quantity / minQty);
+        totalBunches += bunches;
+    });
+    navCartCount.textContent = totalBunches;
+    if (totalBunches === 0) {
         navCartCount.style.display = 'none';
     } else {
         navCartCount.style.display = 'block';
@@ -2325,10 +2330,9 @@ async function validateAndSubmitOrder(e) {
                 
                 if (!isDuplicate && addressData.street) {
                     // Создаем адрес с именем на основе улицы (теперь содержит "улица + дом")
-                    const addressName = addressData.name || addressData.street;
                     const newAddress = {
                         id: Date.now(),
-                        name: addressName,
+                        name: addressData.street || 'Адрес',
                         city: addressData.city || 'Санкт-Петербург',
                         street: addressData.street, // Теперь содержит "улица + дом"
                         entrance: addressData.entrance || '',
@@ -2616,7 +2620,6 @@ function resetAddressFormState() {
 
 function setAddressFormValues(address) {
     if (!address) return;
-    document.getElementById('addressName').value = address.name || '';
     document.getElementById('addressCity').value = address.city || 'Санкт-Петербург';
     // Объединяем street и house для обратной совместимости со старыми адресами
     let streetValue = address.street || '';
@@ -3068,19 +3071,16 @@ addressForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
     // Получаем все поля заново, чтобы убедиться, что они актуальны
-    const addressNameField = document.getElementById('addressName');
     const addressCityField = document.getElementById('addressCity');
     const addressStreetField = document.getElementById('addressStreet');
     const addressErrorElement = document.getElementById('addressError');
-    
+
     // Сначала убираем ошибки только с правильно заполненных полей
     // Это нужно для того, чтобы при повторной проверке правильно работала валидация
-    const name = addressNameField ? addressNameField.value.trim() : '';
     const city = addressCityField ? addressCityField.value.trim() : '';
     const street = addressStreetField ? addressStreetField.value.trim() : ''; // Теперь содержит "улица + дом"
-    
+
     // Убираем ошибки только с правильно заполненных полей
-    if (name && addressNameField) validateField(addressNameField, true);
     if (street && addressStreetField) validateField(addressStreetField, true);
     if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
         if (addressCityField) validateField(addressCityField, true);
@@ -4132,6 +4132,12 @@ function initCheckoutSteps() {
         };
     }
     
+    // Настройка навигации по Enter для формы адреса в заказе
+    const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+    if (checkoutAddressForm) {
+        setupEnterKeyNavigation(checkoutAddressForm);
+    }
+    
     const continueStep3Btn = document.getElementById('continueStep3');
     if (continueStep3Btn) {
         continueStep3Btn.onclick = () => {
@@ -4339,8 +4345,8 @@ function renderCheckoutAddresses() {
                 street = street ? `${street} ${house}` : house;
             }
             
+            // Не показываем город в кратком отображении
             const addressStr = [
-                addr.city || 'Санкт-Петербург',
                 street,
                 addr.apartment ? `кв. ${addr.apartment}` : ''
             ].filter(Boolean).join(', ');
