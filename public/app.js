@@ -917,6 +917,18 @@ async function saveUserData() {
     try {
         const profileData = localStorage.getItem('userProfile') ? JSON.parse(localStorage.getItem('userProfile')) : null;
         
+        // Фильтруем адреса - убираем адреса без ID перед отправкой
+        // Адреса без ID могут создавать дубликаты
+        const addressesToSave = savedAddresses.filter(addr => {
+            // Оставляем только адреса с валидным ID
+            if (addr.id && typeof addr.id === 'number' && addr.id > 0) {
+                return true;
+            }
+            // Логируем пропущенные адреса без ID
+            console.warn('[saveUserData] ⚠️ Пропущен адрес без ID:', addr);
+            return false;
+        });
+        
         const response = await fetch('/api/user-data', {
             method: 'POST',
             headers: {
@@ -925,7 +937,7 @@ async function saveUserData() {
             body: JSON.stringify({
                 userId: userId,
                 cart: cart,
-                addresses: savedAddresses,
+                addresses: addressesToSave,
                 profile: profileData,
                 activeOrders: userActiveOrders,
                 completedOrders: userCompletedOrders
