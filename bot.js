@@ -1468,19 +1468,23 @@ async function addUserAddress(userId, address) {
 }
 
 // Сохранение адресов пользователя (полная замена - используется только при сохранении всех адресов из фронта)
-async function saveUserAddresses(userId, addresses) {
+// Параметр userId может быть:
+// - user_id (внутренний ID из таблицы users) - если вызвано из POST /api/user-data
+// - telegram_id - если вызвано из других мест
+// Функция автоматически определяет, что передано, и использует правильное значение
+async function saveUserAddresses(userIdOrTelegramId, addresses) {
   if (!pool) return false;
   
-  // Валидация userId
-  console.log(`[saveUserAddresses] 🚀 userId = ${userId}, typeof = ${typeof userId}`);
-  if (!userId || userId === null || userId === undefined) {
-    console.error(`[saveUserAddresses] ❌ userId is null/undefined, не можем сохранить адреса`);
+  // Валидация
+  console.log(`[saveUserAddresses] 🚀 userIdOrTelegramId = ${userIdOrTelegramId}, typeof = ${typeof userIdOrTelegramId}`);
+  if (!userIdOrTelegramId || userIdOrTelegramId === null || userIdOrTelegramId === undefined) {
+    console.error(`[saveUserAddresses] ❌ userIdOrTelegramId is null/undefined, не можем сохранить адреса`);
     return false;
   }
   
   // Защита от случайной очистки: если передан пустой массив, не удаляем адреса
   if (!addresses || addresses.length === 0) {
-    console.log(`⚠️  saveUserAddresses: передан пустой массив адресов для user_id=${userId}, пропускаем сохранение`);
+    console.log(`⚠️  saveUserAddresses: передан пустой массив адресов для userIdOrTelegramId=${userIdOrTelegramId}, пропускаем сохранение`);
     return true; // Возвращаем true, чтобы не ломать логику сохранения других данных
   }
   
@@ -1489,23 +1493,54 @@ async function saveUserAddresses(userId, addresses) {
     try {
       await client.query('BEGIN');
       
-      // Получаем user_id из таблицы users по telegram_id
-      const userResult = await client.query(
-        'SELECT id FROM users WHERE telegram_id = $1::bigint LIMIT 1',
-        [userId]
-      );
+      // Определяем, что передано: user_id (обычно маленькие числа: 1, 2, 3...) или telegram_id (большие: 1059138125)
+      // Если userId < 1000000, скорее всего это user_id из таблицы users
+      // Если userId >= 1000000, скорее всего это telegram_id
+      let user_id;
+      let telegram_id;
       
-      if (userResult.rows.length === 0) {
-        console.error(`[saveUserAddresses] ❌ Пользователь с telegram_id=${userId} не найден в таблице users`);
+      if (userIdOrTelegramId < 1000000) {
+        // Скорее всего это user_id из таблицы users
+        user_id = userIdOrTelegramId;
+        // Получаем telegram_id для вызова loadUserAddresses
+        const userResult = await client.query(
+          'SELECT telegram_id FROM users WHERE id = $1::integer LIMIT 1',
+          [user_id]
+        );
+        if (userResult.rows.length === 0) {
+          console.error(`[saveUserAddresses] ❌ Пользователь с user_id=${user_id} не найден в таблице users`);
+          await client.query('ROLLBACK');
+          return false;
+        }
+        telegram_id = userResult.rows[0].telegram_id;
+        console.log(`[saveUserAddresses] ✅ Используем user_id=${user_id} (telegram_id=${telegram_id})`);
+      } else {
+        // Скорее всего это telegram_id
+        telegram_id = userIdOrTelegramId;
+        // Получаем user_id из таблицы users
+        const userResult = await client.query(
+          'SELECT id FROM users WHERE telegram_id = $1::bigint LIMIT 1',
+          [telegram_id]
+        );
+        if (userResult.rows.length === 0) {
+          console.error(`[saveUserAddresses] ❌ Пользователь с telegram_id=${telegram_id} не найден в таблице users`);
+          await client.query('ROLLBACK');
+          return false;
+        }
+        user_id = userResult.rows[0].id;
+        console.log(`[saveUserAddresses] ✅ Найден user_id=${user_id} для telegram_id=${telegram_id}`);
+      }
+      
+      // Валидация user_id перед использованием
+      if (!user_id || user_id === null || user_id === undefined) {
+        console.error(`[saveUserAddresses] ❌ user_id не может быть null/undefined после определения`);
         await client.query('ROLLBACK');
         return false;
       }
       
-      const user_id = userResult.rows[0].id;
-      console.log(`[saveUserAddresses] ✅ Найден user_id=${user_id} для telegram_id=${userId}`);
-      
       // Загружаем существующие адреса для проверки дубликатов (ДО удаления!)
-      const existingAddresses = await loadUserAddresses(userId);
+      // loadUserAddresses принимает telegram_id
+      const existingAddresses = await loadUserAddresses(telegram_id);
       
       // Подготавливаем адреса для сохранения: парсим street и house, проверяем дубликаты
       const addressesToUpdate = []; // Адреса с ID для UPDATE
@@ -1650,7 +1685,7 @@ async function saveUserAddresses(userId, addresses) {
         console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
       }
       
-      console.log(`✅ saveUserAddresses: обновлено ${updatedCount}, добавлено ${insertedCount}, всего ${addedCount} адресов для telegram_id=${userId} (user_id=${user_id}), пропущено дубликатов=${skippedCount}`);
+      console.log(`✅ saveUserAddresses: обновлено ${updatedCount}, добавлено ${insertedCount}, всего ${addedCount} адресов для telegram_id=${telegram_id} (user_id=${user_id}), пропущено дубликатов=${skippedCount}`);
       
       await client.query('COMMIT');
       return true;
