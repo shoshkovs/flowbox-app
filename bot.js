@@ -1210,7 +1210,123 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
   }
 }
 
-// Сохранение адресов пользователя
+// Унифицированная функция для извлечения house из street
+function parseStreetAndHouse(streetValue) {
+  if (!streetValue || typeof streetValue !== 'string') {
+    return { street: streetValue || '', house: '' };
+  }
+  
+  // Упрощенный regex: ищем номер дома в конце строки (цифры + опциональные буквы/корпус)
+  // Примеры: "Невский проспект 10" -> {street: "Невский проспект", house: "10"}
+  //          "Невский проспект 10к2" -> {street: "Невский проспект", house: "10к2"}
+  const trimmed = streetValue.trim();
+  const houseMatch = trimmed.match(/\s+(\d+[а-яА-Яa-zA-ZкК]*)$/);
+  
+  if (houseMatch) {
+    const house = houseMatch[1];
+    const street = trimmed.replace(/\s+\d+[а-яА-Яa-zA-ZкК]*$/, '').trim();
+    return { street, house };
+  }
+  
+  return { street: trimmed, house: '' };
+}
+
+// Унифицированная функция для проверки дубликатов адресов
+function isAddressDuplicate(newAddr, existingAddr) {
+  const normalize = (str) => (str || '').toLowerCase().trim();
+  
+  const newCity = normalize(newAddr.city);
+  const newStreet = normalize(newAddr.street);
+  const newHouse = normalize(newAddr.house);
+  const newApartment = normalize(newAddr.apartment);
+  
+  const existingCity = normalize(existingAddr.city);
+  const existingStreet = normalize(existingAddr.street);
+  const existingHouse = normalize(existingAddr.house);
+  const existingApartment = normalize(existingAddr.apartment);
+  
+  // Проверяем совпадение по city, street, apartment
+  // house учитываем только если оба не пустые (если оба пустые - считаем совпадением)
+  const cityMatch = newCity === existingCity;
+  const streetMatch = newStreet === existingStreet;
+  const apartmentMatch = newApartment === existingApartment;
+  
+  // house: совпадает если оба пустые ИЛИ оба не пустые и равны
+  const houseMatch = (!newHouse && !existingHouse) || 
+                     (newHouse && existingHouse && newHouse === existingHouse);
+  
+  return cityMatch && streetMatch && apartmentMatch && houseMatch;
+}
+
+// Безопасное добавление одного адреса (не удаляет существующие)
+async function addUserAddress(userId, address) {
+  if (!pool || !address) return false;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Загружаем существующие адреса
+      const existingAddresses = await loadUserAddresses(userId);
+      
+      // Проверяем дубликаты
+      const isDuplicate = existingAddresses.some(existing => isAddressDuplicate(address, existing));
+      
+      if (isDuplicate) {
+        console.log(`ℹ️  Адрес является дубликатом для user_id=${userId}, пропускаем`);
+        await client.query('COMMIT');
+        return true; // Возвращаем true, так как адрес уже существует
+      }
+      
+      // Парсим street и house если нужно
+      let streetValue = address.street || '';
+      let houseValue = address.house || '';
+      
+      // Если house пустое, пытаемся извлечь из street
+      if (!houseValue && streetValue) {
+        const parsed = parseStreetAndHouse(streetValue);
+        streetValue = parsed.street;
+        houseValue = parsed.house;
+      }
+      
+      // Вставляем новый адрес
+      await client.query(
+        `INSERT INTO addresses 
+         (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          userId,
+          address.name || streetValue || 'Новый адрес',
+          address.city || '',
+          streetValue,
+          houseValue,
+          address.entrance || null,
+          address.apartment || null,
+          address.floor || null,
+          address.intercom || null,
+          address.comment || null,
+          address.isDefault || false
+        ]
+      );
+      
+      console.log(`✅ addUserAddress: добавлен адрес для user_id=${userId}, street=${streetValue}, house=${houseValue}`);
+      
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка addUserAddress:', error);
+    return false;
+  }
+}
+
+// Сохранение адресов пользователя (полная замена - используется только при сохранении всех адресов из фронта)
 async function saveUserAddresses(userId, addresses) {
   if (!pool) return false;
   
@@ -1225,89 +1341,92 @@ async function saveUserAddresses(userId, addresses) {
     try {
       await client.query('BEGIN');
       
-      // Получаем существующие адреса для проверки дубликатов (ДО удаления!)
-      const existingAddressesResult = await client.query(
-        'SELECT city, street, house, apartment FROM addresses WHERE user_id = $1',
-        [userId]
-      );
-      const existingAddresses = existingAddressesResult.rows;
+      // Загружаем существующие адреса для проверки дубликатов (ДО удаления!)
+      const existingAddresses = await loadUserAddresses(userId);
       
-      // Функция для проверки дубликата среди существующих адресов
-      const isDuplicate = (newAddr) => {
-        const newCity = (newAddr.city || '').toLowerCase().trim();
-        const newStreet = (newAddr.street || '').toLowerCase().trim();
-        const newHouse = (newAddr.house || '').toLowerCase().trim();
-        const newApartment = (newAddr.apartment || '').toLowerCase().trim();
-        
-        return existingAddresses.some(existing => {
-          const existingCity = (existing.city || '').toLowerCase().trim();
-          const existingStreet = (existing.street || '').toLowerCase().trim();
-          const existingHouse = (existing.house || '').toLowerCase().trim();
-          const existingApartment = (existing.apartment || '').toLowerCase().trim();
-          
-          return newCity === existingCity &&
-                 newStreet === existingStreet &&
-                 newHouse === existingHouse &&
-                 newApartment === existingApartment;
-        });
-      };
-      
-      // Функция для проверки дубликата среди новых адресов (внутри массива)
-      const isDuplicateInNew = (newAddr, index, allAddresses) => {
-        const newCity = (newAddr.city || '').toLowerCase().trim();
-        const newStreet = (newAddr.street || '').toLowerCase().trim();
-        const newHouse = (newAddr.house || '').toLowerCase().trim();
-        const newApartment = (newAddr.apartment || '').toLowerCase().trim();
-        
-        return allAddresses.some((addr, idx) => {
-          if (idx === index) return false;
-          const addrCity = (addr.city || '').toLowerCase().trim();
-          const addrStreet = (addr.street || '').toLowerCase().trim();
-          const addrHouse = (addr.house || '').toLowerCase().trim();
-          const addrApartment = (addr.apartment || '').toLowerCase().trim();
-          
-          return addrCity === newCity &&
-                 addrStreet === newStreet &&
-                 addrHouse === newHouse &&
-                 addrApartment === newApartment;
-        });
-      };
-      
-      // Удаляем старые адреса
-      await client.query('DELETE FROM addresses WHERE user_id = $1', [userId]);
-      
-      // Добавляем новые адреса, пропуская дубликаты
-      let addedCount = 0;
-      let skippedCount = 0;
+      // Подготавливаем адреса для сохранения: парсим street и house, проверяем дубликаты
+      const addressesToSave = [];
+      const addressesToKeep = []; // Адреса, которые уже есть в БД и не нужно удалять
       
       for (let i = 0; i < addresses.length; i++) {
         const addr = addresses[i];
         
-        // Пропускаем дубликаты: как среди существующих (уже удаленных), так и внутри нового массива
-        if (!isDuplicate(addr) && !isDuplicateInNew(addr, i, addresses)) {
-          await client.query(
-            `INSERT INTO addresses 
-             (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-            [
-              userId,
-              addr.name || 'Новый адрес',
-              addr.city || '',
-              addr.street || '',
-              addr.house || '',
-              addr.entrance || null,
-              addr.apartment || null,
-              addr.floor || null,
-              addr.intercom || null,
-              addr.comment || null,
-              addr.isDefault || false
-            ]
+        // Парсим street и house если нужно
+        let streetValue = addr.street || '';
+        let houseValue = addr.house || '';
+        
+        if (!houseValue && streetValue) {
+          const parsed = parseStreetAndHouse(streetValue);
+          streetValue = parsed.street;
+          houseValue = parsed.house;
+        }
+        
+        const normalizedAddr = {
+          ...addr,
+          street: streetValue,
+          house: houseValue
+        };
+        
+        // Проверяем дубликаты среди существующих адресов
+        const isDuplicateInExisting = existingAddresses.some(existing => 
+          isAddressDuplicate(normalizedAddr, existing)
+        );
+        
+        // Проверяем дубликаты среди новых адресов (внутри массива)
+        const isDuplicateInNew = addressesToSave.some(addrToSave => 
+          isAddressDuplicate(normalizedAddr, addrToSave)
+        );
+        
+        if (!isDuplicateInExisting && !isDuplicateInNew) {
+          addressesToSave.push(normalizedAddr);
+        } else if (isDuplicateInExisting) {
+          // Сохраняем ID существующего адреса, чтобы не удалить его
+          const existingAddr = existingAddresses.find(existing => 
+            isAddressDuplicate(normalizedAddr, existing)
           );
-          addedCount++;
-        } else {
-          skippedCount++;
+          if (existingAddr) {
+            addressesToKeep.push(existingAddr.id);
+          }
         }
       }
+      
+      // Удаляем только те адреса, которых нет в новом списке
+      if (addressesToKeep.length > 0) {
+        await client.query(
+          'DELETE FROM addresses WHERE user_id = $1 AND id != ALL($2::int[])',
+          [userId, addressesToKeep]
+        );
+      } else {
+        // Если нет адресов для сохранения, удаляем все
+        await client.query('DELETE FROM addresses WHERE user_id = $1', [userId]);
+      }
+      
+      // Добавляем новые адреса
+      let addedCount = 0;
+      
+      for (const addr of addressesToSave) {
+        await client.query(
+          `INSERT INTO addresses 
+           (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            userId,
+            addr.name || addr.street || 'Новый адрес',
+            addr.city || '',
+            addr.street || '',
+            addr.house || '',
+            addr.entrance || null,
+            addr.apartment || null,
+            addr.floor || null,
+            addr.intercom || null,
+            addr.comment || null,
+            addr.isDefault || false
+          ]
+        );
+        addedCount++;
+      }
+      
+      const skippedCount = addresses.length - addedCount;
       
       // Логируем дубликаты только если их много (не критично)
       if (skippedCount > 0 && skippedCount > 3) {
@@ -2280,49 +2399,25 @@ app.post('/api/orders', async (req, res) => {
             } : null;
             const user = await getOrCreateUser(orderData.userId, telegramUser);
             if (user && orderData.addressData && orderData.addressData.street) {
-              // Проверяем, не является ли это дубликатом
-              const existingAddresses = await loadUserAddresses(user.id);
-              const isDuplicate = existingAddresses.some(existing => {
-                const sameCity = (existing.city || '').toLowerCase().trim() === (orderData.addressData.city || '').toLowerCase().trim();
-                const sameStreet = (existing.street || '').toLowerCase().trim() === (orderData.addressData.street || '').toLowerCase().trim();
-                // house может быть пустым, так как теперь street содержит "улица + дом"
-                const sameHouse = (!existing.house && !orderData.addressData.house) || 
-                                 ((existing.house || '').toLowerCase().trim() === (orderData.addressData.house || '').toLowerCase().trim());
-                const sameApartment = (existing.apartment || '').toLowerCase().trim() === (orderData.addressData.apartment || '').toLowerCase().trim();
-                return sameCity && sameStreet && sameHouse && sameApartment;
-              });
+              // Используем безопасную функцию addUserAddress вместо saveUserAddresses
+              // Это не затирает существующие адреса пользователя
+              const addressToAdd = {
+                name: orderData.addressData.name || orderData.addressData.street || 'Новый адрес',
+                city: orderData.addressData.city || 'Санкт-Петербург',
+                street: orderData.addressData.street,
+                house: orderData.addressData.house || '',
+                entrance: orderData.addressData.entrance || '',
+                apartment: orderData.addressData.apartment || '',
+                floor: orderData.addressData.floor || '',
+                intercom: orderData.addressData.intercom || '',
+                comment: orderData.addressData.comment || ''
+              };
               
-              if (!isDuplicate) {
-                // Если house пустое, но street содержит "улица + дом", пытаемся извлечь house из street
-                let houseValue = orderData.addressData.house || '';
-                let streetValue = orderData.addressData.street || '';
-                
-                // Если house пустое, но в street есть номер дома (последние цифры/буквы после пробела)
-                if (!houseValue && streetValue) {
-                  // Пытаемся извлечь номер дома из конца строки (например, "Невский проспект 10к2" -> "10к2")
-                  const houseMatch = streetValue.match(/(\d+[а-яА-ЯкК]*)$/);
-                  if (houseMatch) {
-                    houseValue = houseMatch[1];
-                    // Убираем номер дома из street, оставляя только название улицы
-                    streetValue = streetValue.replace(/\s*\d+[а-яА-ЯкК]*$/, '').trim();
-                  }
-                }
-                
-                const addressToSave = [{
-                  name: orderData.addressData.name || orderData.addressData.street || 'Новый адрес',
-                  city: orderData.addressData.city || 'Санкт-Петербург',
-                  street: streetValue || orderData.addressData.street,
-                  house: houseValue,
-                  entrance: orderData.addressData.entrance || '',
-                  apartment: orderData.addressData.apartment || '',
-                  floor: orderData.addressData.floor || '',
-                  intercom: orderData.addressData.intercom || '',
-                  comment: orderData.addressData.comment || ''
-                }];
-                await saveUserAddresses(user.id, addressToSave);
-                console.log('✅ Адрес из заказа сохранен в БД:', { street: streetValue, house: houseValue });
+              const added = await addUserAddress(user.id, addressToAdd);
+              if (added) {
+                console.log('✅ Адрес из заказа сохранен в БД (или уже существует)');
               } else {
-                console.log('ℹ️  Адрес из заказа уже существует, пропускаем');
+                console.log('⚠️  Не удалось сохранить адрес из заказа');
               }
             }
           } catch (addrError) {

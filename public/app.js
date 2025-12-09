@@ -1211,7 +1211,8 @@ function renderAdditionalProducts() {
             const productId = String(product.id);
             return itemId === productId || item.id === product.id || item.id === Number(product.id);
         });
-        const productImage = product.image || product.image_url || 'https://via.placeholder.com/150?text=' + encodeURIComponent(product.name);
+        // Используем изображение товара или дефолтное изображение
+        const productImage = product.image || product.image_url || '/logo.jpg';
         // Экранируем ID для безопасного использования в onclick
         const safeProductId = String(product.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         console.log('Рендеринг товара:', product.name, 'ID:', safeProductId, 'isInCart:', isInCart);

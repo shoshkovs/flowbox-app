@@ -19,24 +19,6 @@ button:focus {
     -webkit-focus-ring-color: transparent;
 }
 
-@font-face {
-    font-family: 'RAVDIS BOLD';
-    src: url('fonts/RAVDIS-BOLD.woff2') format('woff2'),
-         url('fonts/RAVDIS-BOLD.woff') format('woff'),
-         url('fonts/RAVDIS-BOLD.ttf') format('truetype');
-    font-weight: 600;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Mont ExtraLight';
-    src: url('fonts/Mont-ExtraLight.woff2') format('woff2'),
-         url('fonts/Mont-ExtraLight.woff') format('woff'),
-         url('fonts/Mont-ExtraLight.ttf') format('truetype');
-    font-weight: 200;
-    font-style: normal;
-}
-
 :root {
     --primary-color: #d95d83;
     --secondary-color: #d95d83;
@@ -45,12 +27,12 @@ button:focus {
     --border-color: #e0e0e0;
     --success-color: #4caf50;
     --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    --font-bold: 'RAVDIS BOLD', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-light: 'Mont ExtraLight', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-bold: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-light: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 body {
-    font-family: var(--font-light), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: var(--font-light);
     background: var(--bg-color);
     color: var(--text-color);
     overflow-x: hidden;
@@ -61,7 +43,8 @@ body {
 }
 
 h1, h2, h3, .font-bold {
-    font-family: var(--font-bold), -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-bold);
+    font-weight: 600;
 }
 
 .app {
