@@ -1839,10 +1839,10 @@ function initOrderForm() {
         
         // Функция отрисовки календаря
         function renderCalendar(date) {
-            console.log('[renderCalendar] Отрисовка календаря для даты:', date);
+            console.log('[renderCalendar] 🎯 НАЧАЛО ОТРИСОВКИ календаря для даты:', date);
             
             if (!date || isNaN(date.getTime())) {
-                console.error('[renderCalendar] Некорректная дата:', date);
+                console.error('[renderCalendar] ❌ Некорректная дата:', date);
                 return;
             }
             
@@ -1871,11 +1871,15 @@ function initOrderForm() {
             // Контейнер для дней
             const daysContainer = document.getElementById('calendarDays');
             if (!daysContainer) {
-                console.error('[renderCalendar] Контейнер calendarDays не найден!');
+                console.error('[renderCalendar] ❌ Контейнер calendarDays не найден!');
+                console.error('[renderCalendar] Проверяем родительские элементы:');
+                console.error('[renderCalendar] - customCalendar:', !!document.getElementById('customCalendar'));
+                console.error('[renderCalendar] - checkoutStep3:', !!document.getElementById('checkoutStep3'));
                 return;
             }
             
-            console.log('[renderCalendar] Контейнер найден, очищаем и заполняем');
+            console.log('[renderCalendar] ✅ Контейнер найден, очищаем и заполняем');
+            console.log('[renderCalendar] Текущее содержимое контейнера (до очистки):', daysContainer.children.length, 'элементов');
             daysContainer.innerHTML = '';
             
             // Пустые ячейки до первого дня месяца
