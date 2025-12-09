@@ -1841,6 +1841,11 @@ function initOrderForm() {
         function renderCalendar(date) {
             console.log('[renderCalendar] Отрисовка календаря для даты:', date);
             
+            if (!date || isNaN(date.getTime())) {
+                console.error('[renderCalendar] Некорректная дата:', date);
+                return;
+            }
+            
             const year = date.getFullYear();
             const month = date.getMonth();
             
@@ -1855,7 +1860,7 @@ function initOrderForm() {
             const lastDay = new Date(year, month + 1, 0);
             const daysInMonth = lastDay.getDate();
             
-            console.log('[renderCalendar] Дней в месяце:', daysInMonth);
+            console.log('[renderCalendar] Дней в месяце:', daysInMonth, 'месяц:', month, 'год:', year);
             
             // День недели первого дня (0 = воскресенье, нужно преобразовать: 0 -> 6, 1-6 -> 0-5)
             let firstDayOfWeek = firstDay.getDay();
@@ -1884,6 +1889,8 @@ function initOrderForm() {
             const today = todayWithoutTime();
             const minDate = addDays(today, 1);     // завтра
             const maxDate = addDays(minDate, 13);  // всего 14 дней (завтра + 13)
+            
+            console.log('[renderCalendar] Ограничения: minDate:', minDate.toISOString().split('T')[0], 'maxDate:', maxDate.toISOString().split('T')[0]);
             
             // Дни месяца
             let daysAdded = 0;
@@ -1933,6 +1940,8 @@ function initOrderForm() {
                             deliveryDateInput.value = toInputValue(selectedDate);
                             updateDeliveryTimeOptions();
                             
+                            console.log('[renderCalendar] Выбрана дата:', selectedDate.toISOString().split('T')[0]);
+                            
                             // Тактильная обратная связь
                             if (tg && tg.HapticFeedback) {
                                 tg.HapticFeedback.impactOccurred('light');
@@ -1945,7 +1954,7 @@ function initOrderForm() {
                 daysAdded++;
             }
             
-            console.log('[renderCalendar] Добавлено дней:', daysAdded);
+            console.log('[renderCalendar] Добавлено дней:', daysAdded, 'всего элементов в контейнере:', daysContainer.children.length);
             
             // Обновляем состояние кнопок навигации
             const prevBtn = document.getElementById('calendarPrevMonth');
