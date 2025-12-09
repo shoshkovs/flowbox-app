@@ -391,6 +391,8 @@ h1, h2, h3, .font-bold {
     display: flex;
     align-items: center;
     gap: 0;
+    width: 100%;
+    min-width: 0; /* Позволяет дочерним элементам сжиматься */
 }
 
 .product-action-row-filled .product-minus-btn,
@@ -399,6 +401,7 @@ h1, h2, h3, .font-bold {
     width: 40px;
     height: 40px;
     background: transparent;
+    flex-shrink: 0; /* Кнопки +/- не сжимаются */
 }
 
 .product-action-row-filled .product-minus-btn {
@@ -411,6 +414,11 @@ h1, h2, h3, .font-bold {
 
 .product-action-row-filled .product-price-filled {
     padding: 0 12px;
+    flex: 1; /* Кнопка с ценой может расширяться */
+    min-width: 0; /* Позволяет сжиматься при необходимости */
+    white-space: nowrap; /* Текст не переносится */
+    overflow: hidden; /* Скрываем переполнение */
+    text-overflow: ellipsis; /* Добавляем многоточие при переполнении (на всякий случай) */
 }
 
 /* Overlay с количеством банчей на изображении (полупрозрачный фильтр) */
