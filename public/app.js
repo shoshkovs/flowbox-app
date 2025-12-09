@@ -92,8 +92,12 @@ function saveCartOnClose() {
 }
 
 // Обработчик закрытия страницы
-window.addEventListener('beforeunload', () => {
+window.addEventListener('beforeunload', (e) => {
     saveCartOnClose();
+    // Показываем предупреждение о возможной потере данных
+    e.preventDefault();
+    e.returnValue = 'Изменения могут быть потеряны. Вы уверены, что хотите закрыть?';
+    return e.returnValue;
 });
 
 // Обработчик скрытия страницы (для мобильных устройств)

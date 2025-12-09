@@ -72,8 +72,9 @@
                 
                 <!-- Кнопка перейти в корзину (появляется при добавлении товара) -->
                 <div class="go-to-cart-fixed" id="goToCartFixed" style="display: none;">
-                    <button class="go-to-cart-btn-full" onclick="switchTab('cartTab')">
-                        Перейти в корзину <span id="fixedCartTotal">0</span> ₽
+                    <button class="go-to-cart-btn-small" onclick="switchTab('cartTab')">
+                        <div class="go-to-cart-price"><span id="fixedCartTotal">0</span> <span class="ruble">₽</span></div>
+                        <div class="go-to-cart-label">В корзину</div>
                     </button>
                 </div>
             </div>

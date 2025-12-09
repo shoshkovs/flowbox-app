@@ -455,40 +455,56 @@ h1, h2, h3, .font-bold {
 .go-to-cart-fixed {
     position: fixed;
     bottom: 80px;
-    left: 0;
-    right: 0;
-    padding: 12px 20px;
+    right: 20px;
     z-index: 999;
 }
 
-.go-to-cart-btn-full {
-    width: 100%;
-    padding: 16px;
+.go-to-cart-btn-small {
+    width: auto;
+    min-width: 100px;
+    padding: 12px 16px;
     background: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
+    border-radius: 24px;
     cursor: pointer;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    transition: transform 0.2s;
-    box-shadow: 0 4px 12px rgba(217, 93, 131, 0.3);
+    justify-content: center;
+    gap: 4px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(255, 105, 180, 0.4);
 }
 
-.go-to-cart-btn-full:hover {
-    transform: scale(1.02);
+.go-to-cart-btn-small:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(255, 105, 180, 0.5);
 }
 
-.go-to-cart-btn-full:active {
-    transform: scale(0.98);
+.go-to-cart-btn-small:active {
+    transform: scale(0.95);
 }
 
-.go-to-cart-btn-full span {
+.go-to-cart-price {
+    font-size: 16px;
     font-weight: 600;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    line-height: 1.2;
+}
+
+.go-to-cart-price .ruble {
+    font-size: 14px;
+}
+
+.go-to-cart-label {
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.2;
 }
 
 .loading {
@@ -1942,7 +1958,7 @@ h1, h2, h3, .font-bold {
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.checkout-step {
+#checkoutStep2 {
     padding-bottom: 80px; /* Отступ снизу для фиксированной кнопки */
 }
 
