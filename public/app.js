@@ -1017,7 +1017,8 @@ async function loadUserData() {
             if (data.addresses && Array.isArray(data.addresses)) {
                 console.log('[loadUserData] 📦 Загружены адреса с сервера:', data.addresses.length);
                 console.log('[loadUserData] 📦 Данные адресов:', JSON.stringify(data.addresses, null, 2));
-                savedAddresses = data.addresses;
+                // Фильтруем только адреса с валидным ID
+                savedAddresses = data.addresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
                 // Синхронизируем с localStorage
                 localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
                 console.log('[loadUserData] 💾 Адреса сохранены в localStorage:', savedAddresses.length);
@@ -1032,7 +1033,11 @@ async function loadUserData() {
                 console.log('[loadUserData] 🔍 Проверка localStorage:', !!savedAddressesLocal);
                 if (savedAddressesLocal) {
                     try {
-                        savedAddresses = JSON.parse(savedAddressesLocal);
+                        const addressesFromLocal = JSON.parse(savedAddressesLocal);
+                        // Фильтруем только адреса с валидным ID
+                        savedAddresses = addressesFromLocal.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+                        // Сохраняем отфильтрованные адреса обратно в localStorage
+                        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
                         console.log('[loadUserData] 📦 Адреса загружены из localStorage:', savedAddresses.length);
                         if (savedAddresses.length > 0) {
                             console.log('[loadUserData] 📦 Первый адрес из localStorage:', JSON.stringify(savedAddresses[0], null, 2));
@@ -5588,7 +5593,15 @@ function renderMyAddressesList() {
         return;
     }
     
-    myAddressesList.innerHTML = savedAddresses.map((addr) => {
+    // Фильтруем адреса - показываем только адреса с валидным ID
+    const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+    
+    if (validAddresses.length === 0) {
+        myAddressesList.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">Нет сохраненных адресов</div>';
+        return;
+    }
+    
+    myAddressesList.innerHTML = validAddresses.map((addr) => {
         // Формируем строку адреса
         let street = addr.street || '';
         const house = addr.house || '';
@@ -5604,10 +5617,13 @@ function renderMyAddressesList() {
         
         const addressId = addr.id;
         
-        // Проверяем, выбран ли этот адрес
-        const isSelected = checkoutData.address && 
-                          checkoutData.address.street === street &&
-                          checkoutData.address.city === (addr.city || 'Санкт-Петербург');
+        // Проверяем, выбран ли этот адрес (по ID, если есть, иначе по содержимому)
+        const isSelected = checkoutData.address && (
+            (checkoutData.address.id && checkoutData.address.id === addressId) ||
+            (!checkoutData.address.id && 
+             checkoutData.address.street === street &&
+             checkoutData.address.city === (addr.city || 'Санкт-Петербург'))
+        );
         
         return `
             <div class="address-item" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #eee; cursor: pointer; ${isSelected ? 'background-color: #f9f9f9;' : ''}" onclick="selectAddressFromMyAddresses(${addressId})">
@@ -5665,8 +5681,9 @@ function selectAddressFromMyAddresses(addressId) {
         streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
     }
     
-    // Обновляем checkoutData.address
+    // Обновляем checkoutData.address с сохранением ID
     checkoutData.address = {
+        id: addr.id, // ВАЖНО: сохраняем ID адреса
         city: addr.city || 'Санкт-Петербург',
         street: streetValue,
         house: houseValue,
