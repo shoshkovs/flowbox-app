@@ -4906,10 +4906,22 @@ function goToStep(step) {
     if (step === 3) {
         // Небольшая задержка, чтобы убедиться, что DOM обновлен
         setTimeout(() => {
-            if (typeof window.initCustomCalendar === 'function') {
-                window.initCustomCalendar();
+            console.log('[goToStep] Инициализация календаря на шаге 3');
+            const calendarContainer = document.getElementById('customCalendar');
+            const deliveryDateInput = document.getElementById('deliveryDate');
+            console.log('[goToStep] calendarContainer:', !!calendarContainer, 'deliveryDateInput:', !!deliveryDateInput);
+            
+            if (calendarContainer && deliveryDateInput) {
+                if (typeof window.initCustomCalendar === 'function') {
+                    console.log('[goToStep] Вызываем initCustomCalendar');
+                    window.initCustomCalendar();
+                } else {
+                    console.warn('[goToStep] window.initCustomCalendar не определена');
+                }
+            } else {
+                console.warn('[goToStep] Элементы календаря не найдены в DOM');
             }
-        }, 100);
+        }, 200);
     }
     
     // Обновляем BackButton для текущего шага
