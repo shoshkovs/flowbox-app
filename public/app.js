@@ -4,15 +4,22 @@ const tg = window.Telegram?.WebApp;
 // Глобальные переменные состояния
 let currentCheckoutStep = 1; // Текущий шаг оформления заказа
 
-// Включаем fullscreen режим сразу при загрузке (до tg.ready())
-// Это важно для корректной работы fullscreen при открытии через Direct Link или кнопку web_app
-if (tg && typeof tg.expand === 'function') {
-    tg.expand();
+// Определяем, нужно ли разворачивать мини-апп
+// На десктопе (Telegram Desktop) не разворачиваем, оставляем встроенный режим
+function shouldExpand() {
+    if (!tg) return false;
+    const platform = tg.platform || '';
+    const isDesktop = platform.toLowerCase().includes('desktop') || 
+                     platform.toLowerCase().includes('web') ||
+                     (window.innerWidth > 600 && window.innerHeight < 1000); // Широкий и невысокий = десктоп
+    
+    // Не разворачиваем на десктопе
+    return !isDesktop;
 }
 
-// Также пробуем через глобальный объект
-if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.expand === 'function') {
-    window.Telegram.WebApp.expand();
+// Включаем fullscreen режим только на мобильных устройствах
+if (tg && shouldExpand() && typeof tg.expand === 'function') {
+    tg.expand();
 }
 
 if (tg) {
@@ -46,8 +53,8 @@ if (tg) {
     console.warn('[init] Telegram WebApp (tg) не найден, BackButton работать не будет');
 }
 
-// После ready() снова пробуем expand() для надежности
-if (tg && typeof tg.expand === 'function') {
+// После ready() снова пробуем expand() только на мобильных устройствах
+if (tg && shouldExpand() && typeof tg.expand === 'function') {
     tg.expand();
     // Устанавливаем viewportStableHeight для стабильного fullscreen
     if (typeof tg.viewportStableHeight !== 'undefined') {
@@ -55,9 +62,9 @@ if (tg && typeof tg.expand === 'function') {
     }
 }
 
-// Дополнительная попытка через requestFullscreen (для Menu Button)
+// Дополнительная попытка через requestFullscreen только на мобильных устройствах
 // Это может помочь, если Mini App открыт через Menu Button
-if (tg && typeof tg.requestFullscreen === 'function') {
+if (tg && shouldExpand() && typeof tg.requestFullscreen === 'function') {
     try {
         tg.requestFullscreen();
     } catch (e) {
@@ -65,10 +72,10 @@ if (tg && typeof tg.requestFullscreen === 'function') {
     }
 }
 
-// Также пробуем через событие viewportChanged
+// Также пробуем через событие viewportChanged только на мобильных устройствах
 if (tg && typeof tg.onEvent === 'function') {
     tg.onEvent('viewportChanged', () => {
-        if (tg && typeof tg.expand === 'function') {
+        if (tg && shouldExpand() && typeof tg.expand === 'function') {
             tg.expand();
         }
     });
@@ -129,23 +136,23 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Дополнительная попытка через событие загрузки
+// Дополнительная попытка через событие загрузки только на мобильных устройствах
 window.addEventListener('load', () => {
-    if (tg && typeof tg.expand === 'function') {
+    if (tg && shouldExpand() && typeof tg.expand === 'function') {
         tg.expand();
     }
 });
 
-// Попытка через DOMContentLoaded
+// Попытка через DOMContentLoaded только на мобильных устройствах
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        if (tg && typeof tg.expand === 'function') {
+        if (tg && shouldExpand() && typeof tg.expand === 'function') {
             tg.expand();
         }
     });
 } else {
     // Если DOM уже загружен
-    if (tg && typeof tg.expand === 'function') {
+    if (tg && shouldExpand() && typeof tg.expand === 'function') {
         tg.expand();
     }
 }
@@ -1504,7 +1511,11 @@ checkoutBtnFinal.addEventListener('click', () => {
 
 // Инициализация формы заказа
 function initOrderForm() {
+    console.log('[initOrderForm] 🚀 Инициализация формы заказа');
+    console.log('[initOrderForm] 📦 savedAddresses.length:', savedAddresses.length);
+    
     // Загрузка адресов
+    console.log('[initOrderForm] 🔄 Вызываем loadSavedAddresses');
     loadSavedAddresses();
     
     // Инициализация радио-кнопок получателя

@@ -12,23 +12,21 @@
     <link rel="stylesheet" href="styles.css?v=3.17">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // Немедленное включение fullscreen до загрузки основного скрипта
+        // Определяем, нужно ли разворачивать мини-апп
+        // На десктопе (Telegram Desktop) не разворачиваем, оставляем встроенный режим
         (function() {
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
-                if (typeof tg.expand === 'function') {
+                const platform = tg.platform || '';
+                const isDesktop = platform.toLowerCase().includes('desktop') || 
+                                 platform.toLowerCase().includes('web') ||
+                                 window.innerWidth > 600; // Широкий экран = вероятно десктоп
+                
+                // Разворачиваем только на мобильных устройствах
+                if (!isDesktop && typeof tg.expand === 'function') {
                     tg.expand();
                 }
             }
-            // Также пробуем после небольшой задержки
-            setTimeout(function() {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    const tg = window.Telegram.WebApp;
-                    if (typeof tg.expand === 'function') {
-                        tg.expand();
-                    }
-                }
-            }, 100);
         })();
     </script>
 </head>
