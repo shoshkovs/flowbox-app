@@ -6972,9 +6972,9 @@ async function getOrCreateSupportTopic(userId, userName, username) {
       // Сохраняем связь в БД
       // ВАЖНО: PostgreSQL не поддерживает два ON CONFLICT в одном INSERT
       // Используем стратегию: сначала пытаемся INSERT с ON CONFLICT по user_id,
-      // затем отдельным UPDATE обрабатываем конфликт по message_thread_id
+      // затем отдельным запросом обрабатываем конфликт по message_thread_id
       
-      // Пытаемся вставить/обновить по user_id
+      // Шаг 1: Пытаемся вставить/обновить по user_id
       try {
         if (hasTopicNameColumn && hasUpdatedAtColumn) {
           await client.query(
@@ -6986,6 +6986,7 @@ async function getOrCreateSupportTopic(userId, userName, username) {
                updated_at = now()`,
             [userId, messageThreadId, topicName]
           );
+          console.log(`[support] ✅ Связь сохранена через INSERT ON CONFLICT (user_id) - user_id=${userId}, thread_id=${messageThreadId}`);
         } else if (hasUpdatedAtColumn) {
           await client.query(
             `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
@@ -6995,6 +6996,7 @@ async function getOrCreateSupportTopic(userId, userName, username) {
                updated_at = now()`,
             [userId, messageThreadId]
           );
+          console.log(`[support] ✅ Связь сохранена через INSERT ON CONFLICT (user_id) - user_id=${userId}, thread_id=${messageThreadId}`);
         } else if (hasTopicNameColumn) {
           await client.query(
             `INSERT INTO support_topics (user_id, message_thread_id, topic_name)
@@ -7004,6 +7006,7 @@ async function getOrCreateSupportTopic(userId, userName, username) {
                topic_name = EXCLUDED.topic_name`,
             [userId, messageThreadId, topicName]
           );
+          console.log(`[support] ✅ Связь сохранена через INSERT ON CONFLICT (user_id) - user_id=${userId}, thread_id=${messageThreadId}`);
         } else {
           await client.query(
             `INSERT INTO support_topics (user_id, message_thread_id)
@@ -7012,51 +7015,116 @@ async function getOrCreateSupportTopic(userId, userName, username) {
                message_thread_id = EXCLUDED.message_thread_id`,
             [userId, messageThreadId]
           );
+          console.log(`[support] ✅ Связь сохранена через INSERT ON CONFLICT (user_id) - user_id=${userId}, thread_id=${messageThreadId}`);
         }
       } catch (insertError) {
-        // Если конфликт по user_id обработан, продолжаем
-        console.log('[support] Примечание при INSERT:', insertError.message);
+        console.error(`[support] ❌ Ошибка при INSERT по user_id:`, insertError.message);
       }
       
-      // Отдельно обрабатываем случай, когда message_thread_id уже существует (конфликт по другому UNIQUE)
+      // Шаг 2: Отдельно обрабатываем случай, когда message_thread_id уже существует (конфликт по другому UNIQUE)
       // Это может быть, если топик был создан ранее, но без связи с user_id
       try {
-        if (hasTopicNameColumn && hasUpdatedAtColumn) {
-          await client.query(
-            `UPDATE support_topics 
-             SET user_id = $1::bigint, topic_name = $3::text, updated_at = now()
-             WHERE message_thread_id = $2::integer 
-               AND (user_id IS NULL OR user_id != $1::bigint)`,
-            [userId, messageThreadId, topicName]
-          );
-        } else if (hasUpdatedAtColumn) {
-          await client.query(
-            `UPDATE support_topics 
-             SET user_id = $1::bigint, updated_at = now()
-             WHERE message_thread_id = $2::integer 
-               AND (user_id IS NULL OR user_id != $1::bigint)`,
-            [userId, messageThreadId]
-          );
-        } else if (hasTopicNameColumn) {
-          await client.query(
-            `UPDATE support_topics 
-             SET user_id = $1::bigint, topic_name = $3::text
-             WHERE message_thread_id = $2::integer 
-               AND (user_id IS NULL OR user_id != $1::bigint)`,
-            [userId, messageThreadId, topicName]
-          );
+        // Сначала проверяем, существует ли запись с таким message_thread_id
+        const existingByThread = await client.query(
+          'SELECT user_id FROM support_topics WHERE message_thread_id = $1::integer',
+          [messageThreadId]
+        );
+        
+        if (existingByThread.rows.length > 0) {
+          const existingUserId = existingByThread.rows[0].user_id;
+          if (existingUserId !== userId) {
+            // Обновляем существующую запись
+            if (hasTopicNameColumn && hasUpdatedAtColumn) {
+              await client.query(
+                `UPDATE support_topics 
+                 SET user_id = $1::bigint, topic_name = $3::text, updated_at = now()
+                 WHERE message_thread_id = $2::integer`,
+                [userId, messageThreadId, topicName]
+              );
+            } else if (hasUpdatedAtColumn) {
+              await client.query(
+                `UPDATE support_topics 
+                 SET user_id = $1::bigint, updated_at = now()
+                 WHERE message_thread_id = $2::integer`,
+                [userId, messageThreadId]
+              );
+            } else if (hasTopicNameColumn) {
+              await client.query(
+                `UPDATE support_topics 
+                 SET user_id = $1::bigint, topic_name = $3::text
+                 WHERE message_thread_id = $2::integer`,
+                [userId, messageThreadId, topicName]
+              );
+            } else {
+              await client.query(
+                `UPDATE support_topics 
+                 SET user_id = $1::bigint
+                 WHERE message_thread_id = $2::integer`,
+                [userId, messageThreadId]
+              );
+            }
+            console.log(`[support] ✅ Обновлена связь через UPDATE по message_thread_id - user_id=${userId}, thread_id=${messageThreadId}`);
+          }
         } else {
-          await client.query(
-            `UPDATE support_topics 
-             SET user_id = $1::bigint
-             WHERE message_thread_id = $2::integer 
-               AND (user_id IS NULL OR user_id != $1::bigint)`,
-            [userId, messageThreadId]
-          );
+          // Если записи нет, пытаемся вставить еще раз (на случай, если первый INSERT не сработал из-за конфликта по message_thread_id)
+          // Используем INSERT с ON CONFLICT по message_thread_id
+          try {
+            if (hasTopicNameColumn && hasUpdatedAtColumn) {
+              await client.query(
+                `INSERT INTO support_topics (user_id, message_thread_id, topic_name, updated_at)
+                 VALUES ($1::bigint, $2::integer, $3::text, now())
+                 ON CONFLICT (message_thread_id) DO UPDATE SET
+                   user_id = EXCLUDED.user_id,
+                   topic_name = EXCLUDED.topic_name,
+                   updated_at = now()`,
+                [userId, messageThreadId, topicName]
+              );
+            } else if (hasUpdatedAtColumn) {
+              await client.query(
+                `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
+                 VALUES ($1::bigint, $2::integer, now())
+                 ON CONFLICT (message_thread_id) DO UPDATE SET
+                   user_id = EXCLUDED.user_id,
+                   updated_at = now()`,
+                [userId, messageThreadId]
+              );
+            } else if (hasTopicNameColumn) {
+              await client.query(
+                `INSERT INTO support_topics (user_id, message_thread_id, topic_name)
+                 VALUES ($1::bigint, $2::integer, $3::text)
+                 ON CONFLICT (message_thread_id) DO UPDATE SET
+                   user_id = EXCLUDED.user_id,
+                   topic_name = EXCLUDED.topic_name`,
+                [userId, messageThreadId, topicName]
+              );
+            } else {
+              await client.query(
+                `INSERT INTO support_topics (user_id, message_thread_id)
+                 VALUES ($1::bigint, $2::integer)
+                 ON CONFLICT (message_thread_id) DO UPDATE SET
+                   user_id = EXCLUDED.user_id`,
+                [userId, messageThreadId]
+              );
+            }
+            console.log(`[support] ✅ Связь сохранена через INSERT ON CONFLICT (message_thread_id) - user_id=${userId}, thread_id=${messageThreadId}`);
+          } catch (insertThreadError) {
+            console.error(`[support] ❌ Ошибка при INSERT по message_thread_id:`, insertThreadError.message);
+          }
         }
       } catch (updateError) {
-        // Игнорируем ошибки обновления
-        console.log('[support] Примечание при UPDATE:', updateError.message);
+        console.error(`[support] ❌ Ошибка при UPDATE по message_thread_id:`, updateError.message);
+      }
+      
+      // Финальная проверка: убеждаемся, что связь сохранена
+      const verifyResult = await client.query(
+        'SELECT user_id FROM support_topics WHERE message_thread_id = $1::integer',
+        [messageThreadId]
+      );
+      
+      if (verifyResult.rows.length > 0 && verifyResult.rows[0].user_id === userId) {
+        console.log(`[support] ✅ Подтверждено: связь user_id=${userId} ↔ thread_id=${messageThreadId} сохранена в БД`);
+      } else {
+        console.error(`[support] ❌ ВНИМАНИЕ: связь НЕ сохранена! Проверка показала:`, verifyResult.rows);
       }
       
       

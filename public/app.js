@@ -3029,12 +3029,29 @@ async function validateAndSubmitOrder(e) {
             
             // Скрыть форму заказа
             const orderTab = document.getElementById('orderTab');
-            if (orderTab) orderTab.classList.remove('active');
+            if (orderTab) {
+                orderTab.classList.remove('active');
+                orderTab.style.display = 'none';
+            }
+            
+            // Скрываем все шаги оформления
+            document.querySelectorAll('.checkout-step').forEach(s => {
+                s.classList.remove('active');
+                s.style.display = 'none';
+            });
             
             // Очистка корзины
             cart = [];
             saveCart(); // Сохраняем пустую корзину
             updateCartUI();
+            
+            // Возвращаемся в меню
+            switchTab('menuTab');
+            
+            // Показываем сообщение об успехе
+            if (tg && tg.showAlert) {
+                tg.showAlert('✅ Заказ успешно создан!');
+            }
             
             // Сброс формы заказа (если она существует)
             const orderForm = document.getElementById('orderForm');
