@@ -206,6 +206,22 @@ function roundDownToStep(quantity, step) {
 let deliveryPrice = 500; // По умолчанию "В пределах КАД" (используется только на итоговой странице)
 let serviceFee = 450;
 let savedAddresses = []; // Сохраненные адреса
+
+// Загружаем адреса из localStorage при старте (fallback)
+(function() {
+    try {
+        const savedAddressesLocal = localStorage.getItem('savedAddresses');
+        if (savedAddressesLocal) {
+            savedAddresses = JSON.parse(savedAddressesLocal);
+            console.log('[init] 📦 Загружены адреса из localStorage при старте:', savedAddresses.length);
+        } else {
+            console.log('[init] 📦 localStorage пуст при старте');
+        }
+    } catch (e) {
+        console.error('[init] ❌ Ошибка загрузки адресов из localStorage при старте:', e);
+        savedAddresses = [];
+    }
+})();
 let userActiveOrders = []; // Активные заказы
 let userCompletedOrders = []; // Завершенные заказы
 let selectedRecipientId = 'self'; // Выбранный получатель
@@ -927,27 +943,34 @@ async function loadUserData() {
                 }, 100);
             }
             if (data.addresses && Array.isArray(data.addresses)) {
-                console.log('📦 Загружены адреса с сервера:', data.addresses.length);
+                console.log('[loadUserData] 📦 Загружены адреса с сервера:', data.addresses.length);
+                console.log('[loadUserData] 📦 Данные адресов:', JSON.stringify(data.addresses, null, 2));
                 savedAddresses = data.addresses;
                 // Синхронизируем с localStorage
                 localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
-                console.log('📦 Адреса сохранены в localStorage:', savedAddresses.length);
+                console.log('[loadUserData] 💾 Адреса сохранены в localStorage:', savedAddresses.length);
                 if (savedAddresses.length > 0) {
-                    console.log('📦 ID адресов:', savedAddresses.map(a => a.id).join(', '));
+                    console.log('[loadUserData] 📦 ID адресов:', savedAddresses.map(a => a.id).join(', '));
+                    console.log('[loadUserData] 📦 Первый адрес:', JSON.stringify(savedAddresses[0], null, 2));
                 }
             } else {
-                console.log('📦 Адреса не получены с сервера или не массив. Получено:', data.addresses);
+                console.log('[loadUserData] ⚠️ Адреса не получены с сервера или не массив. Получено:', typeof data.addresses, data.addresses);
                 // Если адреса не получены с сервера, пробуем загрузить из localStorage
                 const savedAddressesLocal = localStorage.getItem('savedAddresses');
+                console.log('[loadUserData] 🔍 Проверка localStorage:', !!savedAddressesLocal);
                 if (savedAddressesLocal) {
                     try {
                         savedAddresses = JSON.parse(savedAddressesLocal);
-                        console.log('📦 Адреса загружены из localStorage:', savedAddresses.length);
+                        console.log('[loadUserData] 📦 Адреса загружены из localStorage:', savedAddresses.length);
+                        if (savedAddresses.length > 0) {
+                            console.log('[loadUserData] 📦 Первый адрес из localStorage:', JSON.stringify(savedAddresses[0], null, 2));
+                        }
                     } catch (e) {
-                        console.error('📦 Ошибка загрузки адресов из localStorage:', e);
+                        console.error('[loadUserData] ❌ Ошибка загрузки адресов из localStorage:', e);
                         savedAddresses = [];
                     }
                 } else {
+                    console.log('[loadUserData] ⚠️ localStorage пуст, устанавливаем пустой массив');
                     savedAddresses = [];
                 }
             }
@@ -995,7 +1018,11 @@ async function loadUserData() {
             // Обновляем UI
             updateCartUI();
             updateGoToCartButton();
+            
+            console.log('[loadUserData] 🔄 Вызываем loadSavedAddresses после загрузки данных');
+            console.log('[loadUserData] 📦 Текущее состояние savedAddresses перед loadSavedAddresses:', savedAddresses.length);
             loadSavedAddresses();
+            
             console.log('[loadUserData] 📦 Вызываем loadActiveOrders после загрузки данных, активных заказов:', userActiveOrders.length);
             loadActiveOrders();
             loadProfile();
@@ -1525,11 +1552,19 @@ function initOrderForm() {
     let selectedAddressId = null;
     
     window.renderAddressOptions = function() {
-        if (!addressOptionsList) return;
+        console.log('[renderAddressOptions] 🚀 Начало рендеринга адресов');
+        console.log('[renderAddressOptions] 📦 savedAddresses.length:', savedAddresses.length);
+        console.log('[renderAddressOptions] 🔍 addressOptionsList найден:', !!addressOptionsList);
+        
+        if (!addressOptionsList) {
+            console.log('[renderAddressOptions] ⚠️ addressOptionsList не найден, выходим');
+            return;
+        }
         
         addressOptionsList.innerHTML = '';
         
         if (savedAddresses.length === 0) {
+            console.log('[renderAddressOptions] ⚠️ Нет адресов, скрываем список');
             addressOptionsList.style.display = 'none';
             selectedAddressId = 'new';
             if (newAddressForm) newAddressForm.style.display = 'block';
@@ -1537,6 +1572,7 @@ function initOrderForm() {
             return;
         }
         
+        console.log('[renderAddressOptions] ✅ Показываем список с', savedAddresses.length, 'адресами');
         addressOptionsList.style.display = 'block';
         
         if (!selectedAddressId || selectedAddressId === 'new') {
@@ -1614,9 +1650,12 @@ function initOrderForm() {
             if (newAddressForm) newAddressForm.style.display = 'block';
         });
         
-        addressOptionsList.appendChild(newOption);
+            addressOptionsList.appendChild(newOption);
+            
+            console.log('[renderAddressOptions] ✅ Рендеринг завершен, добавлено', savedAddresses.length, 'адресов + опция "Новый адрес"');
     };
     
+    console.log('[init] 🔄 Вызываем renderAddressOptions при инициализации');
     window.renderAddressOptions();
     
     // Установка минимальной даты (завтра)
@@ -3384,12 +3423,20 @@ let editingAddressId = null;
 
 // Загрузка сохраненных адресов
 function loadSavedAddresses() {
+    console.log('[loadSavedAddresses] 🚀 Начало загрузки адресов');
+    console.log('[loadSavedAddresses] 📦 savedAddresses.length:', savedAddresses.length);
+    console.log('[loadSavedAddresses] 📦 savedAddresses:', JSON.stringify(savedAddresses, null, 2));
+    
     // Отображение в профиле
     const addressesList = document.getElementById('deliveryAddressesList');
+    console.log('[loadSavedAddresses] 🔍 addressesList найден:', !!addressesList);
+    
     if (addressesList) {
         if (savedAddresses.length === 0) {
+            console.log('[loadSavedAddresses] ⚠️ Нет сохраненных адресов, показываем сообщение');
             addressesList.innerHTML = '<p class="no-addresses">У вас нет сохраненных адресов доставки</p>';
         } else {
+            console.log('[loadSavedAddresses] ✅ Рендерим', savedAddresses.length, 'адресов');
             addressesList.innerHTML = savedAddresses.map(addr => {
                 // Название (жирным): улица, дом - объединяем street и house
                 let streetName = addr.street || '';
@@ -3424,14 +3471,22 @@ function loadSavedAddresses() {
     }
     
     // Обновление списка адресов в форме заказа
+    console.log('[loadSavedAddresses] 🔍 Проверка renderAddressOptions:', typeof window.renderAddressOptions);
     if (typeof window.renderAddressOptions === 'function') {
+        console.log('[loadSavedAddresses] ✅ Вызываем renderAddressOptions');
         window.renderAddressOptions();
+    } else {
+        console.log('[loadSavedAddresses] ⚠️ renderAddressOptions не определена');
     }
     
     // Обновляем список адресов на шаге 2, если он активен
+    console.log('[loadSavedAddresses] 🔍 currentCheckoutStep:', currentCheckoutStep);
     if (currentCheckoutStep === 2) {
+        console.log('[loadSavedAddresses] ✅ Вызываем renderCheckoutAddresses');
         renderCheckoutAddresses();
     }
+    
+    console.log('[loadSavedAddresses] ✅ Загрузка адресов завершена');
 }
 
 // Заполнение формы заказа адресом
