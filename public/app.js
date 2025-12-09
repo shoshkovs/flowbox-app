@@ -451,8 +451,8 @@ function renderProducts() {
         const cartItem = cart.find(item => item.id === product.id);
         const isInCart = !!cartItem;
         const cartQuantity = cartItem ? cartItem.quantity : 0;
-        // Количество банчей = количество стеблей / стеблей в банче
-        const bunchesCount = isInCart ? Math.floor(cartQuantity / stemQuantity) : 0;
+        // Количество банчей = количество товара / мин заказ (сколько раз добавлен мин заказ)
+        const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
         
         return `
             <div class="product-card" data-product-id="${product.id}">
@@ -484,7 +484,7 @@ function renderProducts() {
                         ` : `
                             <button class="product-add-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
                                 <span class="product-price-semi-transparent">${totalPrice} <span class="ruble">₽</span></span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
@@ -604,18 +604,19 @@ function addToCart(productId, quantity = null) {
 function changeCartQuantity(productId, delta) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
-    
+
     const minQty = getMinQty(product);
     const cartItem = cart.find(item => item.id === productId);
-    
+
     if (!cartItem) {
         // Если товара нет в корзине, добавляем
         addToCart(productId, minQty);
         return;
     }
-    
-    const newQty = cartItem.quantity + delta;
-    
+
+    // Изменяем количество на minQty (а не на 1)
+    const newQty = cartItem.quantity + (delta * minQty);
+
     if (newQty < minQty) {
         // Удаляем из корзины, если количество меньше минимума
         cart = cart.filter(item => item.id !== productId);
@@ -626,7 +627,7 @@ function changeCartQuantity(productId, delta) {
         tg.HapticFeedback.impactOccurred('light');
         return;
     }
-    
+
     cartItem.quantity = newQty;
     updateCartUI();
     updateGoToCartButton();
@@ -641,11 +642,11 @@ function updateProductCard(productId) {
     if (!product) return;
     
     const minQty = getMinQty(product);
-    const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
     const cartItem = cart.find(item => item.id === productId);
     const isInCart = !!cartItem;
     const cartQuantity = cartItem ? cartItem.quantity : 0;
-    const bunchesCount = isInCart ? Math.floor(cartQuantity / stemQuantity) : 0;
+    // Количество банчей = количество товара / мин заказ (сколько раз добавлен мин заказ)
+    const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
     const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
     
     const card = document.querySelector(`[data-product-id="${productId}"]`);
@@ -699,7 +700,7 @@ function updateProductCard(productId) {
             actionRow.innerHTML = `
                 <button class="product-add-btn" onclick="addToCart(${productId}, ${minQty})" id="add-btn-${productId}">
                     <span class="product-price-semi-transparent">${totalPrice} <span class="ruble">₽</span></span>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
@@ -736,36 +737,27 @@ function changeQuantity(productId, delta) {
 
     const minQty = getMinQty(item);
     
-    // Если количество = 1 и нажимаем минус - удаляем из корзины
-    if (item.quantity === 1 && delta < 0) {
+    // Вычисляем текущее количество "банчей"
+    const currentBunches = Math.floor(item.quantity / minQty);
+    
+    // Если количество = 1 банч и нажимаем минус - удаляем из корзины
+    if (currentBunches === 1 && delta < 0) {
         removeFromCart(productId);
         return;
     }
+
+    // Изменяем количество на minQty (а не на 1)
+    const newQuantity = item.quantity + (delta * minQty);
     
-    // Изменяем количество с шагом minQty
-    let newQuantity;
-    if (delta > 0) {
-        // Увеличиваем: округляем вверх до следующего кратного minQty
-        newQuantity = roundUpToStep(item.quantity + delta, minQty);
-    } else {
-        // Уменьшаем: округляем вниз до предыдущего кратного minQty
-        const decreasedQty = item.quantity + delta; // delta отрицательный
-        if (decreasedQty < minQty) {
-            // Если получилось меньше минимума, удаляем из корзины
-            removeFromCart(productId);
-            return;
-        }
-        newQuantity = roundDownToStep(decreasedQty, minQty);
-        // Если получилось меньше минимума, оставляем минимум
-        if (newQuantity < minQty) {
-            newQuantity = minQty;
-        }
+    if (newQuantity < minQty) {
+        // Если получилось меньше минимума, удаляем из корзины
+        removeFromCart(productId);
+        return;
     }
-    
+
     // Ограничиваем максимум 500
-    newQuantity = Math.min(500, newQuantity);
-    item.quantity = newQuantity;
-    
+    item.quantity = Math.min(500, newQuantity);
+
     updateCartUI();
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
@@ -1100,6 +1092,8 @@ function updateCartUI() {
             if (item.quantity < minQty) {
                 item.quantity = minQty;
             }
+            // Вычисляем количество "банчей" (сколько раз добавлен мин заказ)
+            const bunchesCount = Math.floor(item.quantity / minQty);
             const totalPrice = item.price * item.quantity;
             
             return `
@@ -1110,7 +1104,7 @@ function updateCartUI() {
                     ${minQty > 1 ? `<div class="cart-item-new-min-qty">${minQty} шт</div>` : ''}
                     <div class="cart-item-new-quantity-controls">
                         <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, -1)">−</button>
-                        <span class="cart-quantity-value">${item.quantity}</span>
+                        <span class="cart-quantity-value">${bunchesCount}</span>
                         <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, 1)">+</button>
                     </div>
                 </div>
