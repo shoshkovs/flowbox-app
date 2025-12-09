@@ -1592,12 +1592,40 @@ function switchTab(tabId) {
 }
 
 // Обработчики навигации
-navItems.forEach(item => {
-    item.addEventListener('click', () => {
-        const tabId = item.dataset.tab;
-        switchTab(tabId);
+// Инициализация навигации с делегированием событий (обработчики не теряются)
+function initNavigation() {
+    // Используем делегирование событий для навигации
+    // Это гарантирует, что обработчики работают даже после пересоздания DOM
+    document.addEventListener('click', (e) => {
+        const navItem = e.target.closest('.nav-item');
+        if (navItem && navItem.dataset.tab) {
+            const tabId = navItem.dataset.tab;
+            console.log('[navigation] Клик по навигации:', tabId);
+            switchTab(tabId);
+        }
     });
-});
+    
+    // Также устанавливаем обработчики напрямую на элементы (для обратной совместимости)
+    navItems.forEach(item => {
+        // Удаляем старые обработчики через клон
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        
+        // Добавляем новый обработчик
+        newItem.addEventListener('click', () => {
+            const tabId = newItem.dataset.tab;
+            console.log('[navigation] Прямой клик по навигации:', tabId);
+            switchTab(tabId);
+        });
+    });
+    
+    // Обновляем ссылку на navItems после клонирования
+    const updatedNavItems = document.querySelectorAll('.nav-item');
+    console.log('[navigation] Инициализирована навигация, элементов:', updatedNavItems.length);
+}
+
+// Инициализируем навигацию при загрузке
+initNavigation();
 
 // Оформление заказа
 checkoutBtnFinal.addEventListener('click', () => {
@@ -3134,7 +3162,13 @@ async function validateAndSubmitOrder(e) {
             
             // Показываем навигацию
             const bottomNav = document.querySelector('.bottom-nav');
-            if (bottomNav) bottomNav.style.display = 'flex';
+            if (bottomNav) {
+                bottomNav.style.display = 'flex';
+                // Переинициализируем навигацию после показа
+                setTimeout(() => {
+                    initNavigation();
+                }, 100);
+            }
             
             // Прокрутка в начало страницы
             window.scrollTo(0, 0);
@@ -3147,11 +3181,6 @@ async function validateAndSubmitOrder(e) {
                         menuTab.scrollIntoView({ behavior: 'auto', block: 'start' });
                     }
                 }, 100);
-            }
-            
-            // Показываем сообщение об успехе
-            if (tg && tg.showAlert) {
-                tg.showAlert('✅ Заказ успешно создан!');
             }
             
             // Сброс формы заказа (если она существует)
@@ -5201,10 +5230,8 @@ function goToStep(step) {
     
     // Если переходим на шаг 3, синхронизируем чекбокс "Оставить у двери"
     if (step === 3) {
-        const leaveAtDoorCheckbox = document.getElementById('leaveAtDoorCheckbox');
-        if (leaveAtDoorCheckbox) {
-            leaveAtDoorCheckbox.checked = !!checkoutData.leaveAtDoor;
-        }
+        // Переинициализируем чекбокс при переходе на шаг 3
+        initLeaveAtDoorCheckbox();
     }
     
     // Если переходим на шаг 4, обновляем отображение (включая комментарий и "Оставить у двери")
