@@ -3090,17 +3090,6 @@ addressForm.addEventListener('submit', (e) => {
     let hasErrors = false;
     let firstErrorField = null;
     
-    // Валидация наименования
-    if (!name) {
-        if (addressNameField) {
-            validateField(addressNameField, false);
-            if (!firstErrorField) firstErrorField = addressNameField;
-        }
-        hasErrors = true;
-    } else {
-        if (addressNameField) validateField(addressNameField, true);
-    }
-    
     // Валидация города (улучшенная логика)
     if (!city) {
         // Если поле пустое - показываем только красную рамку, без сообщения об ошибке города
