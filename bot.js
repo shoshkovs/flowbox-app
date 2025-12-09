@@ -6820,38 +6820,55 @@ bot.on('message', async (ctx) => {
       // Сохраняем связь шапки с пользователем
       await saveSupportMessage(headerMessage.message_id, userId);
       
-      // Копируем само сообщение пользователя в чат поддержки
+      // Отправляем само сообщение пользователя в чат поддержки
       let forwardedMessage = null;
       try {
-        forwardedMessage = await bot.telegram.copyMessage(
-          SUPPORT_CHAT_ID,
-          userId,
-          ctx.message.message_id
-        );
+        // Для текстовых сообщений используем sendMessage
+        if (ctx.message.text) {
+          forwardedMessage = await bot.telegram.sendMessage(
+            SUPPORT_CHAT_ID,
+            `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
+            { parse_mode: 'HTML' }
+          );
+        } 
+        // Для медиа пытаемся скопировать
+        else if (ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.voice) {
+          try {
+            forwardedMessage = await bot.telegram.copyMessage(
+              SUPPORT_CHAT_ID,
+              userId,
+              ctx.message.message_id
+            );
+          } catch (copyError) {
+            // Если не удалось скопировать, отправляем текстовое описание
+            console.error('Ошибка копирования медиа:', copyError);
+            const mediaType = ctx.message.photo ? '📷 Фото' :
+                             ctx.message.document ? '📎 Документ' :
+                             ctx.message.video ? '🎥 Видео' :
+                             ctx.message.voice ? '🎤 Голосовое сообщение' : 'Медиа-файл';
+            
+            forwardedMessage = await bot.telegram.sendMessage(
+              SUPPORT_CHAT_ID,
+              `📨 <b>Сообщение:</b>\n${mediaType}${ctx.message.caption ? '\n\n' + ctx.message.caption : ''}`,
+              { parse_mode: 'HTML' }
+            );
+          }
+        } else {
+          // Неизвестный тип сообщения
+          forwardedMessage = await bot.telegram.sendMessage(
+            SUPPORT_CHAT_ID,
+            `📨 <b>Сообщение:</b>\n(тип сообщения не поддерживается)`,
+            { parse_mode: 'HTML' }
+          );
+        }
         
         // Сохраняем связь скопированного сообщения с пользователем
         if (forwardedMessage && forwardedMessage.message_id) {
           await saveSupportMessage(forwardedMessage.message_id, userId, ctx.message.message_id);
         }
-      } catch (copyError) {
-        // Если не удалось скопировать (например, медиа), отправляем текстовое описание
-        console.error('Ошибка копирования сообщения:', copyError);
-        const fallbackText = ctx.message.text || 
-                            (ctx.message.photo ? '📷 Фото' : '') ||
-                            (ctx.message.document ? '📎 Документ' : '') ||
-                            (ctx.message.video ? '🎥 Видео' : '') ||
-                            (ctx.message.voice ? '🎤 Голосовое сообщение' : '') ||
-                            'Медиа-файл';
-        
-        forwardedMessage = await bot.telegram.sendMessage(
-          SUPPORT_CHAT_ID,
-          `📨 <b>Сообщение:</b>\n${fallbackText}`,
-          { parse_mode: 'HTML' }
-        );
-        
-        if (forwardedMessage && forwardedMessage.message_id) {
-          await saveSupportMessage(forwardedMessage.message_id, userId, ctx.message.message_id);
-        }
+      } catch (sendError) {
+        console.error('Ошибка отправки сообщения в чат поддержки:', sendError);
+        throw sendError; // Пробрасываем ошибку дальше, чтобы показать пользователю
       }
       
       // Подтверждаем пользователю
