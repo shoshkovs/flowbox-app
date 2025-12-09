@@ -755,7 +755,7 @@ if (process.env.DATABASE_URL) {
                 try {
                   await client.query(`
                     ALTER TABLE support_topics
-                    ADD COLUMN message_thread_id INTEGER
+                    ADD COLUMN IF NOT EXISTS message_thread_id INTEGER
                   `);
                   
                   await client.query(`
@@ -775,7 +775,7 @@ if (process.env.DATABASE_URL) {
                 try {
                   await client.query(`
                     ALTER TABLE support_topics
-                    ADD COLUMN topic_name TEXT
+                    ADD COLUMN IF NOT EXISTS topic_name TEXT
                   `);
                   
                   console.log('✅ Колонка topic_name добавлена');
@@ -789,7 +789,7 @@ if (process.env.DATABASE_URL) {
                 try {
                   await client.query(`
                     ALTER TABLE support_topics
-                    ADD COLUMN updated_at TIMESTAMPTZ DEFAULT now()
+                    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()
                   `);
                   
                   console.log('✅ Колонка updated_at добавлена');
@@ -824,10 +824,10 @@ if (process.env.DATABASE_URL) {
             
             if (columnCheck.rows.length === 0) {
               console.log('🔄 Добавляем поле leave_at_door в таблицу orders...');
-              await client.query(`
-                ALTER TABLE orders
-                ADD COLUMN leave_at_door BOOLEAN NOT NULL DEFAULT FALSE
-              `);
+          await client.query(`
+            ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS leave_at_door BOOLEAN NOT NULL DEFAULT FALSE
+          `);
               console.log('✅ Поле leave_at_door добавлено в таблицу orders');
             }
           } catch (migrationError) {
@@ -1777,7 +1777,8 @@ async function createOrderInDb(orderData) {
       const clientEmail = orderData.email || userData?.email || null;
       
       // Комментарий пользователя (особые пожелания к заказу)
-      const userComment = orderData.userComment || orderData.comment || null;
+      // Комментарий пользователя - проверяем все возможные варианты имен полей
+      const userComment = orderData.userComment || orderData.comment || orderData.orderComment || null;
       
       // Комментарий для курьера (из поля адреса)
       const courierComment = orderData.courierComment || null;
@@ -1797,8 +1798,8 @@ async function createOrderInDb(orderData) {
       // Итоговая сумма заказа
       const finalTotal = orderData.flowersTotal + (orderData.serviceFee || 450) + (orderData.deliveryPrice || 0);
       
-      // Получаем значение leave_at_door из orderData
-      const leaveAtDoor = orderData.leaveAtDoor || false;
+      // Получаем значение leave_at_door из orderData (явное приведение к boolean)
+      const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
       // Создаем заказ
       const orderResult = await client.query(
@@ -6812,7 +6813,18 @@ const setupReplyKeyboard = () => {
 
 // ID чата поддержки (должен быть форум-чатом с включенными Topics)
 // Получить ID: добавь бота в группу, отправь любое сообщение, в логах будет ctx.chat.id
-const SUPPORT_CHAT_ID = process.env.SUPPORT_CHAT_ID ? parseInt(process.env.SUPPORT_CHAT_ID) : null;
+// Валидация и приведение SUPPORT_CHAT_ID к числу
+const SUPPORT_CHAT_ID_RAW = process.env.SUPPORT_CHAT_ID;
+const SUPPORT_CHAT_ID = SUPPORT_CHAT_ID_RAW ? Number(String(SUPPORT_CHAT_ID_RAW).trim()) : null;
+
+if (SUPPORT_CHAT_ID_RAW) {
+  console.log(`🔍 SUPPORT_CHAT_ID (raw): "${SUPPORT_CHAT_ID_RAW}" (type: ${typeof SUPPORT_CHAT_ID_RAW})`);
+  console.log(`🔍 SUPPORT_CHAT_ID (parsed): ${SUPPORT_CHAT_ID} (type: ${typeof SUPPORT_CHAT_ID})`);
+  
+  if (isNaN(SUPPORT_CHAT_ID)) {
+    console.error('❌ SUPPORT_CHAT_ID не является валидным числом!');
+  }
+}
 
 if (SUPPORT_CHAT_ID) {
   console.log(`✅ Чат поддержки настроен: ${SUPPORT_CHAT_ID}`);
@@ -6868,12 +6880,17 @@ async function getOrCreateSupportTopic(userId, userName, username) {
       console.log(`[support] Создаем новый топик для пользователя ${userId}`);
       const topicName = `Тикет ${userId} (${username || userName || 'Пользователь'})`;
       
+      if (!SUPPORT_CHAT_ID || isNaN(SUPPORT_CHAT_ID)) {
+        throw new Error(`SUPPORT_CHAT_ID не валиден: ${SUPPORT_CHAT_ID}`);
+      }
+      
       const topic = await bot.telegram.callApi('createForumTopic', {
         chat_id: SUPPORT_CHAT_ID,
         name: topicName
       });
       
       const messageThreadId = topic.message_thread_id;
+      console.log(`[support] ✅ Создан топик ${messageThreadId} для пользователя ${userId}`);
       
       // Сохраняем топик в БД
       // Проверяем, какие колонки доступны
@@ -6886,96 +6903,96 @@ async function getOrCreateSupportTopic(userId, userName, username) {
       const hasTopicNameColumn = availableColumnsSave.includes('topic_name');
       const hasUpdatedAtColumn = availableColumnsSave.includes('updated_at');
       
-      // Формируем SQL запрос в зависимости от доступных колонок
-      if (hasTopicNameColumn && hasUpdatedAtColumn) {
-        // Все колонки доступны
-        await client.query(
-          `INSERT INTO support_topics (user_id, message_thread_id, topic_name, updated_at)
-           VALUES ($1::bigint, $2::integer, $3::text, now())
-           ON CONFLICT (user_id) DO UPDATE SET
-             message_thread_id = EXCLUDED.message_thread_id,
-             topic_name = EXCLUDED.topic_name,
-             updated_at = now()
-           ON CONFLICT (message_thread_id) DO UPDATE SET
-             user_id = EXCLUDED.user_id,
-             topic_name = EXCLUDED.topic_name,
-             updated_at = now()`,
-          [userId, messageThreadId, topicName]
-        );
-      } else if (hasUpdatedAtColumn) {
-        // Без topic_name, но с updated_at
-        await client.query(
-          `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
-           VALUES ($1::bigint, $2::integer, now())
-           ON CONFLICT (user_id) DO UPDATE SET
-             message_thread_id = EXCLUDED.message_thread_id,
-             updated_at = now()
-           ON CONFLICT (message_thread_id) DO UPDATE SET
-             user_id = EXCLUDED.user_id,
-             updated_at = now()`,
-          [userId, messageThreadId]
-        );
-      } else if (hasTopicNameColumn) {
-        // С topic_name, но без updated_at
-        await client.query(
-          `INSERT INTO support_topics (user_id, message_thread_id, topic_name)
-           VALUES ($1::bigint, $2::integer, $3::text)
-           ON CONFLICT (user_id) DO UPDATE SET
-             message_thread_id = EXCLUDED.message_thread_id,
-             topic_name = EXCLUDED.topic_name
-           ON CONFLICT (message_thread_id) DO UPDATE SET
-             user_id = EXCLUDED.user_id,
-             topic_name = EXCLUDED.topic_name`,
-          [userId, messageThreadId, topicName]
-        );
-      } else {
-        // Минимальный вариант - только user_id и message_thread_id
-        await client.query(
-          `INSERT INTO support_topics (user_id, message_thread_id)
-           VALUES ($1::bigint, $2::integer)
-           ON CONFLICT (user_id) DO UPDATE SET
-             message_thread_id = EXCLUDED.message_thread_id
-           ON CONFLICT (message_thread_id) DO UPDATE SET
-             user_id = EXCLUDED.user_id`,
-          [userId, messageThreadId]
-        );
+      // Сохраняем связь в БД
+      // ВАЖНО: PostgreSQL не поддерживает два ON CONFLICT в одном INSERT
+      // Используем стратегию: сначала пытаемся INSERT с ON CONFLICT по user_id,
+      // затем отдельным UPDATE обрабатываем конфликт по message_thread_id
+      
+      // Пытаемся вставить/обновить по user_id
+      try {
+        if (hasTopicNameColumn && hasUpdatedAtColumn) {
+          await client.query(
+            `INSERT INTO support_topics (user_id, message_thread_id, topic_name, updated_at)
+             VALUES ($1::bigint, $2::integer, $3::text, now())
+             ON CONFLICT (user_id) DO UPDATE SET
+               message_thread_id = EXCLUDED.message_thread_id,
+               topic_name = EXCLUDED.topic_name,
+               updated_at = now()`,
+            [userId, messageThreadId, topicName]
+          );
+        } else if (hasUpdatedAtColumn) {
+          await client.query(
+            `INSERT INTO support_topics (user_id, message_thread_id, updated_at)
+             VALUES ($1::bigint, $2::integer, now())
+             ON CONFLICT (user_id) DO UPDATE SET
+               message_thread_id = EXCLUDED.message_thread_id,
+               updated_at = now()`,
+            [userId, messageThreadId]
+          );
+        } else if (hasTopicNameColumn) {
+          await client.query(
+            `INSERT INTO support_topics (user_id, message_thread_id, topic_name)
+             VALUES ($1::bigint, $2::integer, $3::text)
+             ON CONFLICT (user_id) DO UPDATE SET
+               message_thread_id = EXCLUDED.message_thread_id,
+               topic_name = EXCLUDED.topic_name`,
+            [userId, messageThreadId, topicName]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO support_topics (user_id, message_thread_id)
+             VALUES ($1::bigint, $2::integer)
+             ON CONFLICT (user_id) DO UPDATE SET
+               message_thread_id = EXCLUDED.message_thread_id`,
+            [userId, messageThreadId]
+          );
+        }
+      } catch (insertError) {
+        // Если конфликт по user_id обработан, продолжаем
+        console.log('[support] Примечание при INSERT:', insertError.message);
       }
       
-      // Дополнительно: обновляем связь по message_thread_id на случай, если топик уже существовал
+      // Отдельно обрабатываем случай, когда message_thread_id уже существует (конфликт по другому UNIQUE)
+      // Это может быть, если топик был создан ранее, но без связи с user_id
       try {
         if (hasTopicNameColumn && hasUpdatedAtColumn) {
           await client.query(
             `UPDATE support_topics 
              SET user_id = $1::bigint, topic_name = $3::text, updated_at = now()
-             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+             WHERE message_thread_id = $2::integer 
+               AND (user_id IS NULL OR user_id != $1::bigint)`,
             [userId, messageThreadId, topicName]
           );
         } else if (hasUpdatedAtColumn) {
           await client.query(
             `UPDATE support_topics 
              SET user_id = $1::bigint, updated_at = now()
-             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+             WHERE message_thread_id = $2::integer 
+               AND (user_id IS NULL OR user_id != $1::bigint)`,
             [userId, messageThreadId]
           );
         } else if (hasTopicNameColumn) {
           await client.query(
             `UPDATE support_topics 
              SET user_id = $1::bigint, topic_name = $3::text
-             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+             WHERE message_thread_id = $2::integer 
+               AND (user_id IS NULL OR user_id != $1::bigint)`,
             [userId, messageThreadId, topicName]
           );
         } else {
           await client.query(
             `UPDATE support_topics 
              SET user_id = $1::bigint
-             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+             WHERE message_thread_id = $2::integer 
+               AND (user_id IS NULL OR user_id != $1::bigint)`,
             [userId, messageThreadId]
           );
         }
       } catch (updateError) {
-        // Игнорируем ошибки обновления, так как INSERT уже должен был обработать это
-        console.log('[support] Примечание: не удалось обновить связь топика:', updateError.message);
+        // Игнорируем ошибки обновления
+        console.log('[support] Примечание при UPDATE:', updateError.message);
       }
+      
       
       console.log(`[support] ✅ Топик создан: ${messageThreadId} для пользователя ${userId}`);
       return messageThreadId;
@@ -7279,14 +7296,21 @@ bot.on('message', async (ctx) => {
     }
     
     try {
-      console.log(`[support] Обработка ответа менеджера в топике ${messageThreadId}`);
+      console.log(`[support] 📨 Обработка ответа менеджера в топике ${messageThreadId}`);
       
       // Получаем userId по message_thread_id из БД
-      let userId = await getUserIdByThreadId(messageThreadId);
-      
-      console.log(`[support] Поиск userId для топика ${messageThreadId}, найден:`, userId);
+      const userId = await getUserIdByThreadId(messageThreadId);
       
       if (!userId) {
+        console.log(`[support] ⚠️ Не удалось определить пользователя для топика ${messageThreadId}`);
+        await ctx.reply('⚠️ Не удалось определить пользователя для этого топика. Нет записи в support_topics.', {
+          reply_to_message_id: ctx.message.message_id
+        });
+        return;
+      }
+      
+      console.log(`[support] ✅ Отправляем ответ пользователю ${userId}`);
+      await sendManagerReplyToUser(ctx, userId);
         // Пытаемся найти userId в тексте первого сообщения топика (fallback)
         // Также проверяем текст самого сообщения менеджера
         const replyText = ctx.message.reply_to_message?.text || ctx.message.reply_to_message?.caption || ctx.message.text || '';

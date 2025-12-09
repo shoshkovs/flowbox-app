@@ -919,14 +919,16 @@ async function saveUserData() {
         
         // Фильтруем адреса - убираем адреса без ID перед отправкой
         // Адреса без ID могут создавать дубликаты
+        // ОТПРАВЛЯЕМ ВСЕ АДРЕСА на сервер (включая без ID)
+        // Фильтрация мусора происходит на бэкенде
+        // Адреса без ID будут созданы как новые (INSERT), с ID - обновлены (UPDATE)
         const addressesToSave = savedAddresses.filter(addr => {
-            // Оставляем только адреса с валидным ID
-            if (addr.id && typeof addr.id === 'number' && addr.id > 0) {
-                return true;
+            // Фильтруем только полностью пустые/невалидные адреса
+            if (!addr || (!addr.city && !addr.street && !addr.house)) {
+                console.warn('[saveUserData] ⚠️ Пропущен невалидный адрес:', addr);
+                return false;
             }
-            // Логируем пропущенные адреса без ID
-            console.warn('[saveUserData] ⚠️ Пропущен адрес без ID:', addr);
-            return false;
+            return true;
         });
         
         const response = await fetch('/api/user-data', {
@@ -2424,7 +2426,7 @@ async function validateAndSubmitOrder(e) {
     const selectedTimeSlot = document.querySelector('.time-slot-btn.active');
     const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : null;
     // Используем значение из checkoutData (синхронизирован с чекбоксом на шаге 3)
-    const leaveAtDoor = checkoutData.leaveAtDoor || false;
+    const leaveAtDoor = !!checkoutData.leaveAtDoor;
     
     console.log('[validateAndSubmitOrder] 📝 Проверка полей:');
     console.log('[validateAndSubmitOrder]   - name:', name);
@@ -2775,8 +2777,10 @@ async function validateAndSubmitOrder(e) {
         deliveryDate: deliveryDate,
         deliveryTime: deliveryTime,
         comment: comment, // Особые пожелания к заказу (user_comment)
-        userComment: comment, // Дублируем для совместимости с сервером
-        leaveAtDoor: leaveAtDoor, // Оставить у двери
+        comment: comment, // Комментарий пользователя (для обратной совместимости)
+        userComment: comment, // Комментарий пользователя (новое имя поля)
+        orderComment: comment, // Дублируем для полной совместимости
+        leaveAtDoor: leaveAtDoor, // Оставить у двери (boolean)
         courierComment: addressData?.comment || null, // Комментарий для курьера (courier_comment)
         userId: tg.initDataUnsafe?.user?.id || null,
         username: tg.initDataUnsafe?.user?.username || null,
@@ -4886,17 +4890,8 @@ function initCheckoutSteps() {
     }
     
     // Синхронизация чекбокса "Оставить у двери"
-    const leaveAtDoorCheckbox = document.getElementById('leaveAtDoorCheckbox');
-    if (leaveAtDoorCheckbox) {
-        // Заполняем чекбокс из checkoutData при загрузке
-        leaveAtDoorCheckbox.checked = checkoutData.leaveAtDoor || false;
-        
-        // Обновляем checkoutData при изменении
-        leaveAtDoorCheckbox.addEventListener('change', () => {
-            checkoutData.leaveAtDoor = leaveAtDoorCheckbox.checked;
-            renderCheckoutSummary(); // Обновляем отображение на шаге 4
-        });
-    }
+    // Инициализация чекбокса "Оставить у двери" вынесена в отдельную функцию
+    initLeaveAtDoorCheckbox();
     
     // Обработчик кнопки "Назад" удален - используем только BackButton от Telegram
     
@@ -5046,7 +5041,7 @@ function goToStep(step) {
     if (step === 3) {
         const leaveAtDoorCheckbox = document.getElementById('leaveAtDoorCheckbox');
         if (leaveAtDoorCheckbox) {
-            leaveAtDoorCheckbox.checked = checkoutData.leaveAtDoor || false;
+            leaveAtDoorCheckbox.checked = !!checkoutData.leaveAtDoor;
         }
     }
     
