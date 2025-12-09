@@ -5675,8 +5675,14 @@ function toggleAddressMenu(addressId) {
 
 // Выбор адреса из списка "Мои адреса"
 function selectAddressFromMyAddresses(addressId) {
-    const addr = savedAddresses.find(a => String(a.id) === String(addressId));
-    if (!addr) return;
+    // Ищем адрес только среди адресов с валидным ID
+    const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+    const addr = validAddresses.find(a => String(a.id) === String(addressId));
+    
+    if (!addr) {
+        console.error('[selectAddressFromMyAddresses] ❌ Адрес с ID', addressId, 'не найден');
+        return;
+    }
     
     // Парсим адрес
     let streetValue = addr.street || '';
@@ -5698,6 +5704,8 @@ function selectAddressFromMyAddresses(addressId) {
         comment: addr.comment || ''
     };
     
+    console.log('[selectAddressFromMyAddresses] ✅ Выбран адрес с ID:', addr.id, checkoutData.address);
+    
     // Закрываем вкладку со списком адресов
     const myAddressesTab = document.getElementById('myAddressesTab');
     if (myAddressesTab) {
@@ -5716,8 +5724,14 @@ function selectAddressFromMyAddresses(addressId) {
 
 // Редактирование адреса из списка "Мои адреса"
 function editAddressFromMyAddresses(addressId) {
-    const addr = savedAddresses.find(a => String(a.id) === String(addressId));
-    if (!addr) return;
+    // Ищем адрес только среди адресов с валидным ID
+    const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+    const addr = validAddresses.find(a => String(a.id) === String(addressId));
+    
+    if (!addr) {
+        console.error('[editAddressFromMyAddresses] ❌ Адрес с ID', addressId, 'не найден');
+        return;
+    }
     
     // Закрываем меню
     const menu = document.getElementById(`addressMenu${addressId}`);
@@ -5776,10 +5790,21 @@ function openEditAddressPageFromList(address) {
     const intercomField = document.getElementById('editAddressIntercom');
     const commentField = document.getElementById('editAddressComment');
     
-    if (!editAddressTab || !cityField || !streetField || !address) return;
+    if (!editAddressTab || !cityField || !streetField || !address) {
+        console.error('[openEditAddressPageFromList] ❌ Не найдены необходимые элементы или адрес');
+        return;
+    }
     
     // Сохраняем ID редактируемого адреса для последующего обновления
-    editAddressTab.dataset.editingAddressId = address.id;
+    // Используем ID из адреса, если он есть
+    const addressId = address.id || null;
+    if (addressId) {
+        editAddressTab.dataset.editingAddressId = addressId;
+        console.log('[openEditAddressPageFromList] ✅ Редактирование адреса с ID:', addressId);
+    } else {
+        console.warn('[openEditAddressPageFromList] ⚠️ Адрес без ID, будет создан новый');
+        delete editAddressTab.dataset.editingAddressId;
+    }
     
     // Парсим адрес из разных форматов
     let addrData = {};

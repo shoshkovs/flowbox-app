@@ -6877,6 +6877,10 @@ async function getOrCreateSupportTopic(userId, userName, username) {
            ON CONFLICT (user_id) DO UPDATE SET
              message_thread_id = EXCLUDED.message_thread_id,
              topic_name = EXCLUDED.topic_name,
+             updated_at = now()
+           ON CONFLICT (message_thread_id) DO UPDATE SET
+             user_id = EXCLUDED.user_id,
+             topic_name = EXCLUDED.topic_name,
              updated_at = now()`,
           [userId, messageThreadId, topicName]
         );
@@ -6886,9 +6890,35 @@ async function getOrCreateSupportTopic(userId, userName, username) {
            VALUES ($1::bigint, $2::integer, now())
            ON CONFLICT (user_id) DO UPDATE SET
              message_thread_id = EXCLUDED.message_thread_id,
+             updated_at = now()
+           ON CONFLICT (message_thread_id) DO UPDATE SET
+             user_id = EXCLUDED.user_id,
              updated_at = now()`,
           [userId, messageThreadId]
         );
+      }
+      
+      // Дополнительно: обновляем связь по message_thread_id на случай, если топик уже существовал
+      // Это важно для случаев, когда топик был создан ранее, но связь не сохранилась
+      try {
+        if (hasTopicNameColumn) {
+          await client.query(
+            `UPDATE support_topics 
+             SET user_id = $1::bigint, topic_name = $3::text, updated_at = now()
+             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+            [userId, messageThreadId, topicName]
+          );
+        } else {
+          await client.query(
+            `UPDATE support_topics 
+             SET user_id = $1::bigint, updated_at = now()
+             WHERE message_thread_id = $2::integer AND (user_id IS NULL OR user_id != $1::bigint)`,
+            [userId, messageThreadId]
+          );
+        }
+      } catch (updateError) {
+        // Игнорируем ошибки обновления, так как INSERT уже должен был обработать это
+        console.log('[support] Примечание: не удалось обновить связь топика:', updateError.message);
       }
       
       console.log(`[support] ✅ Топик создан: ${messageThreadId} для пользователя ${userId}`);
@@ -7103,7 +7133,7 @@ bot.on('message', async (ctx) => {
         ].filter(Boolean).join('\n');
         
         // Отправляем шапку в топик
-        await bot.telegram.sendMessage(
+        const headerMessage = await bot.telegram.sendMessage(
           SUPPORT_CHAT_ID,
           header,
           {
@@ -7111,6 +7141,8 @@ bot.on('message', async (ctx) => {
             message_thread_id: messageThreadId
           }
         );
+        
+        console.log(`[support] ✅ Шапка отправлена в топик ${messageThreadId}, message_id: ${headerMessage.message_id}`);
       }
       
       // Отправляем само сообщение пользователя в топик
@@ -7194,18 +7226,22 @@ bot.on('message', async (ctx) => {
       console.log(`[support] Обработка ответа менеджера в топике ${messageThreadId}`);
       
       // Получаем userId по message_thread_id из БД
-      const userId = await getUserIdByThreadId(messageThreadId);
+      let userId = await getUserIdByThreadId(messageThreadId);
+      
+      console.log(`[support] Поиск userId для топика ${messageThreadId}, найден:`, userId);
       
       if (!userId) {
         // Пытаемся найти userId в тексте первого сообщения топика (fallback)
+        // Также проверяем текст самого сообщения менеджера
         const replyText = ctx.message.reply_to_message?.text || ctx.message.reply_to_message?.caption || ctx.message.text || '';
-        console.log(`[support] userId не найден в БД, ищем в тексте:`, replyText.substring(0, 100));
+        console.log(`[support] userId не найден в БД, ищем в тексте:`, replyText.substring(0, 200));
         
-        const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)/);
+        // Ищем ID в разных форматах: <code>ID</code>, ID: число, Тикет ID
+        const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)|Тикет\s+(\d+)/i);
         if (userIdMatch) {
-          const foundUserId = parseInt(userIdMatch[1] || userIdMatch[2]);
+          const foundUserId = parseInt(userIdMatch[1] || userIdMatch[2] || userIdMatch[3]);
           if (foundUserId) {
-            console.log(`[support] Найден userId в тексте: ${foundUserId}`);
+            console.log(`[support] ✅ Найден userId в тексте: ${foundUserId}`);
             // Сохраняем связь топика с пользователем
             if (pool) {
               try {
