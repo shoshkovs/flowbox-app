@@ -1835,6 +1835,8 @@ function initOrderForm() {
         currentCalendarDate = new Date(today);
         deliveryDateInput.value = toInputValue(initialDate);
         
+        // Удаляем вызов updateDeliveryLabel, так как поле убрано
+        
         // Функция отрисовки календаря
         function renderCalendar(date) {
             console.log('[renderCalendar] Отрисовка календаря для даты:', date);
@@ -2055,9 +2057,9 @@ function initOrderForm() {
                 const date = new Date(dateValue);
                 if (!isNaN(date.getTime())) {
                     selectedDate = date;
-                    currentCalendarDate = new Date(date);
+                    // Календарь открывается на текущем месяце, но выделяет выбранную дату
+                    currentCalendarDate = new Date(today);
                     deliveryDateInput.value = toInputValue(date);
-                    updateDeliveryLabel(date);
                     calendarRenderFunction(currentCalendarDate);
                 }
             }
