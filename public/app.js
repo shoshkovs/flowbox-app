@@ -1804,7 +1804,7 @@ function initOrderForm() {
         updateDeliveryLabel(initialDate);
         
         // Функция отрисовки календаря
-        calendarRenderFunction = function renderCalendar(date) {
+        function renderCalendar(date) {
             const year = date.getFullYear();
             const month = date.getMonth();
             
@@ -1904,6 +1904,9 @@ function initOrderForm() {
             }
         }
         
+        // Сохраняем ссылку на функцию для использования извне
+        calendarRenderFunction = renderCalendar;
+        
         // Навигация по месяцам
         const prevBtn = document.getElementById('calendarPrevMonth');
         const nextBtn = document.getElementById('calendarNextMonth');
@@ -1913,7 +1916,7 @@ function initOrderForm() {
                 const newDate = new Date(currentCalendarDate);
                 newDate.setMonth(newDate.getMonth() - 1);
                 currentCalendarDate = newDate;
-                calendarRenderFunction(newDate);
+                renderCalendar(newDate);
                 
                 if (tg && tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('light');
@@ -1926,7 +1929,7 @@ function initOrderForm() {
                 const newDate = new Date(currentCalendarDate);
                 newDate.setMonth(newDate.getMonth() + 1);
                 currentCalendarDate = newDate;
-                calendarRenderFunction(newDate);
+                renderCalendar(newDate);
                 
                 if (tg && tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('light');
