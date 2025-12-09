@@ -699,8 +699,56 @@ if (process.env.DATABASE_URL) {
       } catch (error) {
         // Игнорируем ошибки при миграции
       }
-    }, 7000); // Ждем 7 секунд после подключения
-  }); // Закрываем первый setTimeout
+      }, 7000); // Ждем 7 секунд после подключения
+      
+      // Миграция: создание таблицы support_messages для системы поддержки
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            const tableCheck = await client.query(`
+              SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'support_messages'
+              )
+            `);
+            
+            if (!tableCheck.rows[0].exists) {
+              console.log('🔄 Создаем таблицу support_messages...');
+              await client.query(`
+                CREATE TABLE support_messages (
+                  id SERIAL PRIMARY KEY,
+                  support_msg_id BIGINT NOT NULL,
+                  user_id BIGINT NOT NULL,
+                  user_msg_id BIGINT,
+                  manager_id BIGINT,
+                  manager_msg_id BIGINT,
+                  created_at TIMESTAMPTZ DEFAULT now(),
+                  UNIQUE(support_msg_id)
+                )
+              `);
+              
+              // Индексы для быстрого поиска
+              await client.query(`
+                CREATE INDEX idx_support_messages_user_id ON support_messages(user_id);
+                CREATE INDEX idx_support_messages_support_msg_id ON support_messages(support_msg_id);
+              `);
+              
+              console.log('✅ Таблица support_messages создана');
+            }
+          } catch (migrationError) {
+            if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
+              console.log('⚠️  Миграция support_messages:', migrationError.message);
+            }
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      }, 8000);
+    }); // Закрываем первый setTimeout
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
   console.log('💡 Для использования БД добавь переменную DATABASE_URL в Environment Render.com');
@@ -6615,11 +6663,21 @@ const setupReplyKeyboard = () => {
   return keyboard;
 };
 
-// Хранилище активных сессий поддержки: userId -> { adminChatId, startTime }
-const supportSessions = new Map();
+// ID чата поддержки (группа или супергруппа для менеджеров)
+// Получить ID: добавь бота в группу, отправь любое сообщение, в логах будет ctx.chat.id
+const SUPPORT_CHAT_ID = process.env.SUPPORT_CHAT_ID ? parseInt(process.env.SUPPORT_CHAT_ID) : null;
 
-// Хранилище связи сообщений: messageId менеджера -> userId пользователя
-const messageToUserMap = new Map();
+if (SUPPORT_CHAT_ID) {
+  console.log(`✅ Чат поддержки настроен: ${SUPPORT_CHAT_ID}`);
+} else {
+  console.log('⚠️  SUPPORT_CHAT_ID не установлен. Система поддержки будет недоступна.');
+  console.log('💡 Для настройки:');
+  console.log('   1. Создай группу/супергруппу в Telegram');
+  console.log('   2. Добавь туда бота и дай ему права администратора');
+  console.log('   3. Отправь любое сообщение в группу');
+  console.log('   4. В логах найди chat.id (будет отрицательное число)');
+  console.log('   5. Добавь SUPPORT_CHAT_ID=<chat_id> в переменные окружения');
+}
 
 bot.command('start', async (ctx) => {
   const webAppUrl = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
@@ -6627,7 +6685,7 @@ bot.command('start', async (ctx) => {
   
   // Если передан параметр support, вызываем поддержку
   if (startParam === 'support') {
-    await handleSupportRequest(ctx, 'кнопку "Поддержка" в MiniApp');
+    await handleSupportRequest(ctx);
     return;
   }
   
@@ -6664,180 +6722,234 @@ bot.command('start', async (ctx) => {
   );
 });
 
-// Общая функция для обработки запросов поддержки
-const handleSupportRequest = async (ctx, source = 'команда /support') => {
-  const userId = ctx.from.id;
+// Обработка запроса поддержки - просто сообщаем пользователю, что он может писать
+const handleSupportRequest = async (ctx) => {
   const userName = ctx.from.first_name || 'Пользователь';
-  const username = ctx.from.username ? `@${ctx.from.username}` : 'не указан';
   
-  // Получаем информацию о пользователе из БД, если есть
-  let userInfo = '';
-  if (pool) {
-    try {
-      const client = await pool.connect();
-      try {
-        // Приводим userId к числу для работы с BIGINT
-        const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
-        
-        const userResult = await client.query(
-          'SELECT id, phone, email FROM users WHERE telegram_id = $1::bigint',
-          [!isNaN(userIdNum) ? userIdNum : userId]
-        );
-        
-        if (userResult.rows.length > 0) {
-          const user = userResult.rows[0];
-          userInfo = `\n📱 Телефон: ${user.phone || 'не указан'}\n📧 Email: ${user.email || 'не указан'}`;
-        }
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      console.error('Ошибка получения данных пользователя для поддержки:', error);
-    }
-  }
-  
-  // Отправляем сообщение пользователю
   await ctx.reply(
     `👋 Здравствуйте, ${userName}!\n\n` +
-    `Вы подключены к службе поддержки. Напишите ваш вопрос, и менеджер ответит вам в ближайшее время.\n\n` +
-    `Ваши данные:\n` +
-    `👤 Имя: ${userName}\n` +
-    `🆔 Telegram ID: ${userId}\n` +
-    `📝 Username: ${username}${userInfo}\n\n` +
-    `💡 Все ваши сообщения будут пересылаться менеджеру. Для завершения сессии напишите /endsupport`,
+    `Напишите ваш вопрос одним или несколькими сообщениями. Мы ответим здесь же 💬\n\n` +
+    `💡 Просто отправьте ваше сообщение, и оно будет передано менеджеру.`,
     {
       reply_markup: setupReplyKeyboard()
     }
   );
-  
-  // Отправляем уведомление администратору (если указан ADMIN_CHAT_ID)
-  const adminChatId = process.env.ADMIN_CHAT_ID;
-  if (adminChatId && bot) {
-    try {
-      // Создаем активную сессию поддержки
-      supportSessions.set(userId, {
-        adminChatId: adminChatId,
-        startTime: new Date(),
-        userName: userName,
-        username: username
-      });
-      
-      await bot.telegram.sendMessage(
-        adminChatId,
-        `🔔 <b>Новый запрос в поддержку</b>\n\n` +
-        `👤 <b>Пользователь:</b> ${userName}\n` +
-        `🆔 <b>Telegram ID:</b> <code>${userId}</code>\n` +
-        `📝 <b>Username:</b> ${username}${userInfo}\n\n` +
-        `💬 <b>Источник:</b> ${source}\n\n` +
-        `✅ <b>Сессия поддержки активна</b>\n` +
-        `Все сообщения от этого пользователя будут пересылаться вам. Ответьте на это сообщение, чтобы написать пользователю.`,
-        {
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: '💬 Написать пользователю',
-                  url: `https://t.me/${ctx.from.username || `user${userId}`}`
-                },
-                {
-                  text: '❌ Завершить сессию',
-                  callback_data: `endsupport_${userId}`
-                }
-              ]
-            ]
-          }
-        }
-      );
-      console.log(`✅ Уведомление о запросе поддержки отправлено администратору (пользователь ${userId}), сессия активна`);
-    } catch (error) {
-      console.error('⚠️ Ошибка отправки уведомления администратору:', error.message);
-    }
-  } else {
-    console.log(`📞 Запрос в поддержку от пользователя ${userId} (${userName})`);
-  }
 };
 
 // Обработка команды /support
 bot.command('support', async (ctx) => {
-  await handleSupportRequest(ctx, 'команду /support');
+  await handleSupportRequest(ctx);
 });
 
 // Обработка нажатия на кнопку "Поддержка" из Reply Keyboard
 bot.hears('💬 Поддержка', async (ctx) => {
-  await handleSupportRequest(ctx, 'кнопку "Поддержка"');
+  await handleSupportRequest(ctx);
 });
 
-// Команда для завершения сессии поддержки
-bot.command('endsupport', async (ctx) => {
-  const userId = ctx.from.id;
+// Обработка личных сообщений от пользователей
+bot.on('message', async (ctx) => {
+  const chat = ctx.chat;
+  const from = ctx.from;
   
-  if (supportSessions.has(userId)) {
-    supportSessions.delete(userId);
-    await ctx.reply('✅ Сессия поддержки завершена. Если у вас возникнут вопросы, напишите /support', {
-      reply_markup: setupReplyKeyboard()
-    });
-    console.log(`✅ Сессия поддержки завершена пользователем ${userId}`);
-  } else {
-    await ctx.reply('ℹ️ У вас нет активной сессии поддержки.', {
-      reply_markup: setupReplyKeyboard()
-    });
+  // 1) Личный чат с пользователем - пересылаем в чат поддержки
+  if (chat.type === 'private') {
+    // Пропускаем команды
+    if (ctx.message.text && ctx.message.text.startsWith('/')) {
+      return;
+    }
+    
+    // Пропускаем сообщения без контента
+    if (!ctx.message.text && !ctx.message.photo && !ctx.message.document && !ctx.message.video && !ctx.message.voice) {
+      return;
+    }
+    
+    // Проверяем, что чат поддержки настроен
+    if (!SUPPORT_CHAT_ID) {
+      await ctx.reply('⚠️ Система поддержки временно недоступна. Попробуйте позже.');
+      return;
+    }
+    
+    try {
+      const userId = from.id;
+      const userName = from.first_name || 'Пользователь';
+      const lastName = from.last_name || '';
+      const username = from.username ? `@${from.username}` : '';
+      
+      // Получаем информацию о пользователе из БД
+      let userInfo = '';
+      if (pool) {
+        try {
+          const client = await pool.connect();
+          try {
+            const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
+            const userResult = await client.query(
+              'SELECT phone, email FROM users WHERE telegram_id = $1::bigint',
+              [!isNaN(userIdNum) ? userIdNum : userId]
+            );
+            
+            if (userResult.rows.length > 0) {
+              const user = userResult.rows[0];
+              if (user.phone) userInfo += `\n📱 Телефон: ${user.phone}`;
+              if (user.email) userInfo += `\n📧 Email: ${user.email}`;
+            }
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          console.error('Ошибка получения данных пользователя:', error);
+        }
+      }
+      
+      // Формируем шапку с информацией о пользователе
+      const header = [
+        `👤 <b>Новый запрос в поддержку</b>`,
+        ``,
+        `👤 <b>Имя:</b> ${userName}${lastName ? ' ' + lastName : ''}`,
+        `🆔 <b>ID:</b> <code>${userId}</code>`,
+        username ? `📝 <b>Username:</b> ${username}` : '',
+        userInfo
+      ].filter(Boolean).join('\n');
+      
+      // Отправляем шапку в чат поддержки
+      const headerMessage = await bot.telegram.sendMessage(
+        SUPPORT_CHAT_ID,
+        header,
+        { parse_mode: 'HTML' }
+      );
+      
+      // Сохраняем связь шапки с пользователем
+      await saveSupportMessage(headerMessage.message_id, userId);
+      
+      // Копируем само сообщение пользователя в чат поддержки
+      let forwardedMessage = null;
+      try {
+        forwardedMessage = await bot.telegram.copyMessage(
+          SUPPORT_CHAT_ID,
+          userId,
+          ctx.message.message_id
+        );
+        
+        // Сохраняем связь скопированного сообщения с пользователем
+        if (forwardedMessage && forwardedMessage.message_id) {
+          await saveSupportMessage(forwardedMessage.message_id, userId, ctx.message.message_id);
+        }
+      } catch (copyError) {
+        // Если не удалось скопировать (например, медиа), отправляем текстовое описание
+        console.error('Ошибка копирования сообщения:', copyError);
+        const fallbackText = ctx.message.text || 
+                            (ctx.message.photo ? '📷 Фото' : '') ||
+                            (ctx.message.document ? '📎 Документ' : '') ||
+                            (ctx.message.video ? '🎥 Видео' : '') ||
+                            (ctx.message.voice ? '🎤 Голосовое сообщение' : '') ||
+                            'Медиа-файл';
+        
+        forwardedMessage = await bot.telegram.sendMessage(
+          SUPPORT_CHAT_ID,
+          `📨 <b>Сообщение:</b>\n${fallbackText}`,
+          { parse_mode: 'HTML' }
+        );
+        
+        if (forwardedMessage && forwardedMessage.message_id) {
+          await saveSupportMessage(forwardedMessage.message_id, userId, ctx.message.message_id);
+        }
+      }
+      
+      // Подтверждаем пользователю
+      await ctx.reply('✅ Ваше сообщение передано в поддержку 🌸 Менеджер ответит здесь же.');
+      
+      console.log(`📤 Сообщение от пользователя ${userId} (${userName}) переслано в чат поддержки`);
+    } catch (error) {
+      console.error('⚠️ Ошибка пересылки сообщения в чат поддержки:', error);
+      await ctx.reply('⚠️ Произошла ошибка при отправке сообщения в поддержку. Попробуйте позже.');
+    }
+    return; // Не обрабатываем дальше
+  }
+  
+  // 2) Сообщение в чате поддержки - обрабатываем ответы менеджеров
+  if (chat.id === SUPPORT_CHAT_ID && ctx.message.reply_to_message) {
+    const replyMessageId = ctx.message.reply_to_message.message_id;
+    
+    // Получаем userId из БД
+    const userId = await getUserIdBySupportMessage(replyMessageId);
+    
+    if (!userId) {
+      // Пытаемся найти userId в тексте сообщения (fallback)
+      const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption || '';
+      const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)/);
+      if (userIdMatch) {
+        const foundUserId = parseInt(userIdMatch[1] || userIdMatch[2]);
+        if (foundUserId) {
+          // Сохраняем связь для будущего использования
+          await saveSupportMessage(replyMessageId, foundUserId);
+          await sendManagerReplyToUser(ctx, foundUserId);
+          return;
+        }
+      }
+      
+      console.log(`⚠️ Не удалось найти userId для сообщения ${replyMessageId} в чате поддержки`);
+      return;
+    }
+    
+    // Отправляем ответ пользователю
+    await sendManagerReplyToUser(ctx, userId);
   }
 });
 
-// Обработка текстовых сообщений от пользователей в режиме поддержки
-bot.on('text', async (ctx) => {
+// Функция отправки ответа менеджера пользователю
+async function sendManagerReplyToUser(ctx, userId) {
+  const messageText = ctx.message.text || ctx.message.caption || '';
+  
   // Пропускаем команды
-  if (ctx.message.text && ctx.message.text.startsWith('/')) {
+  if (messageText.startsWith('/')) {
     return;
   }
   
-  const userId = ctx.from.id;
-  const session = supportSessions.get(userId);
-  
-  // Если у пользователя активна сессия поддержки, пересылаем сообщение менеджеру
-  if (session) {
-    try {
-      const userName = ctx.from.first_name || 'Пользователь';
-      const username = ctx.from.username ? `@${ctx.from.username}` : 'не указан';
-      
-      const managerMessage = await bot.telegram.sendMessage(
-        session.adminChatId,
-        `💬 <b>Сообщение от пользователя</b>\n\n` +
-        `👤 <b>Имя:</b> ${userName}\n` +
-        `🆔 <b>ID:</b> <code>${userId}</code>\n` +
-        `📝 <b>Username:</b> ${username}\n\n` +
-        `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
-        {
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: '💬 Ответить',
-                  callback_data: `reply_${userId}`
-                },
-                {
-                  text: '❌ Завершить сессию',
-                  callback_data: `endsupport_${userId}`
-                }
-              ]
-            ]
-          }
-        }
-      );
-      
-      // Сохраняем связь между message_id сообщения менеджеру и userId пользователя
-      if (managerMessage && managerMessage.message_id) {
-        messageToUserMap.set(managerMessage.message_id, userId);
-        console.log(`📤 Сообщение от пользователя ${userId} переслано менеджеру (message_id: ${managerMessage.message_id})`);
-      }
-    } catch (error) {
-      console.error('⚠️ Ошибка пересылки сообщения менеджеру:', error.message);
-      await ctx.reply('⚠️ Произошла ошибка при отправке сообщения менеджеру. Попробуйте позже.');
-    }
+  if (!messageText && !ctx.message.photo && !ctx.message.document && !ctx.message.video && !ctx.message.voice) {
+    return;
   }
-});
+  
+  try {
+    // Если есть медиа, копируем его
+    if (ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.voice) {
+      try {
+        await bot.telegram.copyMessage(
+          userId,
+          ctx.chat.id,
+          ctx.message.message_id
+        );
+      } catch (copyError) {
+        // Если не удалось скопировать, отправляем текстовое описание
+        const mediaType = ctx.message.photo ? '📷 Фото' :
+                         ctx.message.document ? '📎 Документ' :
+                         ctx.message.video ? '🎥 Видео' :
+                         ctx.message.voice ? '🎤 Голосовое сообщение' : 'Медиа-файл';
+        
+        await bot.telegram.sendMessage(
+          userId,
+          `💬 <b>Ответ от поддержки:</b>\n\n${mediaType}${messageText ? '\n\n' + messageText : ''}`,
+          { parse_mode: 'HTML' }
+        );
+      }
+    } else {
+      // Отправляем текстовый ответ
+      await bot.telegram.sendMessage(
+        userId,
+        `💬 <b>Ответ от поддержки:</b>\n\n${messageText}`,
+        { parse_mode: 'HTML' }
+      );
+    }
+    
+    console.log(`📥 Ответ менеджера отправлен пользователю ${userId}`);
+    
+    // Подтверждаем менеджеру
+    await ctx.reply('✅ Ответ отправлен пользователю', { reply_to_message_id: ctx.message.message_id });
+  } catch (error) {
+    console.error('⚠️ Ошибка отправки ответа пользователю:', error);
+    await ctx.reply('⚠️ Не удалось отправить ответ пользователю. Возможно, он заблокировал бота.', {
+      reply_to_message_id: ctx.message.message_id
+    });
+  }
+}
 
 // Обработка ответов менеджера (callback для ответа)
 bot.action(/^reply_(\d+)$/, async (ctx) => {
