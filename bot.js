@@ -6931,32 +6931,52 @@ bot.on('message', async (ctx) => {
   }
   
   // 2) Сообщение в чате поддержки - обрабатываем ответы менеджеров
-  if (chat.id === SUPPORT_CHAT_ID && ctx.message.reply_to_message) {
-    const replyMessageId = ctx.message.reply_to_message.message_id;
-    
-    // Получаем userId из БД
-    const userId = await getUserIdBySupportMessage(replyMessageId);
-    
-    if (!userId) {
-      // Пытаемся найти userId в тексте сообщения (fallback)
-      const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption || '';
-      const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)/);
-      if (userIdMatch) {
-        const foundUserId = parseInt(userIdMatch[1] || userIdMatch[2]);
-        if (foundUserId) {
-          // Сохраняем связь для будущего использования
-          await saveSupportMessage(replyMessageId, foundUserId);
-          await sendManagerReplyToUser(ctx, foundUserId);
-          return;
+  if (SUPPORT_CHAT_ID && chat.id === SUPPORT_CHAT_ID && ctx.message.reply_to_message) {
+    try {
+      const replyMessageId = ctx.message.reply_to_message.message_id;
+      
+      console.log(`[support] Обработка ответа менеджера на сообщение ${replyMessageId}`);
+      
+      // Получаем userId из БД
+      const userId = await getUserIdBySupportMessage(replyMessageId);
+      
+      if (!userId) {
+        // Пытаемся найти userId в тексте сообщения (fallback)
+        const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption || '';
+        console.log(`[support] userId не найден в БД, ищем в тексте:`, replyText.substring(0, 100));
+        
+        const userIdMatch = replyText.match(/🆔.*?<code>(\d+)<\/code>|🆔.*?ID.*?(\d+)/);
+        if (userIdMatch) {
+          const foundUserId = parseInt(userIdMatch[1] || userIdMatch[2]);
+          if (foundUserId) {
+            console.log(`[support] Найден userId в тексте: ${foundUserId}`);
+            // Сохраняем связь для будущего использования
+            await saveSupportMessage(replyMessageId, foundUserId);
+            await sendManagerReplyToUser(ctx, foundUserId);
+            return;
+          }
         }
+        
+        console.log(`⚠️ Не удалось найти userId для сообщения ${replyMessageId} в чате поддержки`);
+        await ctx.reply('⚠️ Не удалось определить пользователя для этого сообщения. Убедитесь, что вы отвечаете на сообщение от бота.', {
+          reply_to_message_id: ctx.message.message_id
+        });
+        return;
       }
       
-      console.log(`⚠️ Не удалось найти userId для сообщения ${replyMessageId} в чате поддержки`);
-      return;
+      console.log(`[support] Найден userId: ${userId}, отправляем ответ`);
+      // Отправляем ответ пользователю
+      await sendManagerReplyToUser(ctx, userId);
+    } catch (error) {
+      console.error('⚠️ Ошибка обработки ответа менеджера:', error);
+      try {
+        await ctx.reply('⚠️ Произошла ошибка при отправке ответа пользователю.', {
+          reply_to_message_id: ctx.message.message_id
+        });
+      } catch (replyError) {
+        console.error('Не удалось отправить сообщение об ошибке:', replyError);
+      }
     }
-    
-    // Отправляем ответ пользователю
-    await sendManagerReplyToUser(ctx, userId);
   }
 });
 
