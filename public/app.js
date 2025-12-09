@@ -2058,7 +2058,16 @@ function initOrderForm() {
         calendarRenderFunction = renderCalendar;
         
         // Первоначальная отрисовка календаря
-        renderCalendar(currentCalendarDate);
+        console.log('[initCustomCalendar] Вызываем renderCalendar с датой:', currentCalendarDate);
+        if (currentCalendarDate && !isNaN(currentCalendarDate.getTime())) {
+            renderCalendar(currentCalendarDate);
+        } else {
+            console.error('[initCustomCalendar] Некорректная дата для отрисовки:', currentCalendarDate);
+            // Пробуем отрисовать текущий месяц
+            const todayForRender = todayWithoutTime();
+            currentCalendarDate = new Date(todayForRender);
+            renderCalendar(currentCalendarDate);
+        }
         
         // Экспортируем функцию для обновления календаря извне
         window.updateCustomCalendar = function(dateValue) {
