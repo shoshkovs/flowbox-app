@@ -5963,9 +5963,11 @@ function saveStep3() {
 
 // Заполнение «Получатель» и «Адрес» на Итого (для упрощенного сценария)
 function prefillSimpleCheckoutSummary() {
-    // Получатель
-    const summaryRecipient = document.getElementById('summaryRecipient');
-    if (summaryRecipient) {
+    // Получатель - имя и телефон отдельно друг под другом
+    const summaryRecipientName = document.getElementById('summaryRecipientName');
+    const summaryRecipientPhone = document.getElementById('summaryRecipientPhone');
+    
+    if (summaryRecipientName || summaryRecipientPhone) {
         const name =
             checkoutData.recipientName ||
             document.getElementById('customerName')?.value ||
@@ -5974,7 +5976,13 @@ function prefillSimpleCheckoutSummary() {
             checkoutData.recipientPhone ||
             document.getElementById('customerPhone')?.value ||
             '';
-        summaryRecipient.textContent = phone ? `${name}, ${phone}` : name;
+        
+        if (summaryRecipientName) {
+            summaryRecipientName.textContent = name;
+        }
+        if (summaryRecipientPhone) {
+            summaryRecipientPhone.textContent = phone || '';
+        }
         
         // Сохраняем в checkoutData
         if (!checkoutData.recipientName) {
@@ -5985,19 +5993,18 @@ function prefillSimpleCheckoutSummary() {
         }
     }
     
-    // Адрес — первый из savedAddresses
+    // Адрес — первый из savedAddresses (без города)
     const summaryAddress = document.getElementById('summaryAddress');
     if (summaryAddress && savedAddresses && savedAddresses.length > 0) {
         const addr = savedAddresses[0];
         
-        // Формируем строку адреса
+        // Формируем строку адреса (БЕЗ города)
         let streetStr = addr.street || '';
         if (addr.house && !streetStr.includes(addr.house)) {
-            streetStr = streetStr ? `${streetStr}, ${addr.house}` : addr.house;
+            streetStr = streetStr ? `${streetStr}, ${addr.house}` : streetStr;
         }
         
         const parts = [
-            addr.city,
             streetStr,
             addr.apartment ? `кв. ${addr.apartment}` : '',
             addr.entrance ? `парадная ${addr.entrance}` : '',
