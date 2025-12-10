@@ -161,6 +161,12 @@ document.addEventListener('visibilitychange', () => {
         if (successOverlay && successOverlay.classList.contains('active')) {
             console.log('[visibilitychange] Восстанавливаем состояние после возврата с платежной страницы');
             successOverlay.classList.remove('active');
+            // Убеждаемся, что нижнее меню видно после закрытия overlay
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.display = 'flex';
+                bottomNav.classList.remove('hidden');
+            }
             // Очищаем форму заказа
             checkoutData = {
                 recipientName: '',
@@ -3253,6 +3259,12 @@ if (orderTabBtn) {
 // Возврат в магазин
 backToShop.addEventListener('click', () => {
     successOverlay.classList.remove('active');
+    // Убеждаемся, что нижнее меню видно после закрытия overlay
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) {
+        bottomNav.style.display = 'flex';
+        bottomNav.classList.remove('hidden');
+    }
     switchTab('menuTab');
 });
 
