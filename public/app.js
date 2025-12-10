@@ -871,8 +871,7 @@ function normalizeAddressKey(addr) {
     if (!addr) return '';
     return [
         (addr.city || '').trim().toLowerCase(),
-        (addr.street || '').trim().toLowerCase(),
-        (addr.house || '').trim().toLowerCase(),
+        (addr.street || '').trim().toLowerCase(), // Уже содержит "улица, дом"
         (addr.apartment || '').trim().toLowerCase(),
         (addr.entrance || '').trim().toLowerCase(),
         (addr.floor || '').trim().toLowerCase(),
@@ -887,7 +886,7 @@ function dedupeAddresses(addresses) {
     const map = new Map();
     for (const addr of addresses) {
         // Пропускаем полностью пустые адреса
-        if (!addr || (!addr.city && !addr.street && !addr.house)) {
+        if (!addr || (!addr.city && !addr.street)) {
             continue;
         }
         
@@ -968,7 +967,7 @@ async function saveUserData() {
         // Фильтруем только невалидные адреса
         const addressesToSave = deduplicatedAddresses.filter(addr => {
             // Фильтруем только полностью пустые/невалидные адреса
-            if (!addr || (!addr.city && !addr.street && !addr.house)) {
+            if (!addr || (!addr.city && !addr.street)) {
                 console.warn('[saveUserData] ⚠️ Пропущен невалидный адрес:', addr);
                 return false;
             }
@@ -1747,11 +1746,8 @@ function initOrderForm() {
         
         savedAddresses.forEach(addr => {
             const shortParts = [];
-            // Объединяем street и house для отображения
-            let streetValue = addr.street || '';
-            if (addr.house && !streetValue.includes(addr.house)) {
-                streetValue = streetValue ? `${streetValue} ${addr.house}` : addr.house;
-            }
+            // street уже содержит "улица, дом" в одном поле
+            const streetValue = addr.street || '';
             if (streetValue) shortParts.push(streetValue);
             if (addr.apartment) shortParts.push(addr.apartment);
             const shortAddress = shortParts.join(', ') || 'Адрес не заполнен';
@@ -1814,6 +1810,30 @@ function initOrderForm() {
     
     console.log('[init] 🔄 Вызываем renderAddressOptions при инициализации');
     window.renderAddressOptions();
+    
+    // Функция для нормализации строки адреса (улица, дом)
+    // Приводит к единому формату "Улица, дом" (с запятой)
+    window.normalizeStreetLine = function(raw) {
+        if (!raw || typeof raw !== 'string') {
+            return '';
+        }
+        
+        let value = raw.trim().replace(/\s+/g, ' '); // Убираем множественные пробелы
+        
+        // Если уже есть запятая - считаем формат правильным
+        if (value.includes(',')) {
+            return value;
+        }
+        
+        // Если нет запятой - пробуем отделить последний токен как дом
+        // "Кемская 7" -> "Кемская, 7"
+        const m = value.match(/^(.+)\s+(\S+)$/);
+        if (m) {
+            return `${m[1].trim()}, ${m[2].trim()}`;
+        }
+        
+        return value;
+    };
     
     // Функции для работы с датами
     function addDays(date, days) {
@@ -2662,25 +2682,13 @@ async function validateAndSubmitOrder(e) {
         // Не делаем return здесь - нужно проверить и время доставки тоже
         // Ошибки адреса уже установлены, продолжаем проверку других полей
         
-        // Парсим street и house из поля "улица, дом"
-        // Пользователь вводит "Кемская 7" - нужно правильно извлечь "7"
-        let streetValue = street.trim();
-        let houseValue = '';
-        
-        // Пытаемся извлечь номер дома из street
-        // Паттерн: пробел + одна или более цифр + опционально буквы/корпус
-        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
-        if (houseMatch && houseMatch[1]) {
-            houseValue = houseMatch[1].trim();
-            // Убираем номер дома из street, оставляя только название улицы
-            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-        }
+        // Нормализуем street (приводим к формату "Улица, дом")
+        const streetValue = window.normalizeStreetLine ? window.normalizeStreetLine(street) : street.trim();
         
         addressData = {
             name: 'Новый адрес',
             city: city,
-            street: streetValue, // Название улицы без номера дома
-            house: houseValue, // Номер дома отдельно
+            street: streetValue, // Уже содержит "улица, дом" в одном поле
             entrance: document.getElementById('orderAddressEntrance').value.trim(),
             apartment: document.getElementById('orderAddressApartment').value.trim(),
             floor: document.getElementById('orderAddressFloor').value.trim(),
@@ -3013,23 +3021,10 @@ async function validateAndSubmitOrder(e) {
                 // Нормализуем адрес для сравнения
                 const normalize = (str) => (str || '').toLowerCase().trim();
                 const normalizeAddress = (addr) => {
-                    // Извлекаем house из street если нужно
-                    let street = normalize(addr.street || '');
-                    let house = normalize(addr.house || '');
-                    
-                    // Если house пустое, пытаемся извлечь из street
-                    if (!house && street) {
-                        const houseMatch = street.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
-                        if (houseMatch && houseMatch[1]) {
-                            house = normalize(houseMatch[1].trim());
-                            street = street.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-                        }
-                    }
-                    
+                    // street уже содержит "улица, дом" в одном поле
                     return {
                         city: normalize(addr.city),
-                        street: street,
-                        house: house,
+                        street: normalize(addr.street || ''),
                         apartment: normalize(addr.apartment)
                     };
                 };
@@ -3044,12 +3039,8 @@ async function validateAndSubmitOrder(e) {
                     const streetMatch = newAddrNormalized.street === existingNormalized.street;
                     const apartmentMatch = newAddrNormalized.apartment === existingNormalized.apartment;
                     
-                    // house: совпадает если оба пустые ИЛИ оба не пустые и равны
-                    const houseMatch = (!newAddrNormalized.house && !existingNormalized.house) || 
-                                     (newAddrNormalized.house && existingNormalized.house && 
-                                      newAddrNormalized.house === existingNormalized.house);
-                    
-                    return cityMatch && streetMatch && apartmentMatch && houseMatch;
+                    // house больше не используется - всё в street
+                    return cityMatch && streetMatch && apartmentMatch;
                 });
                 
                 // Проверяем, не является ли это редактированием существующего адреса из checkoutData
@@ -3062,26 +3053,15 @@ async function validateAndSubmitOrder(e) {
                     // Обновляем существующий адрес вместо создания нового
                     const addressIndex = savedAddresses.findIndex(a => String(a.id) === String(checkoutData.address.id));
                     if (addressIndex !== -1) {
-                        // Парсим street и house
-                        let houseValue = addressData.house || '';
-                        let streetValue = addressData.street || '';
-                        
-                        // Если house пустое, но в street есть номер дома
-                        if (!houseValue && streetValue) {
-                            const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
-                            if (houseMatch && houseMatch[1]) {
-                                houseValue = houseMatch[1].trim();
-                                streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-                            }
-                        }
+                        // Нормализуем street (приводим к формату "Улица, дом")
+                        const streetValue = window.normalizeStreetLine ? window.normalizeStreetLine(addressData.street || '') : (addressData.street || '');
                         
                         // Обновляем существующий адрес с сохранением ID
                         savedAddresses[addressIndex] = {
                             ...savedAddresses[addressIndex],
                             id: savedAddresses[addressIndex].id, // ВАЖНО: сохраняем ID
                             city: addressData.city || 'Санкт-Петербург',
-                            street: streetValue || addressData.street,
-                            house: houseValue,
+                            street: streetValue,
                             entrance: addressData.entrance || '',
                             apartment: addressData.apartment || '',
                             floor: addressData.floor || '',
@@ -3092,26 +3072,14 @@ async function validateAndSubmitOrder(e) {
                     }
                 } else if (!isDuplicate && addressData.street) {
                     // Создаем новый адрес только если это не дубликат и не редактирование существующего
-                    // Пытаемся извлечь номер дома из street для совместимости с БД
-                    let houseValue = addressData.house || '';
-                    let streetValue = addressData.street || '';
-                    
-                    // Если house пустое, но в street есть номер дома (последние цифры/буквы после пробела)
-                    if (!houseValue && streetValue) {
-                        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
-                        if (houseMatch && houseMatch[1]) {
-                            houseValue = houseMatch[1].trim();
-                            // Убираем номер дома из street, оставляя только название улицы
-                            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-                        }
-                    }
+                    // Нормализуем street (приводим к формату "Улица, дом")
+                    const streetValue = window.normalizeStreetLine ? window.normalizeStreetLine(addressData.street || '') : (addressData.street || '');
                     
                     const newAddress = {
                         id: Date.now(), // Временный ID, будет заменен на реальный после сохранения на сервер
-                        name: addressData.street || 'Адрес',
+                        name: streetValue || 'Адрес',
                         city: addressData.city || 'Санкт-Петербург',
-                        street: streetValue || addressData.street, // Название улицы без номера дома
-                        house: houseValue, // Номер дома отдельно для совместимости с БД
+                        street: streetValue, // Уже содержит "улица, дом" в одном поле
                         entrance: addressData.entrance || '',
                         apartment: addressData.apartment || '',
                         floor: addressData.floor || '',
@@ -3480,11 +3448,11 @@ function resetAddressFormState() {
 function setAddressFormValues(address) {
     if (!address) return;
     document.getElementById('addressCity').value = address.city || 'Санкт-Петербург';
-    // Объединяем street и house для обратной совместимости со старыми адресами
+    // street уже содержит "улица, дом" в одном поле
+    // Если был передан house отдельно (для обратной совместимости), объединяем
     let streetValue = address.street || '';
-    if (address.house && !streetValue.includes(address.house)) {
-        // Если house есть и не включен в street, объединяем их
-        streetValue = streetValue ? `${streetValue} ${address.house}` : address.house;
+    if (address.house && address.house.trim() && !streetValue.toLowerCase().includes(address.house.toLowerCase())) {
+        streetValue = streetValue ? `${streetValue}, ${address.house.trim()}` : address.house.trim();
     }
     document.getElementById('addressStreet').value = streetValue;
     document.getElementById('addressEntrance').value = address.entrance || '';
@@ -4034,26 +4002,14 @@ addressForm.addEventListener('submit', (e) => {
         return;
     }
     
-    // Пытаемся извлечь номер дома из street для совместимости с БД
-    let houseValue = '';
-    let streetValue = street || '';
-    
-    // Если в street есть номер дома (последние цифры/буквы после пробела)
-    if (streetValue) {
-        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
-        if (houseMatch && houseMatch[1]) {
-            houseValue = houseMatch[1].trim();
-            // Убираем номер дома из street, оставляя только название улицы
-            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-        }
-    }
+    // Нормализуем street (приводим к формату "Улица, дом")
+    const normalizedStreet = window.normalizeStreetLine ? window.normalizeStreetLine(street) : street.trim();
     
     const address = {
         id: editingAddressId || Date.now(),
-        name: name || street || 'Адрес',
+        name: name || normalizedStreet || 'Адрес',
         city: city,
-        street: streetValue || street, // Название улицы без номера дома
-        house: houseValue, // Номер дома отдельно для совместимости с БД
+        street: normalizedStreet, // Уже содержит "улица, дом" в одном поле
         entrance: document.getElementById('addressEntrance').value.trim(),
         apartment: document.getElementById('addressApartment').value.trim(),
         floor: document.getElementById('addressFloor').value.trim(),
@@ -4145,10 +4101,11 @@ function loadSavedAddresses() {
         } else {
             console.log('[loadSavedAddresses] ✅ Рендерим', savedAddresses.length, 'адресов');
             addressesList.innerHTML = savedAddresses.map(addr => {
-                // Название (жирным): улица, дом - объединяем street и house
+                // Название (жирным): улица, дом - street уже содержит всё
                 let streetName = addr.street || '';
-                if (addr.house && !streetName.includes(addr.house)) {
-                    streetName = streetName ? `${streetName} ${addr.house}` : addr.house;
+                // Если был передан house отдельно (для обратной совместимости), объединяем
+                if (addr.house && addr.house.trim() && !streetName.toLowerCase().includes(addr.house.toLowerCase())) {
+                    streetName = streetName ? `${streetName}, ${addr.house.trim()}` : addr.house.trim();
                 }
                 if (!streetName) streetName = 'Адрес не заполнен';
                 
@@ -4208,11 +4165,11 @@ function fillOrderFormWithAddress(address) {
     const commentField = document.getElementById('orderAddressComment');
     
     if (cityField) cityField.value = address.city || 'Санкт-Петербург';
-    // Объединяем street и house для обратной совместимости со старыми адресами
+    // street уже содержит "улица, дом" в одном поле
+    // Если был передан house отдельно (для обратной совместимости), объединяем
     let streetValue = address.street || '';
-    if (address.house && !streetValue.includes(address.house)) {
-        // Если house есть и не включен в street, объединяем их
-        streetValue = streetValue ? `${streetValue} ${address.house}` : address.house;
+    if (address.house && address.house.trim() && !streetValue.toLowerCase().includes(address.house.toLowerCase())) {
+        streetValue = streetValue ? `${streetValue}, ${address.house.trim()}` : address.house.trim();
     }
     if (streetField) streetField.value = streetValue;
     if (entranceField) entranceField.value = address.entrance || '';
@@ -5419,9 +5376,10 @@ function renderCheckoutAddresses() {
         addressesList.innerHTML = savedAddresses.map((addr, index) => {
             // Объединяем street и house для обратной совместимости
             let street = addr.street || '';
+            // Если был передан house отдельно (для обратной совместимости), объединяем
             const house = addr.house || '';
-            if (house && !street.includes(house)) {
-                street = street ? `${street} ${house}` : house;
+            if (house && house.trim() && !street.toLowerCase().includes(house.toLowerCase())) {
+                street = street ? `${street}, ${house.trim()}` : house.trim();
             }
             
             // Не показываем город в кратком отображении
@@ -5470,12 +5428,12 @@ function selectCheckoutAddress(addressId) {
     const address = savedAddresses.find(addr => String(addr.id) === String(addressId));
     if (!address) return;
     
-    // Объединяем street и house для обратной совместимости со старыми адресами
+    // street уже содержит "улица, дом" в одном поле
+    // Если был передан house отдельно (для обратной совместимости), объединяем
     let streetValue = address.street || '';
     const houseValue = address.house || '';
-    if (houseValue && !streetValue.includes(houseValue)) {
-        // Если house есть и не включен в street, объединяем их
-        streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+    if (houseValue && houseValue.trim() && !streetValue.toLowerCase().includes(houseValue.toLowerCase())) {
+        streetValue = streetValue ? `${streetValue}, ${houseValue.trim()}` : houseValue.trim();
     }
     
     // Заполняем checkoutData.address
@@ -5748,8 +5706,9 @@ function renderCheckoutSummary() {
         const addr = checkoutData.address || {};
         // Формируем строку адреса: street может содержать "улица + дом" или только "улица"
         let streetStr = addr.street || '';
-        if (addr.house && !streetStr.includes(addr.house)) {
-            streetStr = streetStr ? `${streetStr} ${addr.house}` : addr.house;
+        // Если был передан house отдельно (для обратной совместимости), объединяем
+        if (addr.house && addr.house.trim() && !streetStr.toLowerCase().includes(addr.house.toLowerCase())) {
+            streetStr = streetStr ? `${streetStr}, ${addr.house.trim()}` : addr.house.trim();
         }
         const addressStr = [
             addr.city,
@@ -5969,19 +5928,19 @@ function selectAddressFromMyAddresses(addressId) {
         return;
     }
     
-    // Парсим адрес
+    // street уже содержит "улица, дом" в одном поле
+    // Если был передан house отдельно (для обратной совместимости), объединяем
     let streetValue = addr.street || '';
     const houseValue = addr.house || '';
-    if (houseValue && !streetValue.includes(houseValue)) {
-        streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+    if (houseValue && houseValue.trim() && !streetValue.toLowerCase().includes(houseValue.toLowerCase())) {
+        streetValue = streetValue ? `${streetValue}, ${houseValue.trim()}` : houseValue.trim();
     }
     
     // Обновляем checkoutData.address с сохранением ID
     checkoutData.address = {
         id: addr.id, // ВАЖНО: сохраняем ID адреса
         city: addr.city || 'Санкт-Петербург',
-        street: streetValue,
-        house: houseValue,
+        street: streetValue, // Уже содержит "улица, дом" в одном поле
         apartment: addr.apartment || '',
         floor: addr.floor || '',
         entrance: addr.entrance || '',
@@ -6103,24 +6062,18 @@ function openEditAddressPageFromList(address) {
         }
     }
     
-    // Формируем street из street и house для отображения в поле ввода
-    // В поле пользователь видит "Кемская 7" (street + house)
+    // street уже содержит "улица, дом" в одном поле
+    // Если был передан house отдельно (для обратной совместимости), объединяем
     let streetValue = address.street || addrData.street || '';
     const houseValue = address.house || addrData.house || '';
     
-    // Объединяем street и house только если house есть и еще не включен в street
-    if (houseValue) {
-        // Проверяем, не содержится ли house уже в street (на случай, если данные уже объединены)
-        if (!streetValue.includes(houseValue)) {
-            streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
-        }
+    if (houseValue && houseValue.trim() && !streetValue.toLowerCase().includes(houseValue.toLowerCase())) {
+        streetValue = streetValue ? `${streetValue}, ${houseValue.trim()}` : houseValue.trim();
     }
     
     console.log('[openEditAddressPageFromList] 📍 Адрес для редактирования:', { 
-        street: streetValue, 
-        house: houseValue,
-        originalStreet: address.street,
-        originalHouse: address.house
+        street: streetValue,
+        originalStreet: address.street
     });
     
     cityField.value = address.city || addrData.city || 'Санкт-Петербург';
@@ -6196,25 +6149,12 @@ async function saveEditAddress() {
         return;
     }
     
-    // Парсим street и house
-    // ВАЖНО: пользователь вводит "Кемская 7" - нужно правильно извлечь "7"
-    // Regex ищет: пробел + цифры + опциональные буквы/корпус в конце строки
-    let streetValue = street.trim();
-    let houseValue = '';
+    // Нормализуем street (приводим к формату "Улица, дом")
+    const streetValue = window.normalizeStreetLine ? window.normalizeStreetLine(street) : street.trim();
     
-    // Пытаемся извлечь номер дома из street
-    // Паттерн: пробел + одна или более цифр + опционально буквы/корпус (к, к2, лит А и т.д.)
-    const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
-    if (houseMatch && houseMatch[1]) {
-        houseValue = houseMatch[1].trim();
-        // Убираем номер дома из street, оставляя только название улицы
-        streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-    }
-    
-    console.log('[saveEditAddress] 📍 Парсинг адреса:', { 
+    console.log('[saveEditAddress] 📍 Нормализация адреса:', { 
         original: street, 
-        street: streetValue, 
-        house: houseValue 
+        normalized: streetValue
     });
     
     // Проверяем, редактируется ли существующий адрес
@@ -6227,8 +6167,7 @@ async function saveEditAddress() {
             savedAddresses[addressIndex] = {
                 id: savedAddresses[addressIndex].id, // ВАЖНО: сохраняем ID
                 city: city,
-                street: streetValue,
-                house: houseValue,
+                street: streetValue, // Уже содержит "улица, дом" в одном поле
                 apartment: apartmentField.value.trim() || null,
                 floor: floorField.value.trim() || null,
                 entrance: entranceField.value.trim() || null,
@@ -6255,8 +6194,7 @@ async function saveEditAddress() {
     checkoutData.address = {
         id: existingAddressId || null, // Сохраняем ID, если есть
         city: city,
-        street: streetValue,
-        house: houseValue,
+        street: streetValue, // Уже содержит "улица, дом" в одном поле
         apartment: apartmentField.value.trim(),
         floor: floorField.value.trim(),
         entrance: entranceField.value.trim(),
