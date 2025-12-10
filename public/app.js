@@ -6112,9 +6112,16 @@ function initSimpleDateTimeOnSummary() {
     // Чекбокс "Оставить у двери" - только чекбокс, без поля "Да/Нет"
     const leaveAtDoorCheckbox = document.getElementById('summaryLeaveAtDoorCheckbox');
     if (leaveAtDoorCheckbox) {
-        leaveAtDoorCheckbox.checked = !!checkoutData.leaveAtDoor;
-        leaveAtDoorCheckbox.addEventListener('change', () => {
-            checkoutData.leaveAtDoor = leaveAtDoorCheckbox.checked;
+        // Удаляем старые обработчики, если есть
+        const newCheckbox = leaveAtDoorCheckbox.cloneNode(true);
+        leaveAtDoorCheckbox.parentNode.replaceChild(newCheckbox, leaveAtDoorCheckbox);
+        
+        // Устанавливаем состояние
+        newCheckbox.checked = !!checkoutData.leaveAtDoor;
+        
+        // Добавляем обработчик
+        newCheckbox.addEventListener('change', function() {
+            checkoutData.leaveAtDoor = this.checked;
             // Не обновляем summaryLeaveAtDoor в упрощенном сценарии
         });
     }
@@ -6138,14 +6145,18 @@ function initSimpleDateTimeOnSummary() {
 
 // Рендеринг итоговой страницы
 function renderCheckoutSummary() {
-    // Получатель
-    const summaryRecipientEl = document.getElementById('summaryRecipient');
-    if (summaryRecipientEl) {
-        summaryRecipientEl.textContent = 
-            `${checkoutData.recipientName || '-'}, ${checkoutData.recipientPhone || '-'}`;
+    // Получатель - имя и телефон отдельно
+    const summaryRecipientName = document.getElementById('summaryRecipientName');
+    const summaryRecipientPhone = document.getElementById('summaryRecipientPhone');
+    
+    if (summaryRecipientName) {
+        summaryRecipientName.textContent = checkoutData.recipientName || '-';
+    }
+    if (summaryRecipientPhone) {
+        summaryRecipientPhone.textContent = checkoutData.recipientPhone || '-';
     }
     
-    // Адрес
+    // Адрес (без города)
     const summaryAddressEl = document.getElementById('summaryAddress');
     if (summaryAddressEl) {
         const addr = checkoutData.address || {};
@@ -6155,7 +6166,6 @@ function renderCheckoutSummary() {
             streetStr = streetStr ? `${streetStr} ${addr.house}` : addr.house;
         }
         const addressStr = [
-            addr.city,
             streetStr,
             addr.apartment ? `кв. ${addr.apartment}` : ''
         ].filter(Boolean).join(', ');
