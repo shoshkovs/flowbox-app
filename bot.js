@@ -6957,7 +6957,9 @@ async function getOrCreateSupportTopic(userId, userName, username, forceCreate =
       
       // Создаем новый топик
       console.log(`[support] Создаем новый топик для пользователя ${userId}`);
-      const safeUsername = username ? `@${username}` : (userName || 'клиент');
+      // Убираем "@" из начала username, если он там есть, чтобы избежать двойного "@@"
+      const cleanUsername = username ? (username.startsWith('@') ? username.substring(1) : username) : null;
+      const safeUsername = cleanUsername ? `@${cleanUsername}` : (userName || 'клиент');
       const topicName = `Обращение ${safeUsername} (${userId})`;
       
       if (!SUPPORT_CHAT_ID || isNaN(SUPPORT_CHAT_ID)) {
@@ -7321,7 +7323,7 @@ bot.on('message', async (ctx) => {
       try {
         const client = await pool.connect();
         try {
-          // Проверяем, когда топик был создан
+          // Проверяем, когда топик был создан и был ли он только что создан
           const topicCheck = await client.query(
             'SELECT created_at, updated_at FROM support_topics WHERE user_id = $1::bigint',
             [userId]
@@ -7329,10 +7331,15 @@ bot.on('message', async (ctx) => {
           if (topicCheck.rows.length > 0) {
             const topicCreated = new Date(topicCheck.rows[0].created_at);
             const now = new Date();
-            // Если топик был создан более 10 секунд назад, не отправляем шапку
+            // Если топик был создан более 30 секунд назад, не отправляем шапку
             // (значит, это не первое сообщение)
             const timeDiff = now - topicCreated;
-            shouldSendHeader = timeDiff < 10000;
+            shouldSendHeader = timeDiff < 30000; // Увеличено до 30 секунд для надежности
+            console.log(`[support] Топик создан ${Math.round(timeDiff / 1000)} секунд назад, shouldSendHeader: ${shouldSendHeader}`);
+          } else {
+            // Если топика нет в БД, значит он только что создан - отправляем шапку
+            shouldSendHeader = true;
+            console.log('[support] Топик не найден в БД, отправляем шапку');
           }
         } finally {
           client.release();
