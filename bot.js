@@ -6952,8 +6952,7 @@ async function getOrCreateSupportTopic(userId, userName, username) {
       
       // Создаем новый топик
       console.log(`[support] Создаем новый топик для пользователя ${userId}`);
-      const safeUsername = username || userName || 'клиент';
-      const topicName = `Обращение ${safeUsername} (${userId})`;
+      const topicName = `Тикет ${userId} (${username || userName || 'Пользователь'})`;
       
       if (!SUPPORT_CHAT_ID || isNaN(SUPPORT_CHAT_ID)) {
         throw new Error(`SUPPORT_CHAT_ID не валиден: ${SUPPORT_CHAT_ID}`);
