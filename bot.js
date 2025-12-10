@@ -5239,7 +5239,9 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
           o.courier_comment,
           o.status_comment,
           u.username as customer_telegram_username,
-          u.telegram_id as customer_telegram_id
+          u.telegram_id as customer_telegram_id,
+          u.first_name as customer_telegram_first_name,
+          u.phone as customer_telegram_phone
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         WHERE o.id = $1`,
@@ -5303,9 +5305,11 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         address_data: addressData, // Для обратной совместимости
         recipient_name: order.recipient_name,
         recipient_phone: order.recipient_phone,
-        customer_name: order.client_name || order.customer_name || order.recipient_name,
+        // Имя клиента - из профиля Telegram (first_name)
+        customer_name: order.customer_telegram_first_name || order.client_name || order.customer_name || '',
         customer_last_name: order.customer_last_name || '',
-        customer_phone: order.client_phone || order.customer_phone || order.recipient_phone,
+        // Телефон клиента - из профиля Telegram (только если указан)
+        customer_phone: order.customer_telegram_phone || null,
         customer_email: order.client_email || order.customer_email,
         user_comment: order.user_comment || null,
         status_comment: order.status_comment || null,

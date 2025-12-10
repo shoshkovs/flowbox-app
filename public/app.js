@@ -2476,9 +2476,17 @@ function initOrderForm() {
     }
 }
 
-// Кнопка "Назад" в форме заказа
+// Кнопка "Назад" в форме заказа (старая, если есть)
 if (backFromOrder) {
     backFromOrder.addEventListener('click', () => {
+        switchTab('cartTab');
+    });
+}
+
+// Кнопка "Назад" на первом шаге формы заказа
+const backFromOrderStep1 = document.getElementById('backFromOrderStep1');
+if (backFromOrderStep1) {
+    backFromOrderStep1.addEventListener('click', () => {
         switchTab('cartTab');
     });
 }
@@ -2669,7 +2677,7 @@ async function validateAndSubmitOrder(e) {
         }
     } else if (recipientRadio && recipientRadio.value === 'self') {
         // Если выбран "Я получу заказ", используем данные из профиля
-        const user = tg.initDataUnsafe?.user;
+        // НО НЕ используем имя из Telegram - только из сохраненного профиля (которое было введено пользователем)
         const savedProfile = localStorage.getItem('userProfile');
         let profileData = null;
         
@@ -2682,10 +2690,12 @@ async function validateAndSubmitOrder(e) {
         }
         
         if (profileData) {
+            // Используем только имя, которое было введено пользователем в форме заказа
             recipientName = profileData.name || '';
             recipientPhone = profileData.phone || '';
-        } else if (user) {
-            recipientName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        } else {
+            // Если профиля нет, оставляем пустым - пользователь должен ввести имя вручную
+            recipientName = '';
             recipientPhone = '';
         }
     }

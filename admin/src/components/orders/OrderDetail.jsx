@@ -404,11 +404,15 @@ export function OrderDetail({ authToken, orderId }) {
                 <div>
                   <h3 className="font-medium mb-3">Клиент</h3>
                   <div className="space-y-2">
+                    {/* Имя клиента - из профиля Telegram */}
                     <p className="text-gray-900">{order.customer_name || '-'}</p>
-                    <button className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">
-                      <Phone className="w-4 h-4" />
-                      {order.customer_phone || order.client_phone || '-'}
-                    </button>
+                    {/* Телефон клиента - только если указан в профиле */}
+                    {order.customer_phone ? (
+                      <button className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">
+                        <Phone className="w-4 h-4" />
+                        {order.customer_phone}
+                      </button>
+                    ) : null}
                     {(order.customer_email || order.client_email) && (
                       <p className="text-sm text-gray-600">{order.customer_email || order.client_email}</p>
                     )}
@@ -417,7 +421,9 @@ export function OrderDetail({ authToken, orderId }) {
                 <div>
                   <h3 className="font-medium mb-3">Получатель</h3>
                   <div className="space-y-2">
-                    <p className="text-gray-900">{order.recipient_name || order.customer_name || '-'}</p>
+                    {/* Имя получателя - из формы заказа */}
+                    <p className="text-gray-900">{order.recipient_name || '-'}</p>
+                    {/* Телефон получателя - из формы заказа (показываем только если есть) */}
                     {order.recipient_phone && (
                       <button className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">
                         <Phone className="w-4 h-4" />
