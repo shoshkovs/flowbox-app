@@ -3,6 +3,7 @@ const tg = window.Telegram?.WebApp;
 
 // Глобальные переменные состояния
 let currentCheckoutStep = 1; // Текущий шаг оформления заказа
+let isSimpleCheckout = false; // Флаг упрощенного оформления заказа
 
 // Определяем, нужно ли разворачивать мини-апп
 // На десктопе (Telegram Desktop/Web) НЕ разворачиваем, оставляем встроенный режим
@@ -1707,9 +1708,26 @@ const initNavigation = () => {
 // Инициализируем навигацию при загрузке
 initNavigation();
 
-// Оформление заказа
-checkoutBtnFinal.addEventListener('click', () => {
-    // Сбрасываем на первый шаг поэтапной формы
+// Проверка: можем ли сделать упрощённый чек-аут
+function canUseSimpleCheckout() {
+    const hasRecipient =
+        (checkoutData.recipientName && checkoutData.recipientPhone) ||
+        (document.getElementById('customerName')?.value && document.getElementById('customerPhone')?.value);
+    
+    const hasAddress = savedAddresses && savedAddresses.length > 0;
+    
+    return !!(hasRecipient && hasAddress);
+}
+
+// Полный сценарий (как сейчас, 4 шага)
+function startFullCheckout() {
+    isSimpleCheckout = false;
+    
+    switchTab('orderTab');
+    
+    const progress = document.querySelector('.checkout-progress');
+    if (progress) progress.style.display = 'flex';
+    
     currentCheckoutStep = 1;
     goToStep(1);
     
@@ -1738,9 +1756,59 @@ checkoutBtnFinal.addEventListener('click', () => {
             }
         }
     }
+}
+
+// Упрощённый сценарий: сразу «Итого» (4-й шаг)
+function startSimpleCheckout() {
+    isSimpleCheckout = true;
     
     switchTab('orderTab');
-    // Прокрутка обрабатывается в switchTab для orderTab
+    
+    // Прячем прогресс-бар
+    const progress = document.querySelector('.checkout-progress');
+    if (progress) progress.style.display = 'none';
+    
+    // Прячем шаги 1–3
+    ['checkoutStep1', 'checkoutStep2', 'checkoutStep3'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display = 'none';
+            el.classList.remove('active');
+        }
+    });
+    
+    // Показываем шаг 4
+    const step4 = document.getElementById('checkoutStep4');
+    if (step4) {
+        step4.style.display = 'block';
+        step4.classList.add('active');
+    }
+    
+    // Подставляем получателя и адрес
+    prefillSimpleCheckoutSummary();
+    
+    // Инициализируем календарь + слоты на «Итого»
+    initSimpleDateTimeOnSummary();
+    
+    // Обновляем корзину и итоговую сумму
+    renderCheckoutSummary();
+    
+    if (tg && tg.BackButton) {
+        tg.BackButton.hide();
+    }
+    
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+}
+
+// Оформление заказа
+checkoutBtnFinal.addEventListener('click', () => {
+    if (canUseSimpleCheckout()) {
+        startSimpleCheckout();   // упрощённый сценарий
+    } else {
+        startFullCheckout();     // как сейчас, 4 шага
+    }
 });
 
 // Инициализация формы заказа
@@ -5792,6 +5860,263 @@ function saveStep3() {
     checkoutData.deliveryDate = document.getElementById('deliveryDate').value;
     const timeBtn = document.querySelector('.time-slot-btn.active');
     checkoutData.deliveryTime = timeBtn ? timeBtn.dataset.time : '';
+}
+
+// Заполнение «Получатель» и «Адрес» на Итого (для упрощенного сценария)
+function prefillSimpleCheckoutSummary() {
+    // Получатель
+    const summaryRecipient = document.getElementById('summaryRecipient');
+    if (summaryRecipient) {
+        const name =
+            checkoutData.recipientName ||
+            document.getElementById('customerName')?.value ||
+            'Получатель';
+        const phone =
+            checkoutData.recipientPhone ||
+            document.getElementById('customerPhone')?.value ||
+            '';
+        summaryRecipient.textContent = phone ? `${name}, ${phone}` : name;
+        
+        // Сохраняем в checkoutData
+        if (!checkoutData.recipientName) {
+            checkoutData.recipientName = name;
+        }
+        if (!checkoutData.recipientPhone) {
+            checkoutData.recipientPhone = phone;
+        }
+    }
+    
+    // Адрес — первый из savedAddresses
+    const summaryAddress = document.getElementById('summaryAddress');
+    if (summaryAddress && savedAddresses && savedAddresses.length > 0) {
+        const addr = savedAddresses[0];
+        
+        // Формируем строку адреса
+        let streetStr = addr.street || '';
+        if (addr.house && !streetStr.includes(addr.house)) {
+            streetStr = streetStr ? `${streetStr}, ${addr.house}` : addr.house;
+        }
+        
+        const parts = [
+            addr.city,
+            streetStr,
+            addr.apartment ? `кв. ${addr.apartment}` : '',
+            addr.entrance ? `парадная ${addr.entrance}` : '',
+            addr.floor ? `этаж ${addr.floor}` : ''
+        ].filter(Boolean);
+        
+        summaryAddress.textContent = parts.join(', ');
+        
+        // Сохраняем в checkoutData
+        checkoutData.address = addr;
+        checkoutData.addressId = addr.id;
+    }
+}
+
+// Форматирование даты и времени для отображения
+function formatSummaryDateTime(dateStr, timeRange) {
+    if (!dateStr) return '';
+    
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    const options = { day: 'numeric', month: 'long' };
+    const formattedDate = date.toLocaleDateString('ru-RU', options);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const afterTomorrow = new Date(today);
+    afterTomorrow.setDate(today.getDate() + 2);
+    
+    const dateOnly = new Date(date);
+    dateOnly.setHours(0, 0, 0, 0);
+    
+    let prefix = '';
+    if (dateOnly.getTime() === tomorrow.getTime()) {
+        prefix = 'Завтра, ';
+    } else if (dateOnly.getTime() === afterTomorrow.getTime()) {
+        prefix = 'Послезавтра, ';
+    }
+    
+    const timeFormatted = timeRange ? timeRange.replace('-', '–') : '';
+    return `${prefix}${formattedDate}${timeFormatted ? ', ' + timeFormatted : ''}`;
+}
+
+// Инициализация календаря и слотов времени на экране «Итого» (для упрощенного сценария)
+function initSimpleDateTimeOnSummary() {
+    const summaryDateTimePicker = document.getElementById('summaryDateTimePicker');
+    if (!summaryDateTimePicker) {
+        console.warn('[initSimpleDateTimeOnSummary] Элемент summaryDateTimePicker не найден');
+        return;
+    }
+    
+    // Показываем календарь и слоты
+    summaryDateTimePicker.style.display = 'block';
+    
+    const calendarContainer = document.getElementById('summaryCustomCalendar');
+    const calendarDaysContainer = document.getElementById('summaryCalendarDays');
+    const monthYearLabel = document.getElementById('summaryCalendarMonthYear');
+    const prevBtn = document.getElementById('summaryCalendarPrevMonth');
+    const nextBtn = document.getElementById('summaryCalendarNextMonth');
+    const deliveryDateInput = document.getElementById('deliveryDate'); // скрытый, общий
+    
+    if (!calendarContainer || !calendarDaysContainer || !monthYearLabel || !deliveryDateInput) {
+        console.warn('[initSimpleDateTimeOnSummary] Элементы календаря не найдены');
+        return;
+    }
+    
+    // Переиспользуем логику календаря из initCustomCalendar
+    // Создаем упрощенную версию для шага 4
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const minDate = new Date(today);
+    minDate.setDate(today.getDate() + 1); // завтра
+    const maxDate = new Date(minDate);
+    maxDate.setDate(minDate.getDate() + 13); // всего 14 дней
+    
+    let currentCalendarDate = new Date(minDate);
+    
+    function renderSummaryCalendar(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const firstDayOfWeek = (firstDay.getDay() + 6) % 7; // Понедельник = 0
+        
+        // Обновляем заголовок
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        monthYearLabel.textContent = `${monthNames[month]} ${year}`;
+        
+        // Очищаем контейнер
+        calendarDaysContainer.innerHTML = '';
+        
+        // Пустые ячейки до первого дня месяца
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            const emptyDay = document.createElement('div');
+            emptyDay.className = 'calendar-day empty';
+            calendarDaysContainer.appendChild(emptyDay);
+        }
+        
+        // Дни месяца
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayDate = new Date(year, month, day);
+            dayDate.setHours(0, 0, 0, 0);
+            
+            const dayEl = document.createElement('div');
+            dayEl.className = 'calendar-day';
+            
+            // Проверяем доступность даты
+            if (dayDate < minDate || dayDate > maxDate) {
+                dayEl.classList.add('disabled');
+            } else {
+                dayEl.classList.add('available');
+                dayEl.textContent = day;
+                
+                // Проверяем, выбрана ли эта дата
+                if (deliveryDateInput.value) {
+                    const selectedDate = new Date(deliveryDateInput.value);
+                    selectedDate.setHours(0, 0, 0, 0);
+                    if (dayDate.getTime() === selectedDate.getTime()) {
+                        dayEl.classList.add('selected');
+                    }
+                }
+                
+                dayEl.addEventListener('click', () => {
+                    if (!dayEl.classList.contains('disabled')) {
+                        // Убираем выделение с других дней
+                        calendarDaysContainer.querySelectorAll('.calendar-day').forEach(d => {
+                            d.classList.remove('selected');
+                        });
+                        dayEl.classList.add('selected');
+                        
+                        // Сохраняем дату
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        deliveryDateInput.value = dateStr;
+                        checkoutData.deliveryDate = dateStr;
+                        
+                        // Обновляем отображение
+                        updateSummaryDateTimeDisplay();
+                    }
+                });
+            }
+            
+            calendarDaysContainer.appendChild(dayEl);
+        }
+    }
+    
+    // Навигация по месяцам
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1);
+            if (currentCalendarDate < minDate) {
+                currentCalendarDate = new Date(minDate);
+            }
+            renderSummaryCalendar(currentCalendarDate);
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1);
+            if (currentCalendarDate > maxDate) {
+                currentCalendarDate = new Date(maxDate);
+            }
+            renderSummaryCalendar(currentCalendarDate);
+        });
+    }
+    
+    // Инициализируем календарь
+    renderSummaryCalendar(currentCalendarDate);
+    
+    // Слоты времени на «Итого»
+    const timeOptions = document.getElementById('summaryDeliveryTimeOptions');
+    if (timeOptions) {
+        const buttons = timeOptions.querySelectorAll('.time-slot-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                buttons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const time = btn.dataset.time;
+                checkoutData.deliveryTime = time;
+                
+                updateSummaryDateTimeDisplay();
+            });
+        });
+    }
+    
+    // Чекбокс "Оставить у двери"
+    const leaveAtDoorCheckbox = document.getElementById('summaryLeaveAtDoorCheckbox');
+    if (leaveAtDoorCheckbox) {
+        leaveAtDoorCheckbox.checked = !!checkoutData.leaveAtDoor;
+        leaveAtDoorCheckbox.addEventListener('change', () => {
+            checkoutData.leaveAtDoor = leaveAtDoorCheckbox.checked;
+            const summaryLeaveAtDoor = document.getElementById('summaryLeaveAtDoor');
+            if (summaryLeaveAtDoor) {
+                summaryLeaveAtDoor.textContent = leaveAtDoorCheckbox.checked ? 'Да' : 'Нет';
+            }
+        });
+    }
+    
+    // Функция обновления отображения даты и времени
+    function updateSummaryDateTimeDisplay() {
+        const summaryDateTime = document.getElementById('summaryDateTime');
+        const summaryDateTimeInline = document.getElementById('summaryDateTimeInline');
+        
+        if (deliveryDateInput.value && checkoutData.deliveryTime) {
+            const formatted = formatSummaryDateTime(deliveryDateInput.value, checkoutData.deliveryTime);
+            if (summaryDateTime) {
+                summaryDateTime.textContent = formatted;
+            }
+            if (summaryDateTimeInline) {
+                summaryDateTimeInline.textContent = formatted;
+            }
+        }
+    }
 }
 
 // Рендеринг итоговой страницы

@@ -492,11 +492,62 @@
                             </button>
                         </div>
                         
-                        <!-- Дата и время -->
-                        <div class="checkout-summary-item">
+                        <!-- Дата и время (редактируемые в упрощенном сценарии) -->
+                        <div class="checkout-summary-item" id="summaryDateTimeContainer">
                             <div class="summary-item-content">
                                 <div class="summary-item-label">Дата и время доставки</div>
                                 <div class="summary-item-value" id="summaryDateTime">-</div>
+                                <div class="summary-item-value" id="summaryDateTimeInline" style="display: none;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Календарь и слоты времени (для упрощенного сценария) -->
+                        <div id="summaryDateTimePicker" style="display: none; margin-top: 16px;">
+                            <div class="form-group" id="anchor-summaryDeliveryDate">
+                                <label>Дата доставки <span class="required">*</span></label>
+                                <!-- Переиспользуем скрытое поле deliveryDate -->
+                                <div class="custom-calendar" id="summaryCustomCalendar">
+                                    <div class="calendar-header">
+                                        <button type="button" class="calendar-nav-btn" id="summaryCalendarPrevMonth" aria-label="Предыдущий месяц">
+                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                        <div class="calendar-month-year" id="summaryCalendarMonthYear"></div>
+                                        <button type="button" class="calendar-nav-btn" id="summaryCalendarNextMonth" aria-label="Следующий месяц">
+                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="calendar-weekdays">
+                                        <div class="calendar-weekday">Пн</div>
+                                        <div class="calendar-weekday">Вт</div>
+                                        <div class="calendar-weekday">Ср</div>
+                                        <div class="calendar-weekday">Чт</div>
+                                        <div class="calendar-weekday">Пт</div>
+                                        <div class="calendar-weekday">Сб</div>
+                                        <div class="calendar-weekday">Вс</div>
+                                    </div>
+                                    <div class="calendar-days" id="summaryCalendarDays"></div>
+                                </div>
+                            </div>
+                            <div class="form-group" id="anchor-summaryDeliveryTime">
+                                <label>Время доставки <span class="required">*</span></label>
+                                <div class="delivery-time-options" id="summaryDeliveryTimeOptions">
+                                    <button type="button" class="time-slot-btn" data-time="10-12">10:00 - 12:00</button>
+                                    <button type="button" class="time-slot-btn" data-time="12-14">12:00 - 14:00</button>
+                                    <button type="button" class="time-slot-btn" data-time="14-16">14:00 - 16:00</button>
+                                    <button type="button" class="time-slot-btn" data-time="16-18">16:00 - 18:00</button>
+                                    <button type="button" class="time-slot-btn" data-time="18-20">18:00 - 20:00</button>
+                                    <button type="button" class="time-slot-btn" data-time="20-22">20:00 - 22:00</button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 16px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="summaryLeaveAtDoorCheckbox" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <span>Оставить у двери</span>
+                                </label>
                             </div>
                         </div>
                         
