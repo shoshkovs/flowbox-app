@@ -6957,15 +6957,33 @@ async function submitOrder() {
     // Проверяем, что все данные заполнены
     if (!checkoutData.recipientName || !checkoutData.recipientPhone) {
         console.error('[submitOrder] ❌ Не заполнены данные получателя');
-        alert('Пожалуйста, заполните данные получателя');
-        goToStep(1);
+        // В упрощенном сценарии только прокрутка и подсветка, без уведомлений
+        if (isSimpleCheckout) {
+            const summaryRecipientName = document.getElementById('summaryRecipientName');
+            const summaryRecipientPhone = document.getElementById('summaryRecipientPhone');
+            const editRecipient = document.getElementById('editRecipient');
+            
+            // Подсвечиваем поля получателя (если есть возможность)
+            if (editRecipient) {
+                editRecipient.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            goToStep(1);
+        }
         return;
     }
     
     if (!checkoutData.address || !checkoutData.address.street) {
         console.error('[submitOrder] ❌ Не заполнен адрес доставки');
-        alert('Пожалуйста, заполните адрес доставки');
-        goToStep(2);
+        // В упрощенном сценарии только прокрутка и подсветка, без уведомлений
+        if (isSimpleCheckout) {
+            const editAddress = document.getElementById('editAddress');
+            if (editAddress) {
+                editAddress.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            goToStep(2);
+        }
         return;
     }
     
@@ -6997,14 +7015,8 @@ async function submitOrder() {
             } else if (summaryCalendar) {
                 summaryCalendar.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-            
-            if (tg && tg.showAlert) {
-                tg.showAlert('Пожалуйста, выберите дату и время доставки');
-            } else {
-                alert('Пожалуйста, выберите дату и время доставки');
-            }
+            // Убрали уведомления - только прокрутка и подсветка
         } else {
-            alert('Пожалуйста, выберите дату и время доставки');
             goToStep(3);
         }
         return;
