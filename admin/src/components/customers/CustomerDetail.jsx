@@ -22,8 +22,10 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   useEffect(() => {
     if (clientId) {
       loadCustomerDetail();
+    } else {
+      setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, authToken]);
 
   const loadCustomerDetail = async () => {
     try {
@@ -58,8 +60,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
 
     setRecalculatingBonuses(true);
     try {
-      const url = customerId 
-        `${API_BASE}/api/admin/customers/${clientId}/recalculate-bonuses`;
+      const url = `${API_BASE}/api/admin/customers/${clientId}/recalculate-bonuses`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -96,8 +97,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
 
     setIsAdjustingBonuses(true);
     try {
-      const url = customerId 
-        `${API_BASE}/api/admin/customers/${clientId}/bonuses`;
+      const url = `${API_BASE}/api/admin/customers/${clientId}/bonuses`;
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -127,8 +127,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   const handleSaveComment = async () => {
     setIsSavingComment(true);
     try {
-      const url = customerId 
-        `${API_BASE}/api/admin/customers/${clientId}/manager-comment`;
+      const url = `${API_BASE}/api/admin/customers/${clientId}/manager-comment`;
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -168,8 +167,8 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   const email = customerData.email || '-';
   const registeredAt = customerData.registered_at || customerData.created_at;
   const lastOrderDate = customerData.stats?.lastOrderDate || customerData.lastOrderDate;
-  const ordersCount = customerData.stats?.ordersCount || customer.ordersCount || 0;
-  const totalSpent = customerData.stats?.totalSpent || customer.totalSpent || 0;
+  const ordersCount = customerData.stats?.ordersCount || customer?.ordersCount || 0;
+  const totalSpent = customerData.stats?.totalSpent || customer?.totalSpent || 0;
   const avgCheck = customerData.stats?.avgCheck || (ordersCount > 0 ? Math.round(totalSpent / ordersCount) : 0);
   const bonusBalance = customerData.bonuses || customer.bonuses || 0;
   const orders = customerData.orders || [];
