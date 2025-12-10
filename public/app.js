@@ -3958,15 +3958,50 @@ addressForm.addEventListener('submit', async (e) => {
     // Сохраняем на сервер и ждём завершения, чтобы получить обновлённые адреса с ID
     await saveUserData();
     
+    // После сохранения savedAddresses уже обновлён из ответа сервера
+    // Если мы на шаге 2 чекаута - выбираем только что созданный адрес
+    let createdAddressId = null;
+    if (!editingAddressId) {
+        // Это новый адрес - находим его в обновленном списке по содержимому
+        const createdAddress = savedAddresses.find(addr => {
+            const sameCity = (addr.city || '').toLowerCase().trim() === (address.city || '').toLowerCase().trim();
+            const sameStreet = (addr.street || '').toLowerCase().trim() === (address.street || '').toLowerCase().trim();
+            const sameApartment = (addr.apartment || '').toLowerCase().trim() === (address.apartment || '').toLowerCase().trim();
+            return sameCity && sameStreet && sameApartment;
+        });
+        if (createdAddress && createdAddress.id) {
+            createdAddressId = createdAddress.id;
+        }
+    }
+    
     resetAddressFormState();
     if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
     if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
-    switchTab('profileTab');
-    tg.BackButton.hide();
     
-    // После сохранения savedAddresses уже обновлён из ответа сервера, можно обновить UI
-    loadSavedAddresses();
-    tg.HapticFeedback.notificationOccurred('success');
+    // Если мы на шаге 2 чекаута и создали новый адрес - выбираем его
+    if (currentCheckoutStep === 2 && createdAddressId) {
+        console.log('[addressForm] ✅ Создан новый адрес на шаге 2, выбираем его:', createdAddressId);
+        // Обновляем список адресов
+        loadSavedAddresses();
+        // Выбираем только что созданный адрес
+        selectCheckoutAddress(createdAddressId);
+        // Сохраняем шаг 2 с выбранным адресом
+        saveStep2();
+        // Возвращаемся на шаг 2 чекаута
+        const orderTab = document.getElementById('orderTab');
+        if (orderTab) {
+            orderTab.style.display = 'block';
+        }
+        switchTab('orderTab');
+        tg.BackButton.show();
+    } else {
+        // Обычное поведение - возвращаемся в профиль
+        switchTab('profileTab');
+        tg.BackButton.hide();
+        loadSavedAddresses();
+    }
+    
+    tg.HapticFeedback.impactOccurred('success');
 });
 
 // Обработка удаления адреса
@@ -5208,6 +5243,23 @@ function goToStep(step) {
     
     currentCheckoutStep = step;
     
+    // Если переходим на шаг 2, инициализируем адреса и подтягиваем сохраненный адрес
+    if (step === 2) {
+        // Рендерим список адресов
+        renderCheckoutAddresses();
+        
+        // Если в checkoutData есть сохраненный адрес с ID - выбираем его
+        if (checkoutData.address && checkoutData.address.id) {
+            const savedAddress = savedAddresses.find(addr => String(addr.id) === String(checkoutData.address.id));
+            if (savedAddress) {
+                console.log('[goToStep] ✅ Восстанавливаем сохраненный адрес из checkoutData:', checkoutData.address.id);
+                selectCheckoutAddress(checkoutData.address.id);
+            } else {
+                console.warn('[goToStep] ⚠️ Адрес с ID', checkoutData.address.id, 'не найден в savedAddresses');
+            }
+        }
+    }
+    
     // Если переходим на шаг 3, синхронизируем чекбокс "Оставить у двери"
     if (step === 3) {
         // Переинициализируем чекбокс при переходе на шаг 3
@@ -5569,6 +5621,23 @@ async function saveStep2() {
                     savedAddresses.push(newAddress);
                     await saveUserData();
                     console.log('[saveStep2] новый адрес сохранен');
+                    
+                    // После сохранения savedAddresses обновлён из ответа сервера
+                    // Находим только что созданный адрес по содержимому и выбираем его
+                    const createdAddress = savedAddresses.find(addr => {
+                        const sameCity = (addr.city || '').toLowerCase().trim() === (newAddress.city || '').toLowerCase().trim();
+                        const sameStreet = (addr.street || '').toLowerCase().trim() === (newAddress.street || '').toLowerCase().trim();
+                        const sameApartment = (addr.apartment || '').toLowerCase().trim() === (newAddress.apartment || '').toLowerCase().trim();
+                        return sameCity && sameStreet && sameApartment && addr.id && typeof addr.id === 'number' && addr.id > 0;
+                    });
+                    
+                    if (createdAddress && createdAddress.id) {
+                        console.log('[saveStep2] ✅ Выбираем только что созданный адрес:', createdAddress.id);
+                        // Обновляем список адресов
+                        loadSavedAddresses();
+                        // Выбираем только что созданный адрес
+                        selectCheckoutAddress(createdAddress.id);
+                    }
                 }
             } catch (e) {
                 console.error('[saveStep2] ошибка сохранения адреса:', e);
@@ -5611,8 +5680,27 @@ async function saveStep2() {
                 // Добавляем в локальный массив
                 savedAddresses.push(addressData);
                 
-                // Обновляем отображение адресов в профиле
-                loadSavedAddresses();
+                // После сохранения через API нужно обновить savedAddresses из ответа сервера
+                await saveUserData();
+                
+                // Находим только что созданный адрес по содержимому и выбираем его
+                const createdAddress = savedAddresses.find(addr => {
+                    const sameCity = (addr.city || '').toLowerCase().trim() === (addressData.city || '').toLowerCase().trim();
+                    const sameStreet = (addr.street || '').toLowerCase().trim() === (addressData.street || '').toLowerCase().trim();
+                    const sameApartment = (addr.apartment || '').toLowerCase().trim() === (addressData.apartment || '').toLowerCase().trim();
+                    return sameCity && sameStreet && sameApartment && addr.id && typeof addr.id === 'number' && addr.id > 0;
+                });
+                
+                if (createdAddress && createdAddress.id) {
+                    console.log('[saveStep2] ✅ Выбираем только что созданный адрес (через API):', createdAddress.id);
+                    // Обновляем список адресов
+                    loadSavedAddresses();
+                    // Выбираем только что созданный адрес
+                    selectCheckoutAddress(createdAddress.id);
+                } else {
+                    // Обновляем отображение адресов в профиле
+                    loadSavedAddresses();
+                }
             }
         } catch (error) {
             console.error('Ошибка сохранения адреса:', error);
