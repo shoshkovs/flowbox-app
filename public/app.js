@@ -5230,13 +5230,27 @@ function initCheckoutSteps() {
     const addNewAddressFromListBtn = document.getElementById('addNewAddressFromListBtn');
     if (addNewAddressFromListBtn) {
         addNewAddressFromListBtn.onclick = () => {
-            // Переходим на вкладку адресов для создания нового
-            switchTab('addressTab');
             // Скрываем вкладку со списком адресов
             const myAddressesTab = document.getElementById('myAddressesTab');
             if (myAddressesTab) {
                 myAddressesTab.style.display = 'none';
             }
+            
+            // В упрощенном сценарии показываем заголовок обратно
+            if (isSimpleCheckout) {
+                const orderPageHeader = document.querySelector('.order-page-header');
+                if (orderPageHeader) {
+                    orderPageHeader.style.display = '';
+                }
+            }
+            
+            // Переходим на вкладку адресов для создания нового
+            switchTab('addressTab');
+            
+            // Прокручиваем страницу вверх
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
         };
     }
     
@@ -6434,6 +6448,14 @@ function openMyAddressesPage() {
     // Скрываем все шаги checkout
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
+    // В упрощенном сценарии скрываем заголовок "Оформление заказа"
+    if (isSimpleCheckout) {
+        const orderPageHeader = document.querySelector('.order-page-header');
+        if (orderPageHeader) {
+            orderPageHeader.style.display = 'none';
+        }
+    }
+    
     // Скрываем все вкладки
     document.querySelectorAll('.tab-content').forEach(tab => {
         if (tab.id !== 'myAddressesTab') {
@@ -6444,11 +6466,23 @@ function openMyAddressesPage() {
     // Показываем вкладку со списком адресов
     myAddressesTab.style.display = 'block';
     
+    // Прокручиваем страницу вверх
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    
     // Настраиваем BackButton
     if (tg && tg.BackButton) {
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
             myAddressesTab.style.display = 'none';
+            // В упрощенном сценарии показываем заголовок обратно
+            if (isSimpleCheckout) {
+                const orderPageHeader = document.querySelector('.order-page-header');
+                if (orderPageHeader) {
+                    orderPageHeader.style.display = '';
+                }
+            }
             goToStep(4);
         });
     }
@@ -6760,6 +6794,14 @@ function openEditAddressPageFromList(address) {
     // Скрываем все шаги checkout
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
+    // В упрощенном сценарии скрываем заголовок "Оформление заказа"
+    if (isSimpleCheckout) {
+        const orderPageHeader = document.querySelector('.order-page-header');
+        if (orderPageHeader) {
+            orderPageHeader.style.display = 'none';
+        }
+    }
+    
     // Скрываем все вкладки
     document.querySelectorAll('.tab-content').forEach(tab => {
         if (tab.id !== 'editAddressTab') {
@@ -6897,6 +6939,13 @@ async function saveEditAddress() {
     if (editAddressTab) {
         editAddressTab.style.display = 'none';
         delete editAddressTab.dataset.editingAddressId;
+        // В упрощенном сценарии показываем заголовок обратно
+        if (isSimpleCheckout) {
+            const orderPageHeader = document.querySelector('.order-page-header');
+            if (orderPageHeader) {
+                orderPageHeader.style.display = '';
+            }
+        }
     }
     
     // Скрываем все вкладки
