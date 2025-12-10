@@ -1163,13 +1163,15 @@ async function loadUserData() {
             console.log('[loadUserData] адресов:', savedAddresses.length);
             if (data.profile) {
                 localStorage.setItem('userProfile', JSON.stringify(data.profile));
-                // Восстанавливаем имя получателя из профиля в checkoutData
-                // Это имя было введено пользователем при предыдущем заказе
-                if (data.profile.name) {
-                    checkoutData.recipientName = data.profile.name;
-                }
+                // Восстанавливаем телефон получателя из профиля
                 if (data.profile.phone) {
                     checkoutData.recipientPhone = data.profile.phone;
+                }
+                // Имя получателя НЕ берем из профиля - оно хранится отдельно в localStorage
+                // Восстанавливаем имя получателя из localStorage (если было сохранено)
+                const savedRecipientName = localStorage.getItem('flowbox_recipient_name');
+                if (savedRecipientName) {
+                    checkoutData.recipientName = savedRecipientName;
                 }
             }
             if (data.activeOrders && Array.isArray(data.activeOrders)) {
@@ -1711,35 +1713,28 @@ checkoutBtnFinal.addEventListener('click', () => {
     currentCheckoutStep = 1;
     goToStep(1);
     
-    // Заполняем поля из checkoutData (которое может содержать имя получателя из предыдущего заказа)
-    // Если checkoutData.recipientName пустое, поле customerName останется пустым (первый заказ)
-    // Если checkoutData.recipientName заполнено (из профиля), поле будет заполнено (повторный заказ)
+    // Заполняем поля получателя
     const customerNameField = document.getElementById('customerName');
     const customerPhoneField = document.getElementById('customerPhone');
     
-    if (customerNameField && checkoutData.recipientName) {
-        customerNameField.value = checkoutData.recipientName;
-    } else if (customerNameField) {
-        // Если checkoutData.recipientName пустое, оставляем поле пустым
-        customerNameField.value = '';
+    // Имя получателя - загружаем из localStorage (если человек уже делал заказ)
+    // При первом заказе savedRecipientName == '' → поле будет пустым
+    if (customerNameField) {
+        const savedRecipientName = localStorage.getItem('flowbox_recipient_name') || '';
+        customerNameField.value = savedRecipientName;
     }
     
-    // Заполняем телефон из checkoutData или из профиля
+    // Телефон получателя - из профиля (если есть)
     if (customerPhoneField) {
-        if (checkoutData.recipientPhone) {
-            customerPhoneField.value = checkoutData.recipientPhone;
-        } else {
-            // Если в checkoutData нет телефона, пытаемся взять из профиля
-            const savedProfile = localStorage.getItem('userProfile');
-            if (savedProfile) {
-                try {
-                    const profileData = JSON.parse(savedProfile);
-                    if (profileData.phone) {
-                        customerPhoneField.value = profileData.phone;
-                    }
-                } catch (e) {
-                    console.error('Ошибка парсинга профиля:', e);
+        const savedProfile = localStorage.getItem('userProfile');
+        if (savedProfile) {
+            try {
+                const profileData = JSON.parse(savedProfile);
+                if (profileData.phone) {
+                    customerPhoneField.value = profileData.phone;
                 }
+            } catch (e) {
+                console.error('Ошибка парсинга профиля:', e);
             }
         }
     }
@@ -3060,6 +3055,12 @@ async function validateAndSubmitOrder(e) {
             // Успешный ответ - обрабатываем заказ
             const orderId = parseInt(result.orderId) || result.orderId; // Приводим к числу, если возможно
             console.log('✅ Заказ успешно создан, ID:', orderId);
+            
+            // Сохраняем имя получателя в localStorage для будущих заказов
+            if (name && name.trim()) {
+                localStorage.setItem('flowbox_recipient_name', name.trim());
+                console.log('[validateAndSubmitOrder] 💾 Сохранено имя получателя в localStorage:', name.trim());
+            }
             
             try {
                 tg.sendData(JSON.stringify(orderData));
@@ -5254,15 +5255,34 @@ function goToStep(step) {
     
     currentCheckoutStep = step;
     
-    // Если переходим на шаг 1, восстанавливаем поля из checkoutData
+    // Если переходим на шаг 1, восстанавливаем поля получателя
     if (step === 1) {
         const customerNameField = document.getElementById('customerName');
         const customerPhoneField = document.getElementById('customerPhone');
-        if (customerNameField && checkoutData.recipientName) {
-            customerNameField.value = checkoutData.recipientName;
+        
+        // Имя получателя - загружаем из localStorage (если человек уже делал заказ)
+        if (customerNameField) {
+            const savedRecipientName = localStorage.getItem('flowbox_recipient_name') || '';
+            customerNameField.value = savedRecipientName;
         }
-        if (customerPhoneField && checkoutData.recipientPhone) {
-            customerPhoneField.value = checkoutData.recipientPhone;
+        
+        // Телефон получателя - из checkoutData или из профиля
+        if (customerPhoneField) {
+            if (checkoutData.recipientPhone) {
+                customerPhoneField.value = checkoutData.recipientPhone;
+            } else {
+                const savedProfile = localStorage.getItem('userProfile');
+                if (savedProfile) {
+                    try {
+                        const profileData = JSON.parse(savedProfile);
+                        if (profileData.phone) {
+                            customerPhoneField.value = profileData.phone;
+                        }
+                    } catch (e) {
+                        console.error('Ошибка парсинга профиля:', e);
+                    }
+                }
+            }
         }
     }
     
@@ -5550,12 +5570,23 @@ function validateStep1() {
 
 // Сохранение шага 1
 async function saveStep1() {
-    checkoutData.recipientName = document.getElementById('customerName').value.trim();
-    checkoutData.recipientPhone = document.getElementById('customerPhone').value.trim();
+    const recipientNameInput = document.getElementById('customerName');
+    const recipientPhoneInput = document.getElementById('customerPhone');
     
-    // Сохраняем в профиль пользователя
+    const recipientName = (recipientNameInput ? recipientNameInput.value.trim() : '');
+    const recipientPhone = (recipientPhoneInput ? recipientPhoneInput.value.trim() : '');
+    
+    checkoutData.recipientName = recipientName;
+    checkoutData.recipientPhone = recipientPhone;
+    
+    // Если имя получателя введено - сохраняем его в localStorage для будущих заказов
+    if (recipientName) {
+        localStorage.setItem('flowbox_recipient_name', recipientName);
+    }
+    
+    // Сохраняем телефон в профиль пользователя (если нужно)
     const userId = getUserId();
-    if (userId) {
+    if (userId && recipientPhone) {
         try {
             await fetch('/api/user-data', {
                 method: 'POST',
@@ -5563,13 +5594,12 @@ async function saveStep1() {
                 body: JSON.stringify({
                     userId: userId,
                     profile: {
-                        name: checkoutData.recipientName,
-                        phone: checkoutData.recipientPhone
+                        phone: recipientPhone
                     }
                 })
             });
         } catch (error) {
-            console.error('Ошибка сохранения данных получателя:', error);
+            console.error('Ошибка сохранения телефона получателя:', error);
         }
     }
 }
