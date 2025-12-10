@@ -6136,9 +6136,13 @@ function initSimpleDateTimeOnSummary() {
         }
     }
     
-    // Навигация по месяцам
+    // Навигация по месяцам - удаляем старые обработчики перед добавлением новых
     if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
+        // Клонируем кнопку, чтобы удалить все старые обработчики
+        const newPrevBtn = prevBtn.cloneNode(true);
+        prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+        
+        newPrevBtn.addEventListener('click', () => {
             currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1);
             if (currentCalendarDate < minDate) {
                 currentCalendarDate = new Date(minDate);
@@ -6148,7 +6152,11 @@ function initSimpleDateTimeOnSummary() {
     }
     
     if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
+        // Клонируем кнопку, чтобы удалить все старые обработчики
+        const newNextBtn = nextBtn.cloneNode(true);
+        nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+        
+        newNextBtn.addEventListener('click', () => {
             currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1);
             if (currentCalendarDate > maxDate) {
                 currentCalendarDate = new Date(maxDate);
@@ -6160,10 +6168,14 @@ function initSimpleDateTimeOnSummary() {
     // Инициализируем календарь
     renderSummaryCalendar(currentCalendarDate);
     
-    // Слоты времени на «Итого»
+    // Слоты времени на «Итого» - удаляем старые обработчики перед добавлением новых
     const timeOptions = document.getElementById('summaryDeliveryTimeOptions');
     if (timeOptions) {
-        const buttons = timeOptions.querySelectorAll('.time-slot-btn');
+        // Клонируем контейнер, чтобы удалить все старые обработчики
+        const newTimeOptions = timeOptions.cloneNode(true);
+        timeOptions.parentNode.replaceChild(newTimeOptions, timeOptions);
+        
+        const buttons = newTimeOptions.querySelectorAll('.time-slot-btn');
         buttons.forEach(btn => {
             btn.addEventListener('click', () => {
                 buttons.forEach(b => b.classList.remove('active'));
