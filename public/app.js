@@ -1010,9 +1010,9 @@ function saveCartToLocalStorage(cart) {
 async function saveUserData() {
     const userId = getUserId();
     if (!userId) {
-        // Если нет userId, сохраняем только локально
+        // Если нет userId, сохраняем только локально через единый сеттер
         saveCartToLocalStorage(cart);
-        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        setSavedAddresses(savedAddresses); // Используем единый сеттер
         localStorage.setItem('userProfile', JSON.stringify(localStorage.getItem('userProfile') ? JSON.parse(localStorage.getItem('userProfile')) : null));
         localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
         localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
@@ -1070,14 +1070,14 @@ async function saveUserData() {
         
         const result = await response.json();
         
-        // 🔥 ВАЖНО: приводим фронт в соответствие с БД
+        // 🔥 ВАЖНО: приводим фронт в соответствие с БД через единый сеттер
         if (Array.isArray(result.addresses)) {
-            savedAddresses = result.addresses;
-        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+            setSavedAddresses(result.addresses);
             console.log('[saveUserData] ✅ Адреса обновлены с сервера:', savedAddresses.length);
-        } else {
-            // fallback: сохраняем то, что у нас локально
-            localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        } else if (result.addresses === undefined || result.addresses === null) {
+            // Если сервер не вернул адреса, сохраняем то, что у нас локально
+            // НЕ вызываем setSavedAddresses, чтобы не перезаписать пустым массивом
+            console.log('[saveUserData] ⚠️ Сервер не вернул адреса, сохраняем локально');
         }
         
         // Также сохраняем остальные данные локально как резервную копию
@@ -1089,9 +1089,9 @@ async function saveUserData() {
         localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
     } catch (error) {
         console.error('Ошибка сохранения данных на сервер:', error);
-        // Сохраняем локально при ошибке
+        // Сохраняем локально при ошибке через единый сеттер
         saveCartToLocalStorage(cart);
-        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        setSavedAddresses(savedAddresses); // Используем единый сеттер
         localStorage.setItem('activeOrders', JSON.stringify(userActiveOrders));
         localStorage.setItem('completedOrders', JSON.stringify(userCompletedOrders));
     }
@@ -3888,11 +3888,25 @@ async function handleAddressFormSubmit(event) {
         }
     }
     
-    // Используем единый сеттер для обновления локально
+    // Сохраняем локальную копию для восстановления, если сервер вернет пустой массив
+    const localAddressesBackup = [...updatedAddresses];
+    
+    // Используем единый сеттер для обновления локально (оптимистичное обновление UI)
     setSavedAddresses(updatedAddresses);
     
     // Сохраняем на сервер
     await saveUserData();
+    
+    // Проверяем, что сервер вернул адреса (не пустой массив)
+    // Если savedAddresses стал пустым после saveUserData, восстанавливаем из локальной копии
+    if (savedAddresses.length === 0 && localAddressesBackup.length > 0) {
+        console.warn('[handleAddressFormSubmit] ⚠️ Сервер вернул пустой массив адресов, восстанавливаем из локальной копии');
+        setSavedAddresses(localAddressesBackup);
+        // Пробуем сохранить еще раз через небольшую задержку
+        setTimeout(async () => {
+            await saveUserData();
+        }, 500);
+    }
     
     // После сохранения savedAddresses уже обновлён из ответа сервера через setSavedAddresses в saveUserData
     // Находим только что созданный/обновленный адрес
@@ -3999,18 +4013,31 @@ function renderProfileAddresses() {
         if (addr.entrance) details.push(`под. ${addr.entrance}`);
         const detailsStr = details.join(', ');
         
+        const addressId = addr.id;
+        
         return `
-            <div class="address-item">
-                <div class="address-item-content">
+            <div class="address-item" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #eee;">
+                <div class="address-item-content" style="flex: 1;">
                     <div class="address-item-name">${streetName}</div>
                     ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
                 </div>
-                <button class="address-edit-icon-btn" onclick="window.editAddress && window.editAddress(${addr.id}); event.stopPropagation();" title="Изменить" data-address-id="${addr.id}">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                </button>
+                <div class="address-menu" style="position: relative;">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="5" r="1"/>
+                            <circle cx="12" cy="12" r="1"/>
+                            <circle cx="12" cy="19" r="1"/>
+                        </svg>
+                    </button>
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px; margin-top: 4px;">
+                        <button onclick="event.stopPropagation(); editAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                            Изменить
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
             </div>
         `;
     }).join('');
@@ -4019,6 +4046,24 @@ function renderProfileAddresses() {
 // Загрузка сохраненных адресов (только рендеринг, не меняет savedAddresses)
 function loadSavedAddresses() {
     console.log('[loadSavedAddresses] 🚀 Рендеринг адресов, savedAddresses.length:', savedAddresses.length);
+    
+    // Если savedAddresses пустой, пробуем загрузить из localStorage (только для отображения)
+    // НО не перезаписываем savedAddresses, если он уже заполнен
+    if (savedAddresses.length === 0) {
+        try {
+            const savedAddressesLocal = localStorage.getItem('savedAddresses');
+            if (savedAddressesLocal) {
+                const addresses = JSON.parse(savedAddressesLocal);
+                if (Array.isArray(addresses) && addresses.length > 0) {
+                    // Только для отображения, не меняем глобальный savedAddresses
+                    // setSavedAddresses будет вызван из loadUserData
+                    console.log('[loadSavedAddresses] 📦 Найдены адреса в localStorage, но не загружаем (ждем loadUserData)');
+                }
+            }
+        } catch (e) {
+            console.error('[loadSavedAddresses] ❌ Ошибка чтения из localStorage:', e);
+        }
+    }
     
     // Рендерим профиль
     renderProfileAddresses();
@@ -4815,6 +4860,8 @@ window.selectAddressFromMyAddresses = selectAddressFromMyAddresses;
 window.editAddressFromMyAddresses = editAddressFromMyAddresses;
 window.deleteAddressFromMyAddresses = deleteAddressFromMyAddresses;
 window.toggleAddressMenu = toggleAddressMenu;
+window.editAddressFromProfile = editAddressFromProfile;
+window.deleteAddressFromProfile = deleteAddressFromProfile;
 window.addAdditionalProduct = addAdditionalProduct;
 window.selectCheckoutAddress = selectCheckoutAddress;
 window.showCheckoutAddressForm = showCheckoutAddressForm;
@@ -5985,6 +6032,52 @@ function editAddressFromMyAddresses(addressId) {
     
     // Открываем форму редактирования с данными выбранного адреса
     openEditAddressPageFromList(addr);
+}
+
+// Редактирование адреса из профиля
+function editAddressFromProfile(addressId) {
+    // Ищем адрес только среди адресов с валидным ID
+    const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+    const addr = validAddresses.find(a => String(a.id) === String(addressId));
+    
+    if (!addr) {
+        console.error('[editAddressFromProfile] ❌ Адрес с ID', addressId, 'не найден');
+        return;
+    }
+    
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
+    // Открываем форму редактирования через универсальную функцию
+    openAddressForm({ mode: 'edit', source: 'profile', addressId: addressId });
+}
+
+// Удаление адреса из профиля
+async function deleteAddressFromProfile(addressId) {
+    if (!confirm('Вы уверены, что хотите удалить этот адрес?')) {
+        return;
+    }
+    
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
+    // Удаляем адрес из списка
+    const filtered = savedAddresses.filter(a => String(a.id) !== String(addressId));
+    setSavedAddresses(filtered);
+    
+    // Сохраняем на сервер (включая пустой массив, если это последний адрес)
+    await saveUserData();
+    
+    // Тактильная обратная связь
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
 }
 
 // Удаление адреса из списка "Мои адреса"
