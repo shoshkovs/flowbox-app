@@ -965,15 +965,24 @@ async function saveUserData() {
         const deduplicatedAddresses = dedupeAddresses(savedAddresses);
         console.log(`[saveUserData] 📦 Адресов до дедупликации: ${savedAddresses.length}, после: ${deduplicatedAddresses.length}`);
         
-        // Фильтруем только невалидные адреса
-        const addressesToSave = deduplicatedAddresses.filter(addr => {
-            // Фильтруем только полностью пустые/невалидные адреса
-            if (!addr || (!addr.city && !addr.street && !addr.house)) {
-                console.warn('[saveUserData] ⚠️ Пропущен невалидный адрес:', addr);
-                return false;
-            }
-            return true;
-        });
+        // Фильтруем только невалидные адреса и очищаем фейковые ID
+        const addressesToSave = deduplicatedAddresses
+            .filter(addr => {
+                // Фильтруем только полностью пустые/невалидные адреса
+                if (!addr || (!addr.city && !addr.street && !addr.house)) {
+                    console.warn('[saveUserData] ⚠️ Пропущен невалидный адрес:', addr);
+                    return false;
+                }
+                return true;
+            })
+            .map(addr => {
+                const cleaned = { ...addr };
+                // Если id фейковый или не число — не отправляем его, пусть бэк создаёт новый адрес
+                if (!Number.isInteger(cleaned.id) || cleaned.id <= 0) {
+                    delete cleaned.id;
+                }
+                return cleaned;
+            });
         
         const response = await fetch('/api/user-data', {
             method: 'POST',
@@ -995,11 +1004,19 @@ async function saveUserData() {
         }
         
         const result = await response.json();
-        // Убрали избыточное логирование - данные сохраняются автоматически
         
-        // Также сохраняем локально как резервную копию
+        // 🔥 ВАЖНО: приводим фронт в соответствие с БД
+        if (Array.isArray(result.addresses)) {
+            savedAddresses = result.addresses;
+            localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+            console.log('[saveUserData] ✅ Адреса обновлены с сервера:', savedAddresses.length);
+        } else {
+            // fallback: сохраняем то, что у нас локально
+            localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        }
+        
+        // Также сохраняем остальные данные локально как резервную копию
         saveCartToLocalStorage(cart);
-        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
         if (profileData) {
             localStorage.setItem('userProfile', JSON.stringify(profileData));
         }
@@ -1628,8 +1645,8 @@ const initNavigation = () => {
             const tabId = newItem.dataset.tab;
             console.log('[navigation] ✅ Прямой клик по навигации:', tabId);
             switchTab(tabId);
-        });
     });
+});
     
     // Обновляем глобальную переменную navItems для совместимости
     navItems = document.querySelectorAll('.nav-item');
@@ -3202,7 +3219,7 @@ async function validateAndSubmitOrder(e) {
             // Сброс формы заказа (если она существует)
             const orderForm = document.getElementById('orderForm');
             if (orderForm) {
-                orderForm.reset();
+            orderForm.reset();
             }
             
             // Устанавливаем город по умолчанию после reset

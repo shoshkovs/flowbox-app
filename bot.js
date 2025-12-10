@@ -1549,8 +1549,8 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
       }
       
       // Загружаем существующие адреса для проверки дубликатов (ДО удаления!)
-      // loadUserAddresses принимает telegram_id
-      const existingAddresses = await loadUserAddresses(telegram_id);
+      // loadUserAddresses принимает user_id из таблицы users
+      const existingAddresses = await loadUserAddresses(user_id);
       
       // Подготавливаем адреса для сохранения: парсим street и house, проверяем дубликаты
       const addressesToUpdate = []; // Адреса с ID для UPDATE
@@ -2449,6 +2449,9 @@ app.post('/api/user-data', async (req, res) => {
         }
       }
       
+      // Загружаем обновлённые адреса из БД для возврата фронту
+      const updatedAddresses = await loadUserAddresses(user.id);
+      
       // Логируем только при значительных изменениях (новые адреса, заказы)
       const hasSignificantChanges = 
         (addresses !== undefined && addresses.length > 0) ||
@@ -2476,7 +2479,9 @@ app.post('/api/user-data', async (req, res) => {
       console.log(`💾 Сохранены данные для пользователя ${userId} (файл): адресов=${userDataStore[userId].addresses.length}, заказов=${userDataStore[userId].activeOrders.length}`);
     }
     
-    res.json({ success: true });
+    // Возвращаем обновлённые адреса из БД (для БД) или из файла (для fallback)
+    const responseAddresses = pool ? updatedAddresses : (userDataStore[userId]?.addresses || []);
+    res.json({ success: true, addresses: responseAddresses });
   } catch (error) {
     console.error('Ошибка сохранения данных:', error);
     res.status(500).json({ error: 'Ошибка сохранения данных' });
