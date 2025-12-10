@@ -2460,6 +2460,9 @@ app.post('/api/user-data', async (req, res) => {
       if (hasSignificantChanges) {
         console.log(`💾 Сохранены данные для пользователя ${userId} (БД): адресов=${addresses?.length || 0}, заказов=${activeOrders?.length || 0}`);
       }
+      
+      // Возвращаем обновлённые адреса из БД
+      res.json({ success: true, addresses: updatedAddresses });
     } else {
       // Fallback: файловое хранилище
       const existingData = userDataStore[userId] || {};
@@ -2477,11 +2480,10 @@ app.post('/api/user-data', async (req, res) => {
       saveUserDataToFile(userDataStore);
       
       console.log(`💾 Сохранены данные для пользователя ${userId} (файл): адресов=${userDataStore[userId].addresses.length}, заказов=${userDataStore[userId].activeOrders.length}`);
+      
+      // Возвращаем адреса из файлового хранилища
+      res.json({ success: true, addresses: userDataStore[userId].addresses || [] });
     }
-    
-    // Возвращаем обновлённые адреса из БД (для БД) или из файла (для fallback)
-    const responseAddresses = pool ? updatedAddresses : (userDataStore[userId]?.addresses || []);
-    res.json({ success: true, addresses: responseAddresses });
   } catch (error) {
     console.error('Ошибка сохранения данных:', error);
     res.status(500).json({ error: 'Ошибка сохранения данных' });
