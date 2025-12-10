@@ -3950,7 +3950,7 @@ function deleteAddress(addressId) {
 }
 
 // Обработка формы адреса
-addressForm.addEventListener('submit', (e) => {
+addressForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     // Получаем все поля заново, чтобы убедиться, что они актуальны
@@ -4111,13 +4111,16 @@ addressForm.addEventListener('submit', (e) => {
         }
     }
     
-    saveUserData(); // Сохраняем на сервер
+    // Сохраняем на сервер и ждём завершения, чтобы получить обновлённые адреса с ID
+    await saveUserData();
     
     resetAddressFormState();
     if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
     if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
     switchTab('profileTab');
     tg.BackButton.hide();
+    
+    // После сохранения savedAddresses уже обновлён из ответа сервера, можно обновить UI
     loadSavedAddresses();
     tg.HapticFeedback.notificationOccurred('success');
 });
