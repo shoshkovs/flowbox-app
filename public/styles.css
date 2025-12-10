@@ -2104,37 +2104,9 @@ h1, h2, h3, .font-bold {
     color: var(--text-color);
 }
 
-.checkout-buttons-row {
-    display: flex;
-    gap: 12px;
-    margin-top: 24px;
-}
-
-.checkout-back-btn {
-    flex: 1;
-    padding: 14px 24px;
-    background: white;
-    color: var(--primary-color);
-    border: 2px solid var(--primary-color);
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.checkout-back-btn:hover {
-    background: var(--primary-color);
-    color: white;
-}
-
-.checkout-back-btn:active {
-    transform: scale(0.98);
-}
-
 .checkout-continue-btn {
-    flex: 1;
-    padding: 14px 24px;
+    width: 100%;
+    padding: 16px;
     background: var(--primary-color);
     color: white;
     border: none;
@@ -2142,11 +2114,8 @@ h1, h2, h3, .font-bold {
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
+    margin-top: 24px;
     transition: background 0.3s;
-}
-
-.checkout-buttons-row .checkout-continue-btn {
-    margin-top: 0;
 }
 
 .checkout-continue-btn:hover {

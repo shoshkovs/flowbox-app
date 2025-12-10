@@ -49,6 +49,20 @@ if (tg) {
             
             const orderTab = document.getElementById('orderTab');
             
+            if (orderTab && orderTab.style.display === 'block' || orderTab?.classList.contains('active')) {
+                // Если мы на первом шаге формы заказа - возвращаемся в корзину
+                if (currentCheckoutStep === 1) {
+                    console.log('[BackButton] Возвращаемся в корзину с шага 1');
+                    switchTab('cartTab');
+                } else if (currentCheckoutStep > 1) {
+                    // Если мы на шаге 2 или выше - переходим на предыдущий шаг
+                    console.log('[BackButton] переходим на шаг', currentCheckoutStep - 1);
+                    goToStep(currentCheckoutStep - 1);
+                }
+                return;
+            }
+            
+            // Старая логика для других случаев
             if (orderTab && orderTab.classList.contains('active')) {
                 if (currentCheckoutStep > 1) {
                     console.log('[BackButton] переходим на шаг', currentCheckoutStep - 1);
@@ -2476,17 +2490,9 @@ function initOrderForm() {
     }
 }
 
-// Кнопка "Назад" в форме заказа (старая, если есть)
+// Кнопка "Назад" в форме заказа (старая, если есть - для совместимости)
 if (backFromOrder) {
     backFromOrder.addEventListener('click', () => {
-        switchTab('cartTab');
-    });
-}
-
-// Кнопка "Назад" на первом шаге формы заказа
-const backFromOrderStep1 = document.getElementById('backFromOrderStep1');
-if (backFromOrderStep1) {
-    backFromOrderStep1.addEventListener('click', () => {
         switchTab('cartTab');
     });
 }
@@ -5393,13 +5399,10 @@ function goToStep(step) {
     
     // Обновляем BackButton для текущего шага
     if (tg && tg.BackButton) {
-        if (step > 1) {
-            tg.BackButton.show();
-            console.log('[goToStep] BackButton.show()');
-        } else {
-            tg.BackButton.hide();
-            console.log('[goToStep] BackButton.hide()');
-        }
+        // Показываем BackButton на всех шагах (включая первый)
+        // На первом шаге она ведет в корзину, на остальных - на предыдущий шаг
+        tg.BackButton.show();
+        console.log('[goToStep] BackButton.show() для шага', step);
     }
 }
 
