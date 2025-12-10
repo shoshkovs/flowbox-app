@@ -1693,7 +1693,7 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
       
       // Логируем дубликаты только если их много (не критично)
       if (skippedCount > 0 && skippedCount > 3) {
-        console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для пользователя ${userId}`);
+        console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для user_id=${user_id} (telegram_id=${telegram_id})`);
       }
       
       console.log(`✅ saveUserAddresses: обновлено ${updatedCount}, добавлено ${insertedCount}, всего ${addedCount} адресов для telegram_id=${telegram_id} (user_id=${user_id}), пропущено дубликатов=${skippedCount}`);

@@ -978,7 +978,9 @@ async function saveUserData() {
             .map(addr => {
                 const cleaned = { ...addr };
                 // Если id фейковый или не число — не отправляем его, пусть бэк создаёт новый адрес
-                if (!Number.isInteger(cleaned.id) || cleaned.id <= 0) {
+                // Также фильтруем слишком большие значения (Date.now() и т.п. - обычно > 10^12)
+                // Реальные ID из БД будут максимум до 10^8
+                if (!Number.isInteger(cleaned.id) || cleaned.id <= 0 || cleaned.id > 100000000) {
                     delete cleaned.id;
                 }
                 return cleaned;
@@ -2697,7 +2699,8 @@ async function validateAndSubmitOrder(e) {
         
         // Пытаемся извлечь номер дома из street
         // Паттерн: пробел + одна или более цифр + опционально буквы/корпус
-        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+        // Используем тот же regex, что и на бэке для единообразия
+        const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
         if (houseMatch && houseMatch[1]) {
             houseValue = houseMatch[1].trim();
             // Убираем номер дома из street, оставляя только название улицы
@@ -3046,8 +3049,9 @@ async function validateAndSubmitOrder(e) {
                     let house = normalize(addr.house || '');
                     
                     // Если house пустое, пытаемся извлечь из street
+                    // Используем тот же regex, что и на бэке для единообразия
                     if (!house && street) {
-                        const houseMatch = street.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+                        const houseMatch = street.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
                         if (houseMatch && houseMatch[1]) {
                             house = normalize(houseMatch[1].trim());
                             street = street.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
@@ -3095,8 +3099,9 @@ async function validateAndSubmitOrder(e) {
                         let streetValue = addressData.street || '';
                         
                         // Если house пустое, но в street есть номер дома
+                        // Используем тот же regex, что и на бэке для единообразия
                         if (!houseValue && streetValue) {
-                            const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+                            const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
                             if (houseMatch && houseMatch[1]) {
                                 houseValue = houseMatch[1].trim();
                                 streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
@@ -3125,8 +3130,9 @@ async function validateAndSubmitOrder(e) {
                     let streetValue = addressData.street || '';
                     
                     // Если house пустое, но в street есть номер дома (последние цифры/буквы после пробела)
+                    // Используем тот же regex, что и на бэке для единообразия
                     if (!houseValue && streetValue) {
-                        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+                        const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
                         if (houseMatch && houseMatch[1]) {
                             houseValue = houseMatch[1].trim();
                             // Убираем номер дома из street, оставляя только название улицы
@@ -4057,18 +4063,22 @@ addressForm.addEventListener('submit', (e) => {
     let streetValue = street || '';
     
     // Если в street есть номер дома (последние цифры/буквы после пробела)
+    // Используем тот же regex, что и на бэке для единообразия
     if (streetValue) {
-        const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+        const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
         if (houseMatch && houseMatch[1]) {
             houseValue = houseMatch[1].trim();
             // Убираем номер дома из street, оставляя только название улицы
-            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
+            streetValue = streetValue.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
         }
     }
     
+    // Формируем название адреса из улицы и дома
+    const addressName = streetValue ? (houseValue ? `${streetValue} ${houseValue}` : streetValue) : 'Адрес';
+    
     const address = {
-        id: editingAddressId || Date.now(),
-        name: name || street || 'Адрес',
+        id: editingAddressId || null, // Для новых адресов id = null, бэк создаст через INSERT
+        name: addressName,
         city: city,
         street: streetValue || street, // Название улицы без номера дома
         house: houseValue, // Номер дома отдельно для совместимости с БД
@@ -6225,7 +6235,8 @@ async function saveEditAddress() {
     
     // Пытаемся извлечь номер дома из street
     // Паттерн: пробел + одна или более цифр + опционально буквы/корпус (к, к2, лит А и т.д.)
-    const houseMatch = streetValue.match(/\s+(\d+[а-яА-ЯкКa-zA-Z\s]*?)$/);
+    // Используем тот же regex, что и на бэке для единообразия
+    const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
     if (houseMatch && houseMatch[1]) {
         houseValue = houseMatch[1].trim();
         // Убираем номер дома из street, оставляя только название улицы
