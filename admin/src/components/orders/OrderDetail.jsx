@@ -406,7 +406,7 @@ export function OrderDetail({ authToken, orderId }) {
                   <div className="space-y-2">
                     {/* Имя клиента - из профиля Telegram */}
                     <div className="flex items-center gap-2">
-                      <p className="text-gray-900">{order.customer_name || '-'}</p>
+                    <p className="text-gray-900">{order.customer_name || '-'}</p>
                       {/* ID клиента - кликабельный, ведет на детали клиента */}
                       {order.user_id && (
                         <span
@@ -420,10 +420,10 @@ export function OrderDetail({ authToken, orderId }) {
                     </div>
                     {/* Телефон клиента - только если указан в профиле */}
                     {order.customer_phone ? (
-                      <button className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">
-                        <Phone className="w-4 h-4" />
+                    <button className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">
+                      <Phone className="w-4 h-4" />
                         {order.customer_phone}
-                      </button>
+                    </button>
                     ) : null}
                     {(order.customer_email || order.client_email) && (
                       <p className="text-sm text-gray-600">{order.customer_email || order.client_email}</p>

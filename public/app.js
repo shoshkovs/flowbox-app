@@ -1750,19 +1750,19 @@ function startFullCheckout() {
     
     // Телефон получателя - из профиля (если есть)
     if (customerPhoneField) {
-        const savedProfile = localStorage.getItem('userProfile');
-        if (savedProfile) {
-            try {
-                const profileData = JSON.parse(savedProfile);
-                if (profileData.phone) {
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+        try {
+            const profileData = JSON.parse(savedProfile);
+            if (profileData.phone) {
                     customerPhoneField.value = profileData.phone;
-                }
-            } catch (e) {
-                console.error('Ошибка парсинга профиля:', e);
+            }
+        } catch (e) {
+            console.error('Ошибка парсинга профиля:', e);
             }
         }
+        }
     }
-}
 
 // Упрощённый сценарий: сразу «Итого» (4-й шаг)
 function startSimpleCheckout() {
@@ -2972,40 +2972,40 @@ async function validateAndSubmitOrder(e) {
         }
     } else {
         // Обычный сценарий (4 шага)
-        if (deliveryDate) {
-            const deliveryDateField = document.getElementById('deliveryDate');
-            validateField(deliveryDateField, true);
-        } else {
-            const deliveryDateField = document.getElementById('deliveryDate');
-            const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
-            validateField(deliveryDateField, false);
-            if (!firstErrorField) firstErrorField = deliveryDateAnchor || deliveryDateField;
+    if (deliveryDate) {
+        const deliveryDateField = document.getElementById('deliveryDate');
+        validateField(deliveryDateField, true);
+    } else {
+        const deliveryDateField = document.getElementById('deliveryDate');
+        const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
+        validateField(deliveryDateField, false);
+        if (!firstErrorField) firstErrorField = deliveryDateAnchor || deliveryDateField;
+        hasErrors = true;
+    }
+    
+    // Проверка времени доставки (после проверки адреса и даты)
+    if (!deliveryTime) {
+        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+        const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
+        if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
+            // Добавляем красную рамку на все кнопки времени доставки (без рамки на контейнере)
+            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+            timeSlotButtons.forEach(btn => {
+                btn.classList.add('error-time-slot');
+            });
+            // Устанавливаем firstErrorField только если еще не установлено (адрес имеет приоритет для прокрутки)
+            // Но время все равно подсвечивается красным независимо от того, заполнен адрес или нет
+            if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
             hasErrors = true;
         }
-        
-        // Проверка времени доставки (после проверки адреса и даты)
-        if (!deliveryTime) {
-            const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-            const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
-            if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
-                // Добавляем красную рамку на все кнопки времени доставки (без рамки на контейнере)
-                const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
-                timeSlotButtons.forEach(btn => {
-                    btn.classList.add('error-time-slot');
-                });
-                // Устанавливаем firstErrorField только если еще не установлено (адрес имеет приоритет для прокрутки)
-                // Но время все равно подсвечивается красным независимо от того, заполнен адрес или нет
-                if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
-                hasErrors = true;
-            }
-        } else {
-            // Если время выбрано - убираем ошибки с кнопок
-            const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-            if (deliveryTimeOptions) {
-                const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
-                timeSlotButtons.forEach(btn => {
-                    btn.classList.remove('error-time-slot');
-                });
+    } else {
+        // Если время выбрано - убираем ошибки с кнопок
+        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+        if (deliveryTimeOptions) {
+            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+            timeSlotButtons.forEach(btn => {
+                btn.classList.remove('error-time-slot');
+            });
             }
         }
     }
@@ -4234,7 +4234,7 @@ function renderProfileAddresses() {
                         </button>
                         <button onclick="event.stopPropagation(); deleteAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
                             Удалить
-                        </button>
+                    </button>
                     </div>
                 </div>
                 </div>
@@ -5616,7 +5616,7 @@ function goToStep(step) {
     if (tg && tg.BackButton) {
         // Показываем BackButton на всех шагах (включая первый)
         // На первом шаге она ведет в корзину, на остальных - на предыдущий шаг
-        tg.BackButton.show();
+            tg.BackButton.show();
         console.log('[goToStep] BackButton.show() для шага', step);
     }
 }
@@ -6448,7 +6448,7 @@ function openEditRecipientPage() {
     tg.BackButton.onClick(() => {
         // Проверяем, что страница редактирования получателя все еще видна
         if (editRecipientTab && editRecipientTab.style.display !== 'none') {
-            editRecipientTab.style.display = 'none';
+        editRecipientTab.style.display = 'none';
             // В упрощенном сценарии показываем заголовок обратно
             if (isSimpleCheckout) {
                 const orderPageHeader = document.querySelector('.order-page-header');
@@ -6456,7 +6456,7 @@ function openEditRecipientPage() {
                     orderPageHeader.style.display = '';
                 }
             }
-            goToStep(4);
+        goToStep(4);
         }
     });
 }
@@ -6503,7 +6503,7 @@ function openMyAddressesPage() {
         tg.BackButton.onClick(() => {
             // Проверяем, что страница "Мои адреса" все еще видна
             if (myAddressesTab && myAddressesTab.style.display !== 'none') {
-                myAddressesTab.style.display = 'none';
+            myAddressesTab.style.display = 'none';
                 // В упрощенном сценарии показываем заголовок обратно
                 if (isSimpleCheckout) {
                     const orderPageHeader = document.querySelector('.order-page-header');
@@ -6511,7 +6511,7 @@ function openMyAddressesPage() {
                         orderPageHeader.style.display = '';
                     }
                 }
-                goToStep(4);
+            goToStep(4);
             }
         });
     }
@@ -6874,9 +6874,9 @@ function openEditAddressPageFromList(address) {
         tg.BackButton.onClick(() => {
             // Проверяем, что страница редактирования адреса все еще видна
             if (editAddressTab && editAddressTab.style.display !== 'none') {
-                editAddressTab.style.display = 'none';
-                // Возвращаемся к списку адресов
-                openMyAddressesPage();
+            editAddressTab.style.display = 'none';
+            // Возвращаемся к списку адресов
+            openMyAddressesPage();
             }
         });
     }
@@ -7116,7 +7116,7 @@ async function submitOrder() {
                 editRecipient.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         } else {
-            goToStep(1);
+        goToStep(1);
         }
         return;
     }
@@ -7130,7 +7130,7 @@ async function submitOrder() {
                 editAddress.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         } else {
-            goToStep(2);
+        goToStep(2);
         }
         return;
     }
@@ -7165,7 +7165,7 @@ async function submitOrder() {
             }
             // Убрали уведомления - только прокрутка и подсветка
         } else {
-            goToStep(3);
+        goToStep(3);
         }
         return;
     }
