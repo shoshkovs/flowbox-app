@@ -3093,10 +3093,10 @@ async function validateAndSubmitOrder(e) {
             // Активируем пункт навигации "Каталог"
             const menuNavItem = document.querySelector('[data-tab="menuTab"]');
             if (menuNavItem) {
-                document.querySelectorAll('.bottom-nav__item').forEach(i => {
-                    i.classList.remove('bottom-nav__item--active');
+                document.querySelectorAll('.nav-item').forEach(i => {
+                    i.classList.remove('active');
                 });
-                menuNavItem.classList.add('bottom-nav__item--active');
+                menuNavItem.classList.add('active');
             }
             
             // Показываем алерт

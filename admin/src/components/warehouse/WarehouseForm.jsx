@@ -296,8 +296,11 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
     }
 
     // Используем введенную пользователем общую сумму, если она указана
-    const totalAmount = supplyForm.total_amount ? parseFloat(supplyForm.total_amount) : calculateTotalAmount();
-    const deliveryPrice = parseFloat(supplyForm.delivery_price) || 0;
+    // Заменяем запятую на точку для корректного парсинга
+    const totalAmountStr = supplyForm.total_amount ? supplyForm.total_amount.replace(',', '.') : '';
+    const totalAmount = totalAmountStr ? parseFloat(totalAmountStr) : calculateTotalAmount();
+    const deliveryPriceStr = supplyForm.delivery_price ? supplyForm.delivery_price.replace(',', '.') : '';
+    const deliveryPrice = deliveryPriceStr ? parseFloat(deliveryPriceStr) : 0;
 
     if (isNaN(totalAmount) || totalAmount < 0) {
       toast.error('Общая сумма должна быть числом больше или равным 0');
@@ -404,9 +407,19 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                 <div>
                   <label className="block text-sm text-gray-700 mb-2">Общая сумма</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={supplyForm.total_amount}
-                    onChange={(e) => setSupplyForm({ ...supplyForm, total_amount: e.target.value })}
+                    onChange={(e) => {
+                      // Разрешаем только цифры, точку и запятую для десятичных
+                      const value = e.target.value.replace(/[^\d.,]/g, '');
+                      // Заменяем запятую на точку для парсинга
+                      const normalizedValue = value.replace(',', '.');
+                      // Сохраняем исходное значение, но проверяем, что оно валидно
+                      if (value === '' || /^\d+([.,]\d*)?$/.test(value)) {
+                        setSupplyForm({ ...supplyForm, total_amount: value });
+                      }
+                    }}
                     placeholder="0"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   />
@@ -414,9 +427,17 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                 <div>
                   <label className="block text-sm text-gray-700 mb-2">Цена доставки</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={supplyForm.delivery_price}
-                    onChange={(e) => setSupplyForm({ ...supplyForm, delivery_price: e.target.value })}
+                    onChange={(e) => {
+                      // Разрешаем только цифры, точку и запятую для десятичных
+                      const value = e.target.value.replace(/[^\d.,]/g, '');
+                      // Сохраняем исходное значение, но проверяем, что оно валидно
+                      if (value === '' || /^\d+([.,]\d*)?$/.test(value)) {
+                        setSupplyForm({ ...supplyForm, delivery_price: value });
+                      }
+                    }}
                     placeholder="0"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   />
@@ -597,14 +618,14 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
           <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
             <div className="text-sm text-gray-600 mb-2">Ваша сумма</div>
             <div className="text-gray-900 mb-2 text-2xl">
-              {(calculateTotalAmount() + (parseFloat(supplyForm.delivery_price) || 0)).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
+              {(calculateTotalAmount() + (parseFloat((supplyForm.delivery_price || '').replace(',', '.')) || 0)).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
             </div>
             <div className="text-xs text-gray-500">Количество всех банчей × цена банча + доставка</div>
           </div>
           <div className="bg-pink-50 rounded-xl p-6 border border-pink-100">
             <div className="text-sm text-pink-900 mb-2">Сумма по чеку</div>
             <div className="text-pink-900 mb-2 text-2xl">
-              {((parseFloat(supplyForm.total_amount) || 0) + (parseFloat(supplyForm.delivery_price) || 0)).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
+              {((parseFloat((supplyForm.total_amount || '').replace(',', '.')) || 0) + (parseFloat((supplyForm.delivery_price || '').replace(',', '.')) || 0)).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
             </div>
             <div className="text-xs text-pink-700">Общая сумма (введенная) + доставка</div>
           </div>
