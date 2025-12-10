@@ -1484,12 +1484,6 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
     return false;
   }
   
-  // Разрешаем удаление всех адресов - если передан пустой массив, удаляем все адреса пользователя
-  if (!addresses || addresses.length === 0) {
-    console.log(`ℹ️  saveUserAddresses: передан пустой массив адресов для userIdOrTelegramId=${userIdOrTelegramId}, удаляем все адреса`);
-    // Продолжаем выполнение, чтобы удалить все адреса из БД
-  }
-  
   try {
     const client = await pool.connect();
     try {
@@ -1538,6 +1532,20 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
         console.error(`[saveUserAddresses] ❌ user_id не может быть null/undefined после определения`);
         await client.query('ROLLBACK');
         return false;
+      }
+      
+      // 🟢 Случай: пользователь удалил все адреса - пустой массив
+      if (!Array.isArray(addresses) || addresses.length === 0) {
+        console.log(`[saveUserAddresses] 🧹 Пустой список адресов — удаляем все адреса пользователя из БД для user_id=${user_id}`);
+        
+        await client.query(
+          'DELETE FROM addresses WHERE user_id = $1',
+          [user_id]
+        );
+        
+        await client.query('COMMIT');
+        console.log(`[saveUserAddresses] ✅ Все адреса для user_id=${user_id} (telegram_id=${telegram_id}) удалены`);
+        return true;
       }
       
       // Загружаем существующие адреса для проверки дубликатов (ДО удаления!)
