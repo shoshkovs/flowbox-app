@@ -1533,10 +1533,10 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
     return false;
   }
   
-  // Защита от случайной очистки: если передан пустой массив, не удаляем адреса
+  // Разрешаем удаление всех адресов - если передан пустой массив, удаляем все адреса пользователя
   if (!addresses || addresses.length === 0) {
-    console.log(`⚠️  saveUserAddresses: передан пустой массив адресов для userIdOrTelegramId=${userIdOrTelegramId}, пропускаем сохранение`);
-    return true; // Возвращаем true, чтобы не ломать логику сохранения других данных
+    console.log(`ℹ️  saveUserAddresses: передан пустой массив адресов для userIdOrTelegramId=${userIdOrTelegramId}, удаляем все адреса`);
+    // Продолжаем выполнение, чтобы удалить все адреса из БД
   }
   
   try {
@@ -1662,8 +1662,9 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
           [user_id, addressesToKeep]
         );
       } else {
-        // Если нет адресов для сохранения, удаляем все
+        // Если нет адресов для сохранения (включая случай пустого массива), удаляем все адреса пользователя
         await client.query('DELETE FROM addresses WHERE user_id = $1', [user_id]);
+        console.log(`[saveUserAddresses] ✅ Удалены все адреса для user_id=${user_id}`);
       }
       
       // Обновляем существующие адреса

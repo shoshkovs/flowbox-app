@@ -1558,8 +1558,9 @@ function switchTab(tabId) {
         tg.BackButton.hide();
     }
     
-    // Обновить навигацию
-    navItems.forEach(item => {
+    // Обновить навигацию (перезапрашиваем элементы каждый раз, так как DOM может пересоздаваться)
+    const currentNavItems = document.querySelectorAll('.nav-item');
+    currentNavItems.forEach(item => {
         if (item.dataset.tab === tabId) {
             item.classList.add('active');
         } else {
@@ -1621,6 +1622,9 @@ const initNavigation = () => {
             switchTab(tabId);
         });
     });
+    
+    // Обновляем глобальную переменную navItems для совместимости
+    navItems = document.querySelectorAll('.nav-item');
     
     console.log('[navigation] ✅ Инициализирована навигация, элементов:', items.length);
 };
@@ -3136,22 +3140,12 @@ async function validateAndSubmitOrder(e) {
             };
             currentCheckoutStep = 1;
             
-            // Показываем меню
-            const menuTab = document.getElementById('menuTab');
-            if (menuTab) {
-                menuTab.style.display = 'block';
-                menuTab.classList.add('active');
-            }
-            
-            // Показываем навигацию
-            const bottomNav = document.querySelector('.bottom-nav');
-            if (bottomNav) {
-                bottomNav.style.display = 'flex';
-                // Переинициализируем навигацию после показа
-                setTimeout(() => {
-                    initNavigation();
-                }, 100);
-            }
+            // Показываем меню через switchTab для правильной подсветки навигации
+            setTimeout(() => {
+                switchTab('menuTab');
+                // Переинициализируем навигацию после переключения
+                initNavigation();
+            }, 100);
             
             // Прокрутка в начало страницы
             window.scrollTo(0, 0);
