@@ -285,21 +285,44 @@ function roundDownToStep(quantity, step) {
 }
 let deliveryPrice = 500; // По умолчанию "В пределах КАД" (используется только на итоговой странице)
 let serviceFee = 450;
-let savedAddresses = []; // Сохраненные адреса
+// Глобальное хранилище адресов (единый источник правды)
+let savedAddresses = [];
+
+// Универсальный сеттер для адресов (единый источник правды)
+function setSavedAddresses(addresses) {
+    savedAddresses = Array.isArray(addresses) ? addresses.filter(addr => addr && addr.id && typeof addr.id === 'number' && addr.id > 0) : [];
+    
+    localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+    
+    console.log('[addresses] setSavedAddresses ids:', savedAddresses.map(a => a.id).join(', '));
+    
+    // ВСЕ места, где используются адреса - обновляем автоматически
+    if (typeof renderProfileAddresses === 'function') {
+        renderProfileAddresses();
+    }
+    if (typeof renderCheckoutAddresses === 'function') {
+        renderCheckoutAddresses();
+    }
+    // Также вызываем старую функцию для обратной совместимости
+    if (typeof loadSavedAddresses === 'function') {
+        loadSavedAddresses();
+    }
+}
 
 // Загружаем адреса из localStorage при старте (fallback)
 (function() {
     try {
         const savedAddressesLocal = localStorage.getItem('savedAddresses');
         if (savedAddressesLocal) {
-            savedAddresses = JSON.parse(savedAddressesLocal);
+            const addresses = JSON.parse(savedAddressesLocal);
+            setSavedAddresses(addresses);
             console.log('[init] 📦 Загружены адреса из localStorage при старте:', savedAddresses.length);
         } else {
             console.log('[init] 📦 localStorage пуст при старте');
         }
     } catch (e) {
         console.error('[init] ❌ Ошибка загрузки адресов из localStorage при старте:', e);
-        savedAddresses = [];
+        setSavedAddresses([]);
     }
 })();
 let userActiveOrders = []; // Активные заказы
@@ -1119,50 +1142,10 @@ async function loadUserData() {
                     });
                 }, 100);
             }
-            if (data.addresses && Array.isArray(data.addresses)) {
-                console.log('[loadUserData] 📦 Загружены адреса с сервера:', data.addresses.length);
-                console.log('[loadUserData] 📦 Данные адресов:', JSON.stringify(data.addresses, null, 2));
-                // Фильтруем только адреса с валидным ID
-                const addressesFromServer = data.addresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
-                
-                // Если на сервере есть адреса, используем их
-                // Если на сервере пустой массив, это означает, что пользователь удалил все адреса - используем пустой массив
-                savedAddresses = addressesFromServer;
-                
-                // Синхронизируем с localStorage
-                localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
-                console.log('[loadUserData] 💾 Адреса сохранены в localStorage:', savedAddresses.length);
-                if (savedAddresses.length > 0) {
-                    console.log('[loadUserData] 📦 ID адресов:', savedAddresses.map(a => a.id).join(', '));
-                    console.log('[loadUserData] 📦 Первый адрес:', JSON.stringify(savedAddresses[0], null, 2));
-                } else {
-                    console.log('[loadUserData] ℹ️ Пустой массив адресов с сервера - все адреса удалены');
-                }
-            } else {
-                console.log('[loadUserData] ⚠️ Адреса не получены с сервера или не массив. Получено:', typeof data.addresses, data.addresses);
-                // Если адреса не получены с сервера, пробуем загрузить из localStorage
-                const savedAddressesLocal = localStorage.getItem('savedAddresses');
-                console.log('[loadUserData] 🔍 Проверка localStorage:', !!savedAddressesLocal);
-                if (savedAddressesLocal) {
-                    try {
-                        const addressesFromLocal = JSON.parse(savedAddressesLocal);
-                        // Фильтруем только адреса с валидным ID
-                        savedAddresses = addressesFromLocal.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
-                        // Сохраняем отфильтрованные адреса обратно в localStorage
-                        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
-                        console.log('[loadUserData] 📦 Адреса загружены из localStorage:', savedAddresses.length);
-                        if (savedAddresses.length > 0) {
-                            console.log('[loadUserData] 📦 Первый адрес из localStorage:', JSON.stringify(savedAddresses[0], null, 2));
-                        }
-                    } catch (e) {
-                        console.error('[loadUserData] ❌ Ошибка загрузки адресов из localStorage:', e);
-                        savedAddresses = [];
-                    }
-                } else {
-                    console.log('[loadUserData] ⚠️ localStorage пуст, устанавливаем пустой массив');
-                    savedAddresses = [];
-                }
-            }
+            // Загружаем адреса с сервера через единый сеттер
+            const addressesFromServer = data.addresses && Array.isArray(data.addresses) ? data.addresses : [];
+            setSavedAddresses(addressesFromServer);
+            console.log('[loadUserData] адресов:', savedAddresses.length);
             if (data.profile) {
                 localStorage.setItem('userProfile', JSON.stringify(data.profile));
             }
@@ -3393,37 +3376,12 @@ function ensureAddressFormValidation() {
 }
 
 function openAddressPage(address = null) {
-    console.log('[openAddressPage] 🚀 Открытие страницы адреса, address:', address);
-    if (!addressForm) {
-        console.error('[openAddressPage] ❌ addressForm не найден');
-        return;
-    }
-    
-    ensureAddressFormValidation();
-    resetAddressFormState();
-    
-    if (address) {
-        editingAddressId = address.id;
-        if (addressPageTitle) addressPageTitle.textContent = address.name || 'Редактировать адрес';
-        if (deleteAddressBtn) deleteAddressBtn.style.display = 'block';
-        setAddressFormValues(address);
-        console.log('[openAddressPage] ✅ Адрес установлен для редактирования, ID:', address.id);
+    // Используем универсальную функцию
+    if (address && address.id) {
+        openAddressForm({ mode: 'edit', source: 'profile', addressId: address.id });
     } else {
-        editingAddressId = null;
-        if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
-        if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
-        console.log('[openAddressPage] ✅ Открытие формы для нового адреса');
+        openAddressForm({ mode: 'create', source: 'profile' });
     }
-    
-    switchTab('addressTab');
-    if (tg && tg.BackButton) {
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            switchTab('profileTab');
-            tg.BackButton.hide();
-        });
-    }
-    console.log('[openAddressPage] ✅ Страница адреса открыта');
 }
 
 // Открытие модальных окон
@@ -3772,160 +3730,135 @@ function setupPhoneInput(phoneField) {
 }
 
 // Редактирование адреса
-function editAddress(addressId) {
-    console.log('[editAddress] 🚀 Редактирование адреса с ID:', addressId);
-    const address = savedAddresses.find(a => String(a.id) === String(addressId));
-    if (!address) {
-        console.error('[editAddress] ❌ Адрес с ID', addressId, 'не найден в savedAddresses');
+function editAddress(idFromDom) {
+    const id = Number(idFromDom);
+    
+    console.log('[editAddress] 🚀 Редактирование адреса с ID:', id);
+    console.log('[editAddress] 📦 savedAddresses ids:', savedAddresses.map(a => a.id));
+    
+    const addr = savedAddresses.find(a => Number(a.id) === id);
+    
+    if (!addr) {
+        console.warn('[editAddress] ❌ Адрес с ID', id, 'не найден в savedAddresses');
         return;
     }
-    console.log('[editAddress] ✅ Адрес найден:', address);
-    openAddressPage(address);
+    
+    openAddressForm({ mode: 'edit', source: 'profile', addressId: id });
 }
 
 // Удаление адреса
 function deleteAddress(addressId) {
     if (confirm('Вы уверены, что хотите удалить этот адрес?')) {
-        savedAddresses = savedAddresses.filter(a => String(a.id) !== String(addressId));
+        const filtered = savedAddresses.filter(a => String(a.id) !== String(addressId));
+        setSavedAddresses(filtered);
         saveUserData(); // Сохраняем на сервер
-        loadSavedAddresses();
         tg.HapticFeedback.impactOccurred('light');
     }
 }
 
-// Обработка формы адреса
-addressForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    // Получаем все поля заново, чтобы убедиться, что они актуальны
-    const addressCityField = document.getElementById('addressCity');
-    const addressStreetField = document.getElementById('addressStreet');
-    const addressErrorElement = document.getElementById('addressError');
-
-    // Сначала убираем ошибки только с правильно заполненных полей
-    // Это нужно для того, чтобы при повторной проверке правильно работала валидация
-    const city = addressCityField ? addressCityField.value.trim() : '';
-    const street = addressStreetField ? addressStreetField.value.trim() : ''; // Теперь содержит "улица + дом"
-
-    // Убираем ошибки только с правильно заполненных полей
-    if (street && addressStreetField) validateField(addressStreetField, true);
-    if (city && (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб')) {
-        if (addressCityField) validateField(addressCityField, true);
-        if (addressErrorElement) addressErrorElement.style.display = 'none';
-    }
-    
-    let hasErrors = false;
-    let firstErrorField = null;
-    
-    // Валидация города (улучшенная логика)
-    if (!city) {
-        // Если поле пустое - показываем только красную рамку, без сообщения об ошибке города
-        if (addressCityField) {
-            validateField(addressCityField, false);
-            if (!firstErrorField) firstErrorField = addressCityField;
-        }
-        if (addressErrorElement) addressErrorElement.style.display = 'none';
-        hasErrors = true;
-    } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
-        // Если город правильный - убираем ошибку
-        if (addressCityField) validateField(addressCityField, true);
-        if (addressErrorElement) addressErrorElement.style.display = 'none';
-    } else {
-        // Если город заполнен, но не СПб - показываем ошибку города
-        if (addressCityField) {
-            validateField(addressCityField, false);
-            if (!firstErrorField) firstErrorField = addressCityField;
-        }
-        if (addressErrorElement) addressErrorElement.style.display = 'block';
-        hasErrors = true;
-    }
-    
-    // Валидация улицы
-    if (!street) {
-        if (addressStreetField) {
-            validateField(addressStreetField, false);
-            if (!firstErrorField) firstErrorField = addressStreetField;
-        }
-        hasErrors = true;
-    } else {
-        if (addressStreetField) validateField(addressStreetField, true);
-    }
-    
-    // Валидация дома убрана - теперь "улица + дом" в одном поле
-    
-    // Если есть ошибки, прокрутить к первому полю с ошибкой
-    if (hasErrors && firstErrorField) {
-        setTimeout(() => {
-            try {
-                if (firstErrorField.scrollIntoView) {
-                    firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center' });
-                }
-                const rect = firstErrorField.getBoundingClientRect();
-                const currentScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-                const targetScroll = currentScroll + rect.top - 150;
-                
-                const scrollToPosition = () => {
-                    window.scrollTo(0, Math.max(0, targetScroll));
-                    document.documentElement.scrollTop = Math.max(0, targetScroll);
-                    document.body.scrollTop = Math.max(0, targetScroll);
-                };
-                
-                if (window.requestAnimationFrame) {
-                    requestAnimationFrame(scrollToPosition);
-                } else {
-                    scrollToPosition();
-                }
-                
-                if (firstErrorField.focus && typeof firstErrorField.focus === 'function' && firstErrorField.tagName === 'INPUT') {
-                    setTimeout(() => {
-                        try {
-                            firstErrorField.focus();
-                            if (firstErrorField.scrollIntoView) {
-                                firstErrorField.scrollIntoView({ behavior: 'auto', block: 'center' });
-                            }
-                        } catch (focusError) {
-                            console.log('Не удалось установить фокус:', focusError);
-                        }
-                    }, 100);
-                }
-            } catch (scrollError) {
-                console.error('Ошибка прокрутки:', scrollError);
-                try {
-                    if (firstErrorField.scrollIntoView) {
-                        firstErrorField.scrollIntoView();
-                    }
-                } catch (e) {
-                    console.error('Критическая ошибка прокрутки:', e);
-                }
-            }
-        }, 200);
+// Универсальная функция открытия формы адреса
+function openAddressForm({ mode = 'create', source = 'profile', addressId = null } = {}) {
+    if (!addressForm) {
+        console.error('[openAddressForm] addressForm не найден');
         return;
     }
     
-    // Пытаемся извлечь номер дома из street для совместимости с БД
+    let initialData = null;
+    
+    if (mode === 'edit' && addressId != null) {
+        const id = Number(addressId);
+        initialData = savedAddresses.find(a => Number(a.id) === id) || null;
+        if (!initialData) {
+            console.warn('[openAddressForm] Адрес с ID', id, 'не найден');
+            return;
+        }
+    }
+    
+    // Заполняем форму
+    ensureAddressFormValidation();
+    resetAddressFormState();
+    
+    if (initialData) {
+        setAddressFormValues(initialData);
+        if (addressPageTitle) addressPageTitle.textContent = initialData.name || 'Редактировать адрес';
+        if (deleteAddressBtn) deleteAddressBtn.style.display = 'block';
+        editingAddressId = initialData.id;
+    } else {
+        if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
+        if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
+        editingAddressId = null;
+    }
+    
+    // Сохраняем метаданные в форме
+    addressForm.dataset.mode = mode;
+    addressForm.dataset.source = source;
+    addressForm.dataset.addressId = addressId != null ? String(addressId) : '';
+    
+    // Показываем форму
+    if (source === 'checkout') {
+        // Для чекаута показываем форму прямо на шаге 2
+        const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+        const checkoutAddressesList = document.getElementById('checkoutAddressesList');
+        const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+        
+        if (checkoutAddressForm) checkoutAddressForm.style.display = 'block';
+        if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
+        if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+    } else {
+        // Для профиля переключаемся на вкладку адресов
+        switchTab('addressTab');
+        if (tg && tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                switchTab('profileTab');
+                tg.BackButton.hide();
+            });
+        }
+    }
+}
+
+// Универсальный обработчик сабмита формы адреса
+async function handleAddressFormSubmit(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const mode = form.dataset.mode || 'create';
+    const source = form.dataset.source || 'profile';
+    const addressId = form.dataset.addressId ? Number(form.dataset.addressId) : null;
+    
+    // Валидация (используем существующую логику)
+    const addressCityField = document.getElementById('addressCity');
+    const addressStreetField = document.getElementById('addressStreet');
+    const city = addressCityField ? addressCityField.value.trim() : '';
+    const street = addressStreetField ? addressStreetField.value.trim() : '';
+    
+    if (!city || (city.toLowerCase() !== 'санкт-петербург' && city.toLowerCase() !== 'спб')) {
+        if (addressCityField) validateField(addressCityField, false);
+        return;
+    }
+    if (!street) {
+        if (addressStreetField) validateField(addressStreetField, false);
+        return;
+    }
+    
+    // Извлекаем номер дома из street
     let houseValue = '';
     let streetValue = street || '';
-    
-    // Если в street есть номер дома (последние цифры/буквы после пробела)
-    // Используем тот же regex, что и на бэке для единообразия
     if (streetValue) {
         const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
         if (houseMatch && houseMatch[1]) {
             houseValue = houseMatch[1].trim();
-            // Убираем номер дома из street, оставляя только название улицы
-            streetValue = streetValue.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
+            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
         }
     }
     
-    // Формируем название адреса из улицы и дома
     const addressName = streetValue ? (houseValue ? `${streetValue} ${houseValue}` : streetValue) : 'Адрес';
     
-    const address = {
-        id: editingAddressId || null, // Для новых адресов id = null, бэк создаст через INSERT
+    const payload = {
         name: addressName,
         city: city,
-        street: streetValue || street, // Название улицы без номера дома
-        house: houseValue, // Номер дома отдельно для совместимости с БД
+        street: streetValue || street,
+        house: houseValue,
         entrance: document.getElementById('addressEntrance').value.trim(),
         apartment: document.getElementById('addressApartment').value.trim(),
         floor: document.getElementById('addressFloor').value.trim(),
@@ -3933,96 +3866,102 @@ addressForm.addEventListener('submit', async (e) => {
         comment: document.getElementById('addressComment').value.trim()
     };
     
-    if (editingAddressId) {
-        // Обновление существующего адреса
-        const index = savedAddresses.findIndex(a => String(a.id) === String(editingAddressId));
+    // Подготавливаем обновленный список адресов
+    let updatedAddresses = [...savedAddresses];
+    
+    if (mode === 'edit' && addressId != null) {
+        const index = updatedAddresses.findIndex(a => Number(a.id) === Number(addressId));
         if (index !== -1) {
-            savedAddresses[index] = address;
+            updatedAddresses[index] = { ...updatedAddresses[index], ...payload, id: addressId };
         }
-        editingAddressId = null;
     } else {
-        // Проверка на дубликаты перед добавлением нового адреса
-        // Сравниваем по основным полям: город, улица (теперь содержит "улица + дом"), квартира
-        const isDuplicate = savedAddresses.some(existingAddr => {
-            const sameCity = (existingAddr.city || '').toLowerCase().trim() === (address.city || '').toLowerCase().trim();
-            const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (address.street || '').toLowerCase().trim();
-            const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (address.apartment || '').toLowerCase().trim();
+        // Проверка на дубликаты
+        const isDuplicate = updatedAddresses.some(existingAddr => {
+            const sameCity = (existingAddr.city || '').toLowerCase().trim() === (payload.city || '').toLowerCase().trim();
+            const sameStreet = (existingAddr.street || '').toLowerCase().trim() === (payload.street || '').toLowerCase().trim();
+            const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (payload.apartment || '').toLowerCase().trim();
             return sameCity && sameStreet && sameApartment;
         });
         
         if (!isDuplicate) {
-            savedAddresses.push(address);
+            updatedAddresses.push({ ...payload, id: null });
         }
     }
     
-    // Сохраняем на сервер и ждём завершения, чтобы получить обновлённые адреса с ID
+    // Используем единый сеттер для обновления локально
+    setSavedAddresses(updatedAddresses);
+    
+    // Сохраняем на сервер
     await saveUserData();
     
-    // После сохранения savedAddresses уже обновлён из ответа сервера
-    // Если мы на шаге 2 чекаута - выбираем только что созданный адрес
+    // После сохранения savedAddresses уже обновлён из ответа сервера через setSavedAddresses в saveUserData
+    // Находим только что созданный/обновленный адрес
     let createdAddressId = null;
-    if (!editingAddressId) {
-        // Это новый адрес - находим его в обновленном списке по содержимому
+    if (mode === 'create') {
+        // Находим только что созданный адрес
         const createdAddress = savedAddresses.find(addr => {
-            const sameCity = (addr.city || '').toLowerCase().trim() === (address.city || '').toLowerCase().trim();
-            const sameStreet = (addr.street || '').toLowerCase().trim() === (address.street || '').toLowerCase().trim();
-            const sameApartment = (addr.apartment || '').toLowerCase().trim() === (address.apartment || '').toLowerCase().trim();
-            return sameCity && sameStreet && sameApartment;
+            const sameCity = (addr.city || '').toLowerCase().trim() === (payload.city || '').toLowerCase().trim();
+            const sameStreet = (addr.street || '').toLowerCase().trim() === (payload.street || '').toLowerCase().trim();
+            const sameApartment = (addr.apartment || '').toLowerCase().trim() === (payload.apartment || '').toLowerCase().trim();
+            return sameCity && sameStreet && sameApartment && addr.id && typeof addr.id === 'number' && addr.id > 0;
         });
         if (createdAddress && createdAddress.id) {
             createdAddressId = createdAddress.id;
         }
+    } else if (addressId) {
+        createdAddressId = addressId;
     }
     
     resetAddressFormState();
-    if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
-    if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
+    editingAddressId = null;
     
-    // Если мы на шаге 2 чекаута и создали новый адрес - выбираем его
-    if (currentCheckoutStep === 2 && createdAddressId) {
-        console.log('[addressForm] ✅ Создан новый адрес на шаге 2, выбираем его:', createdAddressId);
-        // Обновляем список адресов
-        loadSavedAddresses();
-        // Выбираем только что созданный адрес
+    // Если форма была открыта со страницы чекаута — сразу выбираем этот адрес
+    if (source === 'checkout' && createdAddressId) {
+        console.log('[handleAddressFormSubmit] ✅ Создан адрес на шаге 2, выбираем его:', createdAddressId);
         selectCheckoutAddress(createdAddressId);
-        // Сохраняем шаг 2 с выбранным адресом
-        saveStep2();
-        // Возвращаемся на шаг 2 чекаута
-        const orderTab = document.getElementById('orderTab');
-        if (orderTab) {
-            orderTab.style.display = 'block';
-        }
-        switchTab('orderTab');
-        tg.BackButton.show();
-    } else {
-        // Обычное поведение - возвращаемся в профиль
+        
+        // Скрываем форму и показываем список
+        const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+        const checkoutAddressesList = document.getElementById('checkoutAddressesList');
+        const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+        
+        if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
+        if (checkoutAddressesList) checkoutAddressesList.style.display = 'block';
+        if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
+    } else if (source === 'profile') {
+        // Возвращаемся в профиль
         switchTab('profileTab');
-        tg.BackButton.hide();
-        loadSavedAddresses();
+        if (tg && tg.BackButton) {
+            tg.BackButton.hide();
+        }
     }
     
     tg.HapticFeedback.impactOccurred('success');
-});
+}
+
+// Обработка формы адреса (универсальный обработчик)
+if (addressForm) {
+    addressForm.addEventListener('submit', handleAddressFormSubmit);
+}
 
 // Обработка удаления адреса
 if (deleteAddressBtn) {
-    deleteAddressBtn.addEventListener('click', () => {
+    deleteAddressBtn.addEventListener('click', async () => {
         if (editingAddressId && confirm('Вы уверены, что хотите удалить этот адрес?')) {
-            savedAddresses = savedAddresses.filter(a => String(a.id) !== String(editingAddressId));
-            // Сохраняем на сервер и в localStorage
-            saveUserData();
-            // Принудительно обновляем localStorage, чтобы избежать кэша
-            localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+            const idToDelete = editingAddressId;
+            const filtered = savedAddresses.filter(a => String(a.id) !== String(idToDelete));
+            // Используем единый сеттер
+            setSavedAddresses(filtered);
+            // Сохраняем на сервер
+            await saveUserData();
             resetAddressFormState();
             editingAddressId = null;
             if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
             deleteAddressBtn.style.display = 'none';
             switchTab('profileTab');
-            tg.BackButton.hide();
-            // Обновляем UI после небольшой задержки, чтобы убедиться, что данные сохранены
-            setTimeout(() => {
-                loadSavedAddresses();
-            }, 100);
+            if (tg && tg.BackButton) {
+                tg.BackButton.hide();
+            }
             tg.HapticFeedback.impactOccurred('light');
         }
     });
@@ -4035,75 +3974,66 @@ setupEnterKeyNavigation(addressForm);
 // Текущий редактируемый адрес
 let editingAddressId = null;
 
-// Загрузка сохраненных адресов
-function loadSavedAddresses() {
-    // Сначала фильтруем адреса без ID
-    savedAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+// Рендеринг адресов в профиле (профиль всегда рисуем из savedAddresses)
+function renderProfileAddresses() {
+    const list = document.getElementById('deliveryAddressesList');
+    if (!list) return;
     
-    console.log('[loadSavedAddresses] 🚀 Начало загрузки адресов');
-    console.log('[loadSavedAddresses] 📦 savedAddresses.length:', savedAddresses.length);
-    console.log('[loadSavedAddresses] 📦 savedAddresses:', JSON.stringify(savedAddresses, null, 2));
-    
-    // Отображение в профиле
-    const addressesList = document.getElementById('deliveryAddressesList');
-    console.log('[loadSavedAddresses] 🔍 addressesList найден:', !!addressesList);
-    
-    if (addressesList) {
-        if (savedAddresses.length === 0) {
-            console.log('[loadSavedAddresses] ⚠️ Нет сохраненных адресов, показываем сообщение');
-            addressesList.innerHTML = '<p class="no-addresses">У вас нет сохраненных адресов доставки</p>';
-        } else {
-            console.log('[loadSavedAddresses] ✅ Рендерим', savedAddresses.length, 'адресов');
-            addressesList.innerHTML = savedAddresses.map(addr => {
-                // Название (жирным): улица, дом - объединяем street и house
-                let streetName = addr.street || '';
-                if (addr.house && !streetName.includes(addr.house)) {
-                    streetName = streetName ? `${streetName} ${addr.house}` : addr.house;
-                }
-                if (!streetName) streetName = 'Адрес не заполнен';
-                
-                // Детали (серым): кв., эт., под.
-                const details = [];
-                if (addr.apartment) details.push(`кв. ${addr.apartment}`);
-                if (addr.floor) details.push(`эт. ${addr.floor}`);
-                if (addr.entrance) details.push(`под. ${addr.entrance}`);
-                const detailsStr = details.join(', ');
-                
-                return `
-                <div class="address-item">
-                    <div class="address-item-content">
-                        <div class="address-item-name">${streetName}</div>
-                        ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
-                    </div>
-                    <button class="address-edit-icon-btn" onclick="window.editAddress && window.editAddress(${addr.id}); event.stopPropagation();" title="Изменить" data-address-id="${addr.id}">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                    </button>
-                </div>
-            `;
-            }).join('');
-        }
+    if (savedAddresses.length === 0) {
+        list.innerHTML = '<p class="no-addresses">У вас нет сохраненных адресов доставки</p>';
+        return;
     }
     
+    list.innerHTML = savedAddresses.map(addr => {
+        // Название (жирным): улица, дом - объединяем street и house
+        let streetName = addr.street || '';
+        if (addr.house && !streetName.includes(addr.house)) {
+            streetName = streetName ? `${streetName} ${addr.house}` : addr.house;
+        }
+        if (!streetName) streetName = 'Адрес не заполнен';
+        
+        // Детали (серым): кв., эт., под.
+        const details = [];
+        if (addr.apartment) details.push(`кв. ${addr.apartment}`);
+        if (addr.floor) details.push(`эт. ${addr.floor}`);
+        if (addr.entrance) details.push(`под. ${addr.entrance}`);
+        const detailsStr = details.join(', ');
+        
+        return `
+            <div class="address-item">
+                <div class="address-item-content">
+                    <div class="address-item-name">${streetName}</div>
+                    ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
+                </div>
+                <button class="address-edit-icon-btn" onclick="window.editAddress && window.editAddress(${addr.id}); event.stopPropagation();" title="Изменить" data-address-id="${addr.id}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// Загрузка сохраненных адресов (только рендеринг, не меняет savedAddresses)
+function loadSavedAddresses() {
+    console.log('[loadSavedAddresses] 🚀 Рендеринг адресов, savedAddresses.length:', savedAddresses.length);
+    
+    // Рендерим профиль
+    renderProfileAddresses();
+    
     // Обновление списка адресов в форме заказа
-    console.log('[loadSavedAddresses] 🔍 Проверка renderAddressOptions:', typeof window.renderAddressOptions);
     if (typeof window.renderAddressOptions === 'function') {
-        console.log('[loadSavedAddresses] ✅ Вызываем renderAddressOptions');
         window.renderAddressOptions();
-    } else {
-        console.log('[loadSavedAddresses] ⚠️ renderAddressOptions не определена');
     }
     
     // Обновляем список адресов на шаге 2, если он активен
-    console.log('[loadSavedAddresses] 🔍 currentCheckoutStep:', currentCheckoutStep);
-    if (currentCheckoutStep === 2) {
-        console.log('[loadSavedAddresses] ✅ Вызываем renderCheckoutAddresses');
+    if (currentCheckoutStep === 2 && typeof renderCheckoutAddresses === 'function') {
         renderCheckoutAddresses();
     }
     
-    console.log('[loadSavedAddresses] ✅ Загрузка адресов завершена');
+    console.log('[loadSavedAddresses] ✅ Рендеринг завершен');
 }
 
 // Заполнение формы заказа адресом
@@ -4897,6 +4827,7 @@ let checkoutData = {
     recipientName: '',
     recipientPhone: '',
     address: {},
+    addressId: null, // ID выбранного адреса из savedAddresses
     deliveryDate: '',
     deliveryTime: '',
     orderComment: '', // Комментарий. Особые пожелания к заказу
@@ -5014,7 +4945,7 @@ function initCheckoutSteps() {
     const addNewAddressBtn = document.getElementById('addNewAddressBtn');
     if (addNewAddressBtn) {
         addNewAddressBtn.onclick = () => {
-            showCheckoutAddressForm();
+            openAddressForm({ mode: 'create', source: 'checkout' });
         };
     }
     
@@ -5298,9 +5229,21 @@ function goToStep(step) {
         }, 100);
     }
     
-    // Если переходим на шаг 2, проверяем сохраненные адреса
+    // Если переходим на шаг 2, инициализируем адреса и подтягиваем сохраненный адрес
     if (step === 2) {
+        // Рендерим список адресов
         renderCheckoutAddresses();
+        
+        // Если в checkoutData есть сохраненный адрес с ID - выбираем его
+        if (checkoutData.addressId) {
+            const savedAddress = savedAddresses.find(addr => Number(addr.id) === Number(checkoutData.addressId));
+            if (savedAddress) {
+                console.log('[goToStep] ✅ Восстанавливаем сохраненный адрес из checkoutData.addressId:', checkoutData.addressId);
+                selectCheckoutAddress(checkoutData.addressId);
+            } else {
+                console.warn('[goToStep] ⚠️ Адрес с ID', checkoutData.addressId, 'не найден в savedAddresses');
+            }
+        }
     }
     
     // Если переходим на шаг 3, инициализируем календарь (если еще не инициализирован)
@@ -5399,12 +5342,8 @@ function renderCheckoutAddresses() {
                 addr.apartment ? `кв. ${addr.apartment}` : ''
             ].filter(Boolean).join(', ');
             
-            // Проверяем, выбран ли этот адрес (по ID или по совпадению street/city)
-            const isSelected = checkoutData.address && (
-                (checkoutData.address.id && String(checkoutData.address.id) === String(addr.id)) ||
-                (!checkoutData.address.id && checkoutData.address.street === street && 
-                 (checkoutData.address.city || 'Санкт-Петербург') === (addr.city || 'Санкт-Петербург'))
-            );
+            // Проверяем, выбран ли этот адрес по addressId
+            const isSelected = checkoutData.addressId && Number(checkoutData.addressId) === Number(addr.id);
             
             return `
                 <label class="checkout-address-option">
@@ -5417,14 +5356,14 @@ function renderCheckoutAddresses() {
         }).join('');
         
         // Если адрес еще не выбран, выбираем последний (самый свежий)
-        if (!checkoutData.address || !checkoutData.address.street) {
+        if (!checkoutData.addressId) {
             const lastAddress = savedAddresses[savedAddresses.length - 1];
             if (lastAddress) {
                 selectCheckoutAddress(lastAddress.id);
             }
-        } else if (checkoutData.address.id) {
+        } else {
             // Если адрес уже выбран по ID, убеждаемся, что он отмечен в списке
-            const selectedRadio = document.querySelector(`input[name="checkoutAddress"][value="${checkoutData.address.id}"]`);
+            const selectedRadio = document.querySelector(`input[name="checkoutAddress"][value="${checkoutData.addressId}"]`);
             if (selectedRadio) {
                 selectedRadio.checked = true;
             }
@@ -5439,30 +5378,42 @@ function renderCheckoutAddresses() {
 
 // Выбор адреса на шаге 2
 function selectCheckoutAddress(addressId) {
-    const address = savedAddresses.find(addr => String(addr.id) === String(addressId));
-    if (!address) return;
+    const id = Number(addressId);
+    const addr = savedAddresses.find(a => Number(a.id) === id);
+    
+    if (!addr) {
+        console.warn('[selectCheckoutAddress] адрес с id', id, 'не найден');
+        return;
+    }
+    
+    console.log('[selectCheckoutAddress] выбран адрес:', addr);
+    
+    // Сохраняем выбранный id в черновике чекаута
+    checkoutData.addressId = id;
     
     // Объединяем street и house для обратной совместимости со старыми адресами
-    let streetValue = address.street || '';
-    const houseValue = address.house || '';
+    let streetValue = addr.street || '';
+    const houseValue = addr.house || '';
     if (houseValue && !streetValue.includes(houseValue)) {
-        // Если house есть и не включен в street, объединяем их
         streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
     }
     
-    // Заполняем checkoutData.address
+    // Заполняем checkoutData.address для обратной совместимости
     checkoutData.address = {
-        id: address.id, // Сохраняем ID адреса
-        city: address.city || 'Санкт-Петербург',
-        street: streetValue, // Теперь содержит "улица + дом"
-        apartment: address.apartment || '',
-        floor: address.floor || '',
-        entrance: address.entrance || '',
-        intercom: address.intercom || '',
-        comment: address.comment || ''
+        id: addr.id,
+        city: addr.city || 'Санкт-Петербург',
+        street: streetValue,
+        apartment: addr.apartment || '',
+        floor: addr.floor || '',
+        entrance: addr.entrance || '',
+        intercom: addr.intercom || '',
+        comment: addr.comment || ''
     };
     
-    console.log('[selectCheckoutAddress] выбран адрес:', checkoutData.address);
+    // Обновляем UI шагов (подсветка выбранной карточки и т.п.)
+    if (typeof renderCheckoutAddresses === 'function') {
+        renderCheckoutAddresses();
+    }
     
     // Скрываем форму и показываем список адресов после выбора
     const addressesList = document.getElementById('checkoutAddressesList');
@@ -5476,16 +5427,8 @@ function selectCheckoutAddress(addressId) {
 
 // Показ формы добавления нового адреса на шаге 2
 function showCheckoutAddressForm() {
-    const addressesList = document.getElementById('checkoutAddressesList');
-    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
-    const addressForm = document.getElementById('checkoutAddressForm');
-    
-    if (addressesList) addressesList.style.display = 'none';
-    if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
-    if (addressForm) addressForm.style.display = 'block';
-    
-    // Очищаем форму
-    clearOrderAddressFields();
+    // Используем универсальную функцию
+    openAddressForm({ mode: 'create', source: 'checkout' });
 }
 
 // Валидация шага 1 (Получатель)
@@ -5618,11 +5561,12 @@ async function saveStep2() {
                 });
                 
                 if (!isDuplicate) {
-                    savedAddresses.push(newAddress);
+                    // Используем единый сеттер
+                    setSavedAddresses([...savedAddresses, newAddress]);
                     await saveUserData();
                     console.log('[saveStep2] новый адрес сохранен');
                     
-                    // После сохранения savedAddresses обновлён из ответа сервера
+                    // После сохранения savedAddresses обновлён из ответа сервера через setSavedAddresses
                     // Находим только что созданный адрес по содержимому и выбираем его
                     const createdAddress = savedAddresses.find(addr => {
                         const sameCity = (addr.city || '').toLowerCase().trim() === (newAddress.city || '').toLowerCase().trim();
@@ -5633,9 +5577,6 @@ async function saveStep2() {
                     
                     if (createdAddress && createdAddress.id) {
                         console.log('[saveStep2] ✅ Выбираем только что созданный адрес:', createdAddress.id);
-                        // Обновляем список адресов
-                        loadSavedAddresses();
-                        // Выбираем только что созданный адрес
                         selectCheckoutAddress(createdAddress.id);
                     }
                 }
@@ -5677,8 +5618,8 @@ async function saveStep2() {
                     })
                 });
                 
-                // Добавляем в локальный массив
-                savedAddresses.push(addressData);
+                // Используем единый сеттер
+                setSavedAddresses([...savedAddresses, addressData]);
                 
                 // После сохранения через API нужно обновить savedAddresses из ответа сервера
                 await saveUserData();
@@ -5693,13 +5634,7 @@ async function saveStep2() {
                 
                 if (createdAddress && createdAddress.id) {
                     console.log('[saveStep2] ✅ Выбираем только что созданный адрес (через API):', createdAddress.id);
-                    // Обновляем список адресов
-                    loadSavedAddresses();
-                    // Выбираем только что созданный адрес
                     selectCheckoutAddress(createdAddress.id);
-                } else {
-                    // Обновляем отображение адресов в профиле
-                    loadSavedAddresses();
                 }
             }
         } catch (error) {
@@ -6065,16 +6000,11 @@ async function deleteAddressFromMyAddresses(addressId) {
     }
     
     // Удаляем адрес из списка
-    savedAddresses = savedAddresses.filter(a => String(a.id) !== String(addressId));
+    const filtered = savedAddresses.filter(a => String(a.id) !== String(addressId));
+    setSavedAddresses(filtered);
     
     // Сохраняем на сервер (включая пустой массив, если это последний адрес)
     await saveUserData();
-    
-    // Принудительно обновляем localStorage, чтобы избежать восстановления из кэша
-    localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
-    
-    // Обновляем список адресов
-    loadSavedAddresses();
     
     // Обновляем отображение списка
     renderMyAddressesList();
@@ -6246,8 +6176,9 @@ async function saveEditAddress() {
         // Обновляем существующий адрес в savedAddresses с сохранением ID
         const addressIndex = savedAddresses.findIndex(a => String(a.id) === String(editingAddressId));
         if (addressIndex !== -1) {
-            // Сохраняем ID при обновлении
-            savedAddresses[addressIndex] = {
+            // Создаем обновленный массив адресов
+            const updatedAddresses = [...savedAddresses];
+            updatedAddresses[addressIndex] = {
                 id: savedAddresses[addressIndex].id, // ВАЖНО: сохраняем ID
                 city: city,
                 street: streetValue,
@@ -6261,13 +6192,13 @@ async function saveEditAddress() {
                 isDefault: savedAddresses[addressIndex].isDefault || false
             };
             
-            console.log('[saveEditAddress] ✅ Обновлен адрес с ID:', editingAddressId, savedAddresses[addressIndex]);
+            console.log('[saveEditAddress] ✅ Обновлен адрес с ID:', editingAddressId, updatedAddresses[addressIndex]);
+            
+            // Используем единый сеттер
+            setSavedAddresses(updatedAddresses);
             
             // Сохраняем на сервер
             await saveUserData();
-            
-            // Обновляем список адресов
-            await loadSavedAddresses();
         } else {
             console.error('[saveEditAddress] ❌ Адрес с ID', editingAddressId, 'не найден в savedAddresses');
         }
