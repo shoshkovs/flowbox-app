@@ -4,6 +4,7 @@ const tg = window.Telegram?.WebApp;
 // Глобальные переменные состояния
 let currentCheckoutStep = 1; // Текущий шаг оформления заказа
 let isSimpleCheckout = false; // Флаг упрощенного оформления заказа
+let isSimpleOrderInitialized = false; // Флаг инициализации упрощенного заказа (предотвращает дубликаты)
 
 // Определяем, нужно ли разворачивать мини-апп
 // На десктопе (Telegram Desktop/Web) НЕ разворачиваем, оставляем встроенный режим
@@ -1726,6 +1727,7 @@ function canUseSimpleCheckout() {
 // Полный сценарий (как сейчас, 4 шага)
 function startFullCheckout() {
     isSimpleCheckout = false;
+    isSimpleOrderInitialized = false; // Сбрасываем флаг при полном сценарии
     
     switchTab('orderTab');
     
@@ -1812,6 +1814,9 @@ function startSimpleCheckout() {
     // Обновляем корзину и итоговую сумму
     renderCheckoutSummary();
     
+    // Помечаем, что упрощенный заказ инициализирован
+    isSimpleOrderInitialized = true;
+    
     // Показываем BackButton и настраиваем его на переход в корзину
     if (tg && tg.BackButton) {
         tg.BackButton.show();
@@ -1833,6 +1838,12 @@ checkoutBtnFinal.addEventListener('click', () => {
 
 // Инициализация формы заказа
 function initOrderForm() {
+    // В упрощенном сценарии инициализация уже выполнена, не повторяем
+    if (isSimpleCheckout && isSimpleOrderInitialized) {
+        console.log('[initOrderForm] ⏭️ Упрощенный заказ уже инициализирован, пропускаем');
+        return;
+    }
+    
     console.log('[initOrderForm] 🚀 Инициализация формы заказа');
     console.log('[initOrderForm] 📦 savedAddresses.length:', savedAddresses.length);
     
@@ -6935,8 +6946,42 @@ async function submitOrder() {
     
     if (!checkoutData.deliveryDate || !checkoutData.deliveryTime) {
         console.error('[submitOrder] ❌ Не выбраны дата и время доставки');
-        alert('Пожалуйста, выберите дату и время доставки');
-        goToStep(3);
+        
+        // В упрощенном сценарии не переходим на шаг 3, а просто подсвечиваем и прокручиваем
+        if (isSimpleCheckout) {
+            const summaryDeliveryDateAnchor = document.getElementById('anchor-summaryDeliveryDate');
+            const summaryCalendar = document.getElementById('summaryCustomCalendar');
+            const summaryTimeOptions = document.getElementById('summaryDeliveryTimeOptions');
+            
+            // Подсвечиваем календарь
+            if (summaryCalendar) {
+                summaryCalendar.classList.add('error-field');
+            }
+            
+            // Подсвечиваем слоты времени
+            if (summaryTimeOptions) {
+                const timeSlotButtons = summaryTimeOptions.querySelectorAll('.time-slot-btn');
+                timeSlotButtons.forEach(btn => {
+                    btn.classList.add('error-time-slot');
+                });
+            }
+            
+            // Прокручиваем к календарю
+            if (summaryDeliveryDateAnchor) {
+                summaryDeliveryDateAnchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (summaryCalendar) {
+                summaryCalendar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            if (tg && tg.showAlert) {
+                tg.showAlert('Пожалуйста, выберите дату и время доставки');
+            } else {
+                alert('Пожалуйста, выберите дату и время доставки');
+            }
+        } else {
+            alert('Пожалуйста, выберите дату и время доставки');
+            goToStep(3);
+        }
         return;
     }
     
