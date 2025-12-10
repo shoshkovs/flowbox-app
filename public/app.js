@@ -1627,7 +1627,7 @@ const initNavigation = () => {
     // Обновляем глобальную переменную navItems для совместимости
     navItems = document.querySelectorAll('.nav-item');
     
-    console.log('[navigation] ✅ Инициализирована навигация, элементов:', items.length);
+    console.log('[navigation] ✅ Инициализирована навигация, элементов:', navItems.length);
 };
 
 // Инициализируем навигацию при загрузке
@@ -6043,8 +6043,11 @@ async function deleteAddressFromMyAddresses(addressId) {
     // Удаляем адрес из списка
     savedAddresses = savedAddresses.filter(a => String(a.id) !== String(addressId));
     
-    // Сохраняем на сервер
+    // Сохраняем на сервер (включая пустой массив, если это последний адрес)
     await saveUserData();
+    
+    // Принудительно обновляем localStorage, чтобы избежать восстановления из кэша
+    localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
     
     // Обновляем список адресов
     loadSavedAddresses();
