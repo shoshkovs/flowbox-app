@@ -49,7 +49,14 @@ if (tg) {
             
             const orderTab = document.getElementById('orderTab');
             
-            if (orderTab && orderTab.style.display === 'block' || orderTab?.classList.contains('active')) {
+            // Проверяем, активна ли вкладка заказа
+            const isOrderTabActive = orderTab && (
+                orderTab.style.display === 'block' || 
+                orderTab.classList.contains('active') ||
+                window.getComputedStyle(orderTab).display !== 'none'
+            );
+            
+            if (isOrderTabActive) {
                 // Если мы на первом шаге формы заказа - возвращаемся в корзину
                 if (currentCheckoutStep === 1) {
                     console.log('[BackButton] Возвращаемся в корзину с шага 1');
@@ -59,20 +66,8 @@ if (tg) {
                     console.log('[BackButton] переходим на шаг', currentCheckoutStep - 1);
                     goToStep(currentCheckoutStep - 1);
                 }
-                return;
-            }
-            
-            // Старая логика для других случаев
-            if (orderTab && orderTab.classList.contains('active')) {
-                if (currentCheckoutStep > 1) {
-                    console.log('[BackButton] переходим на шаг', currentCheckoutStep - 1);
-                    goToStep(currentCheckoutStep - 1);
-                } else {
-                    console.log('[BackButton] на первом шаге, переходим в корзину');
-                    switchTab('cartTab');
-                }
             } else {
-                console.log('[BackButton] orderTab не активен, можно сделать другое действие');
+                console.log('[BackButton] orderTab не активен');
             }
         });
     } else {
