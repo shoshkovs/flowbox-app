@@ -4219,13 +4219,13 @@ function renderProfileAddresses() {
                             <circle cx="12" cy="19" r="1"/>
                         </svg>
                     </button>
-                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px; margin-top: 4px;">
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
                         <button onclick="event.stopPropagation(); editAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
                             Изменить
                         </button>
                         <button onclick="event.stopPropagation(); deleteAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
                             Удалить
-                    </button>
+                        </button>
                     </div>
                 </div>
                 </div>
