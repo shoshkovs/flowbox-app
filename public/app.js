@@ -5327,6 +5327,13 @@ function initCheckoutSteps() {
             
             // Возвращаемся на страницу итого
             document.getElementById('editRecipientTab').style.display = 'none';
+            // В упрощенном сценарии показываем заголовок обратно
+            if (isSimpleCheckout) {
+                const orderPageHeader = document.querySelector('.order-page-header');
+                if (orderPageHeader) {
+                    orderPageHeader.style.display = '';
+                }
+            }
             goToStep(4);
         };
     }
@@ -6383,13 +6390,33 @@ function openEditRecipientPage() {
     // Скрываем все шаги checkout
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
+    // В упрощенном сценарии скрываем заголовок "Оформление заказа"
+    if (isSimpleCheckout) {
+        const orderPageHeader = document.querySelector('.order-page-header');
+        if (orderPageHeader) {
+            orderPageHeader.style.display = 'none';
+        }
+    }
+    
     // Показываем страницу редактирования
     editRecipientTab.style.display = 'block';
+    
+    // Прокручиваем страницу вверх
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
     
     // Настраиваем BackButton
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
         editRecipientTab.style.display = 'none';
+        // В упрощенном сценарии показываем заголовок обратно
+        if (isSimpleCheckout) {
+            const orderPageHeader = document.querySelector('.order-page-header');
+            if (orderPageHeader) {
+                orderPageHeader.style.display = '';
+            }
+        }
         goToStep(4);
     });
 }
