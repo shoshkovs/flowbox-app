@@ -3028,6 +3028,13 @@ h1, h2, h3, .font-bold {
 }
 
 /* Красная рамка для кнопок времени доставки при ошибке */
+/* Подсветка календаря при ошибке */
+.custom-calendar.error-field {
+    border: 2px solid #f44336;
+    border-radius: 8px;
+    padding: 4px;
+}
+
 .time-slot-btn.error-time-slot {
     border-color: #f44336 !important;
     border-width: 2px !important;

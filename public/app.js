@@ -2726,8 +2726,16 @@ async function validateAndSubmitOrder(e) {
     // Используем комментарий из checkoutData (синхронизирован с полем на шаге 4)
     const comment = checkoutData.orderComment || (commentField ? commentField.value.trim() : '');
     const deliveryDate = deliveryDateField ? deliveryDateField.value : '';
-    const selectedTimeSlot = document.querySelector('.time-slot-btn.active');
-    const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : null;
+    // В упрощенном сценарии проверяем оба места (шаг 3 и шаг 4)
+    let selectedTimeSlot = document.querySelector('.time-slot-btn.active');
+    if (!selectedTimeSlot && isSimpleCheckout) {
+        // Проверяем слоты времени на шаге 4
+        const summaryTimeOptions = document.getElementById('summaryDeliveryTimeOptions');
+        if (summaryTimeOptions) {
+            selectedTimeSlot = summaryTimeOptions.querySelector('.time-slot-btn.active');
+        }
+    }
+    const deliveryTime = selectedTimeSlot ? selectedTimeSlot.dataset.time : (checkoutData.deliveryTime || null);
     // Используем значение из checkoutData (синхронизирован с чекбоксом на шаге 3)
     const leaveAtDoor = !!checkoutData.leaveAtDoor;
     
@@ -2885,40 +2893,86 @@ async function validateAndSubmitOrder(e) {
     }
     
     // Проверка даты доставки (после проверки адреса)
-    if (deliveryDate) {
-        const deliveryDateField = document.getElementById('deliveryDate');
-        validateField(deliveryDateField, true);
-    } else {
-        const deliveryDateField = document.getElementById('deliveryDate');
-        const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
-        validateField(deliveryDateField, false);
-        if (!firstErrorField) firstErrorField = deliveryDateAnchor || deliveryDateField;
-        hasErrors = true;
-    }
-    
-    // Проверка времени доставки (после проверки адреса и даты)
-    if (!deliveryTime) {
-        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-        const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
-        if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
-            // Добавляем красную рамку на все кнопки времени доставки (без рамки на контейнере)
-            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
-            timeSlotButtons.forEach(btn => {
-                btn.classList.add('error-time-slot');
-            });
-            // Устанавливаем firstErrorField только если еще не установлено (адрес имеет приоритет для прокрутки)
-            // Но время все равно подсвечивается красным независимо от того, заполнен адрес или нет
-            if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
+    // В упрощенном сценарии используем другие селекторы
+    if (isSimpleCheckout) {
+        // Упрощенный сценарий - проверяем календарь на шаге 4
+        if (deliveryDate) {
+            // Убираем ошибки с календаря
+            const summaryCalendar = document.getElementById('summaryCustomCalendar');
+            if (summaryCalendar) {
+                summaryCalendar.classList.remove('error-field');
+            }
+        } else {
+            // Подсвечиваем календарь красным
+            const summaryDeliveryDateAnchor = document.getElementById('anchor-summaryDeliveryDate');
+            const summaryCalendar = document.getElementById('summaryCustomCalendar');
+            if (summaryCalendar) {
+                summaryCalendar.classList.add('error-field');
+            }
+            if (!firstErrorField) firstErrorField = summaryDeliveryDateAnchor || summaryCalendar;
             hasErrors = true;
         }
+        
+        // Проверка времени доставки в упрощенном сценарии
+        if (!deliveryTime) {
+            const summaryTimeOptions = document.getElementById('summaryDeliveryTimeOptions');
+            const summaryDeliveryTimeAnchor = document.getElementById('anchor-summaryDeliveryTime');
+            if (summaryTimeOptions) {
+                // Добавляем красную рамку на все кнопки времени
+                const timeSlotButtons = summaryTimeOptions.querySelectorAll('.time-slot-btn');
+                timeSlotButtons.forEach(btn => {
+                    btn.classList.add('error-time-slot');
+                });
+                if (!firstErrorField) firstErrorField = summaryDeliveryTimeAnchor || summaryTimeOptions;
+                hasErrors = true;
+            }
+        } else {
+            // Убираем ошибки с кнопок времени
+            const summaryTimeOptions = document.getElementById('summaryDeliveryTimeOptions');
+            if (summaryTimeOptions) {
+                const timeSlotButtons = summaryTimeOptions.querySelectorAll('.time-slot-btn');
+                timeSlotButtons.forEach(btn => {
+                    btn.classList.remove('error-time-slot');
+                });
+            }
+        }
     } else {
-        // Если время выбрано - убираем ошибки с кнопок
-        const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
-        if (deliveryTimeOptions) {
-            const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
-            timeSlotButtons.forEach(btn => {
-                btn.classList.remove('error-time-slot');
-            });
+        // Обычный сценарий (4 шага)
+        if (deliveryDate) {
+            const deliveryDateField = document.getElementById('deliveryDate');
+            validateField(deliveryDateField, true);
+        } else {
+            const deliveryDateField = document.getElementById('deliveryDate');
+            const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
+            validateField(deliveryDateField, false);
+            if (!firstErrorField) firstErrorField = deliveryDateAnchor || deliveryDateField;
+            hasErrors = true;
+        }
+        
+        // Проверка времени доставки (после проверки адреса и даты)
+        if (!deliveryTime) {
+            const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+            const deliveryTimeAnchor = document.getElementById('anchor-deliveryTime');
+            if (deliveryTimeOptions && !deliveryTimeOptions.querySelector('.no-time-slots')) {
+                // Добавляем красную рамку на все кнопки времени доставки (без рамки на контейнере)
+                const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+                timeSlotButtons.forEach(btn => {
+                    btn.classList.add('error-time-slot');
+                });
+                // Устанавливаем firstErrorField только если еще не установлено (адрес имеет приоритет для прокрутки)
+                // Но время все равно подсвечивается красным независимо от того, заполнен адрес или нет
+                if (!firstErrorField) firstErrorField = deliveryTimeAnchor || deliveryTimeOptions;
+                hasErrors = true;
+            }
+        } else {
+            // Если время выбрано - убираем ошибки с кнопок
+            const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
+            if (deliveryTimeOptions) {
+                const timeSlotButtons = deliveryTimeOptions.querySelectorAll('.time-slot-btn');
+                timeSlotButtons.forEach(btn => {
+                    btn.classList.remove('error-time-slot');
+                });
+            }
         }
     }
     
@@ -5972,8 +6026,15 @@ function initSimpleDateTimeOnSummary() {
         return;
     }
     
+    // Проверяем, не инициализирован ли календарь уже (чтобы избежать дубликатов)
+    if (summaryDateTimePicker.dataset.initialized === 'true') {
+        console.log('[initSimpleDateTimeOnSummary] Календарь уже инициализирован, пропускаем');
+        return;
+    }
+    
     // Показываем календарь и слоты
     summaryDateTimePicker.style.display = 'block';
+    summaryDateTimePicker.dataset.initialized = 'true';
     
     const calendarContainer = document.getElementById('summaryCustomCalendar');
     const calendarDaysContainer = document.getElementById('summaryCalendarDays');
