@@ -5503,6 +5503,20 @@ function goToStep(step) {
     if (step === 4) {
         renderCheckoutSummary();
         
+        // В упрощенном сценарии настраиваем BackButton для возврата в корзину
+        if (isSimpleCheckout && tg && tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                // Проверяем, что мы на шаге 4 упрощенного сценария
+                const step4 = document.getElementById('checkoutStep4');
+                if (step4 && step4.style.display !== 'none' && isSimpleCheckout) {
+                    // Возвращаемся в корзину
+                    switchTab('cartTab');
+                    tg.BackButton.hide();
+                }
+            });
+        }
+        
         // Прокрутка в начало шага 4
         setTimeout(() => {
             window.scrollTo(0, 0);
@@ -6423,15 +6437,18 @@ function openEditRecipientPage() {
     // Настраиваем BackButton
     tg.BackButton.show();
     tg.BackButton.onClick(() => {
-        editRecipientTab.style.display = 'none';
-        // В упрощенном сценарии показываем заголовок обратно
-        if (isSimpleCheckout) {
-            const orderPageHeader = document.querySelector('.order-page-header');
-            if (orderPageHeader) {
-                orderPageHeader.style.display = '';
+        // Проверяем, что страница редактирования получателя все еще видна
+        if (editRecipientTab && editRecipientTab.style.display !== 'none') {
+            editRecipientTab.style.display = 'none';
+            // В упрощенном сценарии показываем заголовок обратно
+            if (isSimpleCheckout) {
+                const orderPageHeader = document.querySelector('.order-page-header');
+                if (orderPageHeader) {
+                    orderPageHeader.style.display = '';
+                }
             }
+            goToStep(4);
         }
-        goToStep(4);
     });
 }
 
@@ -6475,15 +6492,18 @@ function openMyAddressesPage() {
     if (tg && tg.BackButton) {
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
-            myAddressesTab.style.display = 'none';
-            // В упрощенном сценарии показываем заголовок обратно
-            if (isSimpleCheckout) {
-                const orderPageHeader = document.querySelector('.order-page-header');
-                if (orderPageHeader) {
-                    orderPageHeader.style.display = '';
+            // Проверяем, что страница "Мои адреса" все еще видна
+            if (myAddressesTab && myAddressesTab.style.display !== 'none') {
+                myAddressesTab.style.display = 'none';
+                // В упрощенном сценарии показываем заголовок обратно
+                if (isSimpleCheckout) {
+                    const orderPageHeader = document.querySelector('.order-page-header');
+                    if (orderPageHeader) {
+                        orderPageHeader.style.display = '';
+                    }
                 }
+                goToStep(4);
             }
-            goToStep(4);
         });
     }
 }
@@ -6843,9 +6863,12 @@ function openEditAddressPageFromList(address) {
     if (tg && tg.BackButton) {
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
-            editAddressTab.style.display = 'none';
-            // Возвращаемся к списку адресов
-            openMyAddressesPage();
+            // Проверяем, что страница редактирования адреса все еще видна
+            if (editAddressTab && editAddressTab.style.display !== 'none') {
+                editAddressTab.style.display = 'none';
+                // Возвращаемся к списку адресов
+                openMyAddressesPage();
+            }
         });
     }
 }
