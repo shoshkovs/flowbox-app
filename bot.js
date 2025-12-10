@@ -1469,240 +1469,120 @@ async function addUserAddress(userId, address) {
   }
 }
 
-// Сохранение адресов пользователя (полная замена - используется только при сохранении всех адресов из фронта)
-// Параметр userId может быть:
-// - user_id (внутренний ID из таблицы users) - если вызвано из POST /api/user-data
-// - telegram_id - если вызвано из других мест
-// Функция автоматически определяет, что передано, и использует правильное значение
-async function saveUserAddresses(userIdOrTelegramId, addresses) {
+// Сохранение адресов пользователя (полная замена списка)
+// Всегда работает с user_id (внутренний id из таблицы users)
+async function saveUserAddresses(user_id, addresses) {
   if (!pool) return false;
-  
-  // Валидация
-  console.log(`[saveUserAddresses] 🚀 userIdOrTelegramId = ${userIdOrTelegramId}, typeof = ${typeof userIdOrTelegramId}`);
-  if (!userIdOrTelegramId || userIdOrTelegramId === null || userIdOrTelegramId === undefined) {
-    console.error(`[saveUserAddresses] ❌ userIdOrTelegramId is null/undefined, не можем сохранить адреса`);
+
+  console.log('[saveUserAddresses] 🚀 user_id =', user_id, 'addresses length =', Array.isArray(addresses) ? addresses.length : 'not array');
+
+  if (!user_id) {
+    console.error('[saveUserAddresses] ❌ user_id is null/undefined, не можем сохранить адреса');
     return false;
   }
-  
+
+  // Гарантируем, что у нас массив
+  if (!Array.isArray(addresses)) {
+    addresses = [];
+  }
+
   try {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      
-      // Определяем, что передано: user_id (обычно маленькие числа: 1, 2, 3...) или telegram_id (большие: 1059138125)
-      // Если userId < 1000000, скорее всего это user_id из таблицы users
-      // Если userId >= 1000000, скорее всего это telegram_id
-      let user_id;
-      let telegram_id;
-      
-      if (userIdOrTelegramId < 1000000) {
-        // Скорее всего это user_id из таблицы users
-        user_id = userIdOrTelegramId;
-        // Получаем telegram_id для вызова loadUserAddresses
-        const userResult = await client.query(
-          'SELECT telegram_id FROM users WHERE id = $1::integer LIMIT 1',
-          [user_id]
-        );
-        if (userResult.rows.length === 0) {
-          console.error(`[saveUserAddresses] ❌ Пользователь с user_id=${user_id} не найден в таблице users`);
-          await client.query('ROLLBACK');
-          return false;
-        }
-        telegram_id = userResult.rows[0].telegram_id;
-        console.log(`[saveUserAddresses] ✅ Используем user_id=${user_id} (telegram_id=${telegram_id})`);
-      } else {
-        // Скорее всего это telegram_id
-        telegram_id = userIdOrTelegramId;
-        // Получаем user_id из таблицы users
-        const userResult = await client.query(
-          'SELECT id FROM users WHERE telegram_id = $1::bigint LIMIT 1',
-          [telegram_id]
-        );
-        if (userResult.rows.length === 0) {
-          console.error(`[saveUserAddresses] ❌ Пользователь с telegram_id=${telegram_id} не найден в таблице users`);
-          await client.query('ROLLBACK');
-          return false;
-        }
-        user_id = userResult.rows[0].id;
-        console.log(`[saveUserAddresses] ✅ Найден user_id=${user_id} для telegram_id=${telegram_id}`);
-      }
-      
-      // Валидация user_id перед использованием
-      if (!user_id || user_id === null || user_id === undefined) {
-        console.error(`[saveUserAddresses] ❌ user_id не может быть null/undefined после определения`);
-        await client.query('ROLLBACK');
-        return false;
-      }
-      
-      // 🟢 Случай: пользователь удалил все адреса - пустой массив
-      if (!Array.isArray(addresses) || addresses.length === 0) {
-        console.log(`[saveUserAddresses] 🧹 Пустой список адресов — удаляем все адреса пользователя из БД для user_id=${user_id}`);
-        
-        await client.query(
-          'DELETE FROM addresses WHERE user_id = $1',
-          [user_id]
-        );
-        
+
+      // Если список пустой — просто удаляем все адреса пользователя
+      if (addresses.length === 0) {
+        console.log('[saveUserAddresses] 🧹 Пустой список адресов — удаляем все адреса пользователя из БД для user_id =', user_id);
+        await client.query('DELETE FROM addresses WHERE user_id = $1', [user_id]);
         await client.query('COMMIT');
-        console.log(`[saveUserAddresses] ✅ Все адреса для user_id=${user_id} (telegram_id=${telegram_id}) удалены`);
+        console.log('[saveUserAddresses] ✅ Все адреса для user_id =', user_id, 'удалены');
         return true;
       }
-      
-      // Загружаем существующие адреса для проверки дубликатов (ДО удаления!)
-      // loadUserAddresses принимает user_id из таблицы users
-      const existingAddresses = await loadUserAddresses(user_id);
-      
-      // Подготавливаем адреса для сохранения: парсим street и house, проверяем дубликаты
-      const addressesToUpdate = []; // Адреса с ID для UPDATE
-      const addressesToInsert = []; // Адреса без ID для INSERT
-      const addressesToKeep = []; // Адреса, которые уже есть в БД и не нужно удалять
-      
-      for (let i = 0; i < addresses.length; i++) {
-        const addr = addresses[i];
-        
-        // Парсим street и house если нужно
+
+      // 1) Нормализуем и дедупим адреса
+      const normalized = [];
+
+      for (const addr of addresses) {
+        if (!addr) continue;
+
+        // Парсим street/house, если нужно
         let streetValue = addr.street || '';
         let houseValue = addr.house || '';
-        
+
         if (!houseValue && streetValue) {
           const parsed = parseStreetAndHouse(streetValue);
           streetValue = parsed.street;
           houseValue = parsed.house;
         }
-        
+
         const normalizedAddr = {
-          ...addr,
+          name: addr.name || streetValue || 'Новый адрес',
+          city: addr.city || '',
           street: streetValue,
-          house: houseValue
+          house: houseValue,
+          entrance: addr.entrance || null,
+          apartment: addr.apartment || null,
+          floor: addr.floor || null,
+          intercom: addr.intercom || null,
+          comment: addr.comment || null,
+          isDefault: addr.isDefault || false,
         };
-        
-        // Если у адреса есть ID - обновляем существующий
-        if (addr.id && typeof addr.id === 'number') {
-          // Проверяем, существует ли адрес с таким ID
-          const existingAddr = existingAddresses.find(existing => existing.id === addr.id);
-          if (existingAddr) {
-            // Обновляем существующий адрес
-            addressesToUpdate.push(normalizedAddr);
-            addressesToKeep.push(addr.id);
-          } else {
-            // ID есть, но адреса нет в БД - добавляем как новый (но сохраняем ID, если возможно)
-            addressesToInsert.push(normalizedAddr);
-          }
-        } else {
-          // Адреса без ID - проверяем дубликаты
-          const isDuplicateInExisting = existingAddresses.some(existing => 
-            isAddressDuplicate(normalizedAddr, existing)
-          );
-          
-          const isDuplicateInNew = addressesToInsert.some(addrToInsert => 
-            isAddressDuplicate(normalizedAddr, addrToInsert)
-          );
-          
-          if (!isDuplicateInExisting && !isDuplicateInNew) {
-            addressesToInsert.push(normalizedAddr);
-          } else if (isDuplicateInExisting) {
-            // Сохраняем ID существующего адреса, чтобы не удалить его
-            const existingAddr = existingAddresses.find(existing => 
-              isAddressDuplicate(normalizedAddr, existing)
-            );
-            if (existingAddr) {
-              addressesToKeep.push(existingAddr.id);
-            }
-          }
-        }
-      }
-      
-      // Удаляем только те адреса, которых нет в новом списке
-      if (addressesToKeep.length > 0) {
-        await client.query(
-          'DELETE FROM addresses WHERE user_id = $1 AND id != ALL($2::int[])',
-          [user_id, addressesToKeep]
-        );
-      } else {
-        // Если нет адресов для сохранения (включая случай пустого массива), удаляем все адреса пользователя
-        await client.query('DELETE FROM addresses WHERE user_id = $1', [user_id]);
-        console.log(`[saveUserAddresses] ✅ Удалены все адреса для user_id=${user_id}`);
-      }
-      
-      // Обновляем существующие адреса
-      let updatedCount = 0;
-      for (const addr of addressesToUpdate) {
-        await client.query(
-          `UPDATE addresses SET
-           name = $2, city = $3, street = $4, house = $5, entrance = $6, 
-           apartment = $7, floor = $8, intercom = $9, comment = $10, is_default = $11,
-           updated_at = now()
-           WHERE id = $1 AND user_id = $12`,
-          [
-            addr.id,
-            addr.name || addr.street || 'Новый адрес',
-            addr.city || '',
-            addr.street || '',
-            addr.house || '',
-            addr.entrance || null,
-            addr.apartment || null,
-            addr.floor || null,
-            addr.intercom || null,
-            addr.comment || null,
-            addr.isDefault || false,
-            user_id
-          ]
-        );
-        updatedCount++;
-      }
-      
-      // Добавляем новые адреса
-      let insertedCount = 0;
-      for (const addr of addressesToInsert) {
-        // Проверяем, что адрес действительно новый (нет такого же в БД)
-        const isDuplicate = existingAddresses.some(existing => 
-          isAddressDuplicate(addr, existing)
-        );
-        
-        if (isDuplicate) {
-          console.log(`[saveUserAddresses] ⚠️ Пропущен дубликат адреса: ${addr.city}, ${addr.street}, ${addr.house}, ${addr.apartment}`);
+
+        // Пропускаем полностью пустые адреса
+        if (!normalizedAddr.city && !normalizedAddr.street && !normalizedAddr.house) {
+          console.warn('[saveUserAddresses] ⚠️ Пропущен пустой адрес:', normalizedAddr);
           continue;
         }
-        
+
+        // Дедупликация по логике isAddressDuplicate
+        const isDup = normalized.some((existing) => isAddressDuplicate(normalizedAddr, existing));
+        if (isDup) {
+          console.log('[saveUserAddresses] ⚠️ Пропущен дубликат при сохранении:', normalizedAddr.city, normalizedAddr.street, normalizedAddr.house, normalizedAddr.apartment);
+          continue;
+        }
+
+        normalized.push(normalizedAddr);
+      }
+
+      console.log('[saveUserAddresses] 📦 После нормализации и дедупликации адресов:', normalized.length);
+
+      // 2) Полностью очищаем адреса пользователя
+      await client.query('DELETE FROM addresses WHERE user_id = $1', [user_id]);
+
+      // 3) Вставляем новые адреса
+      let insertedCount = 0;
+
+      for (const addr of normalized) {
         await client.query(
           `INSERT INTO addresses 
-           (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-           RETURNING id`,
+            (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [
-            user_id, // КРИТИЧНО: используем user_id из таблицы users, а не telegram_id
-            addr.name || addr.street || 'Новый адрес',
-            addr.city || '',
-            addr.street || '',
-            addr.house || '',
-            addr.entrance || null,
-            addr.apartment || null,
-            addr.floor || null,
-            addr.intercom || null,
-            addr.comment || null,
-            addr.isDefault || false
+            user_id,
+            addr.name,
+            addr.city,
+            addr.street,
+            addr.house,
+            addr.entrance,
+            addr.apartment,
+            addr.floor,
+            addr.intercom,
+            addr.comment,
+            addr.isDefault,
           ]
         );
         insertedCount++;
-        console.log(`[saveUserAddresses] ✅ Добавлен новый адрес: ${addr.city}, ${addr.street}, ${addr.house}`);
       }
-      
-      const addedCount = updatedCount + insertedCount;
-      
-      const skippedCount = addresses.length - addedCount;
-      
-      // Логируем дубликаты только если их много (не критично)
-      if (skippedCount > 0 && skippedCount > 3) {
-        console.log(`ℹ️  Пропущено ${skippedCount} дубликатов адресов для user_id=${user_id} (telegram_id=${telegram_id})`);
-      }
-      
-      console.log(`✅ saveUserAddresses: обновлено ${updatedCount}, добавлено ${insertedCount}, всего ${addedCount} адресов для telegram_id=${telegram_id} (user_id=${user_id}), пропущено дубликатов=${skippedCount}`);
-      
+
       await client.query('COMMIT');
+      console.log('[saveUserAddresses] ✅ Сохранено адресов для user_id =', user_id, ':', insertedCount);
+
       return true;
     } catch (error) {
       await client.query('ROLLBACK');
-      throw error;
+      console.error('Ошибка внутри транзакции saveUserAddresses:', error);
+      return false;
     } finally {
       client.release();
     }
