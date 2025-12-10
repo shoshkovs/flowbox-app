@@ -2572,16 +2572,69 @@ async function validateAndSubmitOrder(e) {
     let hasErrors = false;
     let firstErrorField = null;
     
-    // Проверка основных полей покупателя
-    const nameField = document.getElementById('customerName');
-    const phoneField = document.getElementById('customerPhone');
+    // --- ПОЛУЧАТЕЛЬ: данные ИЗ ФОРМЫ ---
+    const recipientNameFieldFromForm = document.getElementById('customerName');
+    const recipientPhoneFieldFromForm = document.getElementById('customerPhone');
+    
+    const recipientNameFromForm = recipientNameFieldFromForm ? recipientNameFieldFromForm.value.trim() : '';
+    const recipientPhoneFromForm = recipientPhoneFieldFromForm ? recipientPhoneFieldFromForm.value.trim() : '';
+    
+    // Валидация имени получателя (минимум 2 символа)
+    const nameAnchor = document.getElementById('anchor-customerName');
+    if (!recipientNameFromForm || recipientNameFromForm.length < 2) {
+        if (recipientNameFieldFromForm) validateField(recipientNameFieldFromForm, false);
+        if (!firstErrorField) firstErrorField = nameAnchor || recipientNameFieldFromForm;
+        hasErrors = true;
+    }
+    
+    // Валидация телефона получателя (минимум 10 цифр)
+    const phoneAnchor = document.getElementById('anchor-customerPhone');
+    const recipientPhoneDigits = recipientPhoneFromForm.replace(/\D/g, ''); // Убираем все нецифровые символы
+    if (!recipientPhoneFromForm || recipientPhoneDigits.length < 10) {
+        if (recipientPhoneFieldFromForm) validateField(recipientPhoneFieldFromForm, false);
+        if (!firstErrorField) firstErrorField = phoneAnchor || recipientPhoneFieldFromForm;
+        hasErrors = true;
+    }
+    
+    // --- КЛИЕНТ: данные ИЗ ТЕЛЕГРАМА + ПРОФИЛЯ ---
     const emailField = document.getElementById('customerEmail');
+    
+    // Профиль из localStorage (то, что сохраняется через /api/user-data)
+    let profileData = {};
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+        try {
+            profileData = JSON.parse(savedProfile) || {};
+        } catch (e) {
+            console.error('Ошибка парсинга профиля:', e);
+        }
+    }
+    
+    // Данные из Telegram
+    const tgUser = tg?.initDataUnsafe?.user || {};
+    
+    // Имя клиента: приоритет — имя из профиля, потом first_name, потом username
+    const clientName =
+        profileData.name ||
+        (tgUser.first_name && tgUser.last_name ? `${tgUser.first_name} ${tgUser.last_name}` : tgUser.first_name) ||
+        tgUser.username ||
+        '';
+    
+    // Телефон клиента: из профиля, если есть, иначе из Telegram (если когда-нибудь появится)
+    const clientPhone =
+        profileData.phone ||
+        tgUser.phone_number ||
+        '';
+    
+    // Email клиента: только из профиля (можно вводить на экране профиля)
+    const clientEmail =
+        profileData.email ||
+        (emailField ? emailField.value.trim() : '');
+    
+    // --- Остальные поля ---
     const commentField = document.getElementById('orderComment');
     const deliveryDateField = document.getElementById('deliveryDate');
     
-    const name = nameField ? nameField.value.trim() : '';
-    const phone = phoneField ? phoneField.value.trim() : '';
-    const email = emailField ? emailField.value.trim() : '';
     // Используем комментарий из checkoutData (синхронизирован с полем на шаге 4)
     const comment = checkoutData.orderComment || (commentField ? commentField.value.trim() : '');
     const deliveryDate = deliveryDateField ? deliveryDateField.value : '';
@@ -2591,29 +2644,14 @@ async function validateAndSubmitOrder(e) {
     const leaveAtDoor = !!checkoutData.leaveAtDoor;
     
     console.log('[validateAndSubmitOrder] 📝 Проверка полей:');
-    console.log('[validateAndSubmitOrder]   - name:', name);
-    console.log('[validateAndSubmitOrder]   - phone:', phone);
-    console.log('[validateAndSubmitOrder]   - email:', email || '(не заполнено)');
+    console.log('[validateAndSubmitOrder]   - clientName:', clientName);
+    console.log('[validateAndSubmitOrder]   - clientPhone:', clientPhone);
+    console.log('[validateAndSubmitOrder]   - clientEmail:', clientEmail || '(не заполнено)');
+    console.log('[validateAndSubmitOrder]   - recipientName:', recipientNameFromForm);
+    console.log('[validateAndSubmitOrder]   - recipientPhone:', recipientPhoneFromForm);
     console.log('[validateAndSubmitOrder]   - comment:', comment || '(не заполнено)');
     console.log('[validateAndSubmitOrder]   - deliveryDate:', deliveryDate);
     console.log('[validateAndSubmitOrder]   - deliveryTime:', deliveryTime);
-    
-    // Валидация имени (минимум 2 символа)
-    const nameAnchor = document.getElementById('anchor-customerName');
-    if (!name || name.length < 2) {
-        if (nameField) validateField(nameField, false);
-        if (!firstErrorField) firstErrorField = nameAnchor || nameField;
-        hasErrors = true;
-    }
-    
-    // Валидация телефона (минимум 10 цифр)
-    const phoneAnchor = document.getElementById('anchor-customerPhone');
-    const phoneDigits = phone.replace(/\D/g, ''); // Убираем все нецифровые символы
-    if (!phone || phoneDigits.length < 10) {
-        if (phoneField) validateField(phoneField, false);
-        if (!firstErrorField) firstErrorField = phoneAnchor || phoneField;
-        hasErrors = true;
-    }
     
     // Валидация email (улучшенная: должна быть @ и точка, нельзя белеберду)
     const emailAnchor = document.getElementById('anchor-customerEmail');
@@ -2640,61 +2678,9 @@ async function validateAndSubmitOrder(e) {
         console.log('[validateAndSubmitOrder] ⚠️ Поле customerEmail не найдено, используем пустое значение');
     }
     
-    // Проверка получателя, если выбран "Другой получатель"
-    const recipientRadio = document.querySelector('input[name="recipient"]:checked');
-    let recipientName = '';
-    let recipientPhone = '';
-    
-    if (recipientRadio && recipientRadio.value === 'other') {
-        const recipientNameField = document.getElementById('recipientName');
-        const recipientNameAnchor = document.getElementById('anchor-recipientName');
-        const recipientPhoneField = document.getElementById('recipientPhone');
-        const recipientPhoneAnchor = document.getElementById('anchor-recipientPhone');
-        recipientName = recipientNameField ? recipientNameField.value.trim() : '';
-        recipientPhone = recipientPhoneField ? recipientPhoneField.value.trim() : '';
-        
-        // Валидация имени получателя (минимум 2 символа)
-        if (recipientName && recipientName.length >= 2) {
-            validateField(recipientNameField, true);
-        } else {
-            validateField(recipientNameField, false);
-            if (!firstErrorField) firstErrorField = recipientNameAnchor || recipientNameField;
-            hasErrors = true;
-        }
-        
-        // Валидация телефона получателя (минимум 10 цифр)
-        const recipientPhoneDigits = recipientPhone.replace(/\D/g, '');
-        if (recipientPhone && recipientPhoneDigits.length >= 10) {
-            validateField(recipientPhoneField, true);
-        } else {
-            validateField(recipientPhoneField, false);
-            if (!firstErrorField) firstErrorField = recipientPhoneAnchor || recipientPhoneField;
-            hasErrors = true;
-        }
-    } else if (recipientRadio && recipientRadio.value === 'self') {
-        // Если выбран "Я получу заказ", используем данные из профиля
-        // НО НЕ используем имя из Telegram - только из сохраненного профиля (которое было введено пользователем)
-        const savedProfile = localStorage.getItem('userProfile');
-        let profileData = null;
-        
-        if (savedProfile) {
-            try {
-                profileData = JSON.parse(savedProfile);
-            } catch (e) {
-                console.error('Ошибка парсинга профиля:', e);
-            }
-        }
-        
-        if (profileData) {
-            // Используем только имя, которое было введено пользователем в форме заказа
-            recipientName = profileData.name || '';
-            recipientPhone = profileData.phone || '';
-        } else {
-            // Если профиля нет, оставляем пустым - пользователь должен ввести имя вручную
-            recipientName = '';
-            recipientPhone = '';
-        }
-    }
+    // В поэтапной форме получатель ВСЕГДА из формы customerName / customerPhone
+    let recipientName = recipientNameFromForm;
+    let recipientPhone = recipientPhoneFromForm;
     
     // Проверка выбранного адреса (ПЕРЕД проверкой времени доставки)
     const selectedAddressRadio = document.querySelector('input[name="selectedAddress"]:checked');
@@ -2965,11 +2951,14 @@ async function validateAndSubmitOrder(e) {
         flowersTotal: flowersTotal,
         serviceFee: serviceFee,
         deliveryPrice: deliveryPrice,
-        name: name,
-        phone: phone,
-        email: email,
-        recipientName: recipientName,
-        recipientPhone: recipientPhone,
+        // --- КЛИЕНТ ---
+        name: clientName,        // ← ИМЯ КЛИЕНТА из Telegram/профиля
+        phone: clientPhone,      // ← ТЕЛЕФОН КЛИЕНТА из профиля
+        email: clientEmail,      // ← EMAIL КЛИЕНТА из профиля (или из поля email)
+        
+        // --- ПОЛУЧАТЕЛЬ ---
+        recipientName: recipientNameFromForm,   // ← ИМЯ ПОЛУЧАТЕЛЯ из формы
+        recipientPhone: recipientPhoneFromForm, // ← ТЕЛЕФОН ПОЛУЧАТЕЛЯ из формы
         address: addressString,
         addressData: addressData,
         deliveryDate: deliveryDate,
@@ -3056,10 +3045,10 @@ async function validateAndSubmitOrder(e) {
             const orderId = parseInt(result.orderId) || result.orderId; // Приводим к числу, если возможно
             console.log('✅ Заказ успешно создан, ID:', orderId);
             
-            // Сохраняем имя получателя в localStorage для будущих заказов
-            if (name && name.trim()) {
-                localStorage.setItem('flowbox_recipient_name', name.trim());
-                console.log('[validateAndSubmitOrder] 💾 Сохранено имя получателя в localStorage:', name.trim());
+            // Сохраняем ИМЯ ПОЛУЧАТЕЛЯ в localStorage для будущих заказов
+            if (recipientNameFromForm && recipientNameFromForm.trim()) {
+                localStorage.setItem('flowbox_recipient_name', recipientNameFromForm.trim());
+                console.log('[validateAndSubmitOrder] 💾 Сохранено имя получателя в localStorage:', recipientNameFromForm.trim());
             }
             
             try {
