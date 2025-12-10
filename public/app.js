@@ -6228,18 +6228,44 @@ function initSimpleDateTimeOnSummary() {
     // Чекбокс "Оставить у двери" - только чекбокс, без поля "Да/Нет"
     const leaveAtDoorCheckbox = document.getElementById('summaryLeaveAtDoorCheckbox');
     if (leaveAtDoorCheckbox) {
-        // Удаляем старые обработчики, если есть
-        const newCheckbox = leaveAtDoorCheckbox.cloneNode(true);
-        leaveAtDoorCheckbox.parentNode.replaceChild(newCheckbox, leaveAtDoorCheckbox);
+        // Устанавливаем начальное состояние
+        leaveAtDoorCheckbox.checked = !!checkoutData.leaveAtDoor;
         
-        // Устанавливаем состояние
-        newCheckbox.checked = !!checkoutData.leaveAtDoor;
-        
-        // Добавляем обработчик
-        newCheckbox.addEventListener('change', function() {
+        // Удаляем все старые обработчики, создавая новый обработчик
+        const handleCheckboxChange = function() {
             checkoutData.leaveAtDoor = this.checked;
             // Не обновляем summaryLeaveAtDoor в упрощенном сценарии
+        };
+        
+        // Удаляем старые обработчики через клонирование
+        const newCheckbox = leaveAtDoorCheckbox.cloneNode(true);
+        newCheckbox.checked = !!checkoutData.leaveAtDoor;
+        leaveAtDoorCheckbox.parentNode.replaceChild(newCheckbox, leaveAtDoorCheckbox);
+        
+        // Добавляем новый обработчик на change
+        newCheckbox.addEventListener('change', handleCheckboxChange);
+        
+        // Также добавляем обработчик на click для надежности
+        newCheckbox.addEventListener('click', function(e) {
+            // Предотвращаем двойное срабатывание
+            e.stopPropagation();
+            checkoutData.leaveAtDoor = this.checked;
         });
+        
+        // Обрабатываем клик по label (если клик не по самому чекбоксу)
+        const label = newCheckbox.closest('label');
+        if (label) {
+            label.addEventListener('click', function(e) {
+                // Если клик был по label или span, а не по самому чекбоксу
+                if (e.target !== newCheckbox && e.target.tagName !== 'INPUT') {
+                    // Не нужно ничего делать - браузер сам переключит чекбокс при клике на label
+                    // Просто убеждаемся, что состояние синхронизировано
+                    setTimeout(() => {
+                        checkoutData.leaveAtDoor = newCheckbox.checked;
+                    }, 0);
+                }
+            });
+        }
     }
     
     // Функция обновления отображения даты и времени
