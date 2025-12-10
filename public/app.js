@@ -3285,7 +3285,7 @@ function loadProfile() {
 const addressForm = document.getElementById('addressForm');
 const addressCity = document.getElementById('addressCity');
 const addressError = document.getElementById('addressError');
-const addressesBtn = document.getElementById('addressesBtn');
+// Кнопка "Добавить новый адрес" удалена из профиля
 // Кнопки "Назад" удалены - используем только BackButton от Telegram
 const addressPageTitle = document.getElementById('addressPageTitle');
 const deleteAddressBtn = document.getElementById('deleteAddressBtn');
@@ -3385,11 +3385,7 @@ function openAddressPage(address = null) {
 }
 
 // Открытие модальных окон
-if (addressesBtn) {
-    addressesBtn.addEventListener('click', () => {
-        openAddressPage();
-    });
-}
+// Кнопка "Добавить новый адрес" удалена из профиля
 
 // Обработчик кнопки "Назад" удален - используем только BackButton от Telegram
 
