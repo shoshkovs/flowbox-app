@@ -1820,6 +1820,15 @@ function startSimpleCheckout() {
     // Показываем BackButton и настраиваем его на переход в корзину
     if (tg && tg.BackButton) {
         tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            // Проверяем, что мы в упрощенном сценарии на шаге 4
+            const step4 = document.getElementById('checkoutStep4');
+            if (step4 && step4.style.display !== 'none' && isSimpleCheckout) {
+                // Возвращаемся в корзину
+                switchTab('cartTab');
+                tg.BackButton.hide();
+            }
+        });
     }
     
     window.scrollTo(0, 0);
