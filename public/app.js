@@ -1064,13 +1064,20 @@ async function loadUserData() {
                 console.log('[loadUserData] 📦 Загружены адреса с сервера:', data.addresses.length);
                 console.log('[loadUserData] 📦 Данные адресов:', JSON.stringify(data.addresses, null, 2));
                 // Фильтруем только адреса с валидным ID
-                savedAddresses = data.addresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+                const addressesFromServer = data.addresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+                
+                // Если на сервере есть адреса, используем их
+                // Если на сервере пустой массив, это означает, что пользователь удалил все адреса - используем пустой массив
+                savedAddresses = addressesFromServer;
+                
                 // Синхронизируем с localStorage
                 localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
                 console.log('[loadUserData] 💾 Адреса сохранены в localStorage:', savedAddresses.length);
                 if (savedAddresses.length > 0) {
                     console.log('[loadUserData] 📦 ID адресов:', savedAddresses.map(a => a.id).join(', '));
                     console.log('[loadUserData] 📦 Первый адрес:', JSON.stringify(savedAddresses[0], null, 2));
+                } else {
+                    console.log('[loadUserData] ℹ️ Пустой массив адресов с сервера - все адреса удалены');
                 }
             } else {
                 console.log('[loadUserData] ⚠️ Адреса не получены с сервера или не массив. Получено:', typeof data.addresses, data.addresses);
