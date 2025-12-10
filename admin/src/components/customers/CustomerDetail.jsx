@@ -244,11 +244,22 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
     return parts.join(', ');
   });
 
+  // Обработчик кнопки "назад"
+  const handleBack = () => {
+    if (onClose) {
+      // Если есть onClose (используется в модальном режиме)
+      onClose();
+    } else {
+      // Если используется через роутинг - навигация к списку клиентов
+      navigate('/customers');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <button
-          onClick={onClose}
+          onClick={handleBack}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
