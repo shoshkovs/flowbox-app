@@ -28,7 +28,13 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   }, [clientId, authToken]);
 
   const loadCustomerDetail = async () => {
+    if (!clientId) {
+      setLoading(false);
+      return;
+    }
+    
     try {
+      setLoading(true);
       // Всегда используем endpoint с ID клиента из базы данных
       const url = `${API_BASE}/api/admin/customers/${clientId}`;
       
@@ -43,11 +49,15 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
         setCustomerData(data);
         setManagerComment(data.manager_comment || '');
       } else {
-        toast.error('Ошибка загрузки данных клиента');
+        const errorData = await response.json().catch(() => ({ error: 'Неизвестная ошибка' }));
+        console.error('Ошибка загрузки клиента:', errorData);
+        toast.error(errorData.error || 'Ошибка загрузки данных клиента');
+        setCustomerData(null);
       }
     } catch (error) {
       console.error('Ошибка загрузки клиента:', error);
       toast.error('Ошибка загрузки данных клиента');
+      setCustomerData(null);
     } finally {
       setLoading(false);
     }
@@ -168,9 +178,9 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   const registeredAt = customerData.registered_at || customerData.created_at;
   const lastOrderDate = customerData.stats?.lastOrderDate || customerData.lastOrderDate;
   const ordersCount = customerData.stats?.ordersCount || customer?.ordersCount || 0;
-  const totalSpent = customerData.stats?.totalSpent || customer?.totalSpent || 0;
+  const totalSpent = Number(customerData.stats?.totalSpent || customer?.totalSpent || 0);
   const avgCheck = customerData.stats?.avgCheck || (ordersCount > 0 ? Math.round(totalSpent / ordersCount) : 0);
-  const bonusBalance = customerData.bonuses || customer.bonuses || 0;
+  const bonusBalance = Number(customerData.bonuses || customer?.bonuses || 0);
   const orders = customerData.orders || [];
   const addresses = customerData.addresses || [];
 
