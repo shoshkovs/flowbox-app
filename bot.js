@@ -841,6 +841,60 @@ if (process.env.DATABASE_URL) {
           // Игнорируем ошибки при миграции
         }
       }, 9000);
+      
+      // Миграция: объединение street и house в одно поле street
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            // Проверяем, существует ли колонка house
+            const columnCheck = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'addresses' AND column_name = 'house'
+            `);
+            
+            if (columnCheck.rows.length > 0) {
+              console.log('🔄 Начинаем миграцию: объединение street и house');
+              
+              // Шаг 1: Склеиваем street + house в street
+              await client.query(`
+                UPDATE addresses
+                SET street = TRIM(
+                    CASE
+                        WHEN (house IS NULL OR house = '') AND (street IS NOT NULL AND street <> '')
+                            THEN street
+                        WHEN (street IS NULL OR street = '') AND (house IS NOT NULL AND house <> '')
+                            THEN house
+                        WHEN (street IS NOT NULL AND street <> '') AND (house IS NOT NULL AND house <> '')
+                            THEN street || ', ' || house
+                        ELSE street
+                    END
+                )
+              `);
+              
+              console.log('✅ Шаг 1: street и house объединены в street');
+              
+              // Шаг 2: Удаляем колонку house
+              await client.query(`
+                ALTER TABLE addresses DROP COLUMN IF EXISTS house
+              `);
+              
+              console.log('✅ Шаг 2: Колонка house удалена');
+              console.log('✅ Миграция объединения street и house завершена');
+            } else {
+              console.log('ℹ️  Колонка house уже удалена, миграция не требуется');
+            }
+          } catch (migrationError) {
+            console.error('⚠️  Ошибка миграции объединения street и house:', migrationError.message);
+            // Не критично, продолжаем работу
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          console.error('⚠️  Ошибка при выполнении миграции:', error.message);
+        }
+      }, 11000);
     }); // Закрываем первый setTimeout
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
