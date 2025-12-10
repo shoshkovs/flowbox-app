@@ -6570,7 +6570,21 @@ function toggleAddressMenu(addressId) {
     // Переключаем текущее меню
     const menu = document.getElementById(`addressMenu${addressId}`);
     if (menu) {
-        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        const isVisible = menu.style.display !== 'none';
+        menu.style.display = isVisible ? 'none' : 'block';
+        
+        // Если меню открывается, добавляем обработчик клика вне меню для его закрытия
+        if (!isVisible) {
+            setTimeout(() => {
+                const closeMenuOnClickOutside = (e) => {
+                    if (!menu.contains(e.target) && !e.target.closest('.address-menu-btn')) {
+                        menu.style.display = 'none';
+                        document.removeEventListener('click', closeMenuOnClickOutside);
+                    }
+                };
+                document.addEventListener('click', closeMenuOnClickOutside);
+            }, 0);
+        }
     }
 }
 
