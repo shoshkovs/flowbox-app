@@ -154,6 +154,30 @@ window.addEventListener('pagehide', () => {
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         saveCartOnClose();
+    } else {
+        // При возврате видимости проверяем, нужно ли восстановить состояние
+        // Если был открыт overlay успеха, скрываем его и возвращаемся в меню
+        const successOverlay = document.getElementById('successOverlay');
+        if (successOverlay && successOverlay.classList.contains('active')) {
+            console.log('[visibilitychange] Восстанавливаем состояние после возврата с платежной страницы');
+            successOverlay.classList.remove('active');
+            // Очищаем форму заказа
+            checkoutData = {
+                recipientName: '',
+                recipientPhone: '',
+                address: null,
+                deliveryDate: '',
+                deliveryTime: '',
+                orderComment: '',
+                leaveAtDoor: false
+            };
+            currentCheckoutStep = 1;
+            // Показываем меню
+            switchTab('menuTab');
+            initNavigation();
+            // Прокрутка в начало
+            window.scrollTo(0, 0);
+        }
     }
 });
 
@@ -2731,8 +2755,17 @@ async function validateAndSubmitOrder(e) {
         } else {
             // ВАЖНО: Если адрес был отредактирован через checkoutData, используем его
             // Это предотвращает создание дубликата при оплате
+            // Если checkoutData.address существует и имеет ID, который совпадает с выбранным адресом, используем его
             if (checkoutData.address && checkoutData.address.id && String(checkoutData.address.id) === String(addressId)) {
-                console.log('[validateAndSubmitOrder] ✅ Используем отредактированный адрес из checkoutData');
+                console.log('[validateAndSubmitOrder] ✅ Используем отредактированный адрес из checkoutData (ID совпадает)');
+                addressData = {
+                    ...addressData, // Базовые данные из savedAddresses
+                    ...checkoutData.address // Обновленные данные из checkoutData (включая house)
+                };
+            } else if (checkoutData.address && checkoutData.address.street && checkoutData.address.city) {
+                // Если checkoutData.address был установлен (отредактирован), но ID не совпадает или отсутствует,
+                // всё равно используем его, так как он был отредактирован пользователем
+                console.log('[validateAndSubmitOrder] ✅ Используем отредактированный адрес из checkoutData (был отредактирован)');
                 addressData = {
                     ...addressData, // Базовые данные из savedAddresses
                     ...checkoutData.address // Обновленные данные из checkoutData (включая house)
@@ -3010,6 +3043,27 @@ async function validateAndSubmitOrder(e) {
                         const fullPaymentUrl = window.location.origin + paymentUrl;
                         tg.openLink(fullPaymentUrl);
                         console.log('✅ Открыта страница оплаты через Telegram WebApp');
+                        
+                        // После открытия страницы оплаты скрываем overlay и возвращаемся в меню
+                        setTimeout(() => {
+                            successOverlay.classList.remove('active');
+                            // Очищаем форму заказа
+                            checkoutData = {
+                                recipientName: '',
+                                recipientPhone: '',
+                                address: null,
+                                deliveryDate: '',
+                                deliveryTime: '',
+                                orderComment: '',
+                                leaveAtDoor: false
+                            };
+                            currentCheckoutStep = 1;
+                            // Показываем меню
+                            switchTab('menuTab');
+                            initNavigation();
+                            // Прокрутка в начало
+                            window.scrollTo(0, 0);
+                        }, 2000); // Даём время на открытие страницы оплаты
                     } else {
                         // Fallback: обычное перенаправление
                         window.location.href = paymentUrl;
@@ -3018,6 +3072,10 @@ async function validateAndSubmitOrder(e) {
                 } catch (redirectError) {
                     console.warn('⚠️ Ошибка перенаправления на страницу оплаты:', redirectError);
                     // Продолжаем выполнение даже при ошибке перенаправления
+                    // Скрываем overlay и возвращаемся в меню
+                    successOverlay.classList.remove('active');
+                    switchTab('menuTab');
+                    initNavigation();
                 }
             }, 1000);
             
@@ -6243,7 +6301,8 @@ async function saveEditAddress() {
     if (houseMatch && houseMatch[1]) {
         houseValue = houseMatch[1].trim();
         // Убираем номер дома из street, оставляя только название улицы
-        streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
+        // Используем тот же паттерн для замены, что и на бэке
+        streetValue = streetValue.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
     }
     
     console.log('[saveEditAddress] 📍 Парсинг адреса:', { 
