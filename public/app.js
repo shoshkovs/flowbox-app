@@ -127,17 +127,24 @@ function handleBackButton() {
     // Редактирование получателя
     if (editRecipientTab && editRecipientTab.style.display !== 'none') {
         console.log('[BackButton] Возврат из редактирования получателя');
-        editRecipientTab.style.display = 'none';
         
-        // В упрощенном сценарии показываем заголовок обратно
-        if (isSimpleCheckout) {
-            const orderPageHeader = document.querySelector('.order-page-header');
-            if (orderPageHeader) {
-                orderPageHeader.style.display = '';
-            }
+        // В упрощенном сценарии возвращаемся в корзину
+        if (isSimpleCheckout || checkoutMode === 'simple') {
+            console.log('[BackButton] Упрощенный сценарий - возвращаемся в корзину из редактирования получателя');
+            editRecipientTab.style.display = 'none';
+            exitToCart();
+            return;
         }
         
-        checkoutScreen = isSimpleCheckout ? 'simpleSummary' : 'steps';
+        editRecipientTab.style.display = 'none';
+        
+        // В обычном сценарии показываем заголовок обратно
+        const orderPageHeader = document.querySelector('.order-page-header');
+        if (orderPageHeader) {
+            orderPageHeader.style.display = '';
+        }
+        
+        checkoutScreen = 'steps';
         goToStep(4);
         return;
     }
@@ -170,7 +177,7 @@ function handleBackButton() {
     }
     
     // Упрощенный сценарий - всегда возвращаемся в корзину
-    if (checkoutMode === 'simple' && checkoutScreen === 'simpleSummary') {
+    if ((checkoutMode === 'simple' || isSimpleCheckout) && checkoutScreen === 'simpleSummary') {
         console.log('[BackButton] Упрощенный сценарий - возвращаемся в корзину');
         exitToCart();
         return;
@@ -6497,6 +6504,7 @@ function openEditRecipientPage() {
     const editRecipientTab = document.getElementById('editRecipientTab');
     const nameField = document.getElementById('editRecipientName');
     const phoneField = document.getElementById('editRecipientPhone');
+    const saveRecipientBtn = document.getElementById('saveRecipientBtn');
     
     if (!editRecipientTab || !nameField || !phoneField) return;
     
@@ -6512,11 +6520,71 @@ function openEditRecipientPage() {
     // Скрываем все шаги checkout
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     
-    // В упрощенном сценарии скрываем заголовок "Оформление заказа"
-    if (isSimpleCheckout) {
+    // В упрощенном сценарии скрываем заголовок "Оформление заказа" и кнопку "Сохранить"
+    if (isSimpleCheckout || checkoutMode === 'simple') {
         const orderPageHeader = document.querySelector('.order-page-header');
         if (orderPageHeader) {
             orderPageHeader.style.display = 'none';
+        }
+        
+        // Скрываем кнопку "Сохранить" в упрощенном режиме
+        if (saveRecipientBtn) {
+            saveRecipientBtn.style.display = 'none';
+        }
+        
+        // Добавляем автосохранение при изменении полей
+        // Используем существующую функцию или создаем новую
+        if (!nameField._autoSaveHandler) {
+            nameField._autoSaveHandler = async () => {
+                const name = nameField.value.trim();
+                const phone = phoneField.value.trim();
+                const phoneDigits = phone.replace(/\D/g, '');
+                
+                // Сохраняем только если данные валидны
+                if (name && phone && phoneDigits.length >= 10) {
+                    checkoutData.recipientName = name;
+                    checkoutData.recipientPhone = phone;
+                    
+                    // Обновляем отображение на странице итого
+                    renderCheckoutSummary();
+                    
+                    // Сохраняем в профиль пользователя в БД
+                    const userId = getUserId();
+                    if (userId) {
+                        try {
+                            await fetch('/api/user-data', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    userId: userId,
+                                    profile: {
+                                        name: name,
+                                        phone: phone
+                                    }
+                                })
+                            });
+                        } catch (error) {
+                            console.error('Ошибка сохранения данных получателя:', error);
+                        }
+                    }
+                }
+            };
+            
+            // Используем тот же обработчик для обоих полей
+            phoneField._autoSaveHandler = nameField._autoSaveHandler;
+        }
+        
+        // Удаляем старые обработчики, если они есть
+        nameField.removeEventListener('blur', nameField._autoSaveHandler);
+        phoneField.removeEventListener('blur', phoneField._autoSaveHandler);
+        
+        // Добавляем автосохранение при потере фокуса
+        nameField.addEventListener('blur', nameField._autoSaveHandler);
+        phoneField.addEventListener('blur', phoneField._autoSaveHandler);
+    } else {
+        // В обычном режиме показываем кнопку "Сохранить"
+        if (saveRecipientBtn) {
+            saveRecipientBtn.style.display = '';
         }
     }
     
