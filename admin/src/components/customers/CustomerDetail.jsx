@@ -16,7 +16,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   const [isAdjustingBonuses, setIsAdjustingBonuses] = useState(false);
   const [recalculatingBonuses, setRecalculatingBonuses] = useState(false);
 
-  // Определяем ID клиента: либо из customer, либо из customerId (telegram_id)
+  // Используем ID клиента из URL параметра или из пропса customer
   const clientId = customer?.id || customerId;
 
   useEffect(() => {
@@ -27,10 +27,8 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
 
   const loadCustomerDetail = async () => {
     try {
-      // Если customerId - это telegram_id, используем его напрямую
-      const url = customerId 
-        ? `${API_BASE}/api/admin/customers/telegram/${customerId}`
-        : `${API_BASE}/api/admin/customers/${clientId}`;
+      // Всегда используем endpoint с ID клиента из базы данных
+      const url = `${API_BASE}/api/admin/customers/${clientId}`;
       
       const response = await fetch(url, {
         headers: {
@@ -61,8 +59,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
     setRecalculatingBonuses(true);
     try {
       const url = customerId 
-        ? `${API_BASE}/api/admin/customers/telegram/${customerId}/recalculate-bonuses`
-        : `${API_BASE}/api/admin/customers/${clientId}/recalculate-bonuses`;
+        `${API_BASE}/api/admin/customers/${clientId}/recalculate-bonuses`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -100,8 +97,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
     setIsAdjustingBonuses(true);
     try {
       const url = customerId 
-        ? `${API_BASE}/api/admin/customers/telegram/${customerId}/bonuses`
-        : `${API_BASE}/api/admin/customers/${clientId}/bonuses`;
+        `${API_BASE}/api/admin/customers/${clientId}/bonuses`;
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -132,8 +128,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
     setIsSavingComment(true);
     try {
       const url = customerId 
-        ? `${API_BASE}/api/admin/customers/telegram/${customerId}/manager-comment`
-        : `${API_BASE}/api/admin/customers/${clientId}/manager-comment`;
+        `${API_BASE}/api/admin/customers/${clientId}/manager-comment`;
       const response = await fetch(url, {
         method: 'PUT',
         headers: {

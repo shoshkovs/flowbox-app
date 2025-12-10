@@ -321,8 +321,8 @@ export function Customers({ authToken }) {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => {
-                          if (customer.telegram_id) {
-                            navigate(`/admin/customers/${customer.telegram_id}`);
+                          if (customer.id) {
+                            navigate(`/admin/customers/${customer.id}`);
                           } else {
                             setSelectedCustomer(customer);
                           }
