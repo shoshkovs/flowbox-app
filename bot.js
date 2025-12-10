@@ -176,6 +176,39 @@ if (process.env.DATABASE_URL) {
         }
       }, 3200);
       
+      // Миграция: проверка и добавление колонки house в таблицу addresses
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            const columnCheck = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'addresses' AND column_name = 'house'
+            `);
+            
+            if (columnCheck.rows.length === 0) {
+              console.log('🔄 Выполняем миграцию: добавление колонки house в таблицу addresses...');
+              await client.query(`
+                ALTER TABLE addresses 
+                ADD COLUMN house TEXT NOT NULL DEFAULT ''
+              `);
+              console.log('✅ Миграция колонки house завершена');
+            } else {
+              console.log('✅ Колонка house уже существует в таблице addresses');
+            }
+          } catch (migrationError) {
+            if (migrationError.code !== '42P16' && !migrationError.message.includes('already exists')) {
+              console.log('⚠️  Миграция колонки house:', migrationError.message);
+            }
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      }, 4000);
+      
       // Миграция: создание таблицы order_status_history, если её нет
       setTimeout(async () => {
         try {
