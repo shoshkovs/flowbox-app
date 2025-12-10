@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, Clock, MapPin, User, Phone, Package, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Save, Clock, MapPin, User, Phone, Package, MessageSquare, DoorOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
@@ -458,7 +458,7 @@ export function OrderDetail({ authToken, orderId }) {
               {order.leave_at_door && (
                 <div className="flex items-start gap-3">
                   <div className="w-5 h-5 mt-0.5 flex-shrink-0 flex items-center justify-center">
-                    <span className="text-lg">🚪</span>
+                    <DoorOpen className="w-5 h-5 text-pink-600" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-pink-600">Оставить у двери</p>
