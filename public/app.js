@@ -5,6 +5,9 @@ const tg = window.Telegram?.WebApp;
 let currentCheckoutStep = 1; // Текущий шаг оформления заказа
 let isSimpleCheckout = false; // Флаг упрощенного оформления заказа
 let isSimpleOrderInitialized = false; // Флаг инициализации упрощенного заказа (предотвращает дубликаты)
+let summaryDateTimeInitialized = false; // Флаг инициализации календаря на странице "Итого"
+let checkoutMode = null; // Режим оформления: 'full' | 'simple' | null
+let checkoutScreen = 'cart'; // Текущий экран: 'cart' | 'steps' | 'simpleSummary' | 'editRecipient' | 'myAddresses' | 'editAddress'
 
 // Определяем, нужно ли разворачивать мини-апп
 // На десктопе (Telegram Desktop/Web) НЕ разворачиваем, оставляем встроенный режим
@@ -39,43 +42,171 @@ if (tg && shouldExpand() && typeof tg.expand === 'function') {
     console.log('[init] НЕ вызываем tg.expand() при инициализации - десктоп или метод недоступен');
 }
 
+// Функция выхода в корзину
+function exitToCart() {
+    checkoutMode = null;
+    checkoutScreen = 'cart';
+    currentCheckoutStep = 1;
+    summaryDateTimeInitialized = false; // Сбрасываем флаг при выходе
+    
+    switchTab('cartTab');
+    showBackButton(false);
+}
+
+// Функция показа/скрытия BackButton
+function showBackButton(visible) {
+    if (!tg || !tg.BackButton) return;
+    if (visible) {
+        tg.BackButton.show();
+    } else {
+        tg.BackButton.hide();
+    }
+}
+
+// Централизованный обработчик BackButton
+function handleBackButton() {
+    console.log('[BackButton] 🔙 нажата, checkoutMode =', checkoutMode, 'checkoutScreen =', checkoutScreen, 'currentCheckoutStep =', currentCheckoutStep);
+    
+    // Проверяем видимость элементов перед выполнением действий
+    const editRecipientTab = document.getElementById('editRecipientTab');
+    const myAddressesTab = document.getElementById('myAddressesTab');
+    const editAddressTab = document.getElementById('editAddressTab');
+    const orderHistoryTab = document.getElementById('orderHistoryTab');
+    const addToHomeScreenModal = document.getElementById('addToHomeScreenModal');
+    const profileEditModal = document.getElementById('profileEditModal');
+    const addressSelectModal = document.getElementById('addressSelectModal');
+    const serviceFeeHelpModal = document.getElementById('serviceFeeHelpModal');
+    
+    // Модальное окно "Добавить на главный экран"
+    if (addToHomeScreenModal && addToHomeScreenModal.style.display === 'flex') {
+        console.log('[BackButton] Закрытие модального окна "Добавить на главный экран"');
+        addToHomeScreenModal.style.display = 'none';
+        unlockBodyScroll();
+        showBackButton(false);
+        return;
+    }
+    
+    // Модальное окно редактирования профиля
+    if (profileEditModal && profileEditModal.style.display === 'flex') {
+        console.log('[BackButton] Закрытие модального окна редактирования профиля');
+        const closeProfileEditModal = document.getElementById('closeProfileEditModal');
+        if (closeProfileEditModal) {
+            closeProfileEditModal.click();
+        }
+        return;
+    }
+    
+    // Модальное окно выбора адреса
+    if (addressSelectModal && addressSelectModal.style.display !== 'none') {
+        console.log('[BackButton] Закрытие модального окна выбора адреса');
+        const closeAddressModal = document.getElementById('closeAddressModal');
+        if (closeAddressModal) {
+            closeAddressModal.click();
+        }
+        return;
+    }
+    
+    // Модальное окно помощи по сервисному сбору
+    if (serviceFeeHelpModal && serviceFeeHelpModal.style.display === 'flex') {
+        console.log('[BackButton] Закрытие модального окна помощи по сервисному сбору');
+        const closeBtn = document.getElementById('closeServiceFeeHelpModal');
+        if (closeBtn) {
+            closeBtn.click();
+        }
+        return;
+    }
+    
+    // История заказов
+    if (orderHistoryTab && orderHistoryTab.classList.contains('active')) {
+        console.log('[BackButton] Возврат из истории заказов в профиль');
+        switchTab('profileTab');
+        showBackButton(false);
+        return;
+    }
+    
+    // Редактирование получателя
+    if (editRecipientTab && editRecipientTab.style.display !== 'none') {
+        console.log('[BackButton] Возврат из редактирования получателя');
+        editRecipientTab.style.display = 'none';
+        
+        // В упрощенном сценарии показываем заголовок обратно
+        if (isSimpleCheckout) {
+            const orderPageHeader = document.querySelector('.order-page-header');
+            if (orderPageHeader) {
+                orderPageHeader.style.display = '';
+            }
+        }
+        
+        checkoutScreen = isSimpleCheckout ? 'simpleSummary' : 'steps';
+        goToStep(4);
+        return;
+    }
+    
+    // Редактирование адреса
+    if (editAddressTab && editAddressTab.style.display !== 'none') {
+        console.log('[BackButton] Возврат из редактирования адреса');
+        editAddressTab.style.display = 'none';
+        checkoutScreen = 'myAddresses';
+        openMyAddressesPage();
+        return;
+    }
+    
+    // Список адресов
+    if (myAddressesTab && myAddressesTab.style.display !== 'none') {
+        console.log('[BackButton] Возврат из списка адресов');
+        myAddressesTab.style.display = 'none';
+        
+        // В упрощенном сценарии показываем заголовок обратно
+        if (isSimpleCheckout) {
+            const orderPageHeader = document.querySelector('.order-page-header');
+            if (orderPageHeader) {
+                orderPageHeader.style.display = '';
+            }
+        }
+        
+        checkoutScreen = isSimpleCheckout ? 'simpleSummary' : 'steps';
+        goToStep(4);
+        return;
+    }
+    
+    // Упрощенный сценарий - всегда возвращаемся в корзину
+    if (checkoutMode === 'simple' && checkoutScreen === 'simpleSummary') {
+        console.log('[BackButton] Упрощенный сценарий - возвращаемся в корзину');
+        exitToCart();
+        return;
+    }
+    
+    // Обычный сценарий - шаги оформления
+    if (checkoutMode === 'full' && checkoutScreen === 'steps') {
+        if (currentCheckoutStep === 1) {
+            console.log('[BackButton] Возвращаемся в корзину с шага 1');
+            exitToCart();
+        } else if (currentCheckoutStep > 1) {
+            console.log('[BackButton] переходим на шаг', currentCheckoutStep - 1);
+            goToStep(currentCheckoutStep - 1);
+        }
+        return;
+    }
+    
+    // Обработка адресов в профиле
+    const addressTab = document.getElementById('addressTab');
+    if (addressTab && addressTab.style.display === 'block') {
+        console.log('[BackButton] Возврат из адресов в профиль');
+        switchTab('profileTab');
+        showBackButton(false);
+        return;
+    }
+    
+    console.log('[BackButton] Не обработано, checkoutMode =', checkoutMode, 'checkoutScreen =', checkoutScreen);
+}
+
 if (tg) {
     tg.ready();
     
     // Инициализация BackButton один раз при старте
     if (tg.BackButton && typeof tg.BackButton.onClick === 'function') {
-        console.log('[init] Telegram WebApp найден');
-        
-        tg.BackButton.onClick(() => {
-            console.log('[BackButton] 🔙 нажата, текущий шаг =', currentCheckoutStep, 'isSimpleCheckout =', isSimpleCheckout);
-            
-            const orderTab = document.getElementById('orderTab');
-            
-            // Проверяем, активна ли вкладка заказа
-            const isOrderTabActive = orderTab && (
-                orderTab.style.display === 'block' || 
-                orderTab.classList.contains('active') ||
-                window.getComputedStyle(orderTab).display !== 'none'
-            );
-            
-            if (isOrderTabActive) {
-                // Если упрощенный сценарий - всегда возвращаемся в корзину
-                if (isSimpleCheckout) {
-                    console.log('[BackButton] Упрощенный сценарий - возвращаемся в корзину');
-                    switchTab('cartTab');
-                } else if (currentCheckoutStep === 1) {
-                    // Если мы на первом шаге формы заказа - возвращаемся в корзину
-                    console.log('[BackButton] Возвращаемся в корзину с шага 1');
-                    switchTab('cartTab');
-                } else if (currentCheckoutStep > 1) {
-                    // Если мы на шаге 2 или выше - переходим на предыдущий шаг
-                    console.log('[BackButton] переходим на шаг', currentCheckoutStep - 1);
-                    goToStep(currentCheckoutStep - 1);
-                }
-            } else {
-                console.log('[BackButton] orderTab не активен');
-            }
-        });
+        console.log('[init] Telegram WebApp найден, устанавливаем централизованный обработчик BackButton');
+        tg.BackButton.onClick(handleBackButton);
     } else {
         console.warn('[init] BackButton не поддерживается в этой версии Telegram WebApp');
     }
@@ -1614,14 +1745,7 @@ function switchTab(tabId) {
         if (bottomNav) bottomNav.style.display = 'none';
         if (header) header.style.display = 'flex';
         // Показать BackButton для возврата в профиль
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            const currentHistoryTab = document.getElementById('orderHistoryTab');
-            if (currentHistoryTab && currentHistoryTab.classList.contains('active')) {
-                switchTab('profileTab');
-                tg.BackButton.hide();
-            }
-        });
+        showBackButton(true);
         setTimeout(() => {
             const historyTab = document.getElementById('orderHistoryTab');
             if (historyTab) {
@@ -1728,6 +1852,9 @@ function canUseSimpleCheckout() {
 function startFullCheckout() {
     isSimpleCheckout = false;
     isSimpleOrderInitialized = false; // Сбрасываем флаг при полном сценарии
+    summaryDateTimeInitialized = false; // Сбрасываем флаг календаря
+    checkoutMode = 'full';
+    checkoutScreen = 'steps';
     
     switchTab('orderTab');
     
@@ -1736,6 +1863,7 @@ function startFullCheckout() {
     
     currentCheckoutStep = 1;
     goToStep(1);
+    showBackButton(true);
     
     // Заполняем поля получателя
     const customerNameField = document.getElementById('customerName');
@@ -1767,6 +1895,8 @@ function startFullCheckout() {
 // Упрощённый сценарий: сразу «Итого» (4-й шаг)
 function startSimpleCheckout() {
     isSimpleCheckout = true;
+    checkoutMode = 'simple';
+    checkoutScreen = 'simpleSummary';
     
     switchTab('orderTab');
     
@@ -1817,19 +1947,8 @@ function startSimpleCheckout() {
     // Помечаем, что упрощенный заказ инициализирован
     isSimpleOrderInitialized = true;
     
-    // Показываем BackButton и настраиваем его на переход в корзину
-    if (tg && tg.BackButton) {
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            // Проверяем, что мы в упрощенном сценарии на шаге 4
-            const step4 = document.getElementById('checkoutStep4');
-            if (step4 && step4.style.display !== 'none' && isSimpleCheckout) {
-                // Возвращаемся в корзину
-                switchTab('cartTab');
-                tg.BackButton.hide();
-            }
-        });
-    }
+    // Показываем BackButton
+    showBackButton(true);
     
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
@@ -3646,14 +3765,7 @@ if (addToHomeScreenBtn) {
                 if (addToHomeScreenModal) {
                     addToHomeScreenModal.style.display = 'flex';
                     lockBodyScroll();
-                    if (tg && tg.BackButton) {
-                        tg.BackButton.show();
-                        tg.BackButton.onClick(() => {
-                            addToHomeScreenModal.style.display = 'none';
-                            unlockBodyScroll();
-                            tg.BackButton.hide();
-                        });
-                    }
+                    showBackButton(true);
                 }
             }
         } else if (platform === 'ios') {
@@ -3669,14 +3781,7 @@ if (addToHomeScreenBtn) {
             if (addToHomeScreenModal) {
                 addToHomeScreenModal.style.display = 'flex';
                 lockBodyScroll();
-                if (tg && tg.BackButton) {
-                    tg.BackButton.show();
-                    tg.BackButton.onClick(() => {
-                        addToHomeScreenModal.style.display = 'none';
-                        unlockBodyScroll();
-                        tg.BackButton.hide();
-                    });
-                }
+                showBackButton(true);
             }
         }
     });
@@ -4006,13 +4111,7 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
                 } else {
         // Для профиля переключаемся на вкладку адресов
         switchTab('addressTab');
-        if (tg && tg.BackButton) {
-            tg.BackButton.show();
-            tg.BackButton.onClick(() => {
-                switchTab('profileTab');
-                tg.BackButton.hide();
-            });
-        }
+        showBackButton(true);
     }
 }
 
@@ -4544,10 +4643,7 @@ editProfileBtn.addEventListener('click', () => {
     
     profileEditModal.style.display = 'flex';
     lockBodyScroll();
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        closeProfileEditModal.click();
-    });
+    showBackButton(true);
     
     // Настройка форматирования телефона
     if (editProfilePhoneField) {
@@ -4795,10 +4891,7 @@ function initServiceFeeHelpModal() {
         e.stopPropagation();
         modal.style.display = 'flex';
         lockBodyScroll();
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            closeBtn.click();
-        });
+        showBackButton(true);
         tg.HapticFeedback.impactOccurred('light');
     });
     
@@ -4841,11 +4934,7 @@ document.addEventListener('click', (e) => {
         if (modal && modal.style.display !== 'flex') {
             modal.style.display = 'flex';
             lockBodyScroll();
-            tg.BackButton.show();
-            tg.BackButton.onClick(() => {
-                const closeBtn = document.getElementById('closeServiceFeeHelpModal');
-                if (closeBtn) closeBtn.click();
-            });
+            showBackButton(true);
             tg.HapticFeedback.impactOccurred('light');
         }
     }
@@ -5512,19 +5601,15 @@ function goToStep(step) {
     if (step === 4) {
         renderCheckoutSummary();
         
-        // В упрощенном сценарии настраиваем BackButton для возврата в корзину
-        if (isSimpleCheckout && tg && tg.BackButton) {
-            tg.BackButton.show();
-            tg.BackButton.onClick(() => {
-                // Проверяем, что мы на шаге 4 упрощенного сценария
-                const step4 = document.getElementById('checkoutStep4');
-                if (step4 && step4.style.display !== 'none' && isSimpleCheckout) {
-                    // Возвращаемся в корзину
-                    switchTab('cartTab');
-                    tg.BackButton.hide();
-                }
-            });
+        // Обновляем состояние экрана
+        if (isSimpleCheckout) {
+            checkoutScreen = 'simpleSummary';
+        } else {
+            checkoutScreen = 'steps';
         }
+        
+        // Показываем BackButton
+        showBackButton(true);
         
         // Прокрутка в начало шага 4
         setTimeout(() => {
@@ -5612,13 +5697,11 @@ function goToStep(step) {
         }, 100);
     }
     
-    // Обновляем BackButton для текущего шага
-    if (tg && tg.BackButton) {
-        // Показываем BackButton на всех шагах (включая первый)
-        // На первом шаге она ведет в корзину, на остальных - на предыдущий шаг
-            tg.BackButton.show();
-        console.log('[goToStep] BackButton.show() для шага', step);
-    }
+    // Обновляем состояние экрана
+    checkoutScreen = 'steps';
+    
+    // Показываем BackButton
+    showBackButton(true);
 }
 
 // Рендеринг списка адресов на шаге 2
@@ -6096,21 +6179,23 @@ function formatSummaryDateTime(dateStr, timeRange) {
 
 // Инициализация календаря и слотов времени на экране «Итого» (для упрощенного сценария)
 function initSimpleDateTimeOnSummary() {
+    // Проверяем флаг, чтобы избежать дублирования календаря
+    if (summaryDateTimeInitialized) {
+        console.log('[initSimpleDateTimeOnSummary] Календарь уже инициализирован, пропускаем');
+        return;
+    }
+    
     const summaryDateTimePicker = document.getElementById('summaryDateTimePicker');
     if (!summaryDateTimePicker) {
         console.warn('[initSimpleDateTimeOnSummary] Элемент summaryDateTimePicker не найден');
         return;
     }
     
-    // Проверяем, не инициализирован ли календарь уже (чтобы избежать дубликатов)
-    if (summaryDateTimePicker.dataset.initialized === 'true') {
-        console.log('[initSimpleDateTimeOnSummary] Календарь уже инициализирован, пропускаем');
-        return;
-    }
+    // Устанавливаем флаг инициализации
+    summaryDateTimeInitialized = true;
     
     // Показываем календарь и слоты
     summaryDateTimePicker.style.display = 'block';
-    summaryDateTimePicker.dataset.initialized = 'true';
     
     const calendarContainer = document.getElementById('summaryCustomCalendar');
     const calendarDaysContainer = document.getElementById('summaryCalendarDays');
@@ -6438,27 +6523,16 @@ function openEditRecipientPage() {
     // Показываем страницу редактирования
     editRecipientTab.style.display = 'block';
     
+    // Обновляем состояние
+    checkoutScreen = 'editRecipient';
+    
     // Прокручиваем страницу вверх
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     
-    // Настраиваем BackButton
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        // Проверяем, что страница редактирования получателя все еще видна
-        if (editRecipientTab && editRecipientTab.style.display !== 'none') {
-        editRecipientTab.style.display = 'none';
-            // В упрощенном сценарии показываем заголовок обратно
-            if (isSimpleCheckout) {
-                const orderPageHeader = document.querySelector('.order-page-header');
-                if (orderPageHeader) {
-                    orderPageHeader.style.display = '';
-                }
-            }
-        goToStep(4);
-        }
-    });
+    // Показываем BackButton
+    showBackButton(true);
 }
 
 // Открытие страницы "Мои адреса" (для выбора/редактирования на шаге 4)
@@ -6492,29 +6566,16 @@ function openMyAddressesPage() {
     // Показываем вкладку со списком адресов
     myAddressesTab.style.display = 'block';
     
+    // Обновляем состояние
+    checkoutScreen = 'myAddresses';
+    
     // Прокручиваем страницу вверх
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     
-    // Настраиваем BackButton
-    if (tg && tg.BackButton) {
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            // Проверяем, что страница "Мои адреса" все еще видна
-            if (myAddressesTab && myAddressesTab.style.display !== 'none') {
-            myAddressesTab.style.display = 'none';
-                // В упрощенном сценарии показываем заголовок обратно
-                if (isSimpleCheckout) {
-                    const orderPageHeader = document.querySelector('.order-page-header');
-                    if (orderPageHeader) {
-                        orderPageHeader.style.display = '';
-                    }
-                }
-            goToStep(4);
-            }
-        });
-    }
+    // Показываем BackButton
+    showBackButton(true);
 }
 
 // Рендеринг списка адресов на странице "Мои адреса"
@@ -6855,6 +6916,9 @@ function openEditAddressPageFromList(address) {
     // Показываем страницу редактирования
     editAddressTab.style.display = 'block';
     
+    // Обновляем состояние
+    checkoutScreen = 'editAddress';
+    
     // Прокрутка в начало страницы редактирования
     setTimeout(() => {
         window.scrollTo(0, 0);
@@ -6868,18 +6932,8 @@ function openEditAddressPageFromList(address) {
         }
     }, 50);
     
-    // Настраиваем BackButton
-    if (tg && tg.BackButton) {
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            // Проверяем, что страница редактирования адреса все еще видна
-            if (editAddressTab && editAddressTab.style.display !== 'none') {
-            editAddressTab.style.display = 'none';
-            // Возвращаемся к списку адресов
-            openMyAddressesPage();
-            }
-        });
-    }
+    // Показываем BackButton
+    showBackButton(true);
 }
 
 // Открытие страницы редактирования адреса доставки (из checkoutData)
