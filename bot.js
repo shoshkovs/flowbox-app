@@ -6918,7 +6918,7 @@ if (SUPPORT_CHAT_ID) {
 }
 
 // Функция для получения или создания форум-топика для пользователя
-async function getOrCreateSupportTopic(userId, userName, username) {
+async function getOrCreateSupportTopic(userId, userName, username, forceCreate = false) {
   if (!pool || !SUPPORT_CHAT_ID) {
     return null;
   }
@@ -6926,28 +6926,33 @@ async function getOrCreateSupportTopic(userId, userName, username) {
   try {
     const client = await pool.connect();
     try {
-      // Проверяем, есть ли уже топик для этого пользователя
-      // Сначала проверяем, какие колонки есть в таблице
-      const columnsCheck = await client.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'support_topics' AND column_name IN ('message_thread_id', 'topic_name')
-      `);
-      const availableColumns = columnsCheck.rows.map(r => r.column_name);
-      
-      let selectColumns = ['message_thread_id'];
-      if (availableColumns.includes('topic_name')) {
-        selectColumns.push('topic_name');
-      }
-      
-      const existingTopic = await client.query(
-        `SELECT ${selectColumns.join(', ')} FROM support_topics WHERE user_id = $1::bigint`,
-        [userId]
-      );
-      
-      if (existingTopic.rows.length > 0) {
-        console.log(`[support] Найден существующий топик для пользователя ${userId}: ${existingTopic.rows[0].message_thread_id}`);
-        return existingTopic.rows[0].message_thread_id;
+      // Если forceCreate = true, пропускаем проверку существующего топика
+      if (!forceCreate) {
+        // Проверяем, есть ли уже топик для этого пользователя
+        // Сначала проверяем, какие колонки есть в таблице
+        const columnsCheck = await client.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'support_topics' AND column_name IN ('message_thread_id', 'topic_name')
+        `);
+        const availableColumns = columnsCheck.rows.map(r => r.column_name);
+        
+        let selectColumns = ['message_thread_id'];
+        if (availableColumns.includes('topic_name')) {
+          selectColumns.push('topic_name');
+        }
+        
+        const existingTopic = await client.query(
+          `SELECT ${selectColumns.join(', ')} FROM support_topics WHERE user_id = $1::bigint`,
+          [userId]
+        );
+        
+        if (existingTopic.rows.length > 0) {
+          console.log(`[support] Найден существующий топик для пользователя ${userId}: ${existingTopic.rows[0].message_thread_id}`);
+          return existingTopic.rows[0].message_thread_id;
+        }
+      } else {
+        console.log(`[support] Принудительное создание нового топика для пользователя ${userId}`);
       }
       
       // Создаем новый топик
@@ -7350,26 +7355,65 @@ bot.on('message', async (ctx) => {
         ].filter(Boolean).join('\n');
         
         // Отправляем шапку в топик
-        const headerMessage = await bot.telegram.sendMessage(
-          SUPPORT_CHAT_ID,
-          header,
-          {
-            parse_mode: 'HTML',
-            message_thread_id: messageThreadId
-          }
-        );
-        
-        console.log(`[support] ✅ Шапка отправлена в топик ${messageThreadId}, message_id: ${headerMessage.message_id}`);
-        
-        // Закрепляем шапку в топике
+        let headerMessage;
         try {
-          await bot.telegram.pinChatMessage(SUPPORT_CHAT_ID, headerMessage.message_id, {
-            disable_notification: true   // чтобы не спамить уведомлениями
-          });
-          console.log(`[support] 📌 Шапка закреплена в топике ${messageThreadId}`);
-        } catch (pinError) {
-          console.error(`[support] ❌ Не удалось закрепить сообщение в топике ${messageThreadId}:`, pinError.message);
-          // Не критично, продолжаем работу
+          headerMessage = await bot.telegram.sendMessage(
+            SUPPORT_CHAT_ID,
+            header,
+            {
+              parse_mode: 'HTML',
+              message_thread_id: messageThreadId
+            }
+          );
+          
+          console.log(`[support] ✅ Шапка отправлена в топик ${messageThreadId}, message_id: ${headerMessage.message_id}`);
+          
+          // Закрепляем шапку в топике
+          try {
+            await bot.telegram.pinChatMessage(SUPPORT_CHAT_ID, headerMessage.message_id, {
+              disable_notification: true   // чтобы не спамить уведомлениями
+            });
+            console.log(`[support] 📌 Шапка закреплена в топике ${messageThreadId}`);
+          } catch (pinError) {
+            console.error(`[support] ❌ Не удалось закрепить сообщение в топике ${messageThreadId}:`, pinError.message);
+            // Не критично, продолжаем работу
+          }
+        } catch (headerError) {
+          // Если топик не найден при отправке шапки, создаем новый топик
+          if (headerError.response && headerError.response.description && headerError.response.description.includes('message thread not found')) {
+            console.log(`[support] ⚠️ Топик ${messageThreadId} не найден при отправке шапки, создаем новый топик`);
+            const newMessageThreadId = await getOrCreateSupportTopic(userId, userName, username, true);
+            if (newMessageThreadId) {
+              // Обновляем messageThreadId для дальнейшего использования
+              messageThreadId = newMessageThreadId;
+              // Повторяем отправку шапки в новый топик
+              headerMessage = await bot.telegram.sendMessage(
+                SUPPORT_CHAT_ID,
+                header,
+                {
+                  parse_mode: 'HTML',
+                  message_thread_id: newMessageThreadId
+                }
+              );
+              
+              console.log(`[support] ✅ Шапка отправлена в новый топик ${newMessageThreadId}, message_id: ${headerMessage.message_id}`);
+              
+              // Закрепляем шапку в новом топике
+              try {
+                await bot.telegram.pinChatMessage(SUPPORT_CHAT_ID, headerMessage.message_id, {
+                  disable_notification: true
+                });
+                console.log(`[support] 📌 Шапка закреплена в новом топике ${newMessageThreadId}`);
+              } catch (pinError) {
+                console.error(`[support] ❌ Не удалось закрепить сообщение в новом топике ${newMessageThreadId}:`, pinError.message);
+              }
+            } else {
+              console.error(`[support] ❌ Не удалось создать новый топик для пользователя ${userId}`);
+              throw headerError; // Пробрасываем ошибку дальше
+            }
+          } else {
+            throw headerError; // Для других ошибок пробрасываем дальше
+          }
         }
       }
       
@@ -7377,14 +7421,37 @@ bot.on('message', async (ctx) => {
       try {
         // Для текстовых сообщений используем sendMessage
         if (ctx.message.text) {
-          await bot.telegram.sendMessage(
-            SUPPORT_CHAT_ID,
-            `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
-            {
-              parse_mode: 'HTML',
-              message_thread_id: messageThreadId
+          try {
+            await bot.telegram.sendMessage(
+              SUPPORT_CHAT_ID,
+              `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
+              {
+                parse_mode: 'HTML',
+                message_thread_id: messageThreadId
+              }
+            );
+          } catch (threadError) {
+            // Если топик не найден, создаем новый и повторяем отправку
+            if (threadError.response && threadError.response.description && threadError.response.description.includes('message thread not found')) {
+              console.log(`[support] ⚠️ Топик ${messageThreadId} не найден, создаем новый топик`);
+              const newMessageThreadId = await getOrCreateSupportTopic(userId, userName, username, true);
+              if (newMessageThreadId) {
+                await bot.telegram.sendMessage(
+                  SUPPORT_CHAT_ID,
+                  `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
+                  {
+                    parse_mode: 'HTML',
+                    message_thread_id: newMessageThreadId
+                  }
+                );
+                console.log(`[support] ✅ Сообщение отправлено в новый топик ${newMessageThreadId}`);
+              } else {
+                throw threadError; // Если не удалось создать новый топик, пробрасываем ошибку
+              }
+            } else {
+              throw threadError; // Для других ошибок пробрасываем дальше
             }
-          );
+          }
         } 
         // Для медиа пытаемся скопировать
         else if (ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.voice) {
@@ -7398,32 +7465,84 @@ bot.on('message', async (ctx) => {
               }
             );
           } catch (copyError) {
-            // Если не удалось скопировать, отправляем текстовое описание
-            console.error('Ошибка копирования медиа:', copyError);
-            const mediaType = ctx.message.photo ? '📷 Фото' :
-                             ctx.message.document ? '📎 Документ' :
-                             ctx.message.video ? '🎥 Видео' :
-                             ctx.message.voice ? '🎤 Голосовое сообщение' : 'Медиа-файл';
-            
+            // Если топик не найден, создаем новый и повторяем отправку
+            if (copyError.response && copyError.response.description && copyError.response.description.includes('message thread not found')) {
+              console.log(`[support] ⚠️ Топик ${messageThreadId} не найден при копировании медиа, создаем новый топик`);
+              const newMessageThreadId = await getOrCreateSupportTopic(userId, userName, username, true);
+              if (newMessageThreadId) {
+                await bot.telegram.copyMessage(
+                  SUPPORT_CHAT_ID,
+                  userId,
+                  ctx.message.message_id,
+                  {
+                    message_thread_id: newMessageThreadId
+                  }
+                );
+                console.log(`[support] ✅ Медиа отправлено в новый топик ${newMessageThreadId}`);
+              } else {
+                // Если не удалось создать новый топик, отправляем текстовое описание
+                const mediaType = ctx.message.photo ? '📷 Фото' :
+                                 ctx.message.document ? '📎 Документ' :
+                                 ctx.message.video ? '🎥 Видео' :
+                                 ctx.message.voice ? '🎤 Голосовое сообщение' : 'Медиа-файл';
+                
+                await bot.telegram.sendMessage(
+                  SUPPORT_CHAT_ID,
+                  `📨 <b>Сообщение:</b>\n${mediaType}${ctx.message.caption ? '\n\n' + ctx.message.caption : ''}`,
+                  {
+                    parse_mode: 'HTML',
+                    message_thread_id: newMessageThreadId
+                  }
+                );
+              }
+            } else {
+              // Если не удалось скопировать по другой причине, отправляем текстовое описание
+              console.error('Ошибка копирования медиа:', copyError);
+              const mediaType = ctx.message.photo ? '📷 Фото' :
+                               ctx.message.document ? '📎 Документ' :
+                               ctx.message.video ? '🎥 Видео' :
+                               ctx.message.voice ? '🎤 Голосовое сообщение' : 'Медиа-файл';
+              
+              await bot.telegram.sendMessage(
+                SUPPORT_CHAT_ID,
+                `📨 <b>Сообщение:</b>\n${mediaType}${ctx.message.caption ? '\n\n' + ctx.message.caption : ''}`,
+                {
+                  parse_mode: 'HTML',
+                  message_thread_id: messageThreadId
+                }
+              );
+            }
+          }
+        } else {
+          // Неизвестный тип сообщения
+          try {
             await bot.telegram.sendMessage(
               SUPPORT_CHAT_ID,
-              `📨 <b>Сообщение:</b>\n${mediaType}${ctx.message.caption ? '\n\n' + ctx.message.caption : ''}`,
+              `📨 <b>Сообщение:</b>\n(тип сообщения не поддерживается)`,
               {
                 parse_mode: 'HTML',
                 message_thread_id: messageThreadId
               }
             );
-          }
-        } else {
-          // Неизвестный тип сообщения
-          await bot.telegram.sendMessage(
-            SUPPORT_CHAT_ID,
-            `📨 <b>Сообщение:</b>\n(тип сообщения не поддерживается)`,
-            {
-              parse_mode: 'HTML',
-              message_thread_id: messageThreadId
+          } catch (threadError) {
+            // Если топик не найден, создаем новый и повторяем отправку
+            if (threadError.response && threadError.response.description && threadError.response.description.includes('message thread not found')) {
+              console.log(`[support] ⚠️ Топик ${messageThreadId} не найден, создаем новый топик`);
+              const newMessageThreadId = await getOrCreateSupportTopic(userId, userName, username, true);
+              if (newMessageThreadId) {
+                await bot.telegram.sendMessage(
+                  SUPPORT_CHAT_ID,
+                  `📨 <b>Сообщение:</b>\n(тип сообщения не поддерживается)`,
+                  {
+                    parse_mode: 'HTML',
+                    message_thread_id: newMessageThreadId
+                  }
+                );
+              }
+            } else {
+              throw threadError;
             }
-          );
+          }
         }
       } catch (sendError) {
         console.error('Ошибка отправки сообщения в чат поддержки:', sendError);
