@@ -1351,49 +1351,54 @@ async function getOrCreateUser(telegramId, telegramUser = null, profile = null) 
   }
 }
 
-// Функция для нормализации строки адреса (улица, дом)
-// Приводит к единому формату "Улица, дом" (с запятой)
-function normalizeStreetLine(raw) {
-  if (!raw || typeof raw !== 'string') {
-    return '';
+// Унифицированная функция для извлечения house из street
+function parseStreetAndHouse(streetValue) {
+  if (!streetValue || typeof streetValue !== 'string') {
+    return { street: streetValue || '', house: '' };
   }
   
-  let value = raw.trim().replace(/\s+/g, ' '); // Убираем множественные пробелы
+  // Улучшенный regex: ищем номер дома в конце строки после пробела
+  // Примеры: "Невский проспект 10" -> {street: "Невский проспект", house: "10"}
+  //          "Кемская 7" -> {street: "Кемская", house: "7"}
+  //          "Невский проспект 10к2" -> {street: "Невский проспект", house: "10к2"}
+  const trimmed = streetValue.trim();
+  // Паттерн: пробел + одна или более цифр + опционально буквы/корпус
+  const houseMatch = trimmed.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
   
-  // Если уже есть запятая - считаем формат правильным
-  if (value.includes(',')) {
-    return value;
+  if (houseMatch && houseMatch[1]) {
+    const house = houseMatch[1].trim();
+    const street = trimmed.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
+    return { street, house };
   }
   
-  // Если нет запятой - пробуем отделить последний токен как дом
-  // "Кемская 7" -> "Кемская, 7"
-  const m = value.match(/^(.+)\s+(\S+)$/);
-  if (m) {
-    return `${m[1].trim()}, ${m[2].trim()}`;
-  }
-  
-  return value;
+  return { street: trimmed, house: '' };
 }
 
 // Унифицированная функция для проверки дубликатов адресов
-// Теперь street уже содержит "улица, дом" в одном поле
 function isAddressDuplicate(newAddr, existingAddr) {
   const normalize = (str) => (str || '').toLowerCase().trim();
   
   const newCity = normalize(newAddr.city);
-  const newStreet = normalize(newAddr.street); // Уже содержит "улица, дом"
+  const newStreet = normalize(newAddr.street);
+  const newHouse = normalize(newAddr.house);
   const newApartment = normalize(newAddr.apartment);
   
   const existingCity = normalize(existingAddr.city);
-  const existingStreet = normalize(existingAddr.street); // Уже содержит "улица, дом"
+  const existingStreet = normalize(existingAddr.street);
+  const existingHouse = normalize(existingAddr.house);
   const existingApartment = normalize(existingAddr.apartment);
   
-  // Проверяем совпадение по city, street (уже содержит дом), apartment
+  // Проверяем совпадение по city, street, apartment
+  // house учитываем только если оба не пустые (если оба пустые - считаем совпадением)
   const cityMatch = newCity === existingCity;
   const streetMatch = newStreet === existingStreet;
   const apartmentMatch = newApartment === existingApartment;
   
-  return cityMatch && streetMatch && apartmentMatch;
+  // house: совпадает если оба пустые ИЛИ оба не пустые и равны
+  const houseMatch = (!newHouse && !existingHouse) || 
+                     (newHouse && existingHouse && newHouse === existingHouse);
+  
+  return cityMatch && streetMatch && apartmentMatch && houseMatch;
 }
 
 // Безопасное добавление одного адреса (не удаляет существующие)
@@ -1417,28 +1422,28 @@ async function addUserAddress(userId, address) {
         return true; // Возвращаем true, так как адрес уже существует
       }
       
-      // Нормализуем street (приводим к формату "Улица, дом")
-      let streetValue = normalizeStreetLine(address.street || '');
+      // Парсим street и house если нужно
+      let streetValue = address.street || '';
+      let houseValue = address.house || '';
       
-      // Если был передан house отдельно (для обратной совместимости), объединяем со street
-      if (address.house && address.house.trim()) {
-        const housePart = address.house.trim();
-        // Если street уже содержит house, не дублируем
-        if (!streetValue.toLowerCase().includes(housePart.toLowerCase())) {
-          streetValue = streetValue ? `${streetValue}, ${housePart}` : housePart;
-        }
+      // Если house пустое, пытаемся извлечь из street
+      if (!houseValue && streetValue) {
+        const parsed = parseStreetAndHouse(streetValue);
+        streetValue = parsed.street;
+        houseValue = parsed.house;
       }
       
-      // Вставляем новый адрес (без house - теперь всё в street)
+      // Вставляем новый адрес
       await client.query(
         `INSERT INTO addresses 
-         (user_id, name, city, street, entrance, apartment, floor, intercom, comment, is_default)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+         (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           userId,
           address.name || streetValue || 'Новый адрес',
           address.city || '',
           streetValue,
+          houseValue,
           address.entrance || null,
           address.apartment || null,
           address.floor || null,
@@ -1448,7 +1453,7 @@ async function addUserAddress(userId, address) {
         ]
       );
       
-      console.log(`✅ addUserAddress: добавлен адрес для user_id=${userId}, street=${streetValue}`);
+      console.log(`✅ addUserAddress: добавлен адрес для user_id=${userId}, street=${streetValue}, house=${houseValue}`);
       
       await client.query('COMMIT');
       return true;
@@ -1547,22 +1552,20 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
       for (let i = 0; i < addresses.length; i++) {
         const addr = addresses[i];
         
-        // Нормализуем street (приводим к формату "Улица, дом")
-        let streetValue = normalizeStreetLine(addr.street || '');
+        // Парсим street и house если нужно
+        let streetValue = addr.street || '';
+        let houseValue = addr.house || '';
         
-        // Если был передан house отдельно (для обратной совместимости), объединяем со street
-        if (addr.house && addr.house.trim()) {
-          const housePart = addr.house.trim();
-          // Если street уже содержит house, не дублируем
-          if (!streetValue.toLowerCase().includes(housePart.toLowerCase())) {
-            streetValue = streetValue ? `${streetValue}, ${housePart}` : housePart;
-          }
+        if (!houseValue && streetValue) {
+          const parsed = parseStreetAndHouse(streetValue);
+          streetValue = parsed.street;
+          houseValue = parsed.house;
         }
         
         const normalizedAddr = {
           ...addr,
-          street: streetValue
-          // house больше не используется
+          street: streetValue,
+          house: houseValue
         };
         
         // Если у адреса есть ID - обновляем существующий
@@ -1618,15 +1621,16 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
       for (const addr of addressesToUpdate) {
         await client.query(
           `UPDATE addresses SET
-           name = $2, city = $3, street = $4, entrance = $5, 
-           apartment = $6, floor = $7, intercom = $8, comment = $9, is_default = $10,
+           name = $2, city = $3, street = $4, house = $5, entrance = $6, 
+           apartment = $7, floor = $8, intercom = $9, comment = $10, is_default = $11,
            updated_at = now()
-           WHERE id = $1 AND user_id = $11`,
+           WHERE id = $1 AND user_id = $12`,
           [
             addr.id,
             addr.name || addr.street || 'Новый адрес',
             addr.city || '',
             addr.street || '',
+            addr.house || '',
             addr.entrance || null,
             addr.apartment || null,
             addr.floor || null,
@@ -1648,20 +1652,21 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
         );
         
         if (isDuplicate) {
-          console.log(`[saveUserAddresses] ⚠️ Пропущен дубликат адреса: ${addr.city}, ${addr.street}, ${addr.apartment}`);
+          console.log(`[saveUserAddresses] ⚠️ Пропущен дубликат адреса: ${addr.city}, ${addr.street}, ${addr.house}, ${addr.apartment}`);
           continue;
         }
         
         await client.query(
           `INSERT INTO addresses 
-           (user_id, name, city, street, entrance, apartment, floor, intercom, comment, is_default)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            RETURNING id`,
           [
             user_id, // КРИТИЧНО: используем user_id из таблицы users, а не telegram_id
             addr.name || addr.street || 'Новый адрес',
             addr.city || '',
             addr.street || '',
+            addr.house || '',
             addr.entrance || null,
             addr.apartment || null,
             addr.floor || null,
@@ -1671,7 +1676,7 @@ async function saveUserAddresses(userIdOrTelegramId, addresses) {
           ]
         );
         insertedCount++;
-        console.log(`[saveUserAddresses] ✅ Добавлен новый адрес: ${addr.city}, ${addr.street}`);
+        console.log(`[saveUserAddresses] ✅ Добавлен новый адрес: ${addr.city}, ${addr.street}, ${addr.house}`);
       }
       
       const addedCount = updatedCount + insertedCount;
@@ -1715,14 +1720,14 @@ async function loadUserAddresses(userId) {
         id: row.id,
         name: row.name,
         city: row.city,
-        street: row.street || '', // Уже содержит "улица, дом"
-        // house больше не используется - всё в street
+        street: row.street,
+        house: row.house,
         entrance: row.entrance,
         apartment: row.apartment,
         floor: row.floor,
         intercom: row.intercom,
         comment: row.comment,
-        isDefault: row.is_default || false
+        isDefault: row.is_default
       }));
     } finally {
       client.release();
@@ -2660,19 +2665,11 @@ app.post('/api/orders', async (req, res) => {
             if (user && orderData.addressData && orderData.addressData.street) {
               // Используем безопасную функцию addUserAddress вместо saveUserAddresses
               // Это не затирает существующие адреса пользователя
-              // Нормализуем street (объединяем street и house если house передан отдельно)
-              let streetValue = normalizeStreetLine(orderData.addressData.street || '');
-              if (orderData.addressData.house && orderData.addressData.house.trim()) {
-                const housePart = orderData.addressData.house.trim();
-                if (!streetValue.toLowerCase().includes(housePart.toLowerCase())) {
-                  streetValue = streetValue ? `${streetValue}, ${housePart}` : housePart;
-                }
-              }
-              
               const addressToAdd = {
-                name: orderData.addressData.name || streetValue || 'Новый адрес',
+                name: orderData.addressData.name || orderData.addressData.street || 'Новый адрес',
                 city: orderData.addressData.city || 'Санкт-Петербург',
-                street: streetValue,
+                street: orderData.addressData.street,
+                house: orderData.addressData.house || '',
                 entrance: orderData.addressData.entrance || '',
                 apartment: orderData.addressData.apartment || '',
                 floor: orderData.addressData.floor || '',
@@ -7285,8 +7282,7 @@ bot.on('message', async (ctx) => {
       const userId = from.id;
       const userName = from.first_name || 'Пользователь';
       const lastName = from.last_name || '';
-      // Берем username без @, так как функция getOrCreateSupportTopic сама добавит @
-      const username = from.username || '';
+      const username = from.username ? `@${from.username}` : '';
       
       // Получаем или создаем форум-топик для пользователя
       const messageThreadId = await getOrCreateSupportTopic(userId, userName, username);
