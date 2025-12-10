@@ -339,7 +339,7 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
             const piecesPerBatch = parseInt(item.pieces_per_batch) || 0;
             const batchCount = parseInt(item.batch_count) || 0;
             return {
-              productId: parseInt(item.product_id),
+            productId: parseInt(item.product_id),
               batchCount: batchCount,
               piecesPerBatch: piecesPerBatch,
               batchPrice: batchPrice,

@@ -1154,6 +1154,14 @@ async function loadUserData() {
             console.log('[loadUserData] адресов:', savedAddresses.length);
             if (data.profile) {
                 localStorage.setItem('userProfile', JSON.stringify(data.profile));
+                // Восстанавливаем имя получателя из профиля в checkoutData
+                // Это имя было введено пользователем при предыдущем заказе
+                if (data.profile.name) {
+                    checkoutData.recipientName = data.profile.name;
+                }
+                if (data.profile.phone) {
+                    checkoutData.recipientPhone = data.profile.phone;
+                }
             }
             if (data.activeOrders && Array.isArray(data.activeOrders)) {
                 console.log('[loadUserData] 📥 Загружено активных заказов с сервера:', data.activeOrders.length);
@@ -1694,19 +1702,36 @@ checkoutBtnFinal.addEventListener('click', () => {
     currentCheckoutStep = 1;
     goToStep(1);
     
-    // Заполняем данные из профиля, если они есть
-    const savedProfile = localStorage.getItem('userProfile');
-    if (savedProfile) {
-        try {
-            const profileData = JSON.parse(savedProfile);
-            if (profileData.name) {
-                document.getElementById('customerName').value = profileData.name;
+    // Заполняем поля из checkoutData (которое может содержать имя получателя из предыдущего заказа)
+    // Если checkoutData.recipientName пустое, поле customerName останется пустым (первый заказ)
+    // Если checkoutData.recipientName заполнено (из профиля), поле будет заполнено (повторный заказ)
+    const customerNameField = document.getElementById('customerName');
+    const customerPhoneField = document.getElementById('customerPhone');
+    
+    if (customerNameField && checkoutData.recipientName) {
+        customerNameField.value = checkoutData.recipientName;
+    } else if (customerNameField) {
+        // Если checkoutData.recipientName пустое, оставляем поле пустым
+        customerNameField.value = '';
+    }
+    
+    // Заполняем телефон из checkoutData или из профиля
+    if (customerPhoneField) {
+        if (checkoutData.recipientPhone) {
+            customerPhoneField.value = checkoutData.recipientPhone;
+        } else {
+            // Если в checkoutData нет телефона, пытаемся взять из профиля
+            const savedProfile = localStorage.getItem('userProfile');
+            if (savedProfile) {
+                try {
+                    const profileData = JSON.parse(savedProfile);
+                    if (profileData.phone) {
+                        customerPhoneField.value = profileData.phone;
+                    }
+                } catch (e) {
+                    console.error('Ошибка парсинга профиля:', e);
+                }
             }
-            if (profileData.phone) {
-                document.getElementById('customerPhone').value = profileData.phone;
-            }
-        } catch (e) {
-            console.error('Ошибка парсинга профиля:', e);
         }
     }
     
@@ -3801,7 +3826,7 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
         if (checkoutAddressForm) checkoutAddressForm.style.display = 'block';
         if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
         if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
-    } else {
+                } else {
         // Для профиля переключаемся на вкладку адресов
         switchTab('addressTab');
         if (tg && tg.BackButton) {
@@ -3941,9 +3966,9 @@ async function handleAddressFormSubmit(event) {
         if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
     } else if (source === 'profile') {
         // Возвращаемся в профиль
-        switchTab('profileTab');
+    switchTab('profileTab');
         if (tg && tg.BackButton) {
-            tg.BackButton.hide();
+    tg.BackButton.hide();
         }
     }
     
@@ -3971,7 +3996,7 @@ if (deleteAddressBtn) {
             deleteAddressBtn.style.display = 'none';
             switchTab('profileTab');
             if (tg && tg.BackButton) {
-                tg.BackButton.hide();
+            tg.BackButton.hide();
             }
             tg.HapticFeedback.impactOccurred('light');
         }
@@ -3990,7 +4015,7 @@ function renderProfileAddresses() {
     const list = document.getElementById('deliveryAddressesList');
     if (!list) return;
     
-    if (savedAddresses.length === 0) {
+        if (savedAddresses.length === 0) {
         list.innerHTML = '<p class="no-addresses">У вас нет сохраненных адресов доставки</p>';
         return;
     }
@@ -4002,22 +4027,22 @@ function renderProfileAddresses() {
             streetName = streetName ? `${streetName} ${addr.house}` : addr.house;
         }
         if (!streetName) streetName = 'Адрес не заполнен';
-        
-        // Детали (серым): кв., эт., под.
-        const details = [];
-        if (addr.apartment) details.push(`кв. ${addr.apartment}`);
-        if (addr.floor) details.push(`эт. ${addr.floor}`);
-        if (addr.entrance) details.push(`под. ${addr.entrance}`);
-        const detailsStr = details.join(', ');
+                
+                // Детали (серым): кв., эт., под.
+                const details = [];
+                if (addr.apartment) details.push(`кв. ${addr.apartment}`);
+                if (addr.floor) details.push(`эт. ${addr.floor}`);
+                if (addr.entrance) details.push(`под. ${addr.entrance}`);
+                const detailsStr = details.join(', ');
         
         const addressId = addr.id;
-        
-        return `
+                
+                return `
             <div class="address-item" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #eee;">
                 <div class="address-item-content" style="flex: 1;">
-                    <div class="address-item-name">${streetName}</div>
-                    ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
-                </div>
+                        <div class="address-item-name">${streetName}</div>
+                        ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
+                    </div>
                 <div class="address-menu" style="position: relative;">
                     <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4032,12 +4057,12 @@ function renderProfileAddresses() {
                         </button>
                         <button onclick="event.stopPropagation(); deleteAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
                             Удалить
-                        </button>
+                    </button>
                     </div>
                 </div>
-            </div>
-        `;
-    }).join('');
+                </div>
+            `;
+            }).join('');
 }
 
 // Загрузка сохраненных адресов (только рендеринг, не меняет savedAddresses)
@@ -5217,6 +5242,18 @@ function goToStep(step) {
     });
     
     currentCheckoutStep = step;
+    
+    // Если переходим на шаг 1, восстанавливаем поля из checkoutData
+    if (step === 1) {
+        const customerNameField = document.getElementById('customerName');
+        const customerPhoneField = document.getElementById('customerPhone');
+        if (customerNameField && checkoutData.recipientName) {
+            customerNameField.value = checkoutData.recipientName;
+        }
+        if (customerPhoneField && checkoutData.recipientPhone) {
+            customerPhoneField.value = checkoutData.recipientPhone;
+        }
+    }
     
     // Если переходим на шаг 2, инициализируем адреса и подтягиваем сохраненный адрес
     if (step === 2) {
