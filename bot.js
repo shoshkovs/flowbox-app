@@ -7318,28 +7318,28 @@ bot.on('message', async (ctx) => {
       }
       
       // Формируем шапку с информацией о пользователе (отправляем всегда для первого сообщения)
-      // Проверяем, есть ли уже сообщения в топике, отправляя шапку только если топик новый
-      let shouldSendHeader = true;
+      // Проверяем, был ли топик только что создан (менее 60 секунд назад)
+      let shouldSendHeader = false;
       try {
         const client = await pool.connect();
         try {
-          // Проверяем, когда топик был создан и был ли он только что создан
+          // Проверяем, когда топик был создан
           const topicCheck = await client.query(
-            'SELECT created_at, updated_at FROM support_topics WHERE user_id = $1::bigint',
-            [userId]
+            'SELECT created_at, updated_at FROM support_topics WHERE user_id = $1::bigint AND message_thread_id = $2::integer',
+            [userId, messageThreadId]
           );
           if (topicCheck.rows.length > 0) {
             const topicCreated = new Date(topicCheck.rows[0].created_at);
             const now = new Date();
-            // Если топик был создан более 30 секунд назад, не отправляем шапку
-            // (значит, это не первое сообщение)
+            // Если топик был создан менее 60 секунд назад, отправляем шапку
+            // (значит, это первое сообщение в новом топике)
             const timeDiff = now - topicCreated;
-            shouldSendHeader = timeDiff < 30000; // Увеличено до 30 секунд для надежности
-            console.log(`[support] Топик создан ${Math.round(timeDiff / 1000)} секунд назад, shouldSendHeader: ${shouldSendHeader}`);
+            shouldSendHeader = timeDiff < 60000; // 60 секунд для надежности
+            console.log(`[support] Топик ${messageThreadId} создан ${Math.round(timeDiff / 1000)} секунд назад, shouldSendHeader: ${shouldSendHeader}`);
           } else {
-            // Если топика нет в БД, значит он только что создан - отправляем шапку
+            // Если топика нет в БД с таким message_thread_id, значит он только что создан - отправляем шапку
             shouldSendHeader = true;
-            console.log('[support] Топик не найден в БД, отправляем шапку');
+            console.log(`[support] Топик ${messageThreadId} не найден в БД для пользователя ${userId}, отправляем шапку`);
           }
         } finally {
           client.release();
