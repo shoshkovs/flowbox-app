@@ -222,7 +222,9 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
         
         // Автоматический расчет цены за штуку
         if (field === 'batch_price' || field === 'pieces_per_batch') {
-          const batchPrice = parseFloat(updated.batch_price) || 0;
+          // Заменяем запятую на точку для корректного парсинга
+          const batchPriceStr = updated.batch_price ? updated.batch_price.replace(',', '.') : '';
+          const batchPrice = batchPriceStr ? parseFloat(batchPriceStr) : 0;
           const piecesPerBatch = parseInt(updated.pieces_per_batch) || 0;
           if (piecesPerBatch > 0) {
             updated.unit_price = (batchPrice / piecesPerBatch).toFixed(2);
@@ -277,7 +279,9 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
     for (const item of validItems) {
       const batchCount = parseInt(item.batch_count);
       const piecesPerBatch = parseInt(item.pieces_per_batch);
-      const batchPrice = parseFloat(item.batch_price);
+      // Заменяем запятую на точку для корректного парсинга
+      const batchPriceStr = item.batch_price ? item.batch_price.replace(',', '.') : '';
+      const batchPrice = batchPriceStr ? parseFloat(batchPriceStr) : 0;
 
       if (!Number.isInteger(batchCount) || batchCount <= 0) {
         toast.error('Количество банчей должно быть целым числом больше 0');
@@ -327,14 +331,22 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
           totalAmount: totalAmount,
           deliveryPrice: deliveryPrice,
           comment: supplyForm.comment || null,
-          items: validItems.map(item => ({
-            productId: parseInt(item.product_id),
-            batchCount: parseInt(item.batch_count),
-            piecesPerBatch: parseInt(item.pieces_per_batch),
-            batchPrice: parseFloat(item.batch_price),
-            unitPrice: parseFloat(item.unit_price) || (parseFloat(item.batch_price) / parseInt(item.pieces_per_batch)),
-            totalPieces: parseInt(item.total_pieces) || (parseInt(item.batch_count) * parseInt(item.pieces_per_batch)),
-          })),
+          items: validItems.map(item => {
+            // Заменяем запятую на точку для корректного парсинга
+            const batchPriceStr = item.batch_price ? item.batch_price.replace(',', '.') : '';
+            const unitPriceStr = item.unit_price ? item.unit_price.replace(',', '.') : '';
+            const batchPrice = batchPriceStr ? parseFloat(batchPriceStr) : 0;
+            const piecesPerBatch = parseInt(item.pieces_per_batch) || 0;
+            const batchCount = parseInt(item.batch_count) || 0;
+            return {
+              productId: parseInt(item.product_id),
+              batchCount: batchCount,
+              piecesPerBatch: piecesPerBatch,
+              batchPrice: batchPrice,
+              unitPrice: unitPriceStr ? parseFloat(unitPriceStr) : (piecesPerBatch > 0 ? batchPrice / piecesPerBatch : 0),
+              totalPieces: parseInt(item.total_pieces) || (batchCount * piecesPerBatch),
+            };
+          }),
         }),
       });
 
@@ -545,9 +557,16 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                     <div>
                       <label className="block text-sm text-gray-700 mb-2">Количество банчей</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={item.batch_count}
-                        onChange={(e) => updateSupplyItem(item.id, 'batch_count', e.target.value)}
+                        onChange={(e) => {
+                          // Разрешаем только целые числа
+                          const value = e.target.value.replace(/[^\d]/g, '');
+                          if (value === '' || /^\d+$/.test(value)) {
+                            updateSupplyItem(item.id, 'batch_count', value);
+                          }
+                        }}
                         placeholder="0"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                         required
@@ -556,9 +575,16 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                     <div>
                       <label className="block text-sm text-gray-700 mb-2">Штук в банче</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={item.pieces_per_batch}
-                        onChange={(e) => updateSupplyItem(item.id, 'pieces_per_batch', e.target.value)}
+                        onChange={(e) => {
+                          // Разрешаем только целые числа
+                          const value = e.target.value.replace(/[^\d]/g, '');
+                          if (value === '' || /^\d+$/.test(value)) {
+                            updateSupplyItem(item.id, 'pieces_per_batch', value);
+                          }
+                        }}
                         placeholder="0"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                         required
@@ -567,9 +593,17 @@ export function WarehouseForm({ authToken, onClose, onSave, supplyId }) {
                     <div>
                       <label className="block text-sm text-gray-700 mb-2">Цена банча</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={item.batch_price}
-                        onChange={(e) => updateSupplyItem(item.id, 'batch_price', e.target.value)}
+                        onChange={(e) => {
+                          // Разрешаем только цифры, точку и запятую для десятичных
+                          const value = e.target.value.replace(/[^\d.,]/g, '');
+                          // Сохраняем исходное значение, но проверяем, что оно валидно
+                          if (value === '' || /^\d+([.,]\d*)?$/.test(value)) {
+                            updateSupplyItem(item.id, 'batch_price', value);
+                          }
+                        }}
                         placeholder="0"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                         required

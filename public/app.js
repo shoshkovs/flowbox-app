@@ -3078,26 +3078,15 @@ async function validateAndSubmitOrder(e) {
                 orderTabEl.classList.remove('active');
             }
             
-            // ЯВНО показываем каталог
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            });
-            
-            const menuTab = document.getElementById('menuTab');
-            if (menuTab) {
-                menuTab.style.display = 'block';
-                menuTab.classList.add('active');
+            // ЯВНО показываем нижнее меню (оно было скрыто при переходе на orderTab)
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.display = 'flex';
+                bottomNav.classList.remove('hidden');
             }
             
-            // Активируем пункт навигации "Каталог"
-            const menuNavItem = document.querySelector('[data-tab="menuTab"]');
-            if (menuNavItem) {
-                document.querySelectorAll('.nav-item').forEach(i => {
-                    i.classList.remove('active');
-                });
-                menuNavItem.classList.add('active');
-            }
+            // Переключаемся на каталог через switchTab (консистентный способ)
+            switchTab('menuTab');
             
             // Показываем алерт
             if (tg && tg.showAlert) {
