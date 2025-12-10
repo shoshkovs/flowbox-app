@@ -2895,6 +2895,13 @@ async function validateAndSubmitOrder(e) {
     // Проверка даты доставки (после проверки адреса)
     // В упрощенном сценарии используем другие селекторы
     if (isSimpleCheckout) {
+        // Убеждаемся, что календарь показан (но не создаем его заново)
+        const summaryDateTimePicker = document.getElementById('summaryDateTimePicker');
+        if (summaryDateTimePicker && summaryDateTimePicker.style.display === 'none') {
+            // Показываем календарь, если он скрыт, но не инициализируем заново
+            summaryDateTimePicker.style.display = 'block';
+        }
+        
         // Упрощенный сценарий - проверяем календарь на шаге 4
         if (deliveryDate) {
             // Убираем ошибки с календаря
