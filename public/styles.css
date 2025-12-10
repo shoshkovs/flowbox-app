@@ -3282,3 +3282,29 @@ input[type="text"][inputmode="numeric"] {
     }
 }
 
+/* Стили для чекбокса "Оставить у двери" */
+#leaveAtDoorCheckbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+    -webkit-appearance: checkbox;
+    -moz-appearance: checkbox;
+    appearance: checkbox;
+}
+
+#leaveAtDoorCheckbox:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+#leaveAtDoorCheckbox:checked::after {
+    content: '✓';
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+

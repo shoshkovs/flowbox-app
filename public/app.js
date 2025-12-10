@@ -3043,51 +3043,6 @@ async function validateAndSubmitOrder(e) {
                 // Не критично, продолжаем обработку заказа
             }
             
-            
-            // Показываем экран успеха
-            successOverlay.classList.add('active');
-            
-            // УБРАНО: Редирект на страницу оплаты убран, чтобы избежать белого экрана
-            // Заказ успешно создан, пользователь может оплатить его позже из списка заказов
-            console.log('✅ Заказ создан, ID:', orderId);
-            
-            // Скрываем overlay и возвращаемся в меню через 2 секунды
-            setTimeout(() => {
-                successOverlay.classList.remove('active');
-                // Очищаем форму заказа
-                checkoutData = {
-                    recipientName: '',
-                    recipientPhone: '',
-                    address: null,
-                    deliveryDate: '',
-                    deliveryTime: '',
-                    orderComment: '',
-                    leaveAtDoor: false
-                };
-                currentCheckoutStep = 1;
-                
-                // Скрываем все шаги checkout
-                document.querySelectorAll('.checkout-step').forEach(s => {
-                    s.classList.remove('active');
-                    s.style.display = 'none';
-                });
-                
-                // Скрываем вкладку оформления заказа
-                const orderTab = document.getElementById('orderTab');
-                if (orderTab) {
-                    orderTab.style.display = 'none';
-                }
-                
-                // Показываем меню
-                switchTab('menuTab');
-                initNavigation();
-                
-                // Прокрутка в начало
-                window.scrollTo(0, 0);
-                document.body.scrollTop = 0;
-                document.documentElement.scrollTop = 0;
-            }, 2000);
-            
             // Сохранение заказа в активные
             const order = {
                 id: orderId,
@@ -3105,182 +3060,15 @@ async function validateAndSubmitOrder(e) {
             userActiveOrders.push(order);
             console.log('📦 Активных заказов после добавления:', userActiveOrders.length);
             
-            // Сохранение адреса из заказа в сохраненные адреса (если это новый адрес и его еще нет)
-            // НЕ сохраняем адрес, если он был выбран из сохраненных (имеет id в checkoutData.address)
-            // ВАЖНО: Проверяем checkoutData.address.id, а не addressData.id, так как addressData может быть из формы
-            const addressHasId = checkoutData.address && checkoutData.address.id;
-            if (addressData && shouldUseForm && !addressHasId && !addressData.id) {
-                // Нормализуем адрес для сравнения
-                const normalize = (str) => (str || '').toLowerCase().trim();
-                const normalizeAddress = (addr) => {
-                    // Извлекаем house из street если нужно
-                    let street = normalize(addr.street || '');
-                    let house = normalize(addr.house || '');
-                    
-                    // Если house пустое, пытаемся извлечь из street
-                    // Используем тот же regex, что и на бэке для единообразия
-                    if (!house && street) {
-                        const houseMatch = street.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
-                        if (houseMatch && houseMatch[1]) {
-                            house = normalize(houseMatch[1].trim());
-                            street = street.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-                        }
-                    }
-                    
-                    return {
-                        city: normalize(addr.city),
-                        street: street,
-                        house: house,
-                        apartment: normalize(addr.apartment)
-                    };
-                };
-                
-                const newAddrNormalized = normalizeAddress(addressData);
-                
-                // Проверяем, не является ли это дубликатом существующего адреса
-                // Улучшенная проверка: учитываем все поля адреса, включая house
-                const isDuplicate = savedAddresses.some(existingAddr => {
-                    const existingNormalized = normalizeAddress(existingAddr);
-                    
-                    const cityMatch = newAddrNormalized.city === existingNormalized.city;
-                    const streetMatch = newAddrNormalized.street === existingNormalized.street;
-                    const apartmentMatch = newAddrNormalized.apartment === existingNormalized.apartment;
-                    
-                    // house: совпадает если оба пустые ИЛИ оба не пустые и равны
-                    // ВАЖНО: Если один адрес имеет house, а другой нет - это разные адреса
-                    const houseMatch = (!newAddrNormalized.house && !existingNormalized.house) || 
-                                     (newAddrNormalized.house && existingNormalized.house && 
-                                      newAddrNormalized.house === existingNormalized.house);
-                    
-                    // Если все поля совпадают, это дубликат
-                    if (cityMatch && streetMatch && apartmentMatch && houseMatch) {
-                        return true;
-                    }
-                    
-                    // Дополнительная проверка: если street совпадает, но house отличается только наличием/отсутствием,
-                    // это тоже дубликат (например, "Кемская" и "Кемская 7" - это один адрес)
-                    if (cityMatch && streetMatch && apartmentMatch) {
-                        // Если один адрес имеет house, а другой нет, но street совпадает - это дубликат
-                        if ((newAddrNormalized.house && !existingNormalized.house) || 
-                            (!newAddrNormalized.house && existingNormalized.house)) {
-                            return true;
-                        }
-                    }
-                    
-                    return false;
-                });
-                
-                // Проверяем, не является ли это редактированием существующего адреса из checkoutData
-                // Если адрес был отредактирован и имеет ID, обновляем существующий вместо создания нового
-                const existingAddressFromCheckout = checkoutData.address && checkoutData.address.id 
-                    ? savedAddresses.find(a => String(a.id) === String(checkoutData.address.id))
-                    : null;
-                
-                if (existingAddressFromCheckout) {
-                    // Обновляем существующий адрес вместо создания нового
-                    const addressIndex = savedAddresses.findIndex(a => String(a.id) === String(checkoutData.address.id));
-                    if (addressIndex !== -1) {
-                        // Парсим street и house
-                        let houseValue = addressData.house || '';
-                        let streetValue = addressData.street || '';
-                        
-                        // Если house пустое, но в street есть номер дома
-                        // Используем тот же regex, что и на бэке для единообразия
-                        if (!houseValue && streetValue) {
-                            const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
-                            if (houseMatch && houseMatch[1]) {
-                                houseValue = houseMatch[1].trim();
-                                streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-                            }
-                        }
-                        
-                        // Обновляем существующий адрес с сохранением ID
-                        savedAddresses[addressIndex] = {
-                            ...savedAddresses[addressIndex],
-                            id: savedAddresses[addressIndex].id, // ВАЖНО: сохраняем ID
-                            city: addressData.city || 'Санкт-Петербург',
-                            street: streetValue || addressData.street,
-                            house: houseValue,
-                            entrance: addressData.entrance || '',
-                            apartment: addressData.apartment || '',
-                            floor: addressData.floor || '',
-                            intercom: addressData.intercom || '',
-                            comment: addressData.comment || ''
-                        };
-                        console.log('📦 Обновлен существующий адрес в сохраненных (из checkoutData):', savedAddresses[addressIndex]);
-                    }
-                } else if (!isDuplicate && addressData.street) {
-                    // Создаем новый адрес только если это не дубликат и не редактирование существующего
-                    // Пытаемся извлечь номер дома из street для совместимости с БД
-                    let houseValue = addressData.house || '';
-                    let streetValue = addressData.street || '';
-                    
-                    // Если house пустое, но в street есть номер дома (последние цифры/буквы после пробела)
-                    // Используем тот же regex, что и на бэке для единообразия
-                    if (!houseValue && streetValue) {
-                        const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
-                        if (houseMatch && houseMatch[1]) {
-                            houseValue = houseMatch[1].trim();
-                            // Убираем номер дома из street, оставляя только название улицы
-                            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-                        }
-                    }
-                    
-                    const newAddress = {
-                        id: Date.now(), // Временный ID, будет заменен на реальный после сохранения на сервер
-                        name: addressData.street || 'Адрес',
-                        city: addressData.city || 'Санкт-Петербург',
-                        street: streetValue || addressData.street, // Название улицы без номера дома
-                        house: houseValue, // Номер дома отдельно для совместимости с БД
-                        entrance: addressData.entrance || '',
-                        apartment: addressData.apartment || '',
-                        floor: addressData.floor || '',
-                        intercom: addressData.intercom || '',
-                        comment: addressData.comment || ''
-                    };
-                    savedAddresses.push(newAddress);
-                    console.log('📦 Добавлен новый адрес в сохраненные:', newAddress);
-                } else {
-                    console.log('📦 Адрес не добавлен (дубликат, редактирование существующего или неполные данные):', addressData);
-                }
-            }
-            
-            // ВАЖНО: Сохраняем адреса на сервер ПЕРЕД очисткой формы
-            if (savedAddresses.length > 0) {
-                console.log('📦 Сохраняем адреса на сервер перед очисткой формы, адресов:', savedAddresses.length);
-                await saveUserData();
-            }
-            
-            
-            // Очистка корзины
+            // Чистим корзину / чек-аут
             cart = [];
-            saveCart(); // Сохраняем пустую корзину
+            saveCartToLocalStorage(cart);
             updateCartUI();
             
-            // Скрываем все шаги оформления
-            document.querySelectorAll('.checkout-step').forEach(s => {
-                s.classList.remove('active');
-                s.style.display = 'none';
-            });
-            
-            // Скрываем все вкладки редактирования
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            });
-            
-            // Скрываем форму заказа
-            const orderTab = document.getElementById('orderTab');
-            if (orderTab) {
-                orderTab.classList.remove('active');
-                orderTab.style.display = 'none';
-            }
-            
-            // Сбрасываем checkoutData
             checkoutData = {
                 recipientName: '',
                 recipientPhone: '',
-                address: {},
+                address: null,
                 deliveryDate: '',
                 deliveryTime: '',
                 orderComment: '',
@@ -3288,110 +3076,66 @@ async function validateAndSubmitOrder(e) {
             };
             currentCheckoutStep = 1;
             
-            // Показываем меню через switchTab для правильной подсветки навигации
-            setTimeout(() => {
-                switchTab('menuTab');
-                // Переинициализируем навигацию после переключения
-                initNavigation();
-            }, 100);
+            // Скрываем все шаги оформления
+            document.querySelectorAll('.checkout-step').forEach(step => {
+                step.style.display = 'none';
+                step.classList.remove('active');
+            });
             
-            // Прокрутка в начало страницы
+            // Прячем контейнер оформления, если есть
+            const orderTabEl = document.getElementById('orderTab');
+            if (orderTabEl) {
+                orderTabEl.style.display = 'none';
+                orderTabEl.classList.remove('active');
+            }
+            
+            // ЯВНО показываем каталог
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+            
+            const menuTab = document.getElementById('menuTab');
+            if (menuTab) {
+                menuTab.style.display = 'block';
+                menuTab.classList.add('active');
+            }
+            
+            // Активируем пункт навигации "Каталог"
+            const menuNavItem = document.querySelector('[data-tab="menuTab"]');
+            if (menuNavItem) {
+                document.querySelectorAll('.bottom-nav__item').forEach(i => {
+                    i.classList.remove('bottom-nav__item--active');
+                });
+                menuNavItem.classList.add('bottom-nav__item--active');
+            }
+            
+            // Показываем алерт
+            if (tg && tg.showAlert) {
+                tg.showAlert('Заказ успешно создан! Мы скоро всё подтвердим 😊');
+            }
+            
+            // Тактильная обратная связь
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+            
+            // Прокрутка в начало
             window.scrollTo(0, 0);
             document.body.scrollTop = 0;
             document.documentElement.scrollTop = 0;
-            if (menuTab) {
-                menuTab.scrollTop = 0;
-                setTimeout(() => {
-                    if (menuTab.scrollIntoView) {
-                        menuTab.scrollIntoView({ behavior: 'auto', block: 'start' });
-                    }
-                }, 100);
+            
+            // Сохраняем адреса и заказы на сервер асинхронно (не блокируем UI)
+            if (savedAddresses.length > 0) {
+                saveUserData().catch(err => {
+                    console.warn('⚠️ Ошибка сохранения адресов (не критично):', err);
+                });
             }
             
-            // Сброс формы заказа (если она существует)
-            const orderForm = document.getElementById('orderForm');
-            if (orderForm) {
-            orderForm.reset();
-            }
-            
-            // Устанавливаем город по умолчанию после reset
-            const cityField = document.getElementById('orderAddressCity');
-            if (cityField) {
-                cityField.value = 'Санкт-Петербург';
-            }
-            
-            // ВАЖНО: Разблокируем кнопку сразу после успешного создания заказа
+            // Разблокируем кнопку
             unlockSubmitButton();
             
-            // Сохраняем данные на сервер асинхронно (не блокируем UI)
-                console.log('📦 Сохраняем данные на сервер, адресов:', savedAddresses.length);
-            
-            // Выполняем сохранение с таймаутом, чтобы не зависнуть
-            Promise.race([
-                saveUserData(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут сохранения')), 10000))
-            ]).then(() => {
-                // Перезагружаем данные пользователя с сервера
-                return Promise.race([
-                    loadUserData(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки')), 10000))
-                ]);
-            }).then(() => {
-                console.log('📦 Данные сохранены на сервер, активных заказов:', userActiveOrders.length);
-                
-                // Обновление активных заказов (отображаем локально добавленный заказ)
-                loadActiveOrders();
-                console.log('📦 Активных заказов после loadActiveOrders:', userActiveOrders.length);
-            }).catch((error) => {
-                console.warn('⚠️ Ошибка при сохранении/загрузке данных (не критично):', error);
-                // Продолжаем выполнение даже при ошибке
-                loadActiveOrders();
-            });
-            
-            // Перезагружаем данные пользователя с сервера через 1.5 секунды, чтобы сервер успел обработать
-            setTimeout(async () => {
-                try {
-                    console.log('📦 Перезагружаем данные с сервера...');
-                    const oldOrdersCount = userActiveOrders.length;
-                    await loadUserData();
-                    console.log('📦 Активных заказов до перезагрузки:', oldOrdersCount);
-                    console.log('📦 Активных заказов после перезагрузки:', userActiveOrders.length);
-                    
-                    // Проверяем, не потеряли ли мы заказ при перезагрузке
-                    const orderStillExists = userActiveOrders.some(o => o.id === orderId);
-                    if (!orderStillExists && oldOrdersCount > 0) {
-                        console.warn('⚠️ Заказ потерян при перезагрузке, восстанавливаем из локальных данных');
-                        // Восстанавливаем заказ из локального массива
-                        const localOrder = {
-                            id: orderId,
-                            date: new Date().toLocaleDateString('ru-RU'),
-                            items: orderData.items,
-                            total: orderData.total,
-                            address: orderData.address,
-                            deliveryDate: orderData.deliveryDate,
-                            deliveryTime: orderData.deliveryTime,
-                            status: 'NEW',
-                            createdAt: new Date().toISOString()
-                        };
-                        // Проверяем, нет ли уже такого заказа
-                        if (!userActiveOrders.some(o => o.id === orderId)) {
-                            userActiveOrders.push(localOrder);
-                            await saveUserData();
-                        }
-                    }
-                    
-                    // Обновляем отображение после перезагрузки
-                    loadActiveOrders();
-                } catch (e) {
-                    console.error('Ошибка перезагрузки данных:', e);
-                    // Если перезагрузка не удалась, используем локальные данные
-                    loadActiveOrders();
-                }
-            }, 1500);
-            
-            switchTab('menuTab');
-            
-            tg.HapticFeedback.notificationOccurred('success');
+            return;
         } else {
             // Если ответ не содержит success: true и orderId, считаем это ошибкой
             console.error('❌ Неожиданный формат ответа от сервера:', result);
@@ -3649,7 +3393,11 @@ function ensureAddressFormValidation() {
 }
 
 function openAddressPage(address = null) {
-    if (!addressForm) return;
+    console.log('[openAddressPage] 🚀 Открытие страницы адреса, address:', address);
+    if (!addressForm) {
+        console.error('[openAddressPage] ❌ addressForm не найден');
+        return;
+    }
     
     ensureAddressFormValidation();
     resetAddressFormState();
@@ -3659,18 +3407,23 @@ function openAddressPage(address = null) {
         if (addressPageTitle) addressPageTitle.textContent = address.name || 'Редактировать адрес';
         if (deleteAddressBtn) deleteAddressBtn.style.display = 'block';
         setAddressFormValues(address);
+        console.log('[openAddressPage] ✅ Адрес установлен для редактирования, ID:', address.id);
     } else {
         editingAddressId = null;
         if (addressPageTitle) addressPageTitle.textContent = 'Новый адрес';
         if (deleteAddressBtn) deleteAddressBtn.style.display = 'none';
+        console.log('[openAddressPage] ✅ Открытие формы для нового адреса');
     }
     
     switchTab('addressTab');
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => {
-        switchTab('profileTab');
-        tg.BackButton.hide();
-    });
+    if (tg && tg.BackButton) {
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            switchTab('profileTab');
+            tg.BackButton.hide();
+        });
+    }
+    console.log('[openAddressPage] ✅ Страница адреса открыта');
 }
 
 // Открытие модальных окон
@@ -4020,8 +3773,13 @@ function setupPhoneInput(phoneField) {
 
 // Редактирование адреса
 function editAddress(addressId) {
+    console.log('[editAddress] 🚀 Редактирование адреса с ID:', addressId);
     const address = savedAddresses.find(a => String(a.id) === String(addressId));
-    if (!address) return;
+    if (!address) {
+        console.error('[editAddress] ❌ Адрес с ID', addressId, 'не найден в savedAddresses');
+        return;
+    }
+    console.log('[editAddress] ✅ Адрес найден:', address);
     openAddressPage(address);
 }
 
@@ -4282,7 +4040,7 @@ function loadSavedAddresses() {
                         <div class="address-item-name">${streetName}</div>
                         ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
                     </div>
-                    <button class="address-edit-icon-btn" onclick="editAddress(${addr.id})" title="Изменить" data-address-id="${addr.id}">
+                    <button class="address-edit-icon-btn" onclick="window.editAddress && window.editAddress(${addr.id}); event.stopPropagation();" title="Изменить" data-address-id="${addr.id}">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -5135,9 +4893,23 @@ function initLeaveAtDoorCheckbox() {
             newCheckbox.disabled = false;
             newCheckbox.checked = !!checkoutData.leaveAtDoor;
             
+            // ВАЖНО: Убеждаемся, что checked состояние визуально отображается
+            if (newCheckbox.checked) {
+                newCheckbox.setAttribute('checked', 'checked');
+            } else {
+                newCheckbox.removeAttribute('checked');
+            }
+            
             newCheckbox.addEventListener('change', function() {
                 checkoutData.leaveAtDoor = this.checked;
                 console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
+                
+                // ВАЖНО: Обновляем атрибут checked для визуального отображения
+                if (this.checked) {
+                    this.setAttribute('checked', 'checked');
+                } else {
+                    this.removeAttribute('checked');
+                }
                 
                 // Обновляем отображение на шаге 4
                 if (typeof renderCheckoutSummary === 'function') {
@@ -5149,9 +4921,23 @@ function initLeaveAtDoorCheckbox() {
         }
     } else {
         // Если label нет, работаем напрямую
+        // ВАЖНО: Убеждаемся, что checked состояние визуально отображается
+        if (checkbox.checked) {
+            checkbox.setAttribute('checked', 'checked');
+        } else {
+            checkbox.removeAttribute('checked');
+        }
+        
         checkbox.addEventListener('change', function() {
             checkoutData.leaveAtDoor = this.checked;
             console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
+            
+            // ВАЖНО: Обновляем атрибут checked для визуального отображения
+            if (this.checked) {
+                this.setAttribute('checked', 'checked');
+            } else {
+                this.removeAttribute('checked');
+            }
             
             if (typeof renderCheckoutSummary === 'function') {
                 renderCheckoutSummary();
@@ -5426,6 +5212,19 @@ function goToStep(step) {
     if (step === 3) {
         // Переинициализируем чекбокс при переходе на шаг 3
         initLeaveAtDoorCheckbox();
+        
+        // ВАЖНО: Убеждаемся, что состояние чекбокса синхронизировано с checkoutData
+        setTimeout(() => {
+            const checkbox = document.getElementById('leaveAtDoorCheckbox');
+            if (checkbox) {
+                checkbox.checked = !!checkoutData.leaveAtDoor;
+                if (checkbox.checked) {
+                    checkbox.setAttribute('checked', 'checked');
+                } else {
+                    checkbox.removeAttribute('checked');
+                }
+            }
+        }, 100);
     }
     
     // Если переходим на шаг 4, обновляем отображение (включая комментарий и "Оставить у двери")
