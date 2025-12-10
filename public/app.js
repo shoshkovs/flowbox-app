@@ -3044,72 +3044,49 @@ async function validateAndSubmitOrder(e) {
             }
             
             
-            // Показываем экран успеха ПЕРЕД перенаправлением
+            // Показываем экран успеха
             successOverlay.classList.add('active');
             
-            // Перенаправление на страницу оплаты через небольшую задержку
-            const paymentUrl = `/payment/${orderId}`;
-            console.log('🔗 Перенаправление на страницу оплаты:', paymentUrl);
+            // УБРАНО: Редирект на страницу оплаты убран, чтобы избежать белого экрана
+            // Заказ успешно создан, пользователь может оплатить его позже из списка заказов
+            console.log('✅ Заказ создан, ID:', orderId);
             
-            // Используем Telegram WebApp для открытия страницы оплаты через 1 секунду
+            // Скрываем overlay и возвращаемся в меню через 2 секунды
             setTimeout(() => {
-                try {
-                    if (tg && tg.openLink) {
-                        // Получаем полный URL для оплаты
-                        const fullPaymentUrl = window.location.origin + paymentUrl;
-                        tg.openLink(fullPaymentUrl);
-                        console.log('✅ Открыта страница оплаты через Telegram WebApp');
-                        
-                        // После открытия страницы оплаты скрываем overlay и возвращаемся в меню
-                        setTimeout(() => {
-                            successOverlay.classList.remove('active');
-                            // Очищаем форму заказа
-                            checkoutData = {
-                                recipientName: '',
-                                recipientPhone: '',
-                                address: null,
-                                deliveryDate: '',
-                                deliveryTime: '',
-                                orderComment: '',
-                                leaveAtDoor: false
-                            };
-                            currentCheckoutStep = 1;
-                            
-                            // Скрываем все шаги checkout
-                            document.querySelectorAll('.checkout-step').forEach(s => {
-                                s.classList.remove('active');
-                                s.style.display = 'none';
-                            });
-                            
-                            // Скрываем вкладку оформления заказа
-                            const orderTab = document.getElementById('orderTab');
-                            if (orderTab) {
-                                orderTab.style.display = 'none';
-                            }
-                            
-                            // Показываем меню
-                            switchTab('menuTab');
-                            initNavigation();
-                            
-                            // Прокрутка в начало
-                            window.scrollTo(0, 0);
-                            document.body.scrollTop = 0;
-                            document.documentElement.scrollTop = 0;
-                        }, 2000); // Даём время на открытие страницы оплаты
-                    } else {
-                        // Fallback: обычное перенаправление
-                        window.location.href = paymentUrl;
-                        console.log('✅ Открыта страница оплаты через window.location');
-                    }
-                } catch (redirectError) {
-                    console.warn('⚠️ Ошибка перенаправления на страницу оплаты:', redirectError);
-                    // Продолжаем выполнение даже при ошибке перенаправления
-                    // Скрываем overlay и возвращаемся в меню
-                    successOverlay.classList.remove('active');
-                    switchTab('menuTab');
-                    initNavigation();
+                successOverlay.classList.remove('active');
+                // Очищаем форму заказа
+                checkoutData = {
+                    recipientName: '',
+                    recipientPhone: '',
+                    address: null,
+                    deliveryDate: '',
+                    deliveryTime: '',
+                    orderComment: '',
+                    leaveAtDoor: false
+                };
+                currentCheckoutStep = 1;
+                
+                // Скрываем все шаги checkout
+                document.querySelectorAll('.checkout-step').forEach(s => {
+                    s.classList.remove('active');
+                    s.style.display = 'none';
+                });
+                
+                // Скрываем вкладку оформления заказа
+                const orderTab = document.getElementById('orderTab');
+                if (orderTab) {
+                    orderTab.style.display = 'none';
                 }
-            }, 1000);
+                
+                // Показываем меню
+                switchTab('menuTab');
+                initNavigation();
+                
+                // Прокрутка в начало
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+            }, 2000);
             
             // Сохранение заказа в активные
             const order = {
@@ -3129,8 +3106,10 @@ async function validateAndSubmitOrder(e) {
             console.log('📦 Активных заказов после добавления:', userActiveOrders.length);
             
             // Сохранение адреса из заказа в сохраненные адреса (если это новый адрес и его еще нет)
-            // НЕ сохраняем адрес, если он был выбран из сохраненных (имеет id)
-            if (addressData && shouldUseForm && !addressData.id) {
+            // НЕ сохраняем адрес, если он был выбран из сохраненных (имеет id в checkoutData.address)
+            // ВАЖНО: Проверяем checkoutData.address.id, а не addressData.id, так как addressData может быть из формы
+            const addressHasId = checkoutData.address && checkoutData.address.id;
+            if (addressData && shouldUseForm && !addressHasId && !addressData.id) {
                 // Нормализуем адрес для сравнения
                 const normalize = (str) => (str || '').toLowerCase().trim();
                 const normalizeAddress = (addr) => {
@@ -3159,6 +3138,7 @@ async function validateAndSubmitOrder(e) {
                 const newAddrNormalized = normalizeAddress(addressData);
                 
                 // Проверяем, не является ли это дубликатом существующего адреса
+                // Улучшенная проверка: учитываем все поля адреса, включая house
                 const isDuplicate = savedAddresses.some(existingAddr => {
                     const existingNormalized = normalizeAddress(existingAddr);
                     
@@ -3167,11 +3147,27 @@ async function validateAndSubmitOrder(e) {
                     const apartmentMatch = newAddrNormalized.apartment === existingNormalized.apartment;
                     
                     // house: совпадает если оба пустые ИЛИ оба не пустые и равны
+                    // ВАЖНО: Если один адрес имеет house, а другой нет - это разные адреса
                     const houseMatch = (!newAddrNormalized.house && !existingNormalized.house) || 
                                      (newAddrNormalized.house && existingNormalized.house && 
                                       newAddrNormalized.house === existingNormalized.house);
                     
-                    return cityMatch && streetMatch && apartmentMatch && houseMatch;
+                    // Если все поля совпадают, это дубликат
+                    if (cityMatch && streetMatch && apartmentMatch && houseMatch) {
+                        return true;
+                    }
+                    
+                    // Дополнительная проверка: если street совпадает, но house отличается только наличием/отсутствием,
+                    // это тоже дубликат (например, "Кемская" и "Кемская 7" - это один адрес)
+                    if (cityMatch && streetMatch && apartmentMatch) {
+                        // Если один адрес имеет house, а другой нет, но street совпадает - это дубликат
+                        if ((newAddrNormalized.house && !existingNormalized.house) || 
+                            (!newAddrNormalized.house && existingNormalized.house)) {
+                            return true;
+                        }
+                    }
+                    
+                    return false;
                 });
                 
                 // Проверяем, не является ли это редактированием существующего адреса из checkoutData
@@ -4286,7 +4282,7 @@ function loadSavedAddresses() {
                         <div class="address-item-name">${streetName}</div>
                         ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
                     </div>
-                    <button class="address-edit-icon-btn" onclick="editAddress(${JSON.stringify(addr.id)})" title="Изменить">
+                    <button class="address-edit-icon-btn" onclick="editAddress(${addr.id})" title="Изменить" data-address-id="${addr.id}">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>

@@ -1428,10 +1428,26 @@ function isAddressDuplicate(newAddr, existingAddr) {
   const apartmentMatch = newApartment === existingApartment;
   
   // house: совпадает если оба пустые ИЛИ оба не пустые и равны
+  // ВАЖНО: Если street совпадает, но один адрес имеет house, а другой нет - это дубликат
+  // (например, "Кемская" и "Кемская 7" - это один адрес, если apartment совпадает)
   const houseMatch = (!newHouse && !existingHouse) || 
                      (newHouse && existingHouse && newHouse === existingHouse);
   
-  return cityMatch && streetMatch && apartmentMatch && houseMatch;
+  // Если city, street и apartment совпадают, это дубликат независимо от house
+  // (адрес "Кемская, кв 57" и "Кемская 7, кв 57" - это один адрес)
+  if (cityMatch && streetMatch && apartmentMatch) {
+    // Если house совпадает - точно дубликат
+    if (houseMatch) {
+      return true;
+    }
+    // Если один адрес имеет house, а другой нет - тоже дубликат
+    // (номер дома был добавлен или удален, но это тот же адрес)
+    if ((newHouse && !existingHouse) || (!newHouse && existingHouse)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 // Безопасное добавление одного адреса (не удаляет существующие)
