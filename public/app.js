@@ -7,7 +7,7 @@ let isSimpleCheckout = false; // Флаг упрощенного оформле�
 let isSimpleOrderInitialized = false; // Флаг инициализации упрощенного заказа (предотвращает дубликаты)
 let summaryDateTimeInitialized = false; // Флаг инициализации календаря на странице "Итого"
 let checkoutMode = null; // Режим оформления: 'full' | 'simple' | null
-let checkoutScreen = 'cart'; // Текущий экран: 'cart' | 'steps' | 'simpleSummary' | 'editRecipient' | 'myAddresses' | 'editAddress' | 'addressesList'
+let checkoutScreen = 'cart'; // Текущий экран: 'cart' | 'steps' | 'summary' | 'editRecipient' | 'myAddresses' | 'editAddress' | 'addressesList'
 
 // Данные оформления заказа (объявлено рано, чтобы избежать ошибок инициализации)
 let checkoutData = {
@@ -141,94 +141,41 @@ function handleBackButton() {
         console.log('[SimpleMenu] 📍 Обработка BackButton в упрощенном режиме, checkoutScreen:', checkoutScreen);
         
         switch (checkoutScreen) {
+            case 'summary':
             case 'simpleSummary':
                 // Шаг "Итого" — назад в корзину
-                console.log('[SimpleMenu] 📍 Переход: возврат в корзину из simpleSummary');
+                console.log('[SimpleMenu] 📍 Переход: возврат в корзину из summary');
                 exitToCart();
                 return;
                 
             case 'editRecipient':
                 // Из редактирования получателя — назад на "Итого"
-                console.log('[SimpleMenu] 📍 Переход: возврат из editRecipient в simpleSummary');
-                if (editRecipientTab) editRecipientTab.style.display = 'none';
-                
-                // Скрываем все вкладки редактирования
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    if (tab.id !== 'orderTab') {
-                        tab.style.display = 'none';
-                    }
-                });
-                
-                // Показываем шаг 4
-                const step4 = document.getElementById('checkoutStep4');
-                if (step4) {
-                    step4.style.display = 'block';
-                    step4.classList.add('active');
-                }
-                
-                // Показываем заголовок обратно
-                const orderPageHeader = document.querySelector('.order-page-header');
-                if (orderPageHeader) {
-                    orderPageHeader.style.display = '';
-                }
-                
-                // Обновляем summary
-                if (typeof renderCheckoutSummary === 'function') {
-                    renderCheckoutSummary();
-                } else if (typeof prefillSimpleCheckoutSummary === 'function') {
-                    prefillSimpleCheckoutSummary();
-                }
-                
-                checkoutScreen = 'simpleSummary';
+                console.log('[SimpleMenu] 📍 Переход: возврат из editRecipient в summary');
+                closeEditRecipientAndReturnToSummary();
                 return;
                 
             case 'addressesList':
+                // Из списка адресов — назад на "Итого"
+                console.log('[SimpleMenu] 📍 Переход: возврат из addressesList в summary');
+                closeMyAddressesAndReturnToSummary();
+                return;
+                
             case 'editAddress':
-                // Из списка адресов или формы создания адреса — назад на "Итого"
-                console.log('[SimpleMenu] 📍 Переход: возврат из', checkoutScreen, 'в simpleSummary');
+                // Из формы редактирования адреса — назад к списку адресов
+                console.log('[SimpleMenu] 📍 Переход: возврат из editAddress в addressesList');
+                closeEditAddressAndReturnToAddressList();
+                return;
                 
-                // Скрываем все элементы адресов
-                const checkoutAddressesList = document.getElementById('checkoutAddressesList');
-                const checkoutAddressForm = document.getElementById('checkoutAddressForm');
-                const addNewAddressBtn = document.getElementById('addNewAddressBtn');
-                if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
-                if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
-                if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
-                if (editAddressTab) editAddressTab.style.display = 'none';
-                if (myAddressesTab) myAddressesTab.style.display = 'none';
-                
-                // Скрываем все шаги checkout
-                document.querySelectorAll('.checkout-step').forEach(s => {
-                    s.classList.remove('active');
-                    s.style.display = 'none';
-                });
-                
-                // Показываем шаг 4
-                const step4Summary = document.getElementById('checkoutStep4');
-                if (step4Summary) {
-                    step4Summary.style.display = 'block';
-                    step4Summary.classList.add('active');
-                }
-                
-                // Показываем заголовок обратно
-                const orderPageHeaderSummary = document.querySelector('.order-page-header');
-                if (orderPageHeaderSummary) {
-                    orderPageHeaderSummary.style.display = '';
-                }
-                
-                // Обновляем summary
-                if (typeof renderCheckoutSummary === 'function') {
-                    renderCheckoutSummary();
-                } else if (typeof prefillSimpleCheckoutSummary === 'function') {
-                    prefillSimpleCheckoutSummary();
-                }
-                
-                checkoutScreen = 'simpleSummary';
+            case 'steps':
+                // Сюда вообще не должны попадать в упрощённом режиме,
+                // но если вдруг — просто в корзину
+                console.warn('[SimpleMenu] ⚠️ steps в simple-режиме, уходим в корзину');
+                exitToCart();
                 return;
                 
             default:
                 // На всякий случай – просто вернёмся в корзину
-                console.log('[SimpleMenu] ⚠️ Неизвестный checkoutScreen в упрощенном режиме:', checkoutScreen, '- возврат в корзину');
+                console.warn('[SimpleMenu] ⚠️ Неизвестный checkoutScreen в упрощенном режиме:', checkoutScreen, '- возврат в корзину');
                 exitToCart();
                 return;
         }
@@ -1992,19 +1939,22 @@ function startFullCheckout() {
         }
     }
 
-// Упрощённый сценарий: сразу «Итого» (4-й шаг)
-function startSimpleCheckout() {
-    isSimpleCheckout = true;
-    checkoutMode = 'simple';
-    checkoutScreen = 'simpleSummary';
+// Универсальная функция показа экрана "Итого" в упрощенном режиме
+function showSimpleSummary() {
+    console.log('[SimpleMenu] 📍 Показ экрана "Итого" в упрощенном режиме');
     
+    checkoutMode = 'simple';
+    checkoutScreen = 'summary';
+    isSimpleCheckout = true;
+    
+    // Показываем вкладку orderTab
     switchTab('orderTab');
     
-    // Прячем прогресс-бар
+    // Скрываем прогресс-бар
     const progress = document.querySelector('.checkout-progress');
     if (progress) progress.style.display = 'none';
     
-    // Прячем шаги 1–3
+    // Скрываем шаги 1–3
     ['checkoutStep1', 'checkoutStep2', 'checkoutStep3'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -2035,14 +1985,89 @@ function startSimpleCheckout() {
         }
     }
     
+    // Заголовок «Оформление заказа»
+    const orderPageHeader = document.querySelector('.order-page-header');
+    if (orderPageHeader) {
+        orderPageHeader.style.display = '';
+    }
+    
+    // Скрываем все вкладки редактирования
+    const editingTabs = ['editRecipientTab', 'editAddressTab', 'myAddressesTab'];
+    editingTabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.style.display = 'none';
+        }
+    });
+    
+    // Скрываем элементы списка адресов
+    const checkoutAddressesList = document.getElementById('checkoutAddressesList');
+    const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+    if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
+    if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
+    if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+    
     // Подставляем получателя и адрес
-    prefillSimpleCheckoutSummary();
+    if (typeof prefillSimpleCheckoutSummary === 'function') {
+        prefillSimpleCheckoutSummary();
+    }
     
     // Инициализируем календарь + слоты на «Итого»
-    initSimpleDateTimeOnSummary();
+    if (typeof initSimpleDateTimeOnSummary === 'function') {
+        initSimpleDateTimeOnSummary();
+    }
     
-    // Обновляем корзину и итоговую сумму
-    renderCheckoutSummary();
+    // Обновляем данные
+    if (typeof renderCheckoutSummary === 'function') {
+        renderCheckoutSummary();
+    }
+    
+    // Скроллим наверх
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    
+    console.log('[SimpleMenu] ✅ Экран "Итого" показан, checkoutScreen:', checkoutScreen);
+}
+
+// Функции возврата из экранов редактирования в упрощенном режиме
+function closeEditRecipientAndReturnToSummary() {
+    console.log('[SimpleMenu] 📍 Закрытие редактирования получателя, возврат на summary');
+    const tab = document.getElementById('editRecipientTab');
+    if (tab) tab.style.display = 'none';
+    showSimpleSummary();
+}
+
+function closeMyAddressesAndReturnToSummary() {
+    console.log('[SimpleMenu] 📍 Закрытие списка адресов, возврат на summary');
+    const tab = document.getElementById('myAddressesTab');
+    if (tab) tab.style.display = 'none';
+    
+    // Также скрываем элементы списка адресов из checkout
+    const checkoutAddressesList = document.getElementById('checkoutAddressesList');
+    const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+    if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
+    if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
+    if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+    
+    showSimpleSummary();
+}
+
+function closeEditAddressAndReturnToAddressList() {
+    console.log('[SimpleMenu] 📍 Закрытие редактирования адреса, возврат к списку адресов');
+    const editTab = document.getElementById('editAddressTab');
+    if (editTab) editTab.style.display = 'none';
+    
+    // Возвращаемся к списку адресов
+    openCheckoutAddressesForSimple();
+}
+
+// Упрощённый сценарий: сразу «Итого» (4-й шаг)
+function startSimpleCheckout() {
+    isSimpleCheckout = true;
+    showSimpleSummary();
     
     // Помечаем, что упрощенный заказ инициализирован
     isSimpleOrderInitialized = true;
@@ -5430,20 +5455,25 @@ function initCheckoutSteps() {
     const editRecipientBtn = document.getElementById('editRecipient');
     if (editRecipientBtn) {
         editRecipientBtn.onclick = () => {
-            // Открываем отдельный экран редактирования получателя
-            openEditRecipientPage();
+            if (checkoutMode === 'simple' || isSimpleCheckout) {
+                // Упрощённый сценарий: сразу открываем страницу редактирования
+                openEditRecipientPage();
+            } else {
+                // Обычный сценарий: уходим на шаг 1
+                goToStep(1);
+            }
         };
     }
     
     const editAddressBtn = document.getElementById('editAddress');
     if (editAddressBtn) {
         editAddressBtn.onclick = () => {
-            // В упрощенном режиме открываем список адресов (как на шаге 2)
-            if (isSimpleCheckout || checkoutMode === 'simple') {
+            if (checkoutMode === 'simple' || isSimpleCheckout) {
+                // Упрощённый: открыть список адресов
                 openCheckoutAddressesForSimple();
             } else {
-                // В обычном режиме открываем вкладку со списком адресов
-                openMyAddressesPage();
+                // Обычный: на шаг 2
+                goToStep(2);
             }
         };
     }
@@ -5726,8 +5756,8 @@ function goToStep(step) {
         renderCheckoutSummary();
         
         // Обновляем состояние экрана
-        if (isSimpleCheckout) {
-            checkoutScreen = 'simpleSummary';
+        if (isSimpleCheckout || checkoutMode === 'simple') {
+            checkoutScreen = 'summary';
         } else {
             checkoutScreen = 'steps';
         }
@@ -5974,44 +6004,8 @@ function selectCheckoutAddressForSimple(addressId) {
     
     // Возвращаемся к шагу 4 (упрощенное Итого)
     if (isSimpleCheckout || checkoutMode === 'simple') {
-        // Скрываем список адресов
-        const addressesList = document.getElementById('checkoutAddressesList');
-        const addNewAddressBtn = document.getElementById('addNewAddressBtn');
-        const addressForm = document.getElementById('checkoutAddressForm');
-        
-        if (addressesList) addressesList.style.display = 'none';
-        if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
-        if (addressForm) addressForm.style.display = 'none';
-        
-        // Скрываем все вкладки редактирования
-        const editRecipientTab = document.getElementById('editRecipientTab');
-        const editAddressTab = document.getElementById('editAddressTab');
-        if (editRecipientTab) editRecipientTab.style.display = 'none';
-        if (editAddressTab) editAddressTab.style.display = 'none';
-        
-        // Показываем шаг 4
-        const step4 = document.getElementById('checkoutStep4');
-        if (step4) {
-            step4.style.display = 'block';
-            step4.classList.add('active');
-        }
-        
-        // Обновляем summary
-        if (typeof renderCheckoutSummary === 'function') {
-            renderCheckoutSummary();
-        } else if (typeof prefillSimpleCheckoutSummary === 'function') {
-            prefillSimpleCheckoutSummary();
-        }
-        
-        // Показываем заголовок обратно
-        const orderPageHeader = document.querySelector('.order-page-header');
-        if (orderPageHeader) {
-            orderPageHeader.style.display = '';
-        }
-        
-        const previousScreen = checkoutScreen;
-        checkoutScreen = 'simpleSummary';
-        console.log('[SimpleMenu] ✅ Переход выполнен: simpleSummary (выбор адреса), было:', previousScreen);
+        showSimpleSummary();
+        console.log('[SimpleMenu] ✅ Переход выполнен: summary (выбор адреса)');
     }
 }
 
@@ -7472,26 +7466,7 @@ async function saveEditAddress() {
             selectCheckoutAddressForSimple(savedAddressId);
         } else {
             // Если адрес не найден, просто возвращаемся на шаг 4
-            const step4 = document.getElementById('checkoutStep4');
-            if (step4) {
-                step4.style.display = 'block';
-                step4.classList.add('active');
-            }
-            
-            // Обновляем summary
-            if (typeof renderCheckoutSummary === 'function') {
-                renderCheckoutSummary();
-            } else if (typeof prefillSimpleCheckoutSummary === 'function') {
-                prefillSimpleCheckoutSummary();
-            }
-            
-            // Показываем заголовок обратно
-            const orderPageHeader = document.querySelector('.order-page-header');
-            if (orderPageHeader) {
-                orderPageHeader.style.display = '';
-            }
-            
-            checkoutScreen = 'simpleSummary';
+            showSimpleSummary();
         }
     } else {
         // В обычном режиме
