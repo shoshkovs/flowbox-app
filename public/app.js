@@ -46,7 +46,7 @@ if (tg) {
         console.log('[init] Telegram WebApp найден');
         
         tg.BackButton.onClick(() => {
-            console.log('[BackButton] 🔙 нажата, текущий шаг =', currentCheckoutStep);
+            console.log('[BackButton] 🔙 нажата, текущий шаг =', currentCheckoutStep, 'isSimpleCheckout =', isSimpleCheckout);
             
             const orderTab = document.getElementById('orderTab');
             
@@ -58,8 +58,12 @@ if (tg) {
             );
             
             if (isOrderTabActive) {
-                // Если мы на первом шаге формы заказа - возвращаемся в корзину
-                if (currentCheckoutStep === 1) {
+                // Если упрощенный сценарий - всегда возвращаемся в корзину
+                if (isSimpleCheckout) {
+                    console.log('[BackButton] Упрощенный сценарий - возвращаемся в корзину');
+                    switchTab('cartTab');
+                } else if (currentCheckoutStep === 1) {
+                    // Если мы на первом шаге формы заказа - возвращаемся в корзину
                     console.log('[BackButton] Возвращаемся в корзину с шага 1');
                     switchTab('cartTab');
                 } else if (currentCheckoutStep > 1) {
@@ -1784,6 +1788,21 @@ function startSimpleCheckout() {
         step4.classList.add('active');
     }
     
+    // Скрываем поле "Дата и время доставки" с прочерком в упрощенном сценарии
+    const summaryDateTimeContainer = document.getElementById('summaryDateTimeContainer');
+    if (summaryDateTimeContainer) {
+        summaryDateTimeContainer.style.display = 'none';
+    }
+    
+    // Скрываем поле "Оставить у двери" с текстом "Да/Нет" в упрощенном сценарии
+    const summaryLeaveAtDoor = document.getElementById('summaryLeaveAtDoor');
+    if (summaryLeaveAtDoor) {
+        const summaryLeaveAtDoorItem = summaryLeaveAtDoor.closest('.checkout-summary-item');
+        if (summaryLeaveAtDoorItem) {
+            summaryLeaveAtDoorItem.style.display = 'none';
+        }
+    }
+    
     // Подставляем получателя и адрес
     prefillSimpleCheckoutSummary();
     
@@ -1793,8 +1812,9 @@ function startSimpleCheckout() {
     // Обновляем корзину и итоговую сумму
     renderCheckoutSummary();
     
+    // Показываем BackButton и настраиваем его на переход в корзину
     if (tg && tg.BackButton) {
-        tg.BackButton.hide();
+        tg.BackButton.show();
     }
     
     window.scrollTo(0, 0);
@@ -6001,20 +6021,20 @@ function initSimpleDateTimeOnSummary() {
             calendarDaysContainer.appendChild(emptyDay);
         }
         
-        // Дни месяца
+        // Дни месяца - показываем ВСЕ дни, но disabled те, что вне диапазона
         for (let day = 1; day <= daysInMonth; day++) {
             const dayDate = new Date(year, month, day);
             dayDate.setHours(0, 0, 0, 0);
             
             const dayEl = document.createElement('div');
             dayEl.className = 'calendar-day';
+            dayEl.textContent = day; // Всегда показываем число
             
             // Проверяем доступность даты
             if (dayDate < minDate || dayDate > maxDate) {
                 dayEl.classList.add('disabled');
             } else {
                 dayEl.classList.add('available');
-                dayEl.textContent = day;
                 
                 // Проверяем, выбрана ли эта дата
                 if (deliveryDateInput.value) {
@@ -6089,16 +6109,13 @@ function initSimpleDateTimeOnSummary() {
         });
     }
     
-    // Чекбокс "Оставить у двери"
+    // Чекбокс "Оставить у двери" - только чекбокс, без поля "Да/Нет"
     const leaveAtDoorCheckbox = document.getElementById('summaryLeaveAtDoorCheckbox');
     if (leaveAtDoorCheckbox) {
         leaveAtDoorCheckbox.checked = !!checkoutData.leaveAtDoor;
         leaveAtDoorCheckbox.addEventListener('change', () => {
             checkoutData.leaveAtDoor = leaveAtDoorCheckbox.checked;
-            const summaryLeaveAtDoor = document.getElementById('summaryLeaveAtDoor');
-            if (summaryLeaveAtDoor) {
-                summaryLeaveAtDoor.textContent = leaveAtDoorCheckbox.checked ? 'Да' : 'Нет';
-            }
+            // Не обновляем summaryLeaveAtDoor в упрощенном сценарии
         });
     }
     
