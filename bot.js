@@ -1503,8 +1503,15 @@ async function saveUserAddresses(user_id, addresses) {
       // 1) Нормализуем и дедупим адреса
       const normalized = [];
 
+      console.log('[saveUserAddresses] 📥 Входящие адреса:', JSON.stringify(addresses, null, 2));
+
       for (const addr of addresses) {
-        if (!addr) continue;
+        if (!addr) {
+          console.warn('[saveUserAddresses] ⚠️ Пропущен null/undefined адрес');
+          continue;
+        }
+
+        console.log('[saveUserAddresses] 🔍 Обработка адреса:', JSON.stringify(addr, null, 2));
 
         // Парсим street/house, если нужно
         let streetValue = addr.street || '';
@@ -1514,6 +1521,7 @@ async function saveUserAddresses(user_id, addresses) {
           const parsed = parseStreetAndHouse(streetValue);
           streetValue = parsed.street;
           houseValue = parsed.house;
+          console.log('[saveUserAddresses] 📍 Парсинг street/house:', { original: addr.street, street: streetValue, house: houseValue });
         }
 
         const normalizedAddr = {
@@ -1529,6 +1537,8 @@ async function saveUserAddresses(user_id, addresses) {
           isDefault: addr.isDefault || false,
         };
 
+        console.log('[saveUserAddresses] ✅ Нормализованный адрес:', JSON.stringify(normalizedAddr, null, 2));
+
         // Пропускаем полностью пустые адреса
         if (!normalizedAddr.city && !normalizedAddr.street && !normalizedAddr.house) {
           console.warn('[saveUserAddresses] ⚠️ Пропущен пустой адрес:', normalizedAddr);
@@ -1543,6 +1553,7 @@ async function saveUserAddresses(user_id, addresses) {
         }
 
         normalized.push(normalizedAddr);
+        console.log('[saveUserAddresses] ✅ Адрес добавлен в normalized, всего:', normalized.length);
       }
 
       console.log('[saveUserAddresses] 📦 После нормализации и дедупликации адресов:', normalized.length);
@@ -1554,25 +1565,33 @@ async function saveUserAddresses(user_id, addresses) {
       let insertedCount = 0;
 
       for (const addr of normalized) {
-        await client.query(
-          `INSERT INTO addresses 
-            (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          [
-            user_id,
-            addr.name,
-            addr.city,
-            addr.street,
-            addr.house,
-            addr.entrance,
-            addr.apartment,
-            addr.floor,
-            addr.intercom,
-            addr.comment,
-            addr.isDefault,
-          ]
-        );
-        insertedCount++;
+        console.log('[saveUserAddresses] 💾 Вставка адреса в БД:', JSON.stringify(addr, null, 2));
+        try {
+          const result = await client.query(
+            `INSERT INTO addresses 
+              (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             RETURNING id`,
+            [
+              user_id,
+              addr.name,
+              addr.city,
+              addr.street,
+              addr.house,
+              addr.entrance,
+              addr.apartment,
+              addr.floor,
+              addr.intercom,
+              addr.comment,
+              addr.isDefault,
+            ]
+          );
+          insertedCount++;
+          console.log('[saveUserAddresses] ✅ Адрес вставлен в БД, ID:', result.rows[0]?.id);
+        } catch (insertError) {
+          console.error('[saveUserAddresses] ❌ Ошибка вставки адреса:', insertError);
+          throw insertError;
+        }
       }
 
       await client.query('COMMIT');
@@ -2320,17 +2339,18 @@ app.post('/api/user-data', async (req, res) => {
       
       // Сохраняем адреса (включая пустой массив - разрешаем удаление всех адресов)
       if (addresses !== undefined && Array.isArray(addresses)) {
-        // Сохраняем адреса (включая пустой массив для удаления всех адресов)
+        console.log('[POST /api/user-data] 📥 Пришло адресов из фронта:', addresses.length);
         const saved = await saveUserAddresses(user.id, addresses);
-        if (saved) {
-          console.log(`✅ Сохранено адресов для пользователя ${userId} (user_id=${user.id}): ${addresses.length}`);
-        } else {
-          console.error(`❌ Ошибка сохранения адресов для пользователя ${userId}`);
+        if (!saved) {
+          console.error('[POST /api/user-data] ❌ Ошибка сохранения адресов для user_id =', user.id);
         }
+      } else {
+        console.log('[POST /api/user-data] ℹ️ addresses не массив или undefined:', addresses);
       }
       
-      // Загружаем обновлённые адреса из БД для возврата фронту
+      // После всех сохранений — ПЕРЕЧИТЫВАЕМ адреса из БД
       const updatedAddresses = await loadUserAddresses(user.id);
+      console.log('[POST /api/user-data] 📦 Адресов после сохранения в БД:', updatedAddresses.length);
       
       // Логируем только при значительных изменениях (новые адреса, заказы)
       const hasSignificantChanges = 
