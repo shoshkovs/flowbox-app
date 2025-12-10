@@ -172,11 +172,27 @@ document.addEventListener('visibilitychange', () => {
                 leaveAtDoor: false
             };
             currentCheckoutStep = 1;
+            
+            // Скрываем все шаги checkout
+            document.querySelectorAll('.checkout-step').forEach(s => {
+                s.classList.remove('active');
+                s.style.display = 'none';
+            });
+            
+            // Скрываем вкладку оформления заказа
+            const orderTab = document.getElementById('orderTab');
+            if (orderTab) {
+                orderTab.style.display = 'none';
+            }
+            
             // Показываем меню
             switchTab('menuTab');
             initNavigation();
+            
             // Прокрутка в начало
             window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
         }
     }
 });
@@ -1034,7 +1050,7 @@ async function saveUserData() {
         // 🔥 ВАЖНО: приводим фронт в соответствие с БД
         if (Array.isArray(result.addresses)) {
             savedAddresses = result.addresses;
-            localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+        localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
             console.log('[saveUserData] ✅ Адреса обновлены с сервера:', savedAddresses.length);
         } else {
             // fallback: сохраняем то, что у нас локально
@@ -3058,11 +3074,27 @@ async function validateAndSubmitOrder(e) {
                                 leaveAtDoor: false
                             };
                             currentCheckoutStep = 1;
+                            
+                            // Скрываем все шаги checkout
+                            document.querySelectorAll('.checkout-step').forEach(s => {
+                                s.classList.remove('active');
+                                s.style.display = 'none';
+                            });
+                            
+                            // Скрываем вкладку оформления заказа
+                            const orderTab = document.getElementById('orderTab');
+                            if (orderTab) {
+                                orderTab.style.display = 'none';
+                            }
+                            
                             // Показываем меню
                             switchTab('menuTab');
                             initNavigation();
+                            
                             // Прокрутка в начало
                             window.scrollTo(0, 0);
+                            document.body.scrollTop = 0;
+                            document.documentElement.scrollTop = 0;
                         }, 2000); // Даём время на открытие страницы оплаты
                     } else {
                         // Fallback: обычное перенаправление
@@ -5366,7 +5398,7 @@ function goToStep(step) {
         const tab = document.getElementById(tabId);
         if (tab) {
             tab.style.display = 'none';
-        }
+    }
     });
     
     // Показываем нужный шаг
@@ -5500,6 +5532,7 @@ function renderCheckoutAddresses() {
     
     // Если есть сохраненные адреса - показываем список
     if (savedAddresses && savedAddresses.length > 0) {
+        // ВСЕГДА показываем список адресов и скрываем форму, если есть сохраненные адреса
         addressesList.style.display = 'block';
         addNewAddressBtn.style.display = 'block';
         addressForm.style.display = 'none';
@@ -5519,15 +5552,12 @@ function renderCheckoutAddresses() {
                 addr.apartment ? `кв. ${addr.apartment}` : ''
             ].filter(Boolean).join(', ');
             
-            // Проверяем, выбран ли этот адрес
-            const currentStreet = checkoutData.address ? checkoutData.address.street : '';
-            const currentCity = checkoutData.address ? (checkoutData.address.city || 'Санкт-Петербург') : '';
-            const addrStreet = street;
-            const addrCity = addr.city || 'Санкт-Петербург';
-            
-            const isSelected = checkoutData.address && 
-                              currentStreet === addrStreet &&
-                              currentCity === addrCity;
+            // Проверяем, выбран ли этот адрес (по ID или по совпадению street/city)
+            const isSelected = checkoutData.address && (
+                (checkoutData.address.id && String(checkoutData.address.id) === String(addr.id)) ||
+                (!checkoutData.address.id && checkoutData.address.street === street && 
+                 (checkoutData.address.city || 'Санкт-Петербург') === (addr.city || 'Санкт-Петербург'))
+            );
             
             return `
                 <label class="checkout-address-option">
@@ -5544,6 +5574,12 @@ function renderCheckoutAddresses() {
             const lastAddress = savedAddresses[savedAddresses.length - 1];
             if (lastAddress) {
                 selectCheckoutAddress(lastAddress.id);
+            }
+        } else if (checkoutData.address.id) {
+            // Если адрес уже выбран по ID, убеждаемся, что он отмечен в списке
+            const selectedRadio = document.querySelector(`input[name="checkoutAddress"][value="${checkoutData.address.id}"]`);
+            if (selectedRadio) {
+                selectedRadio.checked = true;
             }
         }
     } else {
@@ -5569,6 +5605,7 @@ function selectCheckoutAddress(addressId) {
     
     // Заполняем checkoutData.address
     checkoutData.address = {
+        id: address.id, // Сохраняем ID адреса
         city: address.city || 'Санкт-Петербург',
         street: streetValue, // Теперь содержит "улица + дом"
         apartment: address.apartment || '',
@@ -5579,6 +5616,15 @@ function selectCheckoutAddress(addressId) {
     };
     
     console.log('[selectCheckoutAddress] выбран адрес:', checkoutData.address);
+    
+    // Скрываем форму и показываем список адресов после выбора
+    const addressesList = document.getElementById('checkoutAddressesList');
+    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+    const addressForm = document.getElementById('checkoutAddressForm');
+    
+    if (addressesList) addressesList.style.display = 'block';
+    if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
+    if (addressForm) addressForm.style.display = 'none';
 }
 
 // Показ формы добавления нового адреса на шаге 2

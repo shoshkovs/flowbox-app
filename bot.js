@@ -732,7 +732,7 @@ if (process.env.DATABASE_URL) {
       } catch (error) {
         // Игнорируем ошибки при миграции
       }
-      }, 7000); // Ждем 7 секунд после подключения
+    }, 7000); // Ждем 7 секунд после подключения
       
       // Миграция: создание таблицы support_topics для системы поддержки (форум-топики)
       setTimeout(async () => {
@@ -874,7 +874,7 @@ if (process.env.DATABASE_URL) {
           // Игнорируем ошибки при миграции
         }
       }, 9000);
-    }); // Закрываем первый setTimeout
+  }); // Закрываем первый setTimeout
 } else {
   console.log('⚠️  DATABASE_URL не установлен, используется файловое хранилище');
   console.log('💡 Для использования БД добавь переменную DATABASE_URL в Environment Render.com');
@@ -1415,7 +1415,7 @@ function isAddressDuplicate(newAddr, existingAddr) {
   const newStreet = normalize(newAddr.street);
   const newHouse = normalize(newAddr.house);
   const newApartment = normalize(newAddr.apartment);
-  
+        
   const existingCity = normalize(existingAddr.city);
   const existingStreet = normalize(existingAddr.street);
   const existingHouse = normalize(existingAddr.house);
@@ -1458,7 +1458,7 @@ async function addUserAddress(userId, address) {
       // Парсим street и house если нужно
       let streetValue = address.street || '';
       let houseValue = address.house || '';
-      
+        
       // Если house пустое, пытаемся извлечь из street
       if (!houseValue && streetValue) {
         const parsed = parseStreetAndHouse(streetValue);
@@ -1467,12 +1467,12 @@ async function addUserAddress(userId, address) {
       }
       
       // Вставляем новый адрес
-      await client.query(
-        `INSERT INTO addresses 
-         (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [
-          userId,
+          await client.query(
+            `INSERT INTO addresses 
+             (user_id, name, city, street, house, entrance, apartment, floor, intercom, comment, is_default)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+              userId,
           address.name || streetValue || 'Новый адрес',
           address.city || '',
           streetValue,
@@ -1483,8 +1483,8 @@ async function addUserAddress(userId, address) {
           address.intercom || null,
           address.comment || null,
           address.isDefault || false
-        ]
-      );
+            ]
+          );
       
       console.log(`✅ addUserAddress: добавлен адрес для user_id=${userId}, street=${streetValue}, house=${houseValue}`);
       
@@ -1499,9 +1499,9 @@ async function addUserAddress(userId, address) {
   } catch (error) {
     console.error('Ошибка addUserAddress:', error);
     return false;
-  }
-}
-
+        }
+      }
+      
 // Сохранение адресов пользователя (полная замена списка)
 // Всегда работает с user_id (внутренний id из таблицы users)
 async function saveUserAddresses(user_id, addresses) {
@@ -1528,7 +1528,7 @@ async function saveUserAddresses(user_id, addresses) {
       if (addresses.length === 0) {
         console.log('[saveUserAddresses] 🧹 Пустой список адресов — удаляем все адреса пользователя из БД для user_id =', user_id);
         await client.query('DELETE FROM addresses WHERE user_id = $1', [user_id]);
-        await client.query('COMMIT');
+      await client.query('COMMIT');
         console.log('[saveUserAddresses] ✅ Все адреса для user_id =', user_id, 'удалены');
         return true;
       }
@@ -2373,11 +2373,11 @@ app.post('/api/user-data', async (req, res) => {
       // Сохраняем адреса (включая пустой массив - разрешаем удаление всех адресов)
       if (addresses !== undefined && Array.isArray(addresses)) {
         console.log('[POST /api/user-data] 📥 Пришло адресов из фронта:', addresses.length);
-        const saved = await saveUserAddresses(user.id, addresses);
+          const saved = await saveUserAddresses(user.id, addresses);
         if (!saved) {
           console.error('[POST /api/user-data] ❌ Ошибка сохранения адресов для user_id =', user.id);
         }
-      } else {
+          } else {
         console.log('[POST /api/user-data] ℹ️ addresses не массив или undefined:', addresses);
       }
       
@@ -2413,7 +2413,7 @@ app.post('/api/user-data', async (req, res) => {
       saveUserDataToFile(userDataStore);
       
       console.log(`💾 Сохранены данные для пользователя ${userId} (файл): адресов=${userDataStore[userId].addresses.length}, заказов=${userDataStore[userId].activeOrders.length}`);
-      
+    
       // Возвращаем адреса из файлового хранилища
       res.json({ success: true, addresses: userDataStore[userId].addresses || [] });
     }
@@ -2601,14 +2601,14 @@ app.post('/api/orders', async (req, res) => {
               // Это не затирает существующие адреса пользователя
               const addressToAdd = {
                 name: orderData.addressData.name || orderData.addressData.street || 'Новый адрес',
-                city: orderData.addressData.city || 'Санкт-Петербург',
-                street: orderData.addressData.street,
+                  city: orderData.addressData.city || 'Санкт-Петербург',
+                  street: orderData.addressData.street,
                 house: orderData.addressData.house || '',
-                entrance: orderData.addressData.entrance || '',
-                apartment: orderData.addressData.apartment || '',
-                floor: orderData.addressData.floor || '',
-                intercom: orderData.addressData.intercom || '',
-                comment: orderData.addressData.comment || ''
+                  entrance: orderData.addressData.entrance || '',
+                  apartment: orderData.addressData.apartment || '',
+                  floor: orderData.addressData.floor || '',
+                  intercom: orderData.addressData.intercom || '',
+                  comment: orderData.addressData.comment || ''
               };
               
               const added = await addUserAddress(user.id, addressToAdd);
@@ -7226,32 +7226,32 @@ bot.on('message', async (ctx) => {
         await ctx.reply('⚠️ Произошла ошибка при создании обращения в поддержку. Попробуйте позже.');
         return;
       }
-      
+  
       // Получаем информацию о пользователе из БД
-      let userInfo = '';
-      if (pool) {
-        try {
-          const client = await pool.connect();
-          try {
-            const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
-            const userResult = await client.query(
+  let userInfo = '';
+  if (pool) {
+    try {
+      const client = await pool.connect();
+      try {
+        const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
+        const userResult = await client.query(
               'SELECT phone, email FROM users WHERE telegram_id = $1::bigint',
-              [!isNaN(userIdNum) ? userIdNum : userId]
-            );
-            
-            if (userResult.rows.length > 0) {
-              const user = userResult.rows[0];
+          [!isNaN(userIdNum) ? userIdNum : userId]
+        );
+        
+        if (userResult.rows.length > 0) {
+          const user = userResult.rows[0];
               if (user.phone) userInfo += `\n📱 Телефон: ${user.phone}`;
               if (user.email) userInfo += `\n📧 Email: ${user.email}`;
-            }
-          } finally {
-            client.release();
-          }
-        } catch (error) {
-          console.error('Ошибка получения данных пользователя:', error);
         }
+      } finally {
+        client.release();
       }
-      
+    } catch (error) {
+          console.error('Ошибка получения данных пользователя:', error);
+    }
+  }
+  
       // Формируем шапку с информацией о пользователе (отправляем всегда для первого сообщения)
       // Проверяем, был ли топик только что создан (менее 60 секунд назад)
       let shouldSendHeader = false;
@@ -7332,11 +7332,11 @@ bot.on('message', async (ctx) => {
               headerMessage = await bot.telegram.sendMessage(
                 SUPPORT_CHAT_ID,
                 header,
-                {
-                  parse_mode: 'HTML',
+        {
+          parse_mode: 'HTML',
                   message_thread_id: newMessageThreadId
-                }
-              );
+        }
+      );
               
               console.log(`[support] ✅ Шапка отправлена в новый топик ${newMessageThreadId}, message_id: ${headerMessage.message_id}`);
               
@@ -7349,7 +7349,7 @@ bot.on('message', async (ctx) => {
               } catch (pinError) {
                 console.error(`[support] ❌ Не удалось закрепить сообщение в новом топике ${newMessageThreadId}:`, pinError.message);
               }
-            } else {
+  } else {
               console.error(`[support] ❌ Не удалось создать новый топик для пользователя ${userId}`);
               throw headerError; // Пробрасываем ошибку дальше
             }
@@ -7366,9 +7366,9 @@ bot.on('message', async (ctx) => {
           try {
             await bot.telegram.sendMessage(
               SUPPORT_CHAT_ID,
-              `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
-              {
-                parse_mode: 'HTML',
+        `📨 <b>Сообщение:</b>\n${ctx.message.text}`,
+        {
+          parse_mode: 'HTML',
                 message_thread_id: messageThreadId
               }
             );
@@ -7392,8 +7392,8 @@ bot.on('message', async (ctx) => {
               }
             } else {
               throw threadError; // Для других ошибок пробрасываем дальше
-            }
-          }
+    }
+  }
         } 
         // Для медиа пытаемся скопировать
         else if (ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.voice) {
@@ -7421,7 +7421,7 @@ bot.on('message', async (ctx) => {
                   }
                 );
                 console.log(`[support] ✅ Медиа отправлено в новый топик ${newMessageThreadId}`);
-              } else {
+    } else {
                 // Если не удалось создать новый топик, отправляем текстовое описание
                 const mediaType = ctx.message.photo ? '📷 Фото' :
                                  ctx.message.document ? '📎 Документ' :
@@ -7494,7 +7494,7 @@ bot.on('message', async (ctx) => {
       // НЕ отправляем подтверждающее сообщение пользователю (по требованию)
       
       console.log(`📤 Сообщение от пользователя ${userId} (${userName}) отправлено в топик ${messageThreadId}`);
-    } catch (error) {
+        } catch (error) {
       console.error('⚠️ Ошибка пересылки сообщения в чат поддержки:', error);
       await ctx.reply('⚠️ Произошла ошибка при отправке сообщения в поддержку. Попробуйте позже.');
     }
@@ -7508,8 +7508,8 @@ bot.on('message', async (ctx) => {
     
     if (!messageThreadId) {
       // Сообщение не в топике, игнорируем
-      return;
-    }
+          return;
+        }
     
     try {
       console.log(`[support] 📨 Обработка ответа менеджера в топике ${messageThreadId}`);
@@ -7588,14 +7588,14 @@ async function sendManagerReplyToUser(ctx, userId) {
     
     // Подтверждаем менеджеру
     await ctx.reply('✅ Ответ отправлен пользователю', { reply_to_message_id: ctx.message.message_id });
-  } catch (error) {
+      } catch (error) {
     console.error('⚠️ Ошибка отправки ответа пользователю:', error);
     await ctx.reply('⚠️ Не удалось отправить ответ пользователю. Возможно, он заблокировал бота.', {
       reply_to_message_id: ctx.message.message_id
     });
-  }
-}
-
+        }
+      }
+      
 // Обработка ответов менеджера (callback для ответа)
 // Старая логика с сессиями удалена - теперь всё работает через чат поддержки
 
