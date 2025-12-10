@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Phone, MessageCircle, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -7,6 +7,7 @@ const API_BASE = window.location.origin;
 
 export function CustomerDetail({ customer, onClose, authToken, customerId }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [customerData, setCustomerData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bonusAdjustment, setBonusAdjustment] = useState('');
@@ -250,8 +251,15 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
       // Если есть onClose (используется в модальном режиме)
       onClose();
     } else {
-      // Если используется через роутинг - навигация к списку клиентов
-      navigate('/customers');
+      // Если используется через роутинг - проверяем, откуда пришли
+      const returnTo = location.state?.returnTo;
+      if (returnTo) {
+        // Если пришли из заказа - возвращаемся в заказ
+        navigate(returnTo);
+      } else {
+        // Иначе возвращаемся к списку клиентов
+        navigate('/customers');
+      }
     }
   };
 

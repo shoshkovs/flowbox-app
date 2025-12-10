@@ -405,7 +405,19 @@ export function OrderDetail({ authToken, orderId }) {
                   <h3 className="font-medium mb-3">Клиент</h3>
                   <div className="space-y-2">
                     {/* Имя клиента - из профиля Telegram */}
-                    <p className="text-gray-900">{order.customer_name || '-'}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-gray-900">{order.customer_name || '-'}</p>
+                      {/* ID клиента - кликабельный, ведет на детали клиента */}
+                      {order.user_id && (
+                        <span
+                          onClick={() => navigate(`/customers/${order.user_id}`, { state: { returnTo: `/orders/${orderId}` } })}
+                          className="text-blue-600 font-medium cursor-pointer hover:text-blue-800 hover:underline text-sm"
+                          title="Открыть детали клиента"
+                        >
+                          #{order.user_id}
+                        </span>
+                      )}
+                    </div>
                     {/* Телефон клиента - только если указан в профиле */}
                     {order.customer_phone ? (
                       <button className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">

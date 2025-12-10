@@ -5316,6 +5316,7 @@ app.get('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         leave_at_door: order.leave_at_door || false,
         customer_telegram_username: order.customer_telegram_username,
         customer_telegram_id: order.customer_telegram_id,
+        user_id: order.user_id || null, // ID клиента из базы данных
         items: itemsResult.rows.map(row => ({
           id: row.id,
           product_id: row.product_id,
