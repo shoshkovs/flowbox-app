@@ -436,6 +436,10 @@ export function Warehouse({ authToken }) {
               {filteredProducts.map((product) => {
                 const isExpanded = expandedProducts.has(product.id);
                 const currentBatchId = getCurrentBatchId(product.batches);
+                
+                // Рассчитываем метрики только по актуальным партиям
+                // Бэкенд уже отфильтровал только актуальные поставки (с движением SUPPLY)
+                // Поэтому все партии в product.batches уже актуальные
                 const totalSupplied = product.batches.reduce(
                   (sum, b) => sum + b.initialQuantity,
                   0

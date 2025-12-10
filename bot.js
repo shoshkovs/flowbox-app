@@ -4004,8 +4004,31 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
         ORDER BY p.name
       `);
       
-      // Получаем все поставки с поставщиками
-      const suppliesResult = await client.query(`
+      // Получаем все движения по складу
+      const movementsResult = await client.query(`
+        SELECT 
+          sm.supply_id,
+          sm.product_id,
+          sm.type,
+          SUM(sm.quantity) as quantity
+        FROM stock_movements sm
+        WHERE sm.supply_id IS NOT NULL
+        GROUP BY sm.supply_id, sm.product_id, sm.type
+      `);
+      
+      // Определяем актуальные поставки: те, у которых есть движение типа SUPPLY
+      // Это означает, что поставка была активирована и является актуальной (не удалена, не в архиве)
+      const activeSupplyIds = new Set();
+      movementsResult.rows.forEach(m => {
+        if (m.type === 'SUPPLY') {
+          activeSupplyIds.add(m.supply_id);
+        }
+      });
+      
+      // Получаем поставки с поставщиками
+      // Фильтруем только актуальные: те, у которых есть движение SUPPLY (активированы)
+      // Если activeSupplyIds пуст, возвращаем пустой результат (нет актуальных поставок)
+      const suppliesResult = activeSupplyIds.size > 0 ? await client.query(`
         SELECT 
           s.id,
           s.product_id,
@@ -4018,20 +4041,9 @@ app.get('/api/admin/warehouse', checkAdminAuth, async (req, res) => {
         FROM supplies s
         LEFT JOIN suppliers sup ON s.supplier_id = sup.id
         WHERE s.product_id IS NOT NULL
+        AND s.id = ANY($1::int[])
         ORDER BY s.delivery_date DESC, s.id DESC
-      `);
-      
-      // Получаем все движения по складу
-      const movementsResult = await client.query(`
-        SELECT 
-          sm.supply_id,
-          sm.product_id,
-          sm.type,
-          SUM(sm.quantity) as quantity
-        FROM stock_movements sm
-        WHERE sm.supply_id IS NOT NULL
-        GROUP BY sm.supply_id, sm.product_id, sm.type
-      `);
+      `, [Array.from(activeSupplyIds)]) : { rows: [] };
       
       // Создаём мапу движений по supply_id
       const movementsBySupply = {};
