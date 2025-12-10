@@ -3517,12 +3517,35 @@ async function validateAndSubmitOrder(e) {
                 step.classList.remove('active');
             });
             
+            // Скрываем все вкладки редактирования
+            const editingTabs = ['editRecipientTab', 'editAddressTab', 'myAddressesTab'];
+            editingTabs.forEach(tabId => {
+                const tab = document.getElementById(tabId);
+                if (tab) {
+                    tab.style.display = 'none';
+                }
+            });
+            
+            // Скрываем элементы списка адресов
+            const checkoutAddressesList = document.getElementById('checkoutAddressesList');
+            const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+            const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+            if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
+            if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
+            if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+            
             // Прячем контейнер оформления, если есть
             const orderTabEl = document.getElementById('orderTab');
             if (orderTabEl) {
                 orderTabEl.style.display = 'none';
                 orderTabEl.classList.remove('active');
             }
+            
+            // Сбрасываем состояние чекаута
+            checkoutMode = null;
+            checkoutScreen = 'cart';
+            currentCheckoutStep = 1;
+            isSimpleCheckout = false;
             
             // ЯВНО показываем нижнее меню (оно было скрыто при переходе на orderTab)
             const bottomNav = document.querySelector('.bottom-nav');
@@ -3533,6 +3556,9 @@ async function validateAndSubmitOrder(e) {
             
             // Переключаемся на каталог через switchTab (консистентный способ)
             switchTab('menuTab');
+            
+            // Скрываем BackButton
+            showBackButton(false);
             
             // Показываем алерт с номером заказа
             if (tg && tg.showAlert) {
@@ -6848,12 +6874,12 @@ function openEditRecipientPage() {
         if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
         if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
         
-        // Скрываем кнопку "Сохранить" в упрощенном режиме
+        // В упрощенном режиме показываем кнопку "Сохранить" (не скрываем)
         if (saveRecipientBtn) {
-            saveRecipientBtn.style.display = 'none';
+            saveRecipientBtn.style.display = '';
         }
         
-        // Добавляем автосохранение при изменении полей
+        // Добавляем автосохранение при изменении полей (дополнительно к кнопке)
         // Используем существующую функцию или создаем новую
         if (!nameField._autoSaveHandler) {
             nameField._autoSaveHandler = async () => {
@@ -7297,14 +7323,25 @@ function openEditAddressPageFromList(address) {
     commentField.value = address.comment || addrData.comment || '';
     
     // Скрываем все шаги checkout
-    document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.checkout-step').forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none';
+    });
     
     // В упрощенном сценарии скрываем заголовок "Оформление заказа"
-    if (isSimpleCheckout) {
+    if (isSimpleCheckout || checkoutMode === 'simple') {
         const orderPageHeader = document.querySelector('.order-page-header');
         if (orderPageHeader) {
             orderPageHeader.style.display = 'none';
         }
+        
+        // Скрываем список адресов и форму, если они открыты
+        const checkoutAddressesList = document.getElementById('checkoutAddressesList');
+        const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+        const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+        if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
+        if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
+        if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
     }
     
     // Скрываем все вкладки
@@ -7318,7 +7355,9 @@ function openEditAddressPageFromList(address) {
     editAddressTab.style.display = 'block';
     
     // Обновляем состояние
+    const previousScreen = checkoutScreen;
     checkoutScreen = 'editAddress';
+    console.log('[SimpleMenu] ✅ Переход выполнен: editAddress, было:', previousScreen, 'стало:', checkoutScreen);
     
     // Прокрутка в начало страницы редактирования
     setTimeout(() => {
