@@ -322,7 +322,7 @@ export function Customers({ authToken }) {
                       <button
                         onClick={() => {
                           if (customer.id) {
-                            navigate(`/admin/customers/${customer.id}`);
+                            navigate(`/customers/${customer.id}`);
                           } else {
                             setSelectedCustomer(customer);
                           }
