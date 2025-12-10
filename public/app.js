@@ -290,7 +290,7 @@ const profileAvatarFallback = document.getElementById('profileAvatarFallback');
 const activeOrdersElement = document.getElementById('activeOrders');
 
 // Навигация
-const navItems = document.querySelectorAll('.nav-item');
+let navItems = document.querySelectorAll('.nav-item');
 const tabContents = document.querySelectorAll('.tab-content');
 
 // Фильтры
