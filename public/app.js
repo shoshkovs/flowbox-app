@@ -2224,6 +2224,13 @@ function initOrderForm() {
                             deliveryDateInput.value = toInputValue(selectedDate);
                             updateDeliveryTimeOptions();
                             
+                            // Убираем красную рамку с поля даты при выборе
+                            const deliveryDateField = document.getElementById('deliveryDate');
+                            const deliveryDateAnchor = document.getElementById('anchor-deliveryDate');
+                            if (deliveryDateField) {
+                                validateField(deliveryDateField, true);
+                            }
+                            
                             console.log('[renderCalendar] Выбрана дата:', selectedDate.toISOString().split('T')[0]);
                             
                             // Тактильная обратная связь
@@ -6137,6 +6144,12 @@ function initSimpleDateTimeOnSummary() {
                         deliveryDateInput.value = dateStr;
                         checkoutData.deliveryDate = dateStr;
                         
+                        // Убираем красную рамку с календаря при выборе даты
+                        const summaryCalendar = document.getElementById('summaryCustomCalendar');
+                        if (summaryCalendar) {
+                            summaryCalendar.classList.remove('error-field');
+                        }
+                        
                         // Обновляем отображение
                         updateSummaryDateTimeDisplay();
                     }
@@ -6194,6 +6207,11 @@ function initSimpleDateTimeOnSummary() {
                 
                 const time = btn.dataset.time;
                 checkoutData.deliveryTime = time;
+                
+                // Убираем красную рамку со всех кнопок времени при выборе
+                buttons.forEach(b => {
+                    b.classList.remove('error-time-slot');
+                });
                 
                 updateSummaryDateTimeDisplay();
             });
