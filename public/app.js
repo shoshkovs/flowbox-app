@@ -122,26 +122,14 @@ function exitToCart() {
     // Используем ту же функцию закрытия, что и после успешного заказа
     closeCheckoutUI();
     
-    // ЯВНО скрываем orderTab перед переключением на корзину
+    // Переключаемся на корзину (switchTab теперь явно управляет display для всех вкладок)
+    switchTab('cartTab');
+    
+    // Убеждаемся, что orderTab скрыт (на случай, если switchTab его показал)
     const orderTabEl = document.getElementById('orderTab');
     if (orderTabEl) {
         orderTabEl.style.display = 'none';
         orderTabEl.classList.remove('active');
-    }
-    
-    // Переключаемся на корзину (это также обновит навигацию и покажет корзину)
-    switchTab('cartTab');
-    
-    // ЯВНО показываем корзину после switchTab (на случай, если что-то пошло не так)
-    const cartTabEl = document.getElementById('cartTab');
-    if (cartTabEl) {
-        cartTabEl.style.display = 'block';
-        cartTabEl.classList.add('active');
-    }
-    
-    // Убеждаемся, что orderTab скрыт
-    if (orderTabEl) {
-        orderTabEl.style.display = 'none';
     }
     
     // Скрываем BackButton
@@ -1853,8 +1841,14 @@ function calculateFinalTotal() {
 
 // Переключение вкладок
 function switchTab(tabId) {
-    // Скрыть все вкладки
-    tabContents.forEach(tab => tab.classList.remove('active'));
+    // Скрыть все вкладки (и через класс, и через display)
+    tabContents.forEach(tab => {
+        tab.classList.remove('active');
+        // Явно скрываем все вкладки через display
+        if (tab.id !== tabId) {
+            tab.style.display = 'none';
+        }
+    });
     
     // При переключении на профиль - обновляем заказы для актуальных статусов
     if (tabId === 'profileTab') {
@@ -1865,6 +1859,8 @@ function switchTab(tabId) {
     const activeTab = document.getElementById(tabId);
     if (activeTab) {
         activeTab.classList.add('active');
+        // Явно показываем выбранную вкладку через display
+        activeTab.style.display = 'block';
     }
     
     // Скрыть/показать навигацию и header
