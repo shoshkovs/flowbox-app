@@ -810,9 +810,15 @@ function renderProducts() {
         return;
     }
 
-    // 2) Загрузка закончилась, но товаров нет – показываем "товар не найден"
+    // 2) Загрузка закончилась, но товаров нет – показываем красивое пустое состояние
     if (!filteredProducts || filteredProducts.length === 0) {
-        productsContainer.innerHTML = '<div class="products-empty">Товары не найдены</div>';
+        productsContainer.innerHTML = `
+            <div class="products-empty">
+                <div class="products-empty-icon">🌹</div>
+                <div class="products-empty-title">Похоже, у нас всё раскупили.</div>
+                <div class="products-empty-subtitle">Мы сообщим вам, когда что-то появится.</div>
+            </div>
+        `;
         return;
     }
 

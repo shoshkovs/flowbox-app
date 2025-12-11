@@ -548,10 +548,34 @@ h1, h2, h3, .font-bold {
 
 /* Пустое состояние товаров */
 .products-empty {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     padding: 48px 24px;
-    color: #666;
-    font-size: 16px;
+    min-height: 50vh;
+    width: 100%;
+    text-align: center;
+}
+
+.products-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.products-empty-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: rgba(51, 51, 51, 0.8);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.products-empty-subtitle {
+    font-size: 14px;
+    color: rgba(102, 102, 102, 0.7);
+    line-height: 1.4;
 }
 
 /* Cart Overlay */
