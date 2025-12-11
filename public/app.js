@@ -5517,26 +5517,78 @@ window.openOrderDetail = openOrderDetail;
 function initLeaveAtDoorCheckbox() {
     const checkbox = document.getElementById('leaveAtDoorCheckbox');
     if (!checkbox) {
-        console.warn('[leaveAtDoor] чекбокс не найден');
+        console.warn('[leaveAtDoor] ⚠️ Чекбокс не найден в DOM');
         return;
     }
-
-    // Чтобы не вешать обработчик много раз
-    if (checkbox.dataset.inited === 'true') {
-        console.log('[leaveAtDoor] уже инициализирован, выходим');
-        return;
-    }
-    checkbox.dataset.inited = 'true';
-
-    // стартовое значение из checkoutData
+    
+    // На всякий случай снимаем disabled
+    checkbox.disabled = false;
+    
+    // Начальное состояние из checkoutData
     checkbox.checked = !!checkoutData.leaveAtDoor;
-
-    console.log('[leaveAtDoor] инициализация, начальное состояние:', checkbox.checked);
-
-    checkbox.addEventListener('change', () => {
-        checkoutData.leaveAtDoor = checkbox.checked;
-        console.log('[leaveAtDoor] изменено:', checkoutData.leaveAtDoor);
-    });
+    
+    // Удаляем все старые обработчики, заменяя родительский элемент
+    const label = checkbox.closest('label');
+    if (label) {
+        const newLabel = label.cloneNode(true);
+        const newCheckbox = newLabel.querySelector('#leaveAtDoorCheckbox');
+        label.parentNode.replaceChild(newLabel, label);
+        
+        if (newCheckbox) {
+            newCheckbox.disabled = false;
+            newCheckbox.checked = !!checkoutData.leaveAtDoor;
+            
+            // ВАЖНО: Убеждаемся, что checked состояние визуально отображается
+            if (newCheckbox.checked) {
+                newCheckbox.setAttribute('checked', 'checked');
+            } else {
+                newCheckbox.removeAttribute('checked');
+            }
+            
+            newCheckbox.addEventListener('change', function() {
+                checkoutData.leaveAtDoor = this.checked;
+                console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
+                
+                // ВАЖНО: Обновляем атрибут checked для визуального отображения
+                if (this.checked) {
+                    this.setAttribute('checked', 'checked');
+                } else {
+                    this.removeAttribute('checked');
+                }
+                
+                // Обновляем отображение на шаге 4
+                if (typeof renderCheckoutSummary === 'function') {
+                    renderCheckoutSummary();
+                }
+            });
+            
+            console.log('[leaveAtDoor] ✅ Чекбокс инициализирован, начальное состояние:', newCheckbox.checked);
+        }
+    } else {
+        // Если label нет, работаем напрямую
+        // ВАЖНО: Убеждаемся, что checked состояние визуально отображается
+        if (checkbox.checked) {
+            checkbox.setAttribute('checked', 'checked');
+        } else {
+            checkbox.removeAttribute('checked');
+        }
+        
+        checkbox.addEventListener('change', function() {
+            checkoutData.leaveAtDoor = this.checked;
+            console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
+            
+            // ВАЖНО: Обновляем атрибут checked для визуального отображения
+            if (this.checked) {
+                this.setAttribute('checked', 'checked');
+            } else {
+                this.removeAttribute('checked');
+            }
+            
+            if (typeof renderCheckoutSummary === 'function') {
+                renderCheckoutSummary();
+            }
+        });
+    }
 }
 
 // Инициализация чекбокса "Оставить у двери" для упрощенного режима
@@ -6822,7 +6874,6 @@ function initSimpleDateTimeOnSummary() {
                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         deliveryDateInput.value = dateStr;
                         checkoutData.deliveryDate = dateStr;
-                        console.log('[simpleDate] выбрана дата:', dateStr);
                         
                         // Убираем красную рамку с календаря при выборе даты
                         const summaryCalendar = document.getElementById('summaryCustomCalendar');
@@ -6887,7 +6938,6 @@ function initSimpleDateTimeOnSummary() {
                 
                 const time = btn.dataset.time;
                 checkoutData.deliveryTime = time;
-                console.log('[simpleTime] выбрано время:', time);
                 
                 // Убираем красную рамку со всех кнопок времени при выборе
                 buttons.forEach(b => {
