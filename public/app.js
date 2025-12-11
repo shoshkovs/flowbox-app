@@ -6070,7 +6070,16 @@ function goToStep(step) {
     }
     
     // Обновляем состояние экрана
-    checkoutScreen = 'steps';
+    // На шаге 4 состояние уже установлено выше (summary для simple, steps для full)
+    // Не перезаписываем checkoutScreen на шаге 4, чтобы сохранить правильное значение
+    if (step !== 4) {
+        // Для шагов 1-3 устанавливаем checkoutScreen только в полном режиме
+        if (!(isSimpleCheckout || checkoutMode === 'simple')) {
+            checkoutScreen = 'steps';
+        }
+        // В упрощенном режиме checkoutScreen должен оставаться 'summary' или 'cart'
+        // и не должен меняться на 'steps'
+    }
     
     // Показываем BackButton
     showBackButton(true);
