@@ -4312,14 +4312,66 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
         if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
         if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
     } else if (source === 'simple') {
-        // Для упрощенного режима показываем форму вместо списка
-        const checkoutAddressForm = document.getElementById('checkoutAddressForm');
-        const checkoutAddressesList = document.getElementById('checkoutAddressesList');
-        const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+        // Для упрощенного режима показываем форму редактирования адреса
+        const editAddressTab = document.getElementById('editAddressTab');
+        const editAddressCity = document.getElementById('editAddressCity');
+        const editAddressStreet = document.getElementById('editAddressStreet');
+        const editAddressApartment = document.getElementById('editAddressApartment');
+        const editAddressFloor = document.getElementById('editAddressFloor');
+        const editAddressEntrance = document.getElementById('editAddressEntrance');
+        const editAddressIntercom = document.getElementById('editAddressIntercom');
+        const editAddressComment = document.getElementById('editAddressComment');
         
-        if (checkoutAddressForm) checkoutAddressForm.style.display = 'block';
-        if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
-        if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+        if (!editAddressTab) {
+            console.error('[openAddressForm] editAddressTab не найден');
+            return;
+        }
+        
+        // Заполняем форму редактирования адреса
+        if (initialData) {
+            // Формируем street из street и house для отображения в поле ввода
+            let streetValue = initialData.street || '';
+            const houseValue = initialData.house || '';
+            if (houseValue && !streetValue.includes(houseValue)) {
+                streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+            }
+            
+            if (editAddressCity) editAddressCity.value = initialData.city || 'Санкт-Петербург';
+            if (editAddressStreet) editAddressStreet.value = streetValue;
+            if (editAddressApartment) editAddressApartment.value = initialData.apartment || '';
+            if (editAddressFloor) editAddressFloor.value = initialData.floor || '';
+            if (editAddressEntrance) editAddressEntrance.value = initialData.entrance || '';
+            if (editAddressIntercom) editAddressIntercom.value = initialData.intercom || '';
+            if (editAddressComment) editAddressComment.value = initialData.comment || '';
+            
+            // Сохраняем ID редактируемого адреса
+            editAddressTab.dataset.editingAddressId = initialData.id;
+        } else {
+            // Очищаем форму для нового адреса
+            if (editAddressCity) editAddressCity.value = 'Санкт-Петербург';
+            if (editAddressStreet) editAddressStreet.value = '';
+            if (editAddressApartment) editAddressApartment.value = '';
+            if (editAddressFloor) editAddressFloor.value = '';
+            if (editAddressEntrance) editAddressEntrance.value = '';
+            if (editAddressIntercom) editAddressIntercom.value = '';
+            if (editAddressComment) editAddressComment.value = '';
+            
+            // Удаляем ID редактируемого адреса
+            delete editAddressTab.dataset.editingAddressId;
+        }
+        
+        // Скрываем все вкладки
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            if (tab.id !== 'editAddressTab') {
+                tab.style.display = 'none';
+            }
+        });
+        
+        // Скрываем все шаги checkout
+        document.querySelectorAll('.checkout-step').forEach(s => {
+            s.classList.remove('active');
+            s.style.display = 'none';
+        });
         
         // Скрываем заголовок
         const orderPageHeader = document.querySelector('.order-page-header');
@@ -4327,9 +4379,17 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
             orderPageHeader.style.display = 'none';
         }
         
+        // Показываем форму редактирования
+        editAddressTab.style.display = 'block';
+        
         // Устанавливаем правильный checkoutScreen
         checkoutScreen = 'editAddress';
-        console.log('[SimpleMenu] 📍 Переход: открытие формы создания адреса, checkoutScreen:', checkoutScreen);
+        console.log('[SimpleMenu] 📍 Переход: открытие формы адреса, checkoutScreen:', checkoutScreen, 'mode:', mode);
+        
+        // Прокручиваем страницу вверх
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
         
         showBackButton(true);
     } else {
@@ -4349,8 +4409,27 @@ async function handleAddressFormSubmit(event) {
     const addressId = form.dataset.addressId ? Number(form.dataset.addressId) : null;
     
     // Валидация (используем существующую логику)
-    const addressCityField = document.getElementById('addressCity');
-    const addressStreetField = document.getElementById('addressStreet');
+    // Для упрощенного режима используем поля из editAddressTab
+    let addressCityField, addressStreetField, addressApartmentField, addressFloorField, addressEntranceField, addressIntercomField, addressCommentField;
+    
+    if (source === 'simple') {
+        addressCityField = document.getElementById('editAddressCity');
+        addressStreetField = document.getElementById('editAddressStreet');
+        addressApartmentField = document.getElementById('editAddressApartment');
+        addressFloorField = document.getElementById('editAddressFloor');
+        addressEntranceField = document.getElementById('editAddressEntrance');
+        addressIntercomField = document.getElementById('editAddressIntercom');
+        addressCommentField = document.getElementById('editAddressComment');
+    } else {
+        addressCityField = document.getElementById('addressCity');
+        addressStreetField = document.getElementById('addressStreet');
+        addressApartmentField = document.getElementById('addressApartment');
+        addressFloorField = document.getElementById('addressFloor');
+        addressEntranceField = document.getElementById('addressEntrance');
+        addressIntercomField = document.getElementById('addressIntercom');
+        addressCommentField = document.getElementById('addressComment');
+    }
+    
     const city = addressCityField ? addressCityField.value.trim() : '';
     const street = addressStreetField ? addressStreetField.value.trim() : '';
     
@@ -4381,11 +4460,11 @@ async function handleAddressFormSubmit(event) {
         city: city,
         street: streetValue || street,
         house: houseValue,
-        entrance: document.getElementById('addressEntrance').value.trim(),
-        apartment: document.getElementById('addressApartment').value.trim(),
-        floor: document.getElementById('addressFloor').value.trim(),
-        intercom: document.getElementById('addressIntercom').value.trim(),
-        comment: document.getElementById('addressComment').value.trim()
+        entrance: addressEntranceField ? addressEntranceField.value.trim() : '',
+        apartment: addressApartmentField ? addressApartmentField.value.trim() : '',
+        floor: addressFloorField ? addressFloorField.value.trim() : '',
+        intercom: addressIntercomField ? addressIntercomField.value.trim() : '',
+        comment: addressCommentField ? addressCommentField.value.trim() : ''
     };
     
     // Подготавливаем обновленный список адресов
@@ -4464,10 +4543,37 @@ async function handleAddressFormSubmit(event) {
         if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
         if (checkoutAddressesList) checkoutAddressesList.style.display = 'block';
         if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
-    } else if (source === 'simple' && createdAddressId) {
-        // В упрощенном режиме используем selectCheckoutAddressForSimple
-        console.log('[handleAddressFormSubmit] ✅ Создан адрес в упрощенном режиме, выбираем его:', createdAddressId);
-        selectCheckoutAddressForSimple(createdAddressId);
+    } else if (source === 'simple') {
+        // В упрощенном режиме возвращаемся на вкладку оформления
+        console.log('[handleAddressFormSubmit] ✅ Адрес сохранен в упрощенном режиме, возвращаемся на вкладку оформления');
+        
+        // Скрываем форму редактирования
+        const editAddressTab = document.getElementById('editAddressTab');
+        if (editAddressTab) {
+            editAddressTab.style.display = 'none';
+        }
+        
+        // Если адрес был создан или обновлен, обновляем checkoutData
+        if (createdAddressId) {
+            const updatedAddr = savedAddresses.find(a => Number(a.id) === Number(createdAddressId));
+            if (updatedAddr) {
+                checkoutData.addressId = updatedAddr.id;
+                checkoutData.address = {
+                    id: updatedAddr.id,
+                    city: updatedAddr.city || 'Санкт-Петербург',
+                    street: updatedAddr.street || '',
+                    house: updatedAddr.house || '',
+                    apartment: updatedAddr.apartment || '',
+                    floor: updatedAddr.floor || '',
+                    entrance: updatedAddr.entrance || '',
+                    intercom: updatedAddr.intercom || '',
+                    comment: updatedAddr.comment || ''
+                };
+            }
+        }
+        
+        // Возвращаемся на вкладку оформления
+        showSimpleSummary();
     } else if (source === 'profile') {
         // Возвращаемся в профиль
     switchTab('profileTab');
@@ -5392,6 +5498,8 @@ window.deleteAddressFromMyAddresses = deleteAddressFromMyAddresses;
 window.toggleAddressMenu = toggleAddressMenu;
 window.editAddressFromProfile = editAddressFromProfile;
 window.deleteAddressFromProfile = deleteAddressFromProfile;
+window.editAddressFromSimple = editAddressFromSimple;
+window.deleteAddressFromSimple = deleteAddressFromSimple;
 window.addAdditionalProduct = addAdditionalProduct;
 window.selectCheckoutAddress = selectCheckoutAddress;
 window.showCheckoutAddressForm = showCheckoutAddressForm;
@@ -6046,20 +6154,13 @@ function selectCheckoutAddressForSimple(addressId) {
 function openCheckoutAddressesForSimple() {
     console.log('[SimpleMenu] 📍 Переход: открытие списка адресов, checkoutScreen:', checkoutScreen, 'checkoutMode:', checkoutMode);
     
-    const addressesList = document.getElementById('checkoutAddressesList');
-    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
-    const addressForm = document.getElementById('checkoutAddressForm');
-    const step4 = document.getElementById('checkoutStep4');
+    const myAddressesTab = document.getElementById('myAddressesTab');
+    const myAddressesList = document.getElementById('myAddressesList');
+    const addNewAddressFromListBtn = document.getElementById('addNewAddressFromListBtn');
     
-    if (!addressesList || !addNewAddressBtn || !addressForm) {
+    if (!myAddressesTab || !myAddressesList) {
         console.error('[SimpleMenu] ❌ Не найдены необходимые элементы для списка адресов');
         return;
-    }
-    
-    // Скрываем шаг 4
-    if (step4) {
-        step4.style.display = 'none';
-        step4.classList.remove('active');
     }
     
     // Скрываем все шаги checkout
@@ -6070,7 +6171,7 @@ function openCheckoutAddressesForSimple() {
     
     // Скрываем все вкладки
     document.querySelectorAll('.tab-content').forEach(tab => {
-        if (tab.id !== 'checkoutAddressesList' && tab.id !== 'checkoutAddressForm') {
+        if (tab.id !== 'myAddressesTab') {
             tab.style.display = 'none';
         }
     });
@@ -6081,22 +6182,101 @@ function openCheckoutAddressesForSimple() {
         orderPageHeader.style.display = 'none';
     }
     
-    // Рендерим список адресов с кнопками редактирования/удаления
-    renderCheckoutAddresses(true);
+    // Рендерим список адресов с радио кнопками и меню
+    renderMyAddressesListForSimple();
     
     // Настраиваем обработчик кнопки "Добавить новый адрес"
-    addNewAddressBtn.onclick = () => {
-        console.log('[SimpleMenu] 📍 Переход: открытие формы создания адреса');
-        // Открываем форму создания нового адреса
-        openAddressForm({ mode: 'create', source: 'simple' });
-    };
+    if (addNewAddressFromListBtn) {
+        addNewAddressFromListBtn.onclick = () => {
+            console.log('[SimpleMenu] 📍 Переход: открытие формы создания адреса');
+            openAddressForm({ mode: 'create', source: 'simple' });
+        };
+    }
+    
+    // Показываем вкладку со списком адресов
+    myAddressesTab.style.display = 'block';
     
     const previousScreen = checkoutScreen;
     checkoutScreen = 'addressesList';
     console.log('[SimpleMenu] ✅ Переход выполнен: список адресов, было:', previousScreen, 'стало:', checkoutScreen);
     
+    // Прокручиваем страницу вверх
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    
     // Показываем BackButton
     showBackButton(true);
+}
+
+// Рендеринг списка адресов для упрощенного режима с радио кнопками
+function renderMyAddressesListForSimple() {
+    const myAddressesList = document.getElementById('myAddressesList');
+    if (!myAddressesList) return;
+    
+    if (savedAddresses.length === 0) {
+        myAddressesList.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">Нет сохраненных адресов</div>';
+        return;
+    }
+    
+    // Фильтруем адреса - показываем только адреса с валидным ID
+    const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+    
+    if (validAddresses.length === 0) {
+        myAddressesList.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">Нет сохраненных адресов</div>';
+        return;
+    }
+    
+    // Определяем выбранный адрес
+    const selectedAddressId = checkoutData.addressId || (checkoutData.address && checkoutData.address.id);
+    
+    myAddressesList.innerHTML = validAddresses.map((addr) => {
+        // Формируем строку адреса
+        let street = addr.street || '';
+        const house = addr.house || '';
+        if (house && !street.includes(house)) {
+            street = street ? `${street}, ${house}` : house;
+        }
+        
+        const addressParts = [
+            street,
+            addr.apartment ? `кв. ${addr.apartment}` : '',
+            addr.entrance ? `парадная ${addr.entrance}` : '',
+            addr.floor ? `этаж ${addr.floor}` : ''
+        ].filter(Boolean);
+        
+        const addressStr = addressParts.join(', ');
+        const addressId = addr.id;
+        const isSelected = selectedAddressId && Number(selectedAddressId) === Number(addressId);
+        
+        return `
+            <div class="address-item" style="display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #eee; ${isSelected ? 'background-color: #f9f9f9;' : ''}">
+                <input type="radio" name="addressRadio" value="${addressId}" ${isSelected ? 'checked' : ''} 
+                       onchange="selectCheckoutAddressForSimple(${addressId})" 
+                       style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                <div style="flex: 1; cursor: pointer;" onclick="selectCheckoutAddressForSimple(${addressId})">
+                    <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
+                </div>
+                <div class="address-menu" style="position: relative;">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="5" r="1"/>
+                            <circle cx="12" cy="12" r="1"/>
+                            <circle cx="12" cy="19" r="1"/>
+                        </svg>
+                    </button>
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
+                        <button onclick="event.stopPropagation(); editAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                            Изменить
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Редактирование адреса из списка в упрощенном режиме
@@ -7069,6 +7249,65 @@ function renderMyAddressesList() {
     }).join('');
 }
 
+// Редактирование адреса из упрощенного режима
+function editAddressFromSimple(addressId) {
+    console.log('[SimpleMenu] 📍 Редактирование адреса из упрощенного режима, addressId:', addressId);
+    
+    // Ищем адрес
+    const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+    const addr = validAddresses.find(a => String(a.id) === String(addressId));
+    
+    if (!addr) {
+        console.error('[editAddressFromSimple] ❌ Адрес с ID', addressId, 'не найден');
+        return;
+    }
+    
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
+    // Открываем форму редактирования
+    openAddressForm({ mode: 'edit', source: 'simple', addressId: addressId });
+}
+
+// Удаление адреса из упрощенного режима
+async function deleteAddressFromSimple(addressId) {
+    if (!confirm('Вы уверены, что хотите удалить этот адрес?')) {
+        return;
+    }
+    
+    console.log('[SimpleMenu] 📍 Удаление адреса из упрощенного режима, addressId:', addressId);
+    
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
+    // Удаляем адрес из списка
+    const filtered = savedAddresses.filter(a => String(a.id) !== String(addressId));
+    setSavedAddresses(filtered);
+    
+    // Сохраняем на сервер
+    await saveUserData();
+    
+    // Если удаленный адрес был выбран, сбрасываем выбор
+    if (checkoutData.addressId && Number(checkoutData.addressId) === Number(addressId)) {
+        checkoutData.addressId = null;
+        checkoutData.address = null;
+    }
+    
+    // Обновляем отображение списка
+    renderMyAddressesListForSimple();
+    
+    // Тактильная обратная связь
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
 // Переключение меню адреса (три точки)
 function toggleAddressMenu(addressId) {
     // Закрываем все открытые меню
@@ -7494,11 +7733,27 @@ async function saveEditAddress() {
         delete editAddressTab.dataset.editingAddressId;
     }
     
-    // В упрощенном сценарии используем selectCheckoutAddress и возвращаемся на шаг 4
+    // В упрощенном сценарии возвращаемся на вкладку оформления
     if (isSimpleCheckout || checkoutMode === 'simple') {
         if (savedAddressId) {
-            // Используем существующую функцию для обновления checkoutData
-            selectCheckoutAddressForSimple(savedAddressId);
+            // Обновляем checkoutData с новым адресом
+            const updatedAddr = savedAddresses.find(a => Number(a.id) === Number(savedAddressId));
+            if (updatedAddr) {
+                checkoutData.addressId = updatedAddr.id;
+                checkoutData.address = {
+                    id: updatedAddr.id,
+                    city: updatedAddr.city || 'Санкт-Петербург',
+                    street: updatedAddr.street || '',
+                    house: updatedAddr.house || '',
+                    apartment: updatedAddr.apartment || '',
+                    floor: updatedAddr.floor || '',
+                    entrance: updatedAddr.entrance || '',
+                    intercom: updatedAddr.intercom || '',
+                    comment: updatedAddr.comment || ''
+                };
+            }
+            // Возвращаемся на вкладку оформления
+            showSimpleSummary();
         } else {
             // Если адрес не найден, просто возвращаемся на шаг 4
             showSimpleSummary();
