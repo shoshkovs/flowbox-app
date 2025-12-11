@@ -54,24 +54,14 @@ if (tg && shouldExpand() && typeof tg.expand === 'function') {
     console.log('[init] НЕ вызываем tg.expand() при инициализации - десктоп или метод недоступен');
 }
 
-// Функция выхода в корзину
-function exitToCart() {
-    console.log('[exitToCart] 🔙 Выход из оформления в корзину');
-    
-    // Сбрасываем состояние чекаута
-    checkoutMode = null;
-    checkoutScreen = 'cart';
-    currentCheckoutStep = 1;
-    isSimpleCheckout = false;
-    summaryDateTimeInitialized = false; // Сбрасываем флаг при выходе
+// Функция закрытия оформления (используется при выходе в корзину и после успешного заказа)
+function closeCheckoutUI() {
+    console.log('[closeCheckoutUI] 🔙 Закрытие оформления');
     
     // Скрываем все шаги оформления
-    ['checkoutStep1', 'checkoutStep2', 'checkoutStep3', 'checkoutStep4'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.style.display = 'none';
-            el.classList.remove('active');
-        }
+    document.querySelectorAll('.checkout-step').forEach(step => {
+        step.style.display = 'none';
+        step.classList.remove('active');
     });
     
     // Скрываем все вкладки редактирования
@@ -114,6 +104,23 @@ function exitToCart() {
         bottomNav.style.display = 'flex';
         bottomNav.classList.remove('hidden');
     }
+    
+    // Сбрасываем состояние чекаута
+    checkoutMode = null;
+    checkoutScreen = 'cart';
+    currentCheckoutStep = 1;
+    isSimpleCheckout = false;
+    summaryDateTimeInitialized = false; // Сбрасываем флаг при выходе
+    
+    console.log('[closeCheckoutUI] ✅ Оформление закрыто');
+}
+
+// Функция выхода в корзину
+function exitToCart() {
+    console.log('[exitToCart] 🔙 Выход из оформления в корзину');
+    
+    // Используем ту же функцию закрытия, что и после успешного заказа
+    closeCheckoutUI();
     
     // Переключаемся на корзину
     switchTab('cartTab');
@@ -3620,43 +3627,9 @@ async function validateAndSubmitOrder(e) {
                 orderComment: '',
                 leaveAtDoor: false
             };
-            currentCheckoutStep = 1;
             
-            // Скрываем все шаги оформления
-            document.querySelectorAll('.checkout-step').forEach(step => {
-                step.style.display = 'none';
-                step.classList.remove('active');
-            });
-            
-            // Скрываем все вкладки редактирования
-            const editingTabs = ['editRecipientTab', 'editAddressTab', 'myAddressesTab'];
-            editingTabs.forEach(tabId => {
-                const tab = document.getElementById(tabId);
-                if (tab) {
-                    tab.style.display = 'none';
-                }
-            });
-            
-            // Скрываем элементы списка адресов
-            const checkoutAddressesList = document.getElementById('checkoutAddressesList');
-            const checkoutAddressForm = document.getElementById('checkoutAddressForm');
-            const addNewAddressBtn = document.getElementById('addNewAddressBtn');
-            if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
-            if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
-            if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
-            
-            // Прячем контейнер оформления, если есть
-            const orderTabEl = document.getElementById('orderTab');
-            if (orderTabEl) {
-                orderTabEl.style.display = 'none';
-                orderTabEl.classList.remove('active');
-            }
-            
-            // Сбрасываем состояние чекаута
-            checkoutMode = null;
-            checkoutScreen = 'cart';
-            currentCheckoutStep = 1;
-            isSimpleCheckout = false;
+            // Используем единую функцию закрытия оформления
+            closeCheckoutUI();
             
             // ЯВНО показываем нижнее меню (оно было скрыто при переходе на orderTab)
             const bottomNav = document.querySelector('.bottom-nav');
