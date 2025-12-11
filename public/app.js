@@ -8,6 +8,7 @@ let isSimpleOrderInitialized = false; // Флаг инициализации у�
 let summaryDateTimeInitialized = false; // Флаг инициализации календаря на странице "Итого"
 let checkoutMode = null; // Режим оформления: 'full' | 'simple' | null
 let checkoutScreen = 'cart'; // Текущий экран: 'cart' | 'steps' | 'summary' | 'editRecipient' | 'myAddresses' | 'editAddress' | 'addressesList'
+let addressLocked = false; // Флаг блокировки повторного выбора адреса в упрощенном режиме
 
 // Данные оформления заказа (объявлено рано, чтобы избежать ошибок инициализации)
 let checkoutData = {
@@ -111,6 +112,7 @@ function closeCheckoutUI() {
     currentCheckoutStep = 1;
     isSimpleCheckout = false;
     summaryDateTimeInitialized = false; // Сбрасываем флаг при выходе
+    addressLocked = false; // Сбрасываем блокировку адреса при выходе
     
     console.log('[closeCheckoutUI] ✅ Оформление закрыто');
 }
@@ -2218,6 +2220,7 @@ function closeEditAddressAndReturnToAddressList() {
 // Упрощённый сценарий: сразу «Итого» (4-й шаг)
 function startSimpleCheckout() {
     isSimpleCheckout = true;
+    addressLocked = false; // Сбрасываем блокировку адреса при начале нового оформления
     showSimpleSummary();
     
     // Помечаем, что упрощенный заказ инициализирован
@@ -4828,6 +4831,10 @@ async function handleAddressFormSubmit(event) {
                     comment: updatedAddr.comment || ''
                 };
                 console.log('[handleAddressFormSubmit] ✅ checkoutData обновлен:', checkoutData.addressId, checkoutData.address);
+                
+                // Блокируем повторный выбор адреса после сохранения нового адреса
+                addressLocked = true;
+                console.log('[handleAddressFormSubmit] 🔒 Адрес заблокирован для повторного выбора после сохранения, addressId:', createdAddressId);
             } else {
                 console.warn('[handleAddressFormSubmit] ⚠️ Адрес с ID', createdAddressId, 'не найден в savedAddresses после сохранения');
             }
@@ -4840,7 +4847,13 @@ async function handleAddressFormSubmit(event) {
             console.log('[handleAddressFormSubmit] ✅ Возвращаемся на страницу списка адресов и обновляем список');
             // Обновляем список адресов перед возвратом
             renderMyAddressesListForSimple();
-            openCheckoutAddressesForSimple();
+            // Не открываем список адресов, если адрес уже заблокирован - возвращаемся на "Итого"
+            if (addressLocked) {
+                console.log('[handleAddressFormSubmit] 🔒 Адрес заблокирован, возвращаемся на страницу "Итого"');
+                showSimpleSummary();
+            } else {
+                openCheckoutAddressesForSimple();
+            }
         } else {
             // Иначе возвращаемся на вкладку оформления
             console.log('[handleAddressFormSubmit] ✅ Возвращаемся на вкладку оформления');
@@ -6512,6 +6525,12 @@ function selectCheckoutAddressForSimple(addressId) {
     // Используем существующую функцию для обновления checkoutData
     selectCheckoutAddress(addressId);
     
+    // Блокируем повторный выбор адреса в упрощенном режиме
+    if (isSimpleCheckout || checkoutMode === 'simple') {
+        addressLocked = true;
+        console.log('[SimpleMenu] 🔒 Адрес заблокирован для повторного выбора, addressId:', addressId);
+    }
+    
     // Обновляем список адресов, чтобы показать выбранный адрес
     renderMyAddressesListForSimple();
     
@@ -6542,7 +6561,18 @@ function selectCheckoutAddressForSimple(addressId) {
 
 // Открытие списка адресов для упрощенного режима
 function openCheckoutAddressesForSimple() {
-    console.log('[SimpleMenu] 📍 Переход: открытие списка адресов, checkoutScreen:', checkoutScreen, 'checkoutMode:', checkoutMode);
+    console.log('[SimpleMenu] 📍 Переход: открытие списка адресов, checkoutScreen:', checkoutScreen, 'checkoutMode:', checkoutMode, 'addressLocked:', addressLocked);
+    
+    // Проверяем, заблокирован ли повторный выбор адреса
+    if (addressLocked && (isSimpleCheckout || checkoutMode === 'simple')) {
+        console.log('[SimpleMenu] ⚠️ Адрес уже выбран, повторный выбор заблокирован');
+        if (tg && tg.showAlert) {
+            tg.showAlert('Адрес уже выбран. Если нужно изменить адрес, вернитесь в корзину и начните оформление заново.');
+        } else {
+            alert('Адрес уже выбран. Если нужно изменить адрес, вернитесь в корзину и начните оформление заново.');
+        }
+        return;
+    }
     
     const myAddressesTab = document.getElementById('myAddressesTab');
     const myAddressesList = document.getElementById('myAddressesList');
