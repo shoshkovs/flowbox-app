@@ -4495,9 +4495,13 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
         // Показываем форму редактирования
         editAddressTab.style.display = 'block';
         
+        // Сохраняем предыдущий экран для возврата после сохранения
+        editAddressTab.dataset.previousScreen = checkoutScreen;
+        editAddressTab.dataset.mode = mode;
+        
         // Устанавливаем правильный checkoutScreen
         checkoutScreen = 'editAddress';
-        console.log('[SimpleMenu] 📍 Переход: открытие формы адреса, checkoutScreen:', checkoutScreen, 'mode:', mode);
+        console.log('[SimpleMenu] 📍 Переход: открытие формы адреса, checkoutScreen:', checkoutScreen, 'mode:', mode, 'previousScreen:', editAddressTab.dataset.previousScreen);
         
         // Прокручиваем страницу вверх
         window.scrollTo(0, 0);
@@ -7938,36 +7942,98 @@ async function saveEditAddress() {
             // Используем единый сеттер
             setSavedAddresses(updatedAddresses);
             
-            // Сохраняем на сервер
-            await saveUserData();
-            
-            // После сохранения на сервер, ищем созданный адрес с ID
-            const createdAddress = savedAddresses.find(addr => {
-                if (!addr || !addr.id || typeof addr.id !== 'number' || addr.id <= 0) {
-                    return false;
-                }
-                const sameCity = (addr.city || '').toLowerCase().trim() === city.toLowerCase().trim();
-                const sameStreet = (addr.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
-                const sameApartment = (addr.apartment || '').toLowerCase().trim() === (apartmentField.value.trim() || '').toLowerCase().trim();
-                const sameHouse = (addr.house || '').toLowerCase().trim() === houseValue.toLowerCase().trim();
-                return sameCity && sameStreet && sameApartment && sameHouse;
-            });
-            
-            if (createdAddress && createdAddress.id) {
-                savedAddressId = createdAddress.id;
-                console.log('[saveEditAddress] ✅ Найден созданный адрес с ID:', savedAddressId);
-            } else {
-                // Если не нашли по содержимому, берем последний адрес из списка
-                const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
-                if (validAddresses.length > 0) {
-                    const lastAddress = validAddresses[validAddresses.length - 1];
-                    const similarCity = (lastAddress.city || '').toLowerCase().trim() === city.toLowerCase().trim();
-                    const similarStreet = (lastAddress.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
-                    if (similarCity && similarStreet) {
-                        savedAddressId = lastAddress.id;
-                        console.log('[saveEditAddress] ✅ Используем последний адрес как созданный, ID:', savedAddressId);
+            // Сохраняем на сервер и получаем обновленные адреса
+            const userId = getUserId();
+            if (userId) {
+                try {
+                    const profileData = localStorage.getItem('userProfile') ? JSON.parse(localStorage.getItem('userProfile')) : null;
+                    
+                    // Фильтруем адреса - убираем адреса без ID перед отправкой
+                    const deduplicatedAddresses = dedupeAddresses(updatedAddresses);
+                    console.log(`[saveEditAddress] 📦 Адресов до дедупликации: ${updatedAddresses.length}, после: ${deduplicatedAddresses.length}`);
+                    
+                    const addressesToSave = deduplicatedAddresses
+                        .filter(addr => {
+                            if (!addr || (!addr.city && !addr.street && !addr.house)) {
+                                return false;
+                            }
+                            return true;
+                        })
+                        .map(addr => {
+                            const cleaned = { ...addr };
+                            if (!Number.isInteger(cleaned.id) || cleaned.id <= 0 || cleaned.id > 100000000) {
+                                delete cleaned.id;
+                            }
+                            return cleaned;
+                        });
+                    
+                    const response = await fetch('/api/user-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            userId: userId,
+                            cart: cart,
+                            addresses: addressesToSave,
+                            profile: profileData,
+                            activeOrders: userActiveOrders,
+                            completedOrders: userCompletedOrders
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        // Обновляем savedAddresses из ответа сервера
+                        if (Array.isArray(result.addresses)) {
+                            setSavedAddresses(result.addresses);
+                            console.log('[saveEditAddress] ✅ Адреса обновлены с сервера:', result.addresses.length);
+                            
+                            // Теперь ищем созданный адрес с ID в обновленном списке
+                            const createdAddress = result.addresses.find(addr => {
+                                if (!addr || !addr.id || typeof addr.id !== 'number' || addr.id <= 0) {
+                                    return false;
+                                }
+                                const sameCity = (addr.city || '').toLowerCase().trim() === city.toLowerCase().trim();
+                                const sameStreet = (addr.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
+                                const sameApartment = (addr.apartment || '').toLowerCase().trim() === (apartmentField.value.trim() || '').toLowerCase().trim();
+                                const sameHouse = (addr.house || '').toLowerCase().trim() === houseValue.toLowerCase().trim();
+                                return sameCity && sameStreet && sameApartment && sameHouse;
+                            });
+                            
+                            if (createdAddress && createdAddress.id) {
+                                savedAddressId = createdAddress.id;
+                                console.log('[saveEditAddress] ✅ Найден созданный адрес с ID:', savedAddressId, createdAddress);
+                            } else {
+                                // Если не нашли по содержимому, берем последний адрес из списка
+                                const validAddresses = result.addresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+                                if (validAddresses.length > 0) {
+                                    const lastAddress = validAddresses[validAddresses.length - 1];
+                                    const similarCity = (lastAddress.city || '').toLowerCase().trim() === city.toLowerCase().trim();
+                                    const similarStreet = (lastAddress.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
+                                    if (similarCity && similarStreet) {
+                                        savedAddressId = lastAddress.id;
+                                        console.log('[saveEditAddress] ✅ Используем последний адрес как созданный, ID:', savedAddressId);
+                                    } else {
+                                        // Если даже последний не подходит, но список увеличился - берем его
+                                        if (result.addresses.length > savedAddresses.length) {
+                                            savedAddressId = lastAddress.id;
+                                            console.log('[saveEditAddress] ✅ Используем последний адрес (список увеличился), ID:', savedAddressId);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        console.error('[saveEditAddress] ❌ Ошибка сохранения на сервер:', response.status);
                     }
+                } catch (error) {
+                    console.error('[saveEditAddress] ❌ Ошибка при сохранении адреса:', error);
                 }
+            } else {
+                // Если нет userId, просто сохраняем локально
+                console.warn('[saveEditAddress] ⚠️ Нет userId, адрес сохранен только локально');
             }
         } else {
             console.warn('[saveEditAddress] ⚠️ Адрес уже существует, пропускаем создание дубликата');
@@ -8012,12 +8078,33 @@ async function saveEditAddress() {
             console.warn('[saveEditAddress] ⚠️ savedAddressId не найден после сохранения адреса');
         }
         
-        // Если мы были на странице списка адресов, возвращаемся туда и обновляем список
-        if (checkoutScreen === 'addressesList') {
+        // Определяем, куда возвращаться после сохранения
+        const previousScreen = editAddressTab?.dataset.previousScreen || checkoutScreen;
+        const mode = editAddressTab?.dataset.mode || 'edit';
+        
+        console.log('[saveEditAddress] 📍 Определяем возврат: previousScreen:', previousScreen, 'mode:', mode, 'savedAddressId:', savedAddressId);
+        
+        // Если мы были на странице списка адресов или создавали новый адрес, возвращаемся туда
+        if (previousScreen === 'addressesList' || (mode === 'create' && previousScreen !== 'summary')) {
             console.log('[saveEditAddress] ✅ Возвращаемся на страницу списка адресов и обновляем список');
             // Обновляем список адресов перед возвратом
             renderMyAddressesListForSimple();
             openCheckoutAddressesForSimple();
+            
+            // Если адрес был создан, автоматически выбираем его в списке
+            if (savedAddressId && mode === 'create') {
+                console.log('[saveEditAddress] ✅ Автоматически выбираем созданный адрес в списке, ID:', savedAddressId);
+                // Устанавливаем радио-кнопку как выбранную
+                setTimeout(() => {
+                    const radioBtn = document.querySelector(`input[type="radio"][name="addressRadio"][value="${savedAddressId}"]`);
+                    if (radioBtn) {
+                        radioBtn.checked = true;
+                        console.log('[saveEditAddress] ✅ Радио-кнопка установлена для адреса:', savedAddressId);
+                    } else {
+                        console.warn('[saveEditAddress] ⚠️ Радио-кнопка не найдена для адреса:', savedAddressId);
+                    }
+                }, 100);
+            }
         } else {
             // Иначе возвращаемся на вкладку оформления
             console.log('[saveEditAddress] ✅ Возвращаемся на вкладку оформления');
