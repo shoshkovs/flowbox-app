@@ -56,13 +56,72 @@ if (tg && shouldExpand() && typeof tg.expand === 'function') {
 
 // Функция выхода в корзину
 function exitToCart() {
+    console.log('[exitToCart] 🔙 Выход из оформления в корзину');
+    
+    // Сбрасываем состояние чекаута
     checkoutMode = null;
     checkoutScreen = 'cart';
     currentCheckoutStep = 1;
+    isSimpleCheckout = false;
     summaryDateTimeInitialized = false; // Сбрасываем флаг при выходе
     
+    // Скрываем все шаги оформления
+    ['checkoutStep1', 'checkoutStep2', 'checkoutStep3', 'checkoutStep4'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display = 'none';
+            el.classList.remove('active');
+        }
+    });
+    
+    // Скрываем все вкладки редактирования
+    const editingTabs = ['editRecipientTab', 'editAddressTab', 'myAddressesTab'];
+    editingTabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.style.display = 'none';
+        }
+    });
+    
+    // Скрываем элементы списка адресов
+    const checkoutAddressesList = document.getElementById('checkoutAddressesList');
+    const checkoutAddressForm = document.getElementById('checkoutAddressForm');
+    const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+    if (checkoutAddressesList) checkoutAddressesList.style.display = 'none';
+    if (checkoutAddressForm) checkoutAddressForm.style.display = 'none';
+    if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+    
+    // Скрываем контейнер оформления (orderTab)
+    const orderTabEl = document.getElementById('orderTab');
+    if (orderTabEl) {
+        orderTabEl.style.display = 'none';
+        orderTabEl.classList.remove('active');
+    }
+    
+    // Скрываем заголовок "Оформление заказа"
+    const orderPageHeader = document.querySelector('.order-page-header');
+    if (orderPageHeader) {
+        orderPageHeader.style.display = 'none';
+    }
+    
+    // Скрываем прогресс-бар
+    const progress = document.querySelector('.checkout-progress');
+    if (progress) progress.style.display = 'none';
+    
+    // Показываем нижнее меню (оно могло быть скрыто при переходе на orderTab)
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) {
+        bottomNav.style.display = 'flex';
+        bottomNav.classList.remove('hidden');
+    }
+    
+    // Переключаемся на корзину
     switchTab('cartTab');
+    
+    // Скрываем BackButton
     showBackButton(false);
+    
+    console.log('[exitToCart] ✅ Выход в корзину выполнен');
 }
 
 // Функция показа/скрытия BackButton
