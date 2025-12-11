@@ -3295,6 +3295,19 @@ async function validateAndSubmitOrder(e) {
             comment: document.getElementById('orderAddressComment').value.trim()
         };
         
+        // ВАЖНО: Проверяем, что house не пустой - если пустой, пытаемся извлечь из street
+        if (!addressData.house && addressData.street) {
+            // Пытаемся еще раз извлечь номер дома из street (на случай, если regex не сработал)
+            const streetValue = addressData.street.trim();
+            const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
+            if (houseMatch && houseMatch[1]) {
+                addressData.house = houseMatch[1].trim();
+                // Убираем номер дома из street
+                addressData.street = streetValue.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
+                console.log('[validateAndSubmitOrder] ✅ Извлечен house из street:', addressData.house);
+            }
+        }
+        
         console.log('[validateAndSubmitOrder] 📦 addressData сформирован:', JSON.stringify(addressData, null, 2));
     } else {
         const addressId = selectedAddressRadio.value;
@@ -3311,18 +3324,44 @@ async function validateAndSubmitOrder(e) {
             if (checkoutData.address && checkoutData.address.id && String(checkoutData.address.id) === String(addressId)) {
                 console.log('[validateAndSubmitOrder] ✅ Используем отредактированный адрес из checkoutData (ID совпадает)');
                 addressData = {
-                    ...addressData, // Базовые данные из savedAddresses
-                    ...checkoutData.address // Обновленные данные из checkoutData (включая house)
+                    ...addressData, // Базовые данные из savedAddresses (включая house, если он был там)
+                    ...checkoutData.address // Обновленные данные из checkoutData
                 };
+                // ВАЖНО: Если house пустой в checkoutData, но есть в сохраненном адресе, используем из сохраненного
+                if (!addressData.house && addressData.street) {
+                    const savedAddr = savedAddresses.find(a => String(a.id) === String(addressId));
+                    if (savedAddr && savedAddr.house) {
+                        console.log('[validateAndSubmitOrder] ✅ Восстанавливаем house из сохраненного адреса:', savedAddr.house);
+                        addressData.house = savedAddr.house;
+                    }
+                }
             } else if (checkoutData.address && checkoutData.address.street && checkoutData.address.city) {
                 // Если checkoutData.address был установлен (отредактирован), но ID не совпадает или отсутствует,
                 // всё равно используем его, так как он был отредактирован пользователем
                 console.log('[validateAndSubmitOrder] ✅ Используем отредактированный адрес из checkoutData (был отредактирован)');
                 addressData = {
-                    ...addressData, // Базовые данные из savedAddresses
-                    ...checkoutData.address // Обновленные данные из checkoutData (включая house)
+                    ...addressData, // Базовые данные из savedAddresses (включая house, если он был там)
+                    ...checkoutData.address // Обновленные данные из checkoutData
                 };
+                // ВАЖНО: Если house пустой в checkoutData, но есть в сохраненном адресе, используем из сохраненного
+                if (!addressData.house && addressData.street) {
+                    const savedAddr = savedAddresses.find(a => String(a.id) === String(addressId));
+                    if (savedAddr && savedAddr.house) {
+                        console.log('[validateAndSubmitOrder] ✅ Восстанавливаем house из сохраненного адреса:', savedAddr.house);
+                        addressData.house = savedAddr.house;
+                    }
+                }
             }
+        }
+    }
+    
+    // ВАЖНО: Проверяем, что addressData.house заполнен (может быть пустым после слияния с checkoutData)
+    // Если house пустой, но адрес был выбран из сохраненных, пытаемся восстановить house
+    if (!addressData.house && addressData.id) {
+        const savedAddr = savedAddresses.find(a => String(a.id) === String(addressData.id));
+        if (savedAddr && savedAddr.house) {
+            console.log('[validateAndSubmitOrder] ✅ Восстанавливаем house из сохраненного адреса (финальная проверка):', savedAddr.house);
+            addressData.house = savedAddr.house;
         }
     }
     
@@ -3505,7 +3544,11 @@ async function validateAndSubmitOrder(e) {
         addressString = addressData.city;
     }
     if (addressData.street) {
-        addressString += addressString ? ', ' + addressData.street : addressData.street; // Теперь содержит "улица + дом"
+        addressString += addressString ? ', ' + addressData.street : addressData.street;
+    }
+    // ВАЖНО: Добавляем номер дома, если он есть
+    if (addressData.house) {
+        addressString += addressString ? ', ' + addressData.house : addressData.house;
     }
     if (addressData.apartment) {
         addressString += ', ' + addressData.apartment;
