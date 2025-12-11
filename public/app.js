@@ -6481,21 +6481,14 @@ function selectCheckoutAddress(addressId) {
     // Заполняем checkoutData.address для обратной совместимости
     checkoutData.address = {
         id: addr.id,
-        name: addr.name || streetValue || 'Адрес',
         city: addr.city || 'Санкт-Петербург',
-        street: addr.street || '', // Сохраняем street отдельно от house
-        house: houseValue, // Сохраняем house отдельно
+        street: streetValue,
         apartment: addr.apartment || '',
         floor: addr.floor || '',
         entrance: addr.entrance || '',
         intercom: addr.intercom || '',
         comment: addr.comment || ''
     };
-    
-    console.log('[selectCheckoutAddress] ✅ checkoutData обновлен:', {
-        addressId: checkoutData.addressId,
-        address: checkoutData.address
-    });
     
     // Обновляем UI шагов (подсветка выбранной карточки и т.п.)
     if (typeof renderCheckoutAddresses === 'function') {
@@ -6531,31 +6524,10 @@ function selectCheckoutAddressForSimple(addressId) {
         console.log('[SimpleMenu] 🔒 Адрес заблокирован для повторного выбора, addressId:', addressId);
     }
     
-    // Обновляем список адресов, чтобы показать выбранный адрес
-    renderMyAddressesListForSimple();
-    
-    // Обновляем отображение адреса на странице "Итого"
-    if (typeof renderCheckoutSummary === 'function') {
-        renderCheckoutSummary();
-        console.log('[SimpleMenu] ✅ Отображение адреса обновлено на странице "Итого"');
-    }
-    
     // Возвращаемся к шагу 4 (упрощенное Итого)
     if (isSimpleCheckout || checkoutMode === 'simple') {
-        // Если мы были на странице списка адресов, возвращаемся на страницу "Итого"
-        if (checkoutScreen === 'addressesList') {
-            console.log('[SimpleMenu] ✅ Возвращаемся на страницу "Итого" после выбора адреса');
-            showSimpleSummary();
-        } else {
-            // Если мы уже на странице "Итого", просто обновляем отображение
-            showSimpleSummary();
-        }
-        console.log('[SimpleMenu] ✅ Переход выполнен: summary (выбор адреса), выбранный адрес ID:', addressId);
-    }
-    
-    // Тактильная обратная связь
-    if (tg && tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
+        showSimpleSummary();
+        console.log('[SimpleMenu] ✅ Переход выполнен: summary (выбор адреса)');
     }
 }
 
