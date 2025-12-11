@@ -2074,8 +2074,42 @@ function showSimpleSummary() {
     checkoutScreen = 'summary';
     isSimpleCheckout = true;
     
+    // ЯВНО скрываем все другие вкладки перед показом orderTab
+    const cartTabEl = document.getElementById('cartTab');
+    const menuTabEl = document.getElementById('menuTab');
+    const profileTabEl = document.getElementById('profileTab');
+    
+    if (cartTabEl) {
+        cartTabEl.style.display = 'none';
+        cartTabEl.classList.remove('active');
+    }
+    if (menuTabEl) {
+        menuTabEl.style.display = 'none';
+        menuTabEl.classList.remove('active');
+    }
+    if (profileTabEl) {
+        profileTabEl.style.display = 'none';
+        profileTabEl.classList.remove('active');
+    }
+    
+    // Скрываем все вкладки редактирования
+    const editingTabs = ['editRecipientTab', 'editAddressTab', 'myAddressesTab'];
+    editingTabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.style.display = 'none';
+        }
+    });
+    
     // Показываем вкладку orderTab
     switchTab('orderTab');
+    
+    // ЯВНО показываем orderTab после switchTab
+    const orderTabEl = document.getElementById('orderTab');
+    if (orderTabEl) {
+        orderTabEl.style.display = 'block';
+        orderTabEl.classList.add('active');
+    }
     
     // Скрываем прогресс-бар
     const progress = document.querySelector('.checkout-progress');
@@ -2117,15 +2151,6 @@ function showSimpleSummary() {
     if (orderPageHeader) {
         orderPageHeader.style.display = '';
     }
-    
-    // Скрываем все вкладки редактирования
-    const editingTabs = ['editRecipientTab', 'editAddressTab', 'myAddressesTab'];
-    editingTabs.forEach(tabId => {
-        const tab = document.getElementById(tabId);
-        if (tab) {
-            tab.style.display = 'none';
-        }
-    });
     
     // Скрываем элементы списка адресов
     const checkoutAddressesList = document.getElementById('checkoutAddressesList');
