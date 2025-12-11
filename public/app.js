@@ -1881,6 +1881,14 @@ function switchTab(tabId) {
         refreshOrders();
     }
     
+    // При переключении на корзину - обновляем итоги
+    if (tabId === 'cartTab') {
+        // Небольшая задержка, чтобы DOM успел обновиться
+        setTimeout(() => {
+            calculateFinalTotal();
+        }, 50);
+    }
+    
     // Показать выбранную вкладку
     const activeTab = document.getElementById(tabId);
     if (activeTab) {
