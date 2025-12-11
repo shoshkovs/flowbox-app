@@ -1687,6 +1687,9 @@ function updateCartUI() {
         
         // Рендерим карусель дополнительных товаров
         renderAdditionalProducts();
+    } else {
+        // Даже если корзина пуста, обновляем итоги (чтобы показать 0)
+        calculateFinalTotal();
     }
     
     updateGoToCartButton();
