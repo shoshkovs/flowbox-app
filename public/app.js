@@ -1840,6 +1840,12 @@ function calculateFinalTotal() {
     if (flowersTotalElement) {
         flowersTotalElement.textContent = `${flowersTotal} ₽`;
     }
+    
+    // Обновление сервисного сбора
+    const serviceFeeElement = document.getElementById('serviceFeeAmount');
+    if (serviceFeeElement) {
+        serviceFeeElement.textContent = `${serviceFee} ₽`;
+    }
 }
 
 // Обработка доставки удалена - доставка фиксированная 500₽
