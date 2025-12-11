@@ -4657,8 +4657,8 @@ async function handleAddressFormSubmit(event) {
         if (checkoutAddressesList) checkoutAddressesList.style.display = 'block';
         if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
     } else if (source === 'simple') {
-        // В упрощенном режиме возвращаемся на вкладку оформления
-        console.log('[handleAddressFormSubmit] ✅ Адрес сохранен в упрощенном режиме, возвращаемся на вкладку оформления');
+        // В упрощенном режиме возвращаемся на вкладку оформления или список адресов
+        console.log('[handleAddressFormSubmit] ✅ Адрес сохранен в упрощенном режиме, checkoutScreen:', checkoutScreen);
         
         // Скрываем форму редактирования
         const editAddressTab = document.getElementById('editAddressTab');
@@ -4685,8 +4685,14 @@ async function handleAddressFormSubmit(event) {
             }
         }
         
-        // Возвращаемся на вкладку оформления
-        showSimpleSummary();
+        // Если мы были на странице списка адресов, возвращаемся туда и обновляем список
+        if (checkoutScreen === 'addressesList') {
+            console.log('[handleAddressFormSubmit] ✅ Возвращаемся на страницу списка адресов');
+            openCheckoutAddressesForSimple();
+        } else {
+            // Иначе возвращаемся на вкладку оформления
+            showSimpleSummary();
+        }
     } else if (source === 'profile') {
         // Возвращаемся в профиль
     switchTab('profileTab');
@@ -6458,7 +6464,7 @@ function renderMyAddressesListForSimple() {
                     <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
                 </div>
                 <div class="address-menu" style="position: relative;">
-                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); event.preventDefault(); window.toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="5" r="1"/>
                             <circle cx="12" cy="12" r="1"/>
@@ -6466,10 +6472,10 @@ function renderMyAddressesListForSimple() {
                         </svg>
                     </button>
                     <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
-                        <button class="address-menu-item" onclick="event.stopPropagation(); editAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                        <button class="address-menu-item" onclick="event.stopPropagation(); event.preventDefault(); window.editAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
                             Изменить
                         </button>
-                        <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); deleteAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                        <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); event.preventDefault(); window.deleteAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
                             Удалить
                         </button>
                     </div>
@@ -7468,6 +7474,8 @@ async function deleteAddressFromSimple(addressId) {
 
 // Переключение меню адреса (три точки)
 function toggleAddressMenu(addressId) {
+    console.log('[toggleAddressMenu] 🔘 Переключение меню для адреса:', addressId);
+    
     // Закрываем все открытые меню
     document.querySelectorAll('.address-menu-dropdown').forEach(menu => {
         if (menu.id !== `addressMenu${addressId}`) {
@@ -7477,22 +7485,26 @@ function toggleAddressMenu(addressId) {
     
     // Переключаем текущее меню
     const menu = document.getElementById(`addressMenu${addressId}`);
-    if (menu) {
-        const isVisible = menu.style.display !== 'none';
-        menu.style.display = isVisible ? 'none' : 'block';
-        
-        // Если меню открывается, добавляем обработчик клика вне меню для его закрытия
-        if (!isVisible) {
-            setTimeout(() => {
-                const closeMenuOnClickOutside = (e) => {
-                    if (!menu.contains(e.target) && !e.target.closest('.address-menu-btn')) {
-                        menu.style.display = 'none';
-                        document.removeEventListener('click', closeMenuOnClickOutside);
-                    }
-                };
-                document.addEventListener('click', closeMenuOnClickOutside);
-            }, 0);
-        }
+    if (!menu) {
+        console.warn('[toggleAddressMenu] ⚠️ Меню не найдено для адреса:', addressId);
+        return;
+    }
+    
+    const isVisible = menu.style.display !== 'none';
+    menu.style.display = isVisible ? 'none' : 'block';
+    console.log('[toggleAddressMenu] ✅ Меню', isVisible ? 'закрыто' : 'открыто', 'для адреса:', addressId);
+    
+    // Если меню открывается, добавляем обработчик клика вне меню для его закрытия
+    if (!isVisible) {
+        setTimeout(() => {
+            const closeMenuOnClickOutside = (e) => {
+                if (!menu.contains(e.target) && !e.target.closest('.address-menu-btn')) {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', closeMenuOnClickOutside);
+                }
+            };
+            document.addEventListener('click', closeMenuOnClickOutside);
+        }, 0);
     }
 }
 
