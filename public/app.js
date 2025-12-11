@@ -812,15 +812,30 @@ function renderProducts() {
 
     // 2) Загрузка закончилась, но товаров нет – показываем красивое пустое состояние
     if (!filteredProducts || filteredProducts.length === 0) {
+        productsContainer.classList.add('products-container-empty');
         productsContainer.innerHTML = `
             <div class="products-empty">
-                <div class="products-empty-icon">🌹</div>
+                <div class="products-empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+                        <!-- Лепестки розы -->
+                        <path d="M32 20C28 16 24 18 22 20C20 22 20 26 22 28C24 30 28 28 32 24C36 28 40 30 42 28C44 26 44 22 42 20C40 18 36 16 32 20Z" fill="rgba(217, 93, 131, 0.15)" stroke="rgba(217, 93, 131, 0.4)" stroke-width="1.5"/>
+                        <path d="M32 24C30 22 28 22 26 24C24 26 24 28 26 30C28 32 30 30 32 28C34 30 36 32 38 30C40 28 40 26 38 24C36 22 34 22 32 24Z" fill="rgba(217, 93, 131, 0.2)" stroke="rgba(217, 93, 131, 0.45)" stroke-width="1.5"/>
+                        <!-- Стебель -->
+                        <path d="M32 32L32 48" stroke="rgba(217, 93, 131, 0.4)" stroke-width="2" stroke-linecap="round"/>
+                        <!-- Листья -->
+                        <path d="M32 40L28 38L26 36L28 34L32 36L36 34L38 36L36 38L32 40Z" fill="rgba(217, 93, 131, 0.15)" stroke="rgba(217, 93, 131, 0.4)" stroke-width="1"/>
+                        <path d="M32 44L36 42L38 40L36 38L32 40L28 38L26 40L28 42L32 44Z" fill="rgba(217, 93, 131, 0.15)" stroke="rgba(217, 93, 131, 0.4)" stroke-width="1"/>
+                    </svg>
+                </div>
                 <div class="products-empty-title">Похоже, у нас всё раскупили.</div>
                 <div class="products-empty-subtitle">Мы сообщим вам, когда что-то появится.</div>
             </div>
         `;
         return;
     }
+    
+    // Убираем класс пустого состояния, если есть товары
+    productsContainer.classList.remove('products-container-empty');
 
     // 3) Есть товары – рендерим их
     productsContainer.innerHTML = filteredProducts.map(product => {

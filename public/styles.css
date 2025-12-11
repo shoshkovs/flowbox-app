@@ -171,6 +171,15 @@ h1, h2, h3, .font-bold {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
     margin-bottom: 100px;
+    position: relative;
+}
+
+.products-container-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    grid-template-columns: none;
+    min-height: calc(100vh - 250px);
 }
 
 .product-card {
@@ -553,15 +562,24 @@ h1, h2, h3, .font-bold {
     align-items: center;
     justify-content: center;
     padding: 48px 24px;
-    min-height: 50vh;
     width: 100%;
+    max-width: 320px;
     text-align: center;
 }
 
 .products-empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+}
+
+.products-empty-icon svg {
+    width: 100%;
+    height: 100%;
 }
 
 .products-empty-title {
