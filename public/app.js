@@ -6431,21 +6431,41 @@ function renderCheckoutAddresses(forSimple = false) {
             `;
         }).join('');
         
-        // Если адрес еще не выбран, выбираем последний (самый свежий)
-        if (!checkoutData.addressId) {
-            const lastAddress = savedAddresses[savedAddresses.length - 1];
-            if (lastAddress) {
-                if (forSimple) {
-                    selectCheckoutAddressForSimple(lastAddress.id);
-                } else {
-                    selectCheckoutAddress(lastAddress.id);
-                }
-            }
-        } else {
-            // Если адрес уже выбран по ID, убеждаемся, что он отмечен в списке
+        // Если адрес уже выбран – просто подсветить радио и НЕ менять выбор
+        if (checkoutData.addressId) {
             const selectedRadio = document.querySelector(`input[name="checkoutAddress"][value="${checkoutData.addressId}"]`);
             if (selectedRadio) {
                 selectedRadio.checked = true;
+            }
+        } else {
+            // Если еще ничего не выбирали – по умолчанию берем последний, но НЕ вызываем selectCheckoutAddress
+            // чтобы не перезаписывать выбор пользователя при повторном рендере
+            const lastAddress = savedAddresses[savedAddresses.length - 1];
+            if (lastAddress) {
+                // ВАЖНО: только проставляем ID и address, но НЕ дергаем лишний рендер
+                checkoutData.addressId = Number(lastAddress.id);
+                
+                let streetValue = lastAddress.street || '';
+                const houseValue = lastAddress.house || '';
+                if (houseValue && !streetValue.includes(houseValue)) {
+                    streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
+                }
+                
+                checkoutData.address = {
+                    id: lastAddress.id,
+                    city: lastAddress.city || 'Санкт-Петербург',
+                    street: streetValue,
+                    apartment: lastAddress.apartment || '',
+                    floor: lastAddress.floor || '',
+                    entrance: lastAddress.entrance || '',
+                    intercom: lastAddress.intercom || '',
+                    comment: lastAddress.comment || ''
+                };
+                
+                const radio = document.querySelector(`input[name="checkoutAddress"][value="${lastAddress.id}"]`);
+                if (radio) radio.checked = true;
+                
+                console.log('[renderCheckoutAddresses] ✅ Автоматически выбран последний адрес (только один раз):', lastAddress.id);
             }
         }
     } else {
@@ -6493,6 +6513,12 @@ function selectCheckoutAddress(addressId) {
     // Обновляем UI шагов (подсветка выбранной карточки и т.п.)
     if (typeof renderCheckoutAddresses === 'function') {
         renderCheckoutAddresses();
+    }
+    
+    // Обновляем адрес на экране "Итого", если такая функция есть
+    if (typeof renderCheckoutSummary === 'function') {
+        renderCheckoutSummary();
+        console.log('[selectCheckoutAddress] ✅ Отображение адреса обновлено на странице "Итого"');
     }
     
     // Скрываем форму и показываем список адресов после выбора
@@ -7031,29 +7057,52 @@ function prefillSimpleCheckoutSummary() {
         }
     }
     
-    // Адрес — первый из savedAddresses (без города)
+    // Адрес — из checkoutData.address (если выбран) или первый из savedAddresses
     const summaryAddress = document.getElementById('summaryAddress');
-    if (summaryAddress && savedAddresses && savedAddresses.length > 0) {
-        const addr = savedAddresses[0];
+    if (summaryAddress) {
+        let addr = null;
         
-        // Формируем строку адреса (БЕЗ города)
-        let streetStr = addr.street || '';
-        if (addr.house && !streetStr.includes(addr.house)) {
-            streetStr = streetStr ? `${streetStr}, ${addr.house}` : streetStr;
+        // Приоритет: используем checkoutData.address, если он есть
+        if (checkoutData.address && checkoutData.address.id) {
+            addr = checkoutData.address;
+            console.log('[renderCheckoutSummary] ✅ Используем адрес из checkoutData:', addr.id);
+        } else if (checkoutData.addressId && savedAddresses && savedAddresses.length > 0) {
+            // Если есть addressId, но нет address, ищем адрес в savedAddresses
+            addr = savedAddresses.find(a => Number(a.id) === Number(checkoutData.addressId));
+            if (addr) {
+                console.log('[renderCheckoutSummary] ✅ Найден адрес по addressId:', addr.id);
+            }
+        } else if (savedAddresses && savedAddresses.length > 0) {
+            // Fallback: первый адрес из списка
+            addr = savedAddresses[0];
+            console.log('[renderCheckoutSummary] ⚠️ Используем первый адрес из списка (fallback)');
         }
         
-        const parts = [
-            streetStr,
-            addr.apartment ? `кв. ${addr.apartment}` : '',
-            addr.entrance ? `парадная ${addr.entrance}` : '',
-            addr.floor ? `этаж ${addr.floor}` : ''
-        ].filter(Boolean);
+        if (addr) {
+            // Формируем строку адреса (БЕЗ города)
+            let streetStr = addr.street || '';
+            const houseStr = addr.house || '';
+            if (houseStr && !streetStr.includes(houseStr)) {
+                streetStr = streetStr ? `${streetStr}, ${houseStr}` : houseStr;
+            }
+            
+            const parts = [
+                streetStr,
+                addr.apartment ? `кв. ${addr.apartment}` : '',
+                addr.entrance ? `парадная ${addr.entrance}` : '',
+                addr.floor ? `этаж ${addr.floor}` : ''
+            ].filter(Boolean);
+            
+            summaryAddress.textContent = parts.join(', ') || 'Адрес не выбран';
+        } else {
+            summaryAddress.textContent = 'Адрес не выбран';
+        }
         
-        summaryAddress.textContent = parts.join(', ');
-        
-        // Сохраняем в checkoutData
-        checkoutData.address = addr;
-        checkoutData.addressId = addr.id;
+        // Сохраняем в checkoutData (если еще не сохранен)
+        if (!checkoutData.addressId || !checkoutData.address) {
+            checkoutData.address = addr;
+            checkoutData.addressId = addr.id;
+        }
     }
 }
 
