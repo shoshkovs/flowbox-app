@@ -564,7 +564,8 @@ function roundDownToStep(quantity, step) {
     return Math.floor(quantity / step) * step;
 }
 let deliveryPrice = 500; // По умолчанию "В пределах КАД" (используется только на итоговой странице)
-let serviceFee = 450;
+let serviceFeePercent = 10; // Процент сервисного сбора (10%)
+let serviceFee = 0; // Будет рассчитываться динамически как 10% от суммы товаров
 // Глобальное хранилище адресов (единый источник правды)
 let savedAddresses = [];
 
@@ -1824,6 +1825,9 @@ function addAdditionalProduct(productId) {
 function calculateFinalTotal() {
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
+    // Пересчитываем сервисный сбор как 10% от суммы товаров
+    serviceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
+    
     // В корзине не показываем доставку, только товары и сборы
     const total = flowersTotal + serviceFee;
     
@@ -2935,6 +2939,10 @@ function initOrderForm() {
     
     // Расчет суммы
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Пересчитываем сервисный сбор как 10% от суммы товаров
+    serviceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
+    
     const total = flowersTotal + serviceFee + deliveryPrice;
     
     const summaryTotal = document.getElementById('summaryTotal');
@@ -3579,6 +3587,10 @@ async function validateAndSubmitOrder(e) {
     }
     
     const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Пересчитываем сервисный сбор как 10% от суммы товаров (без доставки)
+    serviceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
+    
     const total = flowersTotal + serviceFee + deliveryPrice;
     
     const orderData = {
@@ -3591,6 +3603,7 @@ async function validateAndSubmitOrder(e) {
         total: total,
         flowersTotal: flowersTotal,
         serviceFee: serviceFee,
+        serviceFeePercent: serviceFeePercent, // Сохраняем процент для БД
         deliveryPrice: deliveryPrice,
         // --- КЛИЕНТ ---
         name: clientName,        // ← ИМЯ КЛИЕНТА из Telegram/профиля
@@ -7437,7 +7450,11 @@ function renderCheckoutSummary() {
     const checkoutFinalTotalEl = document.getElementById('checkoutFinalTotal');
     if (checkoutFinalTotalEl) {
         const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const total = flowersTotal + serviceFee + 500; // 500 - доставка
+        
+        // Пересчитываем сервисный сбор как 10% от суммы товаров
+        const currentServiceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
+        
+        const total = flowersTotal + currentServiceFee + 500; // 500 - доставка
         checkoutFinalTotalEl.textContent = `${total.toLocaleString()} ₽`;
     }
 }

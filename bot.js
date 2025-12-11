@@ -1820,28 +1820,50 @@ async function createOrderInDb(orderData) {
         deliveryZone = 'До 20 км от КАД';
       }
       
+      // Пересчитываем serviceFee, если передан процент
+      let calculatedServiceFee = orderData.serviceFee;
+      if (orderData.serviceFeePercent && orderData.flowersTotal) {
+        calculatedServiceFee = Math.round(orderData.flowersTotal * (orderData.serviceFeePercent / 100));
+      }
+      if (!calculatedServiceFee) {
+        calculatedServiceFee = orderData.serviceFee || Math.round(orderData.flowersTotal * 0.10) || 450;
+      }
+      
       // Итоговая сумма заказа
-      const finalTotal = orderData.flowersTotal + (orderData.serviceFee || 450) + (orderData.deliveryPrice || 0);
+      const finalTotal = orderData.flowersTotal + calculatedServiceFee + (orderData.deliveryPrice || 0);
       
       // Получаем значение leave_at_door из orderData (явное приведение к boolean)
       const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
+      // Получаем процент сервисного сбора из orderData или используем 10% по умолчанию
+      const serviceFeePercent = orderData.serviceFeePercent || 10.00;
+      
+      // Пересчитываем serviceFee, если он не передан или если нужно использовать процент
+      let calculatedServiceFee = orderData.serviceFee;
+      if (!calculatedServiceFee && orderData.flowersTotal) {
+        calculatedServiceFee = Math.round(orderData.flowersTotal * (serviceFeePercent / 100));
+      }
+      if (!calculatedServiceFee) {
+        calculatedServiceFee = 450; // Fallback
+      }
+      
       // Создаем заказ
       const orderResult = await client.query(
         `INSERT INTO orders 
-         (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
+         (user_id, total, flowers_total, service_fee, service_fee_percent, delivery_price, bonus_used, bonus_earned,
           client_name, client_phone, client_email,
           recipient_name, recipient_phone, 
           address_id, address_string, address_json, 
           delivery_zone, delivery_date, delivery_time,
           user_comment, courier_comment, leave_at_door, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW')
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'NEW')
          RETURNING *`,
         [
           userId,
           finalTotal,
           orderData.flowersTotal,
-          orderData.serviceFee || 450,
+          calculatedServiceFee,
+          serviceFeePercent,
           orderData.deliveryPrice || 0,
           0, // bonus_used
           0, // bonus_earned
