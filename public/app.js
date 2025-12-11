@@ -3218,110 +3218,121 @@ async function validateAndSubmitOrder(e) {
     let addressData = null;
     let hasAddressErrors = false;
     
-    const shouldUseForm =
-        savedAddresses.length === 0 ||
-        !selectedAddressRadio ||
-        selectedAddressRadio.value === 'new';
-    
-    if (shouldUseForm) {
-        // Проверка формы нового адреса
-        const city = document.getElementById('orderAddressCity').value.trim();
-        const street = document.getElementById('orderAddressStreet').value.trim(); // Теперь содержит "улица + дом"
-        
-        // Валидация обязательных полей адреса
-        const cityField = document.getElementById('orderAddressCity');
-        const cityAnchor = document.getElementById('anchor-orderAddressCity');
-        const orderAddressError = document.getElementById('orderAddressError');
-        
-        if (!city) {
-            // Если поле пустое - показываем только красную рамку, без сообщения об ошибке города
-            validateField(cityField, false);
-            if (orderAddressError) orderAddressError.style.display = 'none';
-            if (!firstErrorField) firstErrorField = cityAnchor || cityField;
-            hasAddressErrors = true;
-            hasErrors = true;
-        } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
-            // Если город правильный - убираем ошибку
-            validateField(cityField, true);
-            if (orderAddressError) orderAddressError.style.display = 'none';
-        } else {
-            // Если город заполнен, но не СПб - показываем ошибку города
-            validateField(cityField, false);
-            if (orderAddressError) orderAddressError.style.display = 'block';
-            if (!firstErrorField) firstErrorField = cityAnchor || cityField;
-            hasAddressErrors = true;
-            hasErrors = true;
-        }
-        const streetField = document.getElementById('orderAddressStreet');
-        const streetAnchor = document.getElementById('anchor-orderAddressStreet');
-        if (street) {
-            validateField(streetField, true);
-        } else {
-            validateField(streetField, false);
-            if (!firstErrorField) firstErrorField = streetAnchor || streetField;
-            hasAddressErrors = true;
-            hasErrors = true;
-        }
-        
-        // Валидация дома убрана - теперь "улица + дом" в одном поле
-        
-        // Не делаем return здесь - нужно проверить и время доставки тоже
-        // Ошибки адреса уже установлены, продолжаем проверку других полей
-        
-        // Парсим street и house из поля "улица, дом"
-        // Пользователь вводит "Кемская 7" - нужно правильно извлечь "7"
-        let streetValue = street.trim();
-        let houseValue = '';
-        
-        // Пытаемся извлечь номер дома из street
-        // Паттерн: пробел + одна или более цифр + опционально буквы/корпус
-        // Используем тот же regex, что и на бэке для единообразия
-        const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
-        if (houseMatch && houseMatch[1]) {
-            houseValue = houseMatch[1].trim();
-            // Убираем номер дома из street, оставляя только название улицы
-            streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
-        }
-        
+    // ВАЖНО: В упрощенном режиме используем checkoutData.address напрямую, если он есть
+    if (isSimpleCheckout && checkoutData.address && checkoutData.address.id && checkoutData.address.street) {
+        console.log('[validateAndSubmitOrder] ✅ Используем checkoutData.address напрямую в упрощенном режиме');
         addressData = {
-            name: 'Новый адрес',
-            city: city,
-            street: streetValue, // Название улицы без номера дома
-            house: houseValue, // Номер дома отдельно
-            entrance: document.getElementById('orderAddressEntrance').value.trim(),
-            apartment: document.getElementById('orderAddressApartment').value.trim(),
-            floor: document.getElementById('orderAddressFloor').value.trim(),
-            intercom: document.getElementById('orderAddressIntercom').value.trim(),
-            comment: document.getElementById('orderAddressComment').value.trim()
+            ...checkoutData.address,
+            name: checkoutData.address.name || 'Новый адрес'
         };
+        console.log('[validateAndSubmitOrder] 📦 addressData из checkoutData:', JSON.stringify(addressData, null, 2));
+    } else {
+        // Обычный режим или упрощенный режим без checkoutData.address
+        const shouldUseForm =
+            savedAddresses.length === 0 ||
+            !selectedAddressRadio ||
+            selectedAddressRadio.value === 'new';
         
-        // ВАЖНО: Проверяем, что house не пустой - если пустой, пытаемся извлечь из street
-        if (!addressData.house && addressData.street) {
-            // Пытаемся еще раз извлечь номер дома из street (на случай, если regex не сработал)
-            const streetValue = addressData.street.trim();
+        if (shouldUseForm) {
+            // Проверка формы нового адреса
+            const city = document.getElementById('orderAddressCity').value.trim();
+            const street = document.getElementById('orderAddressStreet').value.trim(); // Теперь содержит "улица + дом"
+            
+            // Валидация обязательных полей адреса
+            const cityField = document.getElementById('orderAddressCity');
+            const cityAnchor = document.getElementById('anchor-orderAddressCity');
+            const orderAddressError = document.getElementById('orderAddressError');
+            
+            if (!city) {
+                // Если поле пустое - показываем только красную рамку, без сообщения об ошибке города
+                validateField(cityField, false);
+                if (orderAddressError) orderAddressError.style.display = 'none';
+                if (!firstErrorField) firstErrorField = cityAnchor || cityField;
+                hasAddressErrors = true;
+                hasErrors = true;
+            } else if (city.toLowerCase() === 'санкт-петербург' || city.toLowerCase() === 'спб') {
+                // Если город правильный - убираем ошибку
+                validateField(cityField, true);
+                if (orderAddressError) orderAddressError.style.display = 'none';
+            } else {
+                // Если город заполнен, но не СПб - показываем ошибку города
+                validateField(cityField, false);
+                if (orderAddressError) orderAddressError.style.display = 'block';
+                if (!firstErrorField) firstErrorField = cityAnchor || cityField;
+                hasAddressErrors = true;
+                hasErrors = true;
+            }
+            const streetField = document.getElementById('orderAddressStreet');
+            const streetAnchor = document.getElementById('anchor-orderAddressStreet');
+            if (street) {
+                validateField(streetField, true);
+            } else {
+                validateField(streetField, false);
+                if (!firstErrorField) firstErrorField = streetAnchor || streetField;
+                hasAddressErrors = true;
+                hasErrors = true;
+            }
+            
+            // Валидация дома убрана - теперь "улица + дом" в одном поле
+            
+            // Не делаем return здесь - нужно проверить и время доставки тоже
+            // Ошибки адреса уже установлены, продолжаем проверку других полей
+            
+            // Парсим street и house из поля "улица, дом"
+            // Пользователь вводит "Кемская 7" - нужно правильно извлечь "7"
+            let streetValue = street.trim();
+            let houseValue = '';
+            
+            // Пытаемся извлечь номер дома из street
+            // Паттерн: пробел + одна или более цифр + опционально буквы/корпус
+            // Используем тот же regex, что и на бэке для единообразия
             const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
             if (houseMatch && houseMatch[1]) {
-                addressData.house = houseMatch[1].trim();
-                // Убираем номер дома из street
-                addressData.street = streetValue.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
-                console.log('[validateAndSubmitOrder] ✅ Извлечен house из street:', addressData.house);
+                houseValue = houseMatch[1].trim();
+                // Убираем номер дома из street, оставляя только название улицы
+                streetValue = streetValue.replace(/\s+\d+[а-яА-ЯкКa-zA-Z\s]*?$/, '').trim();
             }
-        }
-        
-        console.log('[validateAndSubmitOrder] 📦 addressData сформирован:', JSON.stringify(addressData, null, 2));
-    } else {
-        const addressId = selectedAddressRadio.value;
-        addressData = savedAddresses.find(a => String(a.id) === String(addressId));
-        if (!addressData) {
-            if (addressOptionsList && !firstErrorField) {
-                firstErrorField = addressOptionsList;
+            
+            addressData = {
+                name: 'Новый адрес',
+                city: city,
+                street: streetValue, // Название улицы без номера дома
+                house: houseValue, // Номер дома отдельно
+                entrance: document.getElementById('orderAddressEntrance').value.trim(),
+                apartment: document.getElementById('orderAddressApartment').value.trim(),
+                floor: document.getElementById('orderAddressFloor').value.trim(),
+                intercom: document.getElementById('orderAddressIntercom').value.trim(),
+                comment: document.getElementById('orderAddressComment').value.trim()
+            };
+            
+            // ВАЖНО: Проверяем, что house не пустой - если пустой, пытаемся извлечь из street
+            if (!addressData.house && addressData.street) {
+                // Пытаемся еще раз извлечь номер дома из street (на случай, если regex не сработал)
+                const streetValue = addressData.street.trim();
+                const houseMatch = streetValue.match(/\s+(\d+[а-яА-Яa-zA-ZкК\s]*?)$/);
+                if (houseMatch && houseMatch[1]) {
+                    addressData.house = houseMatch[1].trim();
+                    // Убираем номер дома из street
+                    addressData.street = streetValue.replace(/\s+\d+[а-яА-Яa-zA-ZкК\s]*?$/, '').trim();
+                    console.log('[validateAndSubmitOrder] ✅ Извлечен house из street:', addressData.house);
+                }
             }
-            hasErrors = true;
+            
+            console.log('[validateAndSubmitOrder] 📦 addressData сформирован из полей формы:', JSON.stringify(addressData, null, 2));
         } else {
-            // ВАЖНО: Если адрес был отредактирован через checkoutData, используем его
-            // Это предотвращает создание дубликата при оплате
-            // Если checkoutData.address существует и имеет ID, который совпадает с выбранным адресом, используем его
-            if (checkoutData.address && checkoutData.address.id && String(checkoutData.address.id) === String(addressId)) {
+            // Используем выбранный адрес из сохраненных
+            const addressId = selectedAddressRadio.value;
+            addressData = savedAddresses.find(a => String(a.id) === String(addressId));
+            if (!addressData) {
+                if (addressOptionsList && !firstErrorField) {
+                    firstErrorField = addressOptionsList;
+                }
+                hasErrors = true;
+            } else {
+                // ВАЖНО: Если адрес был отредактирован через checkoutData, используем его
+                // Это предотвращает создание дубликата при оплате
+                // Если checkoutData.address существует и имеет ID, который совпадает с выбранным адресом, используем его
+                if (checkoutData.address && checkoutData.address.id && String(checkoutData.address.id) === String(addressId)) {
                 console.log('[validateAndSubmitOrder] ✅ Используем отредактированный адрес из checkoutData (ID совпадает)');
                 addressData = {
                     ...addressData, // Базовые данные из savedAddresses (включая house, если он был там)
@@ -3351,6 +3362,7 @@ async function validateAndSubmitOrder(e) {
                         addressData.house = savedAddr.house;
                     }
                 }
+            }
             }
         }
     }
