@@ -6408,26 +6408,42 @@ function renderCheckoutAddresses(forSimple = false) {
             const isSelected = checkoutData.addressId && Number(checkoutData.addressId) === Number(addr.id);
             const addressId = addr.id;
             
-            // В упрощенном режиме добавляем кнопки редактирования и удаления
-            const editDeleteButtons = forSimple ? `
-                <div class="checkout-address-actions" style="display: flex; gap: 8px; margin-left: auto;">
-                    <button type="button" class="checkout-address-edit-btn" onclick="event.stopPropagation(); editCheckoutAddress(${addressId}, true)" style="padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                        Редактировать
+            // Добавляем меню с тремя точками для редактирования и удаления (как в профиле)
+            const menuButton = `
+                <div class="address-menu" style="position: relative;">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="5" r="1"/>
+                            <circle cx="12" cy="12" r="1"/>
+                            <circle cx="12" cy="19" r="1"/>
+                        </svg>
                     </button>
-                    <button type="button" class="checkout-address-delete-btn" onclick="event.stopPropagation(); deleteCheckoutAddress(${addressId}, true)" style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                        Удалить
-                    </button>
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
+                        <button onclick="event.stopPropagation(); editCheckoutAddress(${addressId}, ${forSimple})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                            Изменить
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteCheckoutAddress(${addressId}, ${forSimple})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                            Удалить
+                        </button>
+                    </div>
                 </div>
-            ` : '';
+            `;
+            
+            // Определяем обработчик выбора адреса в зависимости от режима
+            const onChangeHandler = forSimple 
+                ? `onchange="selectCheckoutAddressForSimple(${addressId})"`
+                : `onchange="selectCheckoutAddress(${addressId})"`;
             
             return `
-                <label class="checkout-address-option" style="display: flex; align-items: center; gap: 12px;">
-                    <input type="radio" name="checkoutAddress" value="${addressId}" ${isSelected ? 'checked' : ''} onchange="selectCheckoutAddressForSimple(${addressId})">
-                    <div class="checkout-address-option-content" style="flex: 1;">
-                        <div class="checkout-address-text">${addressStr}</div>
-                    </div>
-                    ${editDeleteButtons}
-                </label>
+                <div class="checkout-address-option-wrapper" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #eee;">
+                    <label style="display: flex; align-items: center; gap: 12px; flex: 1; cursor: pointer;">
+                        <input type="radio" name="checkoutAddress" value="${addressId}" ${isSelected ? 'checked' : ''} ${onChangeHandler}>
+                        <div class="checkout-address-option-content" style="flex: 1;">
+                            <div class="checkout-address-text">${addressStr}</div>
+                        </div>
+                    </label>
+                    ${menuButton}
+                </div>
             `;
         }).join('');
         
@@ -6700,6 +6716,12 @@ function renderMyAddressesListForSimple() {
 
 // Редактирование адреса из списка в упрощенном режиме
 function editCheckoutAddress(addressId, fromSimple = false) {
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${addressId}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
     if (fromSimple) {
         // Открываем страницу редактирования адреса
         const addr = savedAddresses.find(a => Number(a.id) === Number(addressId));
@@ -6742,21 +6764,29 @@ async function deleteCheckoutAddress(addressId, fromSimple = false) {
         checkoutData.address = null;
     }
     
-    // Обновляем список
-    if (fromSimple) {
-        renderCheckoutAddresses(true);
-        // Если адресов не осталось, показываем форму
-        if (updatedAddresses.length === 0) {
-            const addressesList = document.getElementById('checkoutAddressesList');
-            const addNewAddressBtn = document.getElementById('addNewAddressBtn');
-            const addressForm = document.getElementById('checkoutAddressForm');
-            
-            if (addressesList) addressesList.style.display = 'none';
-            if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
-            if (addressForm) addressForm.style.display = 'block';
-        }
-    } else {
-        renderCheckoutAddresses(false);
+    // Закрываем меню
+    const menu = document.getElementById(`addressMenu${id}`);
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    
+    // Обновляем список (для обоих режимов)
+    renderCheckoutAddresses(fromSimple);
+    
+    // Если адресов не осталось, показываем форму
+    if (updatedAddresses.length === 0) {
+        const addressesList = document.getElementById('checkoutAddressesList');
+        const addNewAddressBtn = document.getElementById('addNewAddressBtn');
+        const addressForm = document.getElementById('checkoutAddressForm');
+        
+        if (addressesList) addressesList.style.display = 'none';
+        if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+        if (addressForm) addressForm.style.display = 'block';
+    }
+    
+    // Тактильная обратная связь
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
     }
 }
 
