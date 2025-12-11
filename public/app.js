@@ -452,6 +452,7 @@ window.tryNextLogoFormat = tryNextLogoFormat;
 
 // Состояние приложения
 let products = [];
+let isProductsLoading = false; // Флаг загрузки товаров
 let cart = loadCart(); // Загружаем корзину из localStorage при старте
 let filteredProducts = [];
 let activeFilters = {
@@ -658,6 +659,9 @@ async function loadFilters() {
 
 // Загрузка товаров
 async function loadProducts() {
+    isProductsLoading = true;
+    renderProducts(); // Показываем спиннер
+    
     try {
         const response = await fetch('/api/products');
         const allProducts = await response.json();
@@ -675,12 +679,15 @@ async function loadProducts() {
             productQuantities[p.id] = minQty;
         });
         filteredProducts = [...products];
-        renderProducts();
         // Загружаем дополнительные товары из категории "корзина" для вкладки корзины
         loadAdditionalProducts();
     } catch (error) {
         console.error('Ошибка загрузки товаров:', error);
-        productsContainer.innerHTML = '<div class="loading">Ошибка загрузки товаров</div>';
+        products = []; // Пустой массив при ошибке
+        filteredProducts = [];
+    } finally {
+        isProductsLoading = false;
+        renderProducts(); // Перерисовываем с результатами
     }
 }
 
@@ -793,11 +800,23 @@ function attachFilterHandlers() {
 
 // Отображение товаров
 function renderProducts() {
-    if (filteredProducts.length === 0) {
-        productsContainer.innerHTML = '<div class="loading">Товары не найдены</div>';
+    // 1) Идёт загрузка – показываем только спиннер
+    if (isProductsLoading) {
+        productsContainer.innerHTML = `
+            <div class="products-loader">
+                <div class="spinner"></div>
+            </div>
+        `;
         return;
     }
 
+    // 2) Загрузка закончилась, но товаров нет – показываем "товар не найден"
+    if (!filteredProducts || filteredProducts.length === 0) {
+        productsContainer.innerHTML = '<div class="products-empty">Товары не найдены</div>';
+        return;
+    }
+
+    // 3) Есть товары – рендерим их
     productsContainer.innerHTML = filteredProducts.map(product => {
         const minQty = getMinQty(product);
         const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
@@ -2613,11 +2632,21 @@ function initOrderForm() {
                         btn.addEventListener('click', () => {
                             deliveryTimeOptions.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
+                            // Сохраняем выбранное время в checkoutData
+                            checkoutData.deliveryTime = btn.dataset.time;
                             if (tg && tg.HapticFeedback) {
                             tg.HapticFeedback.impactOccurred('light');
                             }
                         });
                     });
+                    
+                    // Восстанавливаем выбранное время, если оно было сохранено
+                    if (checkoutData.deliveryTime) {
+                        const savedTimeBtn = deliveryTimeOptions.querySelector(`.time-slot-btn[data-time="${checkoutData.deliveryTime}"]`);
+                        if (savedTimeBtn) {
+                            savedTimeBtn.classList.add('active');
+                        }
+                    }
                 }
             }
         }
@@ -2677,6 +2706,8 @@ function initOrderForm() {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                // Сохраняем выбранное время в checkoutData
+                checkoutData.deliveryTime = btn.dataset.time;
                 // Снимаем ошибку при выборе времени (в реальном времени)
                 const deliveryTimeOptions = document.getElementById('deliveryTimeOptions');
                 if (deliveryTimeOptions) {
