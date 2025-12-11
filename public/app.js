@@ -3651,14 +3651,34 @@ async function validateAndSubmitOrder(e) {
             
             // Проверяем, является ли ошибка связанной с недостатком товара
             const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
-            if (errorMessage.includes('Недостаточно товара')) {
-                // Показываем понятное сообщение пользователю
+            const errorMessageLower = errorMessage.toLowerCase();
+            
+            // Проверяем различные варианты сообщений о нехватке товара
+            const isStockError = 
+                errorMessageLower.includes('недостаточно товара') ||
+                errorMessageLower.includes('недостаточно товаров') ||
+                errorMessageLower.includes('не хватает товара') ||
+                errorMessageLower.includes('не хватает товаров') ||
+                errorMessageLower.includes('out of stock') ||
+                errorMessageLower.includes('insufficient stock') ||
+                errorMessageLower.includes('stock') && (errorMessageLower.includes('недостаточно') || errorMessageLower.includes('не хватает')) ||
+                errorData.errorType === 'stock_error' ||
+                errorData.errorType === 'insufficient_stock';
+            
+            if (isStockError) {
+                // Показываем понятное сообщение пользователю о нехватке товара
+                const stockErrorMessage = errorMessage.includes('Недостаточно') || errorMessage.includes('недостаточно') 
+                    ? errorMessage 
+                    : 'Недостаточно товара на складе';
+                
+                console.log('[validateAndSubmitOrder] ⚠️ Обнаружена ошибка нехватки товара:', errorMessage);
+                
                 if (tg && tg.showAlert) {
-                    tg.showAlert(`❌ ${errorMessage}\n\nПожалуйста, уменьшите количество товара или выберите другой товар.`);
+                    tg.showAlert(`❌ ${stockErrorMessage}\n\nПожалуйста, уменьшите количество товара в корзине или выберите другой товар.`);
                 } else {
-                    alert(`❌ ${errorMessage}\n\nПожалуйста, уменьшите количество товара или выберите другой товар.`);
+                    alert(`❌ ${stockErrorMessage}\n\nПожалуйста, уменьшите количество товара в корзине или выберите другой товар.`);
                 }
-                throw new Error(errorMessage);
+                throw new Error(stockErrorMessage);
             }
             
             throw new Error(errorMessage);
@@ -3822,7 +3842,15 @@ async function validateAndSubmitOrder(e) {
         if (!successOverlay.classList.contains('active')) {
             // Если ошибка связана с нехваткой товара, сообщение уже показано в блоке проверки ответа
             // Показываем общее сообщение только для других ошибок
-            const isStockError = error.message && error.message.includes('Недостаточно товара');
+            const errorMessageLower = (error.message || '').toLowerCase();
+            const isStockError = 
+                errorMessageLower.includes('недостаточно товара') ||
+                errorMessageLower.includes('недостаточно товаров') ||
+                errorMessageLower.includes('не хватает товара') ||
+                errorMessageLower.includes('не хватает товаров') ||
+                errorMessageLower.includes('out of stock') ||
+                errorMessageLower.includes('insufficient stock');
+            
             if (!isStockError) {
                 // Для других ошибок показываем общее сообщение
                 const errorMessage = error.message || 'Попробуйте еще раз.';
@@ -3832,7 +3860,7 @@ async function validateAndSubmitOrder(e) {
                     alert(`Произошла ошибка при оформлении заказа.\n\n${errorMessage}`);
                 }
             } else {
-                console.log('[validateAndSubmitOrder] Сообщение о нехватке товара уже показано пользователю');
+                console.log('[validateAndSubmitOrder] ✅ Сообщение о нехватке товара уже показано пользователю');
             }
         } else {
             console.warn('⚠️ Ошибка произошла, но экран успеха уже показан. Возможно, заказ был создан.');
