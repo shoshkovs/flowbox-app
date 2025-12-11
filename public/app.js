@@ -122,11 +122,35 @@ function exitToCart() {
     // Используем ту же функцию закрытия, что и после успешного заказа
     closeCheckoutUI();
     
-    // Переключаемся на корзину
+    // ЯВНО скрываем orderTab перед переключением на корзину
+    const orderTabEl = document.getElementById('orderTab');
+    if (orderTabEl) {
+        orderTabEl.style.display = 'none';
+        orderTabEl.classList.remove('active');
+    }
+    
+    // Переключаемся на корзину (это также обновит навигацию и покажет корзину)
     switchTab('cartTab');
+    
+    // ЯВНО показываем корзину после switchTab (на случай, если что-то пошло не так)
+    const cartTabEl = document.getElementById('cartTab');
+    if (cartTabEl) {
+        cartTabEl.style.display = 'block';
+        cartTabEl.classList.add('active');
+    }
+    
+    // Убеждаемся, что orderTab скрыт
+    if (orderTabEl) {
+        orderTabEl.style.display = 'none';
+    }
     
     // Скрываем BackButton
     showBackButton(false);
+    
+    // Прокручиваем наверх
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
     
     console.log('[exitToCart] ✅ Выход в корзину выполнен');
 }
