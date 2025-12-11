@@ -5792,6 +5792,7 @@ window.editAddressFromProfile = editAddressFromProfile;
 window.deleteAddressFromProfile = deleteAddressFromProfile;
 window.editAddressFromSimple = editAddressFromSimple;
 window.deleteAddressFromSimple = deleteAddressFromSimple;
+window.toggleAddressMenu = toggleAddressMenu;
 window.addAdditionalProduct = addAdditionalProduct;
 window.selectCheckoutAddress = selectCheckoutAddress;
 window.showCheckoutAddressForm = showCheckoutAddressForm;
