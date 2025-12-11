@@ -6449,10 +6449,11 @@ function renderMyAddressesListForSimple() {
         const isSelected = selectedAddressId && Number(selectedAddressId) === Number(addressId);
         
         return `
-            <div class="address-item" style="display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #eee; ${isSelected ? 'background-color: #f9f9f9;' : ''}">
+            <div class="address-item-simple" style="display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #eee; ${isSelected ? 'background-color: #f9f9f9;' : ''}">
                 <input type="radio" name="addressRadio" value="${addressId}" ${isSelected ? 'checked' : ''} 
                        onchange="selectCheckoutAddressForSimple(${addressId})" 
-                       style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                       class="address-radio-simple"
+                       style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer; accent-color: #d95d83;">
                 <div style="flex: 1; cursor: pointer;" onclick="selectCheckoutAddressForSimple(${addressId})">
                     <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
                 </div>
@@ -6465,10 +6466,10 @@ function renderMyAddressesListForSimple() {
                         </svg>
                     </button>
                     <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
-                        <button onclick="event.stopPropagation(); editAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                        <button class="address-menu-item" onclick="event.stopPropagation(); editAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
                             Изменить
                         </button>
-                        <button onclick="event.stopPropagation(); deleteAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                        <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); deleteAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
                             Удалить
                         </button>
                     </div>
