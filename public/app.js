@@ -4626,15 +4626,38 @@ async function handleAddressFormSubmit(event) {
     // Находим только что созданный/обновленный адрес
     let createdAddressId = null;
     if (mode === 'create') {
-        // Находим только что созданный адрес
+        // Находим только что созданный адрес - ищем по содержимому, так как ID мог измениться после сохранения на сервере
+        console.log('[handleAddressFormSubmit] 🔍 Поиск созданного адреса в savedAddresses, длина:', savedAddresses.length);
+        console.log('[handleAddressFormSubmit] 🔍 Ищем адрес с данными:', { city: payload.city, street: payload.street, apartment: payload.apartment });
+        
         const createdAddress = savedAddresses.find(addr => {
+            if (!addr || !addr.id || typeof addr.id !== 'number' || addr.id <= 0) {
+                return false;
+            }
             const sameCity = (addr.city || '').toLowerCase().trim() === (payload.city || '').toLowerCase().trim();
             const sameStreet = (addr.street || '').toLowerCase().trim() === (payload.street || '').toLowerCase().trim();
             const sameApartment = (addr.apartment || '').toLowerCase().trim() === (payload.apartment || '').toLowerCase().trim();
-            return sameCity && sameStreet && sameApartment && addr.id && typeof addr.id === 'number' && addr.id > 0;
+            const sameHouse = (addr.house || '').toLowerCase().trim() === (payload.house || '').toLowerCase().trim();
+            return sameCity && sameStreet && sameApartment && sameHouse;
         });
+        
         if (createdAddress && createdAddress.id) {
             createdAddressId = createdAddress.id;
+            console.log('[handleAddressFormSubmit] ✅ Найден созданный адрес с ID:', createdAddressId);
+        } else {
+            // Если не нашли по содержимому, берем последний адрес из списка (скорее всего это только что созданный)
+            const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+            if (validAddresses.length > 0) {
+                // Берем последний адрес, который был добавлен
+                const lastAddress = validAddresses[validAddresses.length - 1];
+                // Проверяем, что он похож на только что созданный
+                const similarCity = (lastAddress.city || '').toLowerCase().trim() === (payload.city || '').toLowerCase().trim();
+                const similarStreet = (lastAddress.street || '').toLowerCase().trim() === (payload.street || '').toLowerCase().trim();
+                if (similarCity && similarStreet) {
+                    createdAddressId = lastAddress.id;
+                    console.log('[handleAddressFormSubmit] ✅ Используем последний адрес как созданный, ID:', createdAddressId);
+                }
+            }
         }
     } else if (addressId) {
         createdAddressId = addressId;
@@ -4658,7 +4681,7 @@ async function handleAddressFormSubmit(event) {
         if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
     } else if (source === 'simple') {
         // В упрощенном режиме возвращаемся на вкладку оформления или список адресов
-        console.log('[handleAddressFormSubmit] ✅ Адрес сохранен в упрощенном режиме, checkoutScreen:', checkoutScreen);
+        console.log('[handleAddressFormSubmit] ✅ Адрес сохранен в упрощенном режиме, checkoutScreen:', checkoutScreen, 'createdAddressId:', createdAddressId);
         
         // Скрываем форму редактирования
         const editAddressTab = document.getElementById('editAddressTab');
@@ -4670,6 +4693,7 @@ async function handleAddressFormSubmit(event) {
         if (createdAddressId) {
             const updatedAddr = savedAddresses.find(a => Number(a.id) === Number(createdAddressId));
             if (updatedAddr) {
+                console.log('[handleAddressFormSubmit] ✅ Обновляем checkoutData с адресом:', updatedAddr);
                 checkoutData.addressId = updatedAddr.id;
                 checkoutData.address = {
                     id: updatedAddr.id,
@@ -4682,15 +4706,27 @@ async function handleAddressFormSubmit(event) {
                     intercom: updatedAddr.intercom || '',
                     comment: updatedAddr.comment || ''
                 };
+                console.log('[handleAddressFormSubmit] ✅ checkoutData обновлен:', checkoutData.addressId, checkoutData.address);
+            } else {
+                console.warn('[handleAddressFormSubmit] ⚠️ Адрес с ID', createdAddressId, 'не найден в savedAddresses после сохранения');
             }
+        } else {
+            console.warn('[handleAddressFormSubmit] ⚠️ createdAddressId не найден после сохранения адреса');
         }
         
         // Если мы были на странице списка адресов, возвращаемся туда и обновляем список
         if (checkoutScreen === 'addressesList') {
-            console.log('[handleAddressFormSubmit] ✅ Возвращаемся на страницу списка адресов');
+            console.log('[handleAddressFormSubmit] ✅ Возвращаемся на страницу списка адресов и обновляем список');
+            // Обновляем список адресов перед возвратом
+            renderMyAddressesListForSimple();
             openCheckoutAddressesForSimple();
         } else {
             // Иначе возвращаемся на вкладку оформления
+            console.log('[handleAddressFormSubmit] ✅ Возвращаемся на вкладку оформления');
+            // Обновляем отображение на странице оформления, чтобы показать выбранный адрес
+            if (typeof renderCheckoutSummary === 'function') {
+                renderCheckoutSummary();
+            }
             showSimpleSummary();
         }
     } else if (source === 'profile') {
