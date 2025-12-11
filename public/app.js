@@ -4844,10 +4844,6 @@ async function handleAddressFormSubmit(event) {
                     comment: updatedAddr.comment || ''
                 };
                 console.log('[handleAddressFormSubmit] ✅ checkoutData обновлен:', checkoutData.addressId, checkoutData.address);
-                
-                // Блокируем повторный выбор адреса после сохранения нового адреса
-                addressLocked = true;
-                console.log('[handleAddressFormSubmit] 🔒 Адрес заблокирован для повторного выбора после сохранения, addressId:', createdAddressId);
             } else {
                 console.warn('[handleAddressFormSubmit] ⚠️ Адрес с ID', createdAddressId, 'не найден в savedAddresses после сохранения');
             }
@@ -4860,13 +4856,7 @@ async function handleAddressFormSubmit(event) {
             console.log('[handleAddressFormSubmit] ✅ Возвращаемся на страницу списка адресов и обновляем список');
             // Обновляем список адресов перед возвратом
             renderMyAddressesListForSimple();
-            // Не открываем список адресов, если адрес уже заблокирован - возвращаемся на "Итого"
-            if (addressLocked) {
-                console.log('[handleAddressFormSubmit] 🔒 Адрес заблокирован, возвращаемся на страницу "Итого"');
-                showSimpleSummary();
-            } else {
-                openCheckoutAddressesForSimple();
-            }
+            openCheckoutAddressesForSimple();
         } else {
             // Иначе возвращаемся на вкладку оформления
             console.log('[handleAddressFormSubmit] ✅ Возвращаемся на вкладку оформления');
@@ -6573,12 +6563,6 @@ function selectCheckoutAddressForSimple(addressId) {
     // Используем существующую функцию для обновления checkoutData
     selectCheckoutAddress(addressId);
     
-    // Блокируем повторный выбор адреса в упрощенном режиме
-    if (isSimpleCheckout || checkoutMode === 'simple') {
-        addressLocked = true;
-        console.log('[SimpleMenu] 🔒 Адрес заблокирован для повторного выбора, addressId:', addressId);
-    }
-    
     // Возвращаемся к шагу 4 (упрощенное Итого)
     if (isSimpleCheckout || checkoutMode === 'simple') {
         showSimpleSummary();
@@ -6588,18 +6572,7 @@ function selectCheckoutAddressForSimple(addressId) {
 
 // Открытие списка адресов для упрощенного режима
 function openCheckoutAddressesForSimple() {
-    console.log('[SimpleMenu] 📍 Переход: открытие списка адресов, checkoutScreen:', checkoutScreen, 'checkoutMode:', checkoutMode, 'addressLocked:', addressLocked);
-    
-    // Проверяем, заблокирован ли повторный выбор адреса
-    if (addressLocked && (isSimpleCheckout || checkoutMode === 'simple')) {
-        console.log('[SimpleMenu] ⚠️ Адрес уже выбран, повторный выбор заблокирован');
-        if (tg && tg.showAlert) {
-            tg.showAlert('Адрес уже выбран. Если нужно изменить адрес, вернитесь в корзину и начните оформление заново.');
-        } else {
-            alert('Адрес уже выбран. Если нужно изменить адрес, вернитесь в корзину и начните оформление заново.');
-        }
-        return;
-    }
+    console.log('[SimpleMenu] 📍 Переход: открытие списка адресов, checkoutScreen:', checkoutScreen, 'checkoutMode:', checkoutMode);
     
     const myAddressesTab = document.getElementById('myAddressesTab');
     const myAddressesList = document.getElementById('myAddressesList');
@@ -6706,18 +6679,18 @@ function renderMyAddressesListForSimple() {
                     <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
                 </div>
                 <div class="address-menu" style="position: relative;">
-                    <button class="address-menu-btn" onclick="event.stopPropagation(); event.preventDefault(); window.toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
+                    <button type="button" class="address-menu-btn" onclick="window.toggleAddressMenu(${addressId}); return false;" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666; z-index: 10001;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="5" r="1"/>
                             <circle cx="12" cy="12" r="1"/>
                             <circle cx="12" cy="19" r="1"/>
                         </svg>
                     </button>
-                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
-                        <button class="address-menu-item" onclick="event.stopPropagation(); event.preventDefault(); window.editAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10002; min-width: 150px; margin-top: 4px;">
+                        <button type="button" class="address-menu-item" onclick="window.editAddressFromSimple(${addressId}); return false;" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
                             Изменить
                         </button>
-                        <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); event.preventDefault(); window.deleteAddressFromSimple(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                        <button type="button" class="address-menu-item address-menu-item-delete" onclick="window.deleteAddressFromSimple(${addressId}); return false;" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
                             Удалить
                         </button>
                     </div>
