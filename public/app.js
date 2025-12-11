@@ -3667,11 +3667,9 @@ async function validateAndSubmitOrder(e) {
             
             if (isStockError) {
                 // Показываем понятное сообщение пользователю о нехватке товара
-                const stockErrorMessage = errorMessage.includes('Недостаточно') || errorMessage.includes('недостаточно') 
-                    ? errorMessage 
-                    : 'Недостаточно товара на складе';
-                
                 console.log('[validateAndSubmitOrder] ⚠️ Обнаружена ошибка нехватки товара:', errorMessage);
+                
+                const stockErrorMessage = 'Ошибка: товар закончился';
                 
                 if (tg && tg.showAlert) {
                     tg.showAlert(`❌ ${stockErrorMessage}\n\nПожалуйста, уменьшите количество товара в корзине или выберите другой товар.`);
