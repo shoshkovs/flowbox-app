@@ -1820,25 +1820,10 @@ async function createOrderInDb(orderData) {
         deliveryZone = 'До 20 км от КАД';
       }
       
-      // Пересчитываем serviceFee, если передан процент
-      let calculatedServiceFee = orderData.serviceFee;
-      if (orderData.serviceFeePercent && orderData.flowersTotal) {
-        calculatedServiceFee = Math.round(orderData.flowersTotal * (orderData.serviceFeePercent / 100));
-      }
-      if (!calculatedServiceFee) {
-        calculatedServiceFee = orderData.serviceFee || Math.round(orderData.flowersTotal * 0.10) || 450;
-      }
-      
-      // Итоговая сумма заказа
-      const finalTotal = orderData.flowersTotal + calculatedServiceFee + (orderData.deliveryPrice || 0);
-      
-      // Получаем значение leave_at_door из orderData (явное приведение к boolean)
-      const leaveAtDoor = !!(orderData.leaveAtDoor || false);
-      
       // Получаем процент сервисного сбора из orderData или используем 10% по умолчанию
       const serviceFeePercent = orderData.serviceFeePercent || 10.00;
       
-      // Пересчитываем serviceFee, если он не передан или если нужно использовать процент
+      // Пересчитываем serviceFee, если передан процент или если нужно использовать процент по умолчанию
       let calculatedServiceFee = orderData.serviceFee;
       if (!calculatedServiceFee && orderData.flowersTotal) {
         calculatedServiceFee = Math.round(orderData.flowersTotal * (serviceFeePercent / 100));
@@ -1846,6 +1831,12 @@ async function createOrderInDb(orderData) {
       if (!calculatedServiceFee) {
         calculatedServiceFee = 450; // Fallback
       }
+      
+      // Итоговая сумма заказа
+      const finalTotal = orderData.flowersTotal + calculatedServiceFee + (orderData.deliveryPrice || 0);
+      
+      // Получаем значение leave_at_door из orderData (явное приведение к boolean)
+      const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
       // Создаем заказ
       const orderResult = await client.query(
