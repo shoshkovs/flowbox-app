@@ -2055,6 +2055,9 @@ function showSimpleSummary() {
         initSimpleDateTimeOnSummary();
     }
     
+    // Инициализируем чекбокс "Оставить у двери" для упрощенного режима
+    initSimpleLeaveAtDoorCheckbox();
+    
     // Обновляем данные
     if (typeof renderCheckoutSummary === 'function') {
         renderCheckoutSummary();
@@ -5536,6 +5539,31 @@ function initLeaveAtDoorCheckbox() {
     });
 }
 
+// Инициализация чекбокса "Оставить у двери" для упрощенного режима
+let simpleLeaveAtDoorInited = false;
+
+function initSimpleLeaveAtDoorCheckbox() {
+    const checkbox = document.getElementById('simple-leave-at-door-checkbox');
+    if (!checkbox) {
+        console.warn('[leaveAtDoor] чекбокс simple-leave-at-door-checkbox не найден');
+        return;
+    }
+
+    if (simpleLeaveAtDoorInited) {
+        console.log('[leaveAtDoor] уже инициализирован, выходим');
+        return;
+    }
+
+    checkbox.checked = !!checkoutData.leaveAtDoor;
+    checkbox.addEventListener('change', () => {
+        checkoutData.leaveAtDoor = checkbox.checked;
+        console.log('[leaveAtDoor] состояние изменено:', checkoutData.leaveAtDoor);
+    });
+
+    simpleLeaveAtDoorInited = true;
+    console.log('[leaveAtDoor] инициализация, начальное состояние:', checkbox.checked);
+}
+
 // Инициализация поэтапной формы
 function initCheckoutSteps() {
     // Настройка поля телефона
@@ -6871,48 +6899,8 @@ function initSimpleDateTimeOnSummary() {
         });
     }
     
-    // Чекбокс "Оставить у двери" - только чекбокс, без поля "Да/Нет"
-    const leaveAtDoorCheckbox = document.getElementById('summaryLeaveAtDoorCheckbox');
-    if (leaveAtDoorCheckbox) {
-        // Устанавливаем начальное состояние
-        leaveAtDoorCheckbox.checked = !!checkoutData.leaveAtDoor;
-        
-        // Удаляем все старые обработчики, создавая новый обработчик
-        const handleCheckboxChange = function() {
-            checkoutData.leaveAtDoor = this.checked;
-            // Не обновляем summaryLeaveAtDoor в упрощенном сценарии
-        };
-        
-        // Удаляем старые обработчики через клонирование
-        const newCheckbox = leaveAtDoorCheckbox.cloneNode(true);
-        newCheckbox.checked = !!checkoutData.leaveAtDoor;
-        leaveAtDoorCheckbox.parentNode.replaceChild(newCheckbox, leaveAtDoorCheckbox);
-        
-        // Добавляем новый обработчик на change
-        newCheckbox.addEventListener('change', handleCheckboxChange);
-        
-        // Также добавляем обработчик на click для надежности
-        newCheckbox.addEventListener('click', function(e) {
-            // Предотвращаем двойное срабатывание
-            e.stopPropagation();
-            checkoutData.leaveAtDoor = this.checked;
-        });
-        
-        // Обрабатываем клик по label (если клик не по самому чекбоксу)
-        const label = newCheckbox.closest('label');
-        if (label) {
-            label.addEventListener('click', function(e) {
-                // Если клик был по label или span, а не по самому чекбоксу
-                if (e.target !== newCheckbox && e.target.tagName !== 'INPUT') {
-                    // Не нужно ничего делать - браузер сам переключит чекбокс при клике на label
-                    // Просто убеждаемся, что состояние синхронизировано
-                    setTimeout(() => {
-                        checkoutData.leaveAtDoor = newCheckbox.checked;
-                    }, 0);
-                }
-            });
-        }
-    }
+    // Чекбокс "Оставить у двери" инициализируется отдельной функцией initSimpleLeaveAtDoorCheckbox()
+    // вызываемой из showSimpleSummary()
     
     // Функция обновления отображения даты и времени
     function updateSummaryDateTimeDisplay() {
