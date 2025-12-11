@@ -7870,6 +7870,8 @@ async function saveEditAddress() {
     
     // Проверяем, редактируется ли существующий адрес
     const editingAddressId = editAddressTab?.dataset.editingAddressId;
+    let savedAddressId = null;
+    
     if (editingAddressId) {
         // Обновляем существующий адрес в savedAddresses с сохранением ID
         const addressIndex = savedAddresses.findIndex(a => String(a.id) === String(editingAddressId));
@@ -7897,41 +7899,83 @@ async function saveEditAddress() {
             
             // Сохраняем на сервер
             await saveUserData();
+            
+            savedAddressId = Number(editingAddressId);
         } else {
             console.error('[saveEditAddress] ❌ Адрес с ID', editingAddressId, 'не найден в savedAddresses');
         }
-    }
-    
-    // Обновляем checkoutData.address с сохранением ID, если редактировали существующий
-    const existingAddressId = editingAddressId || checkoutData.address?.id;
-    checkoutData.address = {
-        id: existingAddressId || null, // Сохраняем ID, если есть
-        city: city,
-        street: streetValue,
-        house: houseValue,
-        apartment: apartmentField.value.trim(),
-        floor: floorField.value.trim(),
-        entrance: entranceField.value.trim(),
-        intercom: intercomField.value.trim(),
-        comment: commentField.value.trim()
-    };
-    
-    // Получаем ID сохраненного/обновленного адреса
-    let savedAddressId = null;
-    if (editingAddressId) {
-        savedAddressId = Number(editingAddressId);
     } else {
-        // Если создан новый адрес, ищем его в savedAddresses
-        const newAddress = savedAddresses.find(addr => {
-            const sameCity = (addr.city || '').toLowerCase().trim() === city.toLowerCase().trim();
-            const sameStreet = (addr.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
-            const sameApartment = (addr.apartment || '').toLowerCase().trim() === (apartmentField.value.trim() || '').toLowerCase().trim();
-            return sameCity && sameStreet && sameApartment && addr.id && typeof addr.id === 'number' && addr.id > 0;
+        // Создаем новый адрес
+        console.log('[saveEditAddress] 📍 Создание нового адреса');
+        
+        // Проверка на дубликаты
+        const isDuplicate = savedAddresses.some(existingAddr => {
+            const sameCity = (existingAddr.city || '').toLowerCase().trim() === city.toLowerCase().trim();
+            const sameStreet = (existingAddr.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
+            const sameApartment = (existingAddr.apartment || '').toLowerCase().trim() === (apartmentField.value.trim() || '').toLowerCase().trim();
+            const sameHouse = (existingAddr.house || '').toLowerCase().trim() === houseValue.toLowerCase().trim();
+            return sameCity && sameStreet && sameApartment && sameHouse;
         });
-        if (newAddress && newAddress.id) {
-            savedAddressId = newAddress.id;
+        
+        if (!isDuplicate) {
+            // Добавляем новый адрес в savedAddresses
+            const newAddress = {
+                city: city,
+                street: streetValue,
+                house: houseValue,
+                apartment: apartmentField.value.trim() || null,
+                floor: floorField.value.trim() || null,
+                entrance: entranceField.value.trim() || null,
+                intercom: intercomField.value.trim() || null,
+                comment: commentField.value.trim() || null,
+                name: streetValue || 'Адрес',
+                id: null // ID будет присвоен сервером
+            };
+            
+            const updatedAddresses = [...savedAddresses, newAddress];
+            console.log('[saveEditAddress] ✅ Добавлен новый адрес в savedAddresses:', newAddress);
+            
+            // Используем единый сеттер
+            setSavedAddresses(updatedAddresses);
+            
+            // Сохраняем на сервер
+            await saveUserData();
+            
+            // После сохранения на сервер, ищем созданный адрес с ID
+            const createdAddress = savedAddresses.find(addr => {
+                if (!addr || !addr.id || typeof addr.id !== 'number' || addr.id <= 0) {
+                    return false;
+                }
+                const sameCity = (addr.city || '').toLowerCase().trim() === city.toLowerCase().trim();
+                const sameStreet = (addr.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
+                const sameApartment = (addr.apartment || '').toLowerCase().trim() === (apartmentField.value.trim() || '').toLowerCase().trim();
+                const sameHouse = (addr.house || '').toLowerCase().trim() === houseValue.toLowerCase().trim();
+                return sameCity && sameStreet && sameApartment && sameHouse;
+            });
+            
+            if (createdAddress && createdAddress.id) {
+                savedAddressId = createdAddress.id;
+                console.log('[saveEditAddress] ✅ Найден созданный адрес с ID:', savedAddressId);
+            } else {
+                // Если не нашли по содержимому, берем последний адрес из списка
+                const validAddresses = savedAddresses.filter(addr => addr.id && typeof addr.id === 'number' && addr.id > 0);
+                if (validAddresses.length > 0) {
+                    const lastAddress = validAddresses[validAddresses.length - 1];
+                    const similarCity = (lastAddress.city || '').toLowerCase().trim() === city.toLowerCase().trim();
+                    const similarStreet = (lastAddress.street || '').toLowerCase().trim() === streetValue.toLowerCase().trim();
+                    if (similarCity && similarStreet) {
+                        savedAddressId = lastAddress.id;
+                        console.log('[saveEditAddress] ✅ Используем последний адрес как созданный, ID:', savedAddressId);
+                    }
+                }
+            }
+        } else {
+            console.warn('[saveEditAddress] ⚠️ Адрес уже существует, пропускаем создание дубликата');
         }
     }
+    
+    // Обновляем checkoutData.address с сохранением ID
+    // savedAddressId уже найден выше
     
     // Скрываем страницу редактирования
     if (editAddressTab) {
@@ -7939,12 +7983,15 @@ async function saveEditAddress() {
         delete editAddressTab.dataset.editingAddressId;
     }
     
-    // В упрощенном сценарии возвращаемся на вкладку оформления
+    // В упрощенном сценарии возвращаемся на вкладку оформления или список адресов
     if (isSimpleCheckout || checkoutMode === 'simple') {
+        console.log('[saveEditAddress] ✅ Адрес сохранен в упрощенном режиме, savedAddressId:', savedAddressId, 'checkoutScreen:', checkoutScreen);
+        
         if (savedAddressId) {
             // Обновляем checkoutData с новым адресом
             const updatedAddr = savedAddresses.find(a => Number(a.id) === Number(savedAddressId));
             if (updatedAddr) {
+                console.log('[saveEditAddress] ✅ Обновляем checkoutData с адресом:', updatedAddr);
                 checkoutData.addressId = updatedAddr.id;
                 checkoutData.address = {
                     id: updatedAddr.id,
@@ -7957,11 +8004,27 @@ async function saveEditAddress() {
                     intercom: updatedAddr.intercom || '',
                     comment: updatedAddr.comment || ''
                 };
+                console.log('[saveEditAddress] ✅ checkoutData обновлен:', checkoutData.addressId, checkoutData.address);
+            } else {
+                console.warn('[saveEditAddress] ⚠️ Адрес с ID', savedAddressId, 'не найден в savedAddresses после сохранения');
             }
-            // Возвращаемся на вкладку оформления
-            showSimpleSummary();
         } else {
-            // Если адрес не найден, просто возвращаемся на шаг 4
+            console.warn('[saveEditAddress] ⚠️ savedAddressId не найден после сохранения адреса');
+        }
+        
+        // Если мы были на странице списка адресов, возвращаемся туда и обновляем список
+        if (checkoutScreen === 'addressesList') {
+            console.log('[saveEditAddress] ✅ Возвращаемся на страницу списка адресов и обновляем список');
+            // Обновляем список адресов перед возвратом
+            renderMyAddressesListForSimple();
+            openCheckoutAddressesForSimple();
+        } else {
+            // Иначе возвращаемся на вкладку оформления
+            console.log('[saveEditAddress] ✅ Возвращаемся на вкладку оформления');
+            // Обновляем отображение на странице оформления, чтобы показать выбранный адрес
+            if (typeof renderCheckoutSummary === 'function') {
+                renderCheckoutSummary();
+            }
             showSimpleSummary();
         }
     } else {
