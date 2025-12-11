@@ -452,7 +452,7 @@ window.tryNextLogoFormat = tryNextLogoFormat;
 
 // Состояние приложения
 let products = [];
-let isProductsLoading = false; // Флаг загрузки товаров
+let isProductsLoading = true; // Флаг загрузки товаров (изначально true для показа спиннера)
 let cart = loadCart(); // Загружаем корзину из localStorage при старте
 let filteredProducts = [];
 let activeFilters = {
@@ -5328,6 +5328,20 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Инициализация при загрузке
+// Показываем спиннер сразу при загрузке страницы
+function initProductsLoader() {
+    if (productsContainer) {
+        renderProducts(); // Показываем спиннер сразу
+    }
+}
+
+// Вызываем сразу, если DOM уже загружен, иначе ждем DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initProductsLoader);
+} else {
+    initProductsLoader();
+}
+
 // Загружаем фильтры, затем товары
 loadFilters().then(() => {
     loadProducts();
