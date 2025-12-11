@@ -802,6 +802,7 @@ function attachFilterHandlers() {
 function renderProducts() {
     // 1) Идёт загрузка – показываем только спиннер
     if (isProductsLoading) {
+        productsContainer.classList.add('products-container-empty');
         productsContainer.innerHTML = `
             <div class="products-loader">
                 <div class="spinner"></div>

@@ -536,8 +536,8 @@ h1, h2, h3, .font-bold {
     justify-content: center;
     align-items: center;
     padding: 48px 24px;
-    min-height: 50vh; /* По центру экрана по вертикали */
     width: 100%;
+    height: 100%;
 }
 
 .spinner {
