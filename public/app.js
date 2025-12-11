@@ -5619,13 +5619,6 @@ function initCheckoutSteps() {
             
             // Возвращаемся на страницу итого
             document.getElementById('editRecipientTab').style.display = 'none';
-            // В упрощенном сценарии показываем заголовок обратно
-            if (isSimpleCheckout) {
-                const orderPageHeader = document.querySelector('.order-page-header');
-                if (orderPageHeader) {
-                    orderPageHeader.style.display = '';
-                }
-            }
             goToStep(4);
         };
     }
@@ -6942,19 +6935,6 @@ function openEditRecipientPage() {
     const previousScreen = checkoutScreen;
     checkoutScreen = 'editRecipient';
     console.log('[SimpleMenu] ✅ Переход выполнен: editRecipient, было:', previousScreen, 'стало:', checkoutScreen);
-    
-    // Прокручиваем страницу вверх сразу, без задержки
-    window.scrollTo(0, 0);
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-    
-    // Убеждаемся, что вкладка прокручена в начало
-    setTimeout(() => {
-        if (editRecipientTab) {
-            editRecipientTab.scrollTop = 0;
-        }
-        window.scrollTo(0, 0);
-    }, 0);
     
     // Показываем BackButton
     showBackButton(true);
