@@ -1831,8 +1831,6 @@ function calculateFinalTotal() {
     // Пересчитываем сервисный сбор как 10% от суммы товаров
     serviceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
     
-    console.log('[calculateFinalTotal] flowersTotal:', flowersTotal, 'serviceFeePercent:', serviceFeePercent, 'serviceFee:', serviceFee);
-    
     // В корзине не показываем доставку, только товары и сборы
     const total = flowersTotal + serviceFee;
     
@@ -1850,15 +1848,6 @@ function calculateFinalTotal() {
     const serviceFeeElement = document.getElementById('serviceFeeAmount');
     if (serviceFeeElement) {
         serviceFeeElement.textContent = `${serviceFee} ₽`;
-        console.log('[calculateFinalTotal] Обновлен serviceFeeAmount:', serviceFee, '₽');
-    } else {
-        console.warn('[calculateFinalTotal] ⚠️ Элемент serviceFeeAmount не найден в DOM');
-        // Попробуем найти элемент через другой селектор
-        const serviceFeeElementAlt = document.querySelector('.total-detail-row .total-detail-value');
-        if (serviceFeeElementAlt && serviceFeeElementAlt.textContent.includes('₽')) {
-            console.log('[calculateFinalTotal] Найден альтернативный элемент, обновляем');
-            serviceFeeElementAlt.textContent = `${serviceFee} ₽`;
-        }
     }
 }
 
