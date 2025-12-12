@@ -1614,52 +1614,88 @@ function saveCart() {
     saveUserData(); // Сохраняем на сервер
 }
 
-// Обновление страницы корзины
-if (cart.length === 0) {
-    emptyCartContainer.style.display = 'block';
-    cartWithItems.style.display = 'none';
-    
-    // Корзина пуста — показываем 0
-    cartItemsList.innerHTML = '';
-    calculateFinalTotal();
-} else {
-    emptyCartContainer.style.display = 'none';
-    cartWithItems.style.display = 'block';
-    
-    // Рендер товаров в корзине
-    cartItemsList.innerHTML = cart.map(item => {
-        const minQty = getMinQty(item);
-        if (item.quantity < minQty) {
-            item.quantity = minQty;
-        }
-        const bunchesCount = Math.floor(item.quantity / minQty);
-        const totalPrice = item.price * item.quantity;
-        
-        return `
-        <div class="cart-item-new">
-            <img src="${item.image}" alt="${item.name}" class="cart-item-new-image">
-            <div class="cart-item-new-info">
-                <div class="cart-item-new-name">${item.name}</div>
-                ${minQty > 1 ? `<div class="cart-item-new-min-qty">${minQty} шт</div>` : ''}
-                <div class="cart-item-new-quantity-controls">
-                    <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, -1)">−</button>
-                    <span class="cart-quantity-value">${bunchesCount}</span>
-                    <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, 1)">+</button>
-                </div>
-            </div>
-            <div class="cart-item-new-price">${totalPrice} <span class="ruble">₽</span></div>
-        </div>
-        `;
-    }).join('');
-    
-    // Расчет итоговой суммы
-    calculateFinalTotal();
-    
-    // Рендерим карусель дополнительных товаров
-    renderAdditionalProducts();
-}
+// Обновление UI корзины
+function updateCartUI() {
+    // Сохранение корзины
+    saveCart();
 
-updateGoToCartButton();
+    // Обновление счетчика в навигации (показываем количество "банчей", а не общее количество)
+    let totalBunches = 0;
+    cart.forEach(item => {
+        const minQty = getMinQty(item);
+        const bunches = Math.floor(item.quantity / minQty);
+        totalBunches += bunches;
+    });
+    if (navCartCount) {
+        navCartCount.textContent = totalBunches;
+        if (totalBunches === 0) {
+            navCartCount.style.display = 'none';
+        } else {
+            navCartCount.style.display = 'block';
+        }
+    }
+    
+    // Обновляем карточки товаров, которые есть в корзине или были удалены
+    cart.forEach(item => {
+        updateProductCard(item.id);
+    });
+    // Обновляем карточки товаров, которые были удалены из корзины
+    products.forEach(product => {
+        const cartItem = cart.find(item => item.id === product.id);
+        if (!cartItem) {
+            updateProductCard(product.id);
+        }
+    });
+    
+    // Обновление страницы корзины
+    if (cart.length === 0) {
+        if (emptyCartContainer) emptyCartContainer.style.display = 'block';
+        if (cartWithItems) cartWithItems.style.display = 'none';
+        
+        // Корзина пуста — показываем 0
+        if (cartItemsList) cartItemsList.innerHTML = '';
+        calculateFinalTotal();
+    } else {
+        if (emptyCartContainer) emptyCartContainer.style.display = 'none';
+        if (cartWithItems) cartWithItems.style.display = 'block';
+        
+        // Рендер товаров в корзине
+        if (cartItemsList) {
+            cartItemsList.innerHTML = cart.map(item => {
+                const minQty = getMinQty(item);
+                if (item.quantity < minQty) {
+                    item.quantity = minQty;
+                }
+                const bunchesCount = Math.floor(item.quantity / minQty);
+                const totalPrice = item.price * item.quantity;
+                
+                return `
+                <div class="cart-item-new">
+                    <img src="${item.image}" alt="${item.name}" class="cart-item-new-image">
+                    <div class="cart-item-new-info">
+                        <div class="cart-item-new-name">${item.name}</div>
+                        ${minQty > 1 ? `<div class="cart-item-new-min-qty">${minQty} шт</div>` : ''}
+                        <div class="cart-item-new-quantity-controls">
+                            <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, -1)">−</button>
+                            <span class="cart-quantity-value">${bunchesCount}</span>
+                            <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="cart-item-new-price">${totalPrice} <span class="ruble">₽</span></div>
+                </div>
+                `;
+            }).join('');
+        }
+        
+        // Расчет итоговой суммы
+        calculateFinalTotal();
+        
+        // Рендерим карусель дополнительных товаров
+        renderAdditionalProducts();
+    }
+    
+    updateGoToCartButton();
+}
 
 // Дополнительные товары для карусели (загружаются из базы данных с категорией "корзина")
 let additionalProducts = [];
