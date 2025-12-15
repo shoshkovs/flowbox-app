@@ -343,6 +343,57 @@ if (process.env.DATABASE_URL) {
           // Игнорируем ошибки при миграции
         }
       }, 3000);
+      
+      // Миграция: добавление колонки service_fee_percent в таблицу orders
+      setTimeout(async () => {
+        try {
+          const client = await pool.connect();
+          try {
+            const columnCheck = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'orders' AND column_name = 'service_fee_percent'
+            `);
+            
+            if (columnCheck.rows.length === 0) {
+              console.log('🔄 Выполняем миграцию: добавление колонки service_fee_percent в таблицу orders...');
+              await client.query(`
+                ALTER TABLE orders 
+                ADD COLUMN service_fee_percent NUMERIC(5,2) DEFAULT 10.00
+              `);
+              
+              // Обновляем существующие заказы, устанавливая процент по умолчанию
+              await client.query(`
+                UPDATE orders 
+                SET service_fee_percent = CASE 
+                    WHEN flowers_total > 0 THEN ROUND((service_fee::NUMERIC / flowers_total::NUMERIC * 100)::NUMERIC, 2)
+                    ELSE 10.00
+                END
+                WHERE service_fee_percent IS NULL
+              `);
+              
+              // Устанавливаем значение по умолчанию для заказов, где не удалось вычислить процент
+              await client.query(`
+                UPDATE orders 
+                SET service_fee_percent = 10.00
+                WHERE service_fee_percent IS NULL
+              `);
+              
+              console.log('✅ Миграция колонки service_fee_percent завершена');
+            } else {
+              console.log('✅ Колонка service_fee_percent уже существует в таблице orders');
+            }
+          } catch (migrationError) {
+            if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
+              console.log('⚠️  Миграция колонки service_fee_percent:', migrationError.message);
+            }
+          } finally {
+            client.release();
+          }
+        } catch (error) {
+          // Игнорируем ошибки при миграции
+        }
+      }, 3500);
     }, 2000);
     
     // Миграция price -> price_per_stem
