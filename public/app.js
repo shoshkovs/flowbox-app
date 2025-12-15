@@ -1918,9 +1918,8 @@ function switchTab(tabId) {
     // Скрыть все вкладки (и через класс, и через display)
     tabContents.forEach(tab => {
         if (tab.classList.contains('active')) {
-            // Плавное скрытие текущей вкладки
+            // Мягкое скрытие текущей вкладки
             tab.style.opacity = '0';
-            tab.style.transform = 'scale(0.98)';
         }
         tab.classList.remove('active');
         // Явно скрываем все вкладки через display после анимации
@@ -1928,7 +1927,7 @@ function switchTab(tabId) {
             if (tab.id !== tabId) {
                 tab.style.display = 'none';
             }
-        }, 150);
+        }, 200);
     });
     
     // При переключении на профиль - обновляем заказы для актуальных статусов
@@ -1944,21 +1943,19 @@ function switchTab(tabId) {
         }, 50);
     }
     
-    // Показать выбранную вкладку с анимацией
+    // Показать выбранную вкладку с мягкой анимацией
     const activeTab = document.getElementById(tabId);
     if (activeTab) {
         activeTab.style.display = 'block';
         // Принудительный reflow для запуска анимации
         void activeTab.offsetWidth;
         activeTab.style.opacity = '0';
-        activeTab.style.transform = 'scale(0.98)';
         activeTab.classList.add('active');
         
-        // Плавное появление
+        // Мягкое появление
         setTimeout(() => {
-            activeTab.style.transition = 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            activeTab.style.transition = 'opacity 0.25s ease-out';
             activeTab.style.opacity = '1';
-            activeTab.style.transform = 'scale(1)';
         }, 10);
     }
     
@@ -2161,13 +2158,19 @@ function initRippleButtons() {
 // Инициализируем ripple эффект при загрузке и после рендера
 initRippleButtons();
 
-// Переинициализируем ripple после рендера товаров
+// Переинициализируем ripple после рендера товаров и применяем мягкую анимацию
 const originalRenderProducts = renderProducts;
 renderProducts = function() {
     originalRenderProducts();
     setTimeout(() => {
         initRippleButtons();
-    }, 100);
+        // Применяем мягкую анимацию к карточкам товаров
+        const cards = productsContainer.querySelectorAll('.product-card');
+        cards.forEach((card, index) => {
+            card.style.transitionDelay = `${index * 0.02}s`;
+            card.classList.add('animate-in');
+        });
+    }, 50);
 };
 
 // Переинициализируем ripple после обновления корзины
