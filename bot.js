@@ -62,6 +62,55 @@ if (process.env.DATABASE_URL) {
       } else {
         if (connectionAttempts === 1) {
           console.log('✅ Подключение к базе данных установлено');
+          // Выполняем критическую миграцию service_fee_percent синхронно при первом подключении
+          (async () => {
+            try {
+              const client = await pool.connect();
+              try {
+                const columnCheck = await client.query(`
+                  SELECT column_name 
+                  FROM information_schema.columns 
+                  WHERE table_name = 'orders' AND column_name = 'service_fee_percent'
+                `);
+                
+                if (columnCheck.rows.length === 0) {
+                  console.log('🔄 Выполняем критическую миграцию: добавление колонки service_fee_percent в таблицу orders...');
+                  await client.query(`
+                    ALTER TABLE orders 
+                    ADD COLUMN service_fee_percent NUMERIC(5,2) DEFAULT 10.00
+                  `);
+                  
+                  // Обновляем существующие заказы
+                  await client.query(`
+                    UPDATE orders 
+                    SET service_fee_percent = CASE 
+                        WHEN flowers_total > 0 THEN ROUND((service_fee::NUMERIC / flowers_total::NUMERIC * 100)::NUMERIC, 2)
+                        ELSE 10.00
+                    END
+                    WHERE service_fee_percent IS NULL
+                  `);
+                  
+                  await client.query(`
+                    UPDATE orders 
+                    SET service_fee_percent = 10.00
+                    WHERE service_fee_percent IS NULL
+                  `);
+                  
+                  console.log('✅ Критическая миграция service_fee_percent завершена');
+                } else {
+                  console.log('✅ Колонка service_fee_percent уже существует');
+                }
+              } catch (migrationError) {
+                if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
+                  console.log('⚠️  Критическая миграция service_fee_percent:', migrationError.message);
+                }
+              } finally {
+                client.release();
+              }
+            } catch (error) {
+              console.log('⚠️  Ошибка при выполнении критической миграции:', error.message);
+            }
+          })();
         } else {
           console.log(`✅ Подключение к базе данных установлено (попытка ${connectionAttempts})`);
         }
@@ -1889,9 +1938,46 @@ async function createOrderInDb(orderData) {
       // Получаем значение leave_at_door из orderData (явное приведение к boolean)
       const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
-      // Создаем заказ
-      const orderResult = await client.query(
-        `INSERT INTO orders 
+      // Проверяем наличие колонки service_fee_percent
+      let columnCheck;
+      try {
+        columnCheck = await client.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'orders' AND column_name = 'service_fee_percent'
+        `);
+      } catch (checkError) {
+        console.log('⚠️  Ошибка проверки колонки service_fee_percent:', checkError.message);
+        columnCheck = { rows: [] };
+      }
+      
+      let hasServiceFeePercent = columnCheck.rows.length > 0;
+      
+      // Если колонки нет, пытаемся добавить её (на случай, если миграция еще не выполнилась)
+      if (!hasServiceFeePercent) {
+        try {
+          console.log('🔄 Колонка service_fee_percent не найдена, пытаемся добавить...');
+          await client.query(`
+            ALTER TABLE orders 
+            ADD COLUMN service_fee_percent NUMERIC(5,2) DEFAULT 10.00
+          `);
+          console.log('✅ Колонка service_fee_percent добавлена');
+          hasServiceFeePercent = true;
+        } catch (alterError) {
+          if (!alterError.message.includes('already exists') && !alterError.message.includes('duplicate')) {
+            console.log('⚠️  Не удалось добавить колонку service_fee_percent:', alterError.message);
+          } else {
+            // Колонка уже существует (возможно, была добавлена параллельно)
+            hasServiceFeePercent = true;
+          }
+        }
+      }
+      
+      // Формируем INSERT запрос в зависимости от наличия колонки
+      let insertQuery, insertValues;
+      if (hasServiceFeePercent) {
+        // Колонка существует (или только что добавлена)
+        insertQuery = `INSERT INTO orders 
          (user_id, total, flowers_total, service_fee, service_fee_percent, delivery_price, bonus_used, bonus_earned,
           client_name, client_phone, client_email,
           recipient_name, recipient_phone, 
@@ -1899,8 +1985,8 @@ async function createOrderInDb(orderData) {
           delivery_zone, delivery_date, delivery_time,
           user_comment, courier_comment, leave_at_door, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'NEW')
-         RETURNING *`,
-        [
+         RETURNING *`;
+        insertValues = [
           userId,
           finalTotal,
           orderData.flowersTotal,
@@ -1923,8 +2009,45 @@ async function createOrderInDb(orderData) {
           userComment,
           courierComment,
           leaveAtDoor
-        ]
-      );
+        ];
+      } else {
+        // Колонки нет, создаем запрос без неё
+        insertQuery = `INSERT INTO orders 
+         (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
+          client_name, client_phone, client_email,
+          recipient_name, recipient_phone, 
+          address_id, address_string, address_json, 
+          delivery_zone, delivery_date, delivery_time,
+          user_comment, courier_comment, leave_at_door, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW')
+         RETURNING *`;
+        insertValues = [
+          userId,
+          finalTotal,
+          orderData.flowersTotal,
+          calculatedServiceFee,
+          orderData.deliveryPrice || 0,
+          0, // bonus_used
+          0, // bonus_earned
+          clientName,
+          clientPhone,
+          clientEmail,
+          orderData.recipientName || null,
+          orderData.recipientPhone || null,
+          addressId,
+          orderData.address,
+          JSON.stringify(orderData.addressData || {}),
+          deliveryZone,
+          orderData.deliveryDate || null,
+          orderData.deliveryTime || null,
+          userComment,
+          courierComment,
+          leaveAtDoor
+        ];
+      }
+      
+      // Создаем заказ
+      const orderResult = await client.query(insertQuery, insertValues);
       
       const order = orderResult.rows[0];
       console.log('✅ Заказ создан в БД, order_id:', order.id, 'user_id в заказе:', order.user_id || 'NULL');
