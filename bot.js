@@ -1938,39 +1938,19 @@ async function createOrderInDb(orderData) {
       // Получаем значение leave_at_door из orderData (явное приведение к boolean)
       const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
-      // Проверяем наличие колонки service_fee_percent
-      let columnCheck;
+      // Проверяем наличие колонки service_fee_percent (без попытки добавления внутри транзакции)
+      let hasServiceFeePercent = false;
       try {
-        columnCheck = await client.query(`
+        const columnCheck = await client.query(`
           SELECT column_name 
           FROM information_schema.columns 
           WHERE table_name = 'orders' AND column_name = 'service_fee_percent'
         `);
+        hasServiceFeePercent = columnCheck.rows.length > 0;
       } catch (checkError) {
+        // Если проверка не удалась, предполагаем что колонки нет
         console.log('⚠️  Ошибка проверки колонки service_fee_percent:', checkError.message);
-        columnCheck = { rows: [] };
-      }
-      
-      let hasServiceFeePercent = columnCheck.rows.length > 0;
-      
-      // Если колонки нет, пытаемся добавить её (на случай, если миграция еще не выполнилась)
-      if (!hasServiceFeePercent) {
-        try {
-          console.log('🔄 Колонка service_fee_percent не найдена, пытаемся добавить...');
-          await client.query(`
-            ALTER TABLE orders 
-            ADD COLUMN service_fee_percent NUMERIC(5,2) DEFAULT 10.00
-          `);
-          console.log('✅ Колонка service_fee_percent добавлена');
-          hasServiceFeePercent = true;
-        } catch (alterError) {
-          if (!alterError.message.includes('already exists') && !alterError.message.includes('duplicate')) {
-            console.log('⚠️  Не удалось добавить колонку service_fee_percent:', alterError.message);
-          } else {
-            // Колонка уже существует (возможно, была добавлена параллельно)
-            hasServiceFeePercent = true;
-          }
-        }
+        hasServiceFeePercent = false;
       }
       
       // Формируем INSERT запрос в зависимости от наличия колонки
