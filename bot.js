@@ -1938,61 +1938,9 @@ async function createOrderInDb(orderData) {
       // Получаем значение leave_at_door из orderData (явное приведение к boolean)
       const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
-      // Проверяем наличие колонки service_fee_percent (без попытки добавления внутри транзакции)
-      let hasServiceFeePercent = false;
-      try {
-        const columnCheck = await client.query(`
-          SELECT column_name 
-          FROM information_schema.columns 
-          WHERE table_name = 'orders' AND column_name = 'service_fee_percent'
-        `);
-        hasServiceFeePercent = columnCheck.rows.length > 0;
-      } catch (checkError) {
-        // Если проверка не удалась, предполагаем что колонки нет
-        console.log('⚠️  Ошибка проверки колонки service_fee_percent:', checkError.message);
-        hasServiceFeePercent = false;
-      }
-      
-      // Формируем INSERT запрос в зависимости от наличия колонки
-      let insertQuery, insertValues;
-      if (hasServiceFeePercent) {
-        // Колонка существует (или только что добавлена)
-        insertQuery = `INSERT INTO orders 
-         (user_id, total, flowers_total, service_fee, service_fee_percent, delivery_price, bonus_used, bonus_earned,
-          client_name, client_phone, client_email,
-          recipient_name, recipient_phone, 
-          address_id, address_string, address_json, 
-          delivery_zone, delivery_date, delivery_time,
-          user_comment, courier_comment, leave_at_door, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'NEW')
-         RETURNING *`;
-        insertValues = [
-          userId,
-          finalTotal,
-          orderData.flowersTotal,
-          calculatedServiceFee,
-          serviceFeePercent,
-          orderData.deliveryPrice || 0,
-          0, // bonus_used
-          0, // bonus_earned
-          clientName,
-          clientPhone,
-          clientEmail,
-          orderData.recipientName || null,
-          orderData.recipientPhone || null,
-          addressId,
-          orderData.address,
-          JSON.stringify(orderData.addressData || {}),
-          deliveryZone,
-          orderData.deliveryDate || null,
-          orderData.deliveryTime || null,
-          userComment,
-          courierComment,
-          leaveAtDoor
-        ];
-      } else {
-        // Колонки нет, создаем запрос без неё
-        insertQuery = `INSERT INTO orders 
+      // Создаем заказ (без service_fee_percent - эта колонка не критична, процент можно вычислить из service_fee и flowers_total)
+      const orderResult = await client.query(
+        `INSERT INTO orders 
          (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
           client_name, client_phone, client_email,
           recipient_name, recipient_phone, 
@@ -2000,8 +1948,8 @@ async function createOrderInDb(orderData) {
           delivery_zone, delivery_date, delivery_time,
           user_comment, courier_comment, leave_at_door, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW')
-         RETURNING *`;
-        insertValues = [
+         RETURNING *`,
+        [
           userId,
           finalTotal,
           orderData.flowersTotal,
@@ -2023,11 +1971,8 @@ async function createOrderInDb(orderData) {
           userComment,
           courierComment,
           leaveAtDoor
-        ];
-      }
-      
-      // Создаем заказ
-      const orderResult = await client.query(insertQuery, insertValues);
+        ]
+      );
       
       const order = orderResult.rows[0];
       console.log('✅ Заказ создан в БД, order_id:', order.id, 'user_id в заказе:', order.user_id || 'NULL');
