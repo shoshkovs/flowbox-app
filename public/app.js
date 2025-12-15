@@ -1626,12 +1626,15 @@ function updateCartUI() {
         const bunches = Math.floor(item.quantity / minQty);
         totalBunches += bunches;
     });
-    if (navCartCount) {
-        navCartCount.textContent = totalBunches;
+    
+    // Получаем элемент заново, так как он может быть пересоздан через initNavigation
+    const navCartCountElement = document.getElementById('navCartCount');
+    if (navCartCountElement) {
+        navCartCountElement.textContent = totalBunches;
         if (totalBunches === 0) {
-            navCartCount.style.display = 'none';
+            navCartCountElement.style.display = 'none';
         } else {
-            navCartCount.style.display = 'block';
+            navCartCountElement.style.display = 'block';
         }
     }
     
