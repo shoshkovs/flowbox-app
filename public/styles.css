@@ -606,12 +606,16 @@ h1, h2, h3, .font-bold {
     background: rgba(0, 0, 0, 0.5);
     display: none;
     z-index: 1000;
-    animation: fadeIn 0.3s;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
 .cart-overlay.active {
     display: flex;
     justify-content: flex-end;
+    opacity: 1;
 }
 
 .cart-panel {
@@ -622,7 +626,12 @@ h1, h2, h3, .font-bold {
     display: flex;
     flex-direction: column;
     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-    animation: slideIn 0.3s;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cart-overlay.active .cart-panel {
+    transform: translateX(0);
 }
 
 @keyframes fadeIn {
@@ -633,6 +642,30 @@ h1, h2, h3, .font-bold {
 @keyframes slideIn {
     from { transform: translateX(100%); }
     to { transform: translateX(0); }
+}
+
+/* Улучшенные анимации для модальных окон */
+.modal-overlay {
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+}
+
+.modal-content {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-overlay.active .modal-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
 }
 
 @keyframes slideInUp {
@@ -695,15 +728,27 @@ h1, h2, h3, .font-bold {
     animation: fadeInScale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Анимация появления карточек товаров */
+/* Анимация появления карточек товаров с улучшенным эффектом */
 .product-card {
-    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    animation: slideInUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
     opacity: 0;
+    transform: translateY(30px) scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .product-card.animate-in {
     opacity: 1;
-    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    transform: translateY(0) scale(1);
+    animation: slideInUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Легкий hover эффект для карточек (на десктопе) */
+@media (hover: hover) {
+    .product-card:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
 }
 
 /* Анимация счетчика корзины */
@@ -726,27 +771,108 @@ h1, h2, h3, .font-bold {
     animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Плавные переходы для кнопок */
+/* Ripple эффект для кнопок (как у Самоката/Яндекс Еды) */
+.ripple {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+}
+
+.ripple::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.ripple.ripple-active::before {
+    width: 300px;
+    height: 300px;
+    opacity: 1;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                height 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ripple эффект через span элемент */
+.ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(0);
+    animation: ripple-animation 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes ripple-animation {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Для темных кнопок используем более светлый ripple */
+.product-minus-btn .ripple-effect,
+.product-plus-btn .ripple-effect,
+.checkout-btn .ripple-effect,
+.submit-address-btn .ripple-effect,
+.go-to-cart-btn-small .ripple-effect {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Для светлых кнопок используем темный ripple */
+.product-add-btn .ripple-effect,
+.filter-btn .ripple-effect {
+    background: rgba(217, 93, 131, 0.3);
+}
+
+/* Плавные переходы для кнопок с улучшенными easing функциями */
 .product-add-btn,
 .product-minus-btn,
 .product-plus-btn,
-.cart-quantity-btn {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.cart-quantity-btn,
+.filter-btn,
+.checkout-btn,
+.submit-address-btn,
+.go-to-cart-btn-small {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateZ(0);
+    -webkit-tap-highlight-color: transparent;
 }
 
 .product-add-btn:active,
 .product-minus-btn:active,
-.product-plus-btn:active {
-    transform: scale(0.95);
+.product-plus-btn:active,
+.cart-quantity-btn:active,
+.filter-btn:active,
+.checkout-btn:active,
+.submit-address-btn:active,
+.go-to-cart-btn-small:active {
+    transform: scale(0.96) translateZ(0);
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Анимация добавления в корзину */
+/* Анимация добавления в корзину с улучшенным эффектом */
 @keyframes addToCart {
     0% {
         transform: scale(1);
     }
-    50% {
-        transform: scale(1.1);
+    30% {
+        transform: scale(1.15);
+    }
+    60% {
+        transform: scale(0.95);
     }
     100% {
         transform: scale(1);
@@ -754,7 +880,47 @@ h1, h2, h3, .font-bold {
 }
 
 .product-action-row-filled {
-    animation: addToCart 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: addToCart 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Улучшенная анимация для фильтров */
+.filter-btn {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-btn.active {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(217, 93, 131, 0.3);
+}
+
+.filter-btn:active {
+    transform: scale(0.95);
+}
+
+/* Улучшенная анимация для навигации */
+.nav-item {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.nav-item:active {
+    transform: scale(0.9);
+}
+
+.nav-item.active {
+    transform: scale(1.05);
+}
+
+/* Плавная анимация для счетчика корзины */
+.nav-badge {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center;
+}
+
+.nav-badge.pulse {
+    animation: pulse 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .cart-header {
