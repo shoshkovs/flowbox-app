@@ -1856,6 +1856,30 @@ function calculateFinalTotal() {
 // Обработка доставки удалена - доставка фиксированная 500₽
 
 
+// Функция открытия профиля (используется после успешного заказа)
+function openProfileScreen() {
+    console.log('[openProfileScreen] 📱 Открытие профиля после успешного заказа');
+    
+    // Закрываем оформление заказа
+    closeCheckoutUI();
+    
+    // Переключаемся на профиль
+    switchTab('profileTab');
+    
+    // Обновляем заказы в профиле
+    refreshOrders();
+    
+    // Скрываем BackButton
+    showBackButton(false);
+    
+    // Прокручиваем наверх
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    
+    console.log('[openProfileScreen] ✅ Профиль открыт');
+}
+
 // Переключение вкладок
 function switchTab(tabId) {
     // Скрыть все вкладки (и через класс, и через display)
@@ -3781,53 +3805,8 @@ async function validateAndSubmitOrder(e) {
                 leaveAtDoor: false
             };
             
-            // Используем единую функцию закрытия оформления
-            closeCheckoutUI();
-            
-            // ЯВНО скрываем orderTab перед переключением на меню
-            const orderTabEl = document.getElementById('orderTab');
-            if (orderTabEl) {
-                orderTabEl.style.display = 'none';
-                orderTabEl.classList.remove('active');
-            }
-            
-            // ЯВНО скрываем все другие вкладки
-            const cartTabEl = document.getElementById('cartTab');
-            const profileTabEl = document.getElementById('profileTab');
-            
-            if (cartTabEl) {
-                cartTabEl.style.display = 'none';
-                cartTabEl.classList.remove('active');
-            }
-            if (profileTabEl) {
-                profileTabEl.style.display = 'none';
-                profileTabEl.classList.remove('active');
-            }
-            
-            // Переключаемся на каталог через switchTab (консистентный способ)
-            switchTab('menuTab');
-            
-            // ЯВНО показываем menuTab после switchTab
-            const menuTabEl = document.getElementById('menuTab');
-            if (menuTabEl) {
-                menuTabEl.style.display = 'block';
-                menuTabEl.classList.add('active');
-            }
-            
-            // ЯВНО показываем нижнее меню (оно было скрыто при переходе на orderTab)
-            const bottomNav = document.querySelector('.bottom-nav');
-            if (bottomNav) {
-                bottomNav.style.display = 'flex';
-                bottomNav.classList.remove('hidden');
-            }
-            
-            // Скрываем BackButton
-            showBackButton(false);
-            
-            // Прокручиваем наверх
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
+            // После успешного заказа переходим в профиль
+            openProfileScreen();
             
             // Показываем алерт с номером заказа
             if (tg && tg.showAlert) {
