@@ -20,8 +20,8 @@ button:focus {
 }
 
 :root {
-    --primary-color: #d95d83;
-    --secondary-color: #d95d83;
+    --primary-color: #fb2d5c;
+    --secondary-color: #fb2d5c;
     --bg-color: #ffffff;
     --text-color: #333333;
     --border-color: #e0e0e0;
@@ -311,7 +311,7 @@ h1, h2, h3, .font-bold {
     align-items: center;
     justify-content: space-between;
     padding: 10px 12px;
-    background: rgba(255, 105, 180, 0.3); /* Полупрозрачный розовый */
+    background: rgba(251, 45, 92, 0.3); /* Полупрозрачный розовый */
     color: var(--text-color);
     border: none;
     border-radius: 20px;
@@ -544,7 +544,7 @@ h1, h2, h3, .font-bold {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    border: 3px solid rgba(217, 93, 131, 0.3);
+    border: 3px solid rgba(251, 45, 92, 0.3);
     border-top-color: var(--primary-color);
     animation: spin 0.8s linear infinite;
 }
@@ -832,7 +832,7 @@ h1, h2, h3, .font-bold {
 /* Для светлых кнопок используем темный ripple */
 .product-add-btn .ripple-effect,
 .filter-btn .ripple-effect {
-    background: rgba(217, 93, 131, 0.3);
+    background: rgba(251, 45, 92, 0.3);
 }
 
 /* Плавные переходы для кнопок с улучшенными easing функциями */
@@ -892,7 +892,7 @@ h1, h2, h3, .font-bold {
 
 .filter-btn.active {
     transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(217, 93, 131, 0.3);
+    box-shadow: 0 2px 8px rgba(251, 45, 92, 0.3);
 }
 
 .filter-btn:active {
@@ -1505,7 +1505,7 @@ h1, h2, h3, .font-bold {
     font-weight: 600;
     color: var(--primary-color);
     padding: 8px 12px;
-    background-color: rgba(217, 93, 131, 0.1);
+    background-color: rgba(251, 45, 92, 0.1);
     border-radius: 8px;
     text-align: center;
     min-height: 20px;
@@ -1542,11 +1542,11 @@ h1, h2, h3, .font-bold {
 }
 
 .calendar-nav-btn:hover {
-    background-color: rgba(217, 93, 131, 0.1);
+    background-color: rgba(251, 45, 92, 0.1);
 }
 
 .calendar-nav-btn:active {
-    background-color: rgba(217, 93, 131, 0.2);
+    background-color: rgba(251, 45, 92, 0.2);
 }
 
 .calendar-nav-btn:disabled {
@@ -1607,7 +1607,7 @@ h1, h2, h3, .font-bold {
 }
 
 .calendar-day.available:hover:not(.selected) {
-    background-color: rgba(217, 93, 131, 0.1);
+    background-color: rgba(251, 45, 92, 0.1);
 }
 
 .calendar-day.disabled {
@@ -1632,7 +1632,7 @@ h1, h2, h3, .font-bold {
 }
 
 .calendar-day.today:not(.selected) {
-    background-color: rgba(217, 93, 131, 0.15);
+    background-color: rgba(251, 45, 92, 0.15);
     font-weight: 600;
 }
 
@@ -3313,7 +3313,7 @@ h1, h2, h3, .font-bold {
 }
 
 .address-radio-simple {
-    accent-color: #d95d83 !important;
+    accent-color: #fb2d5c !important;
 }
 
 /* Меню адреса (три точки) */
