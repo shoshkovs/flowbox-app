@@ -1074,6 +1074,17 @@ function addToCart(productId, quantity = null) {
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
     
+    // Анимация добавления в корзину
+    const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+    if (productCard) {
+        const actionRow = productCard.querySelector('.product-action-row');
+        if (actionRow) {
+            actionRow.style.animation = 'none';
+            void actionRow.offsetWidth; // Принудительный reflow
+            actionRow.style.animation = 'addToCart 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+        }
+    }
+    
     // Обновляем только эту карточку
     updateProductCard(productId);
 }
@@ -1630,11 +1641,22 @@ function updateCartUI() {
     // Получаем элемент заново, так как он может быть пересоздан через initNavigation
     const navCartCountElement = document.getElementById('navCartCount');
     if (navCartCountElement) {
+        const oldValue = parseInt(navCartCountElement.textContent) || 0;
         navCartCountElement.textContent = totalBunches;
         if (totalBunches === 0) {
             navCartCountElement.style.display = 'none';
         } else {
             navCartCountElement.style.display = 'block';
+            // Анимация pulse при изменении значения
+            if (oldValue !== totalBunches) {
+                navCartCountElement.classList.remove('pulse');
+                // Принудительно перезапускаем анимацию
+                void navCartCountElement.offsetWidth;
+                navCartCountElement.classList.add('pulse');
+                setTimeout(() => {
+                    navCartCountElement.classList.remove('pulse');
+                }, 500);
+            }
         }
     }
     
@@ -1664,7 +1686,7 @@ function updateCartUI() {
         
         // Рендер товаров в корзине
         if (cartItemsList) {
-            cartItemsList.innerHTML = cart.map(item => {
+            cartItemsList.innerHTML = cart.map((item, index) => {
                 const minQty = getMinQty(item);
                 if (item.quantity < minQty) {
                     item.quantity = minQty;
@@ -1673,7 +1695,7 @@ function updateCartUI() {
                 const totalPrice = item.price * item.quantity;
                 
                 return `
-                <div class="cart-item-new">
+                <div class="cart-item-new" style="animation-delay: ${index * 0.05}s">
                     <img src="${item.image}" alt="${item.name}" class="cart-item-new-image">
                     <div class="cart-item-new-info">
                         <div class="cart-item-new-name">${item.name}</div>
@@ -1688,6 +1710,14 @@ function updateCartUI() {
                 </div>
                 `;
             }).join('');
+            
+            // Применяем анимацию к элементам корзины
+            setTimeout(() => {
+                const cartItems = cartItemsList.querySelectorAll('.cart-item-new');
+                cartItems.forEach((item) => {
+                    item.classList.add('animate-in');
+                });
+            }, 10);
         }
         
         // Расчет итоговой суммы
@@ -1887,11 +1917,18 @@ function openProfileScreen() {
 function switchTab(tabId) {
     // Скрыть все вкладки (и через класс, и через display)
     tabContents.forEach(tab => {
-        tab.classList.remove('active');
-        // Явно скрываем все вкладки через display
-        if (tab.id !== tabId) {
-            tab.style.display = 'none';
+        if (tab.classList.contains('active')) {
+            // Плавное скрытие текущей вкладки
+            tab.style.opacity = '0';
+            tab.style.transform = 'scale(0.98)';
         }
+        tab.classList.remove('active');
+        // Явно скрываем все вкладки через display после анимации
+        setTimeout(() => {
+            if (tab.id !== tabId) {
+                tab.style.display = 'none';
+            }
+        }, 150);
     });
     
     // При переключении на профиль - обновляем заказы для актуальных статусов
@@ -1907,12 +1944,22 @@ function switchTab(tabId) {
         }, 50);
     }
     
-    // Показать выбранную вкладку
+    // Показать выбранную вкладку с анимацией
     const activeTab = document.getElementById(tabId);
     if (activeTab) {
-        activeTab.classList.add('active');
-        // Явно показываем выбранную вкладку через display
         activeTab.style.display = 'block';
+        // Принудительный reflow для запуска анимации
+        void activeTab.offsetWidth;
+        activeTab.style.opacity = '0';
+        activeTab.style.transform = 'scale(0.98)';
+        activeTab.classList.add('active');
+        
+        // Плавное появление
+        setTimeout(() => {
+            activeTab.style.transition = 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            activeTab.style.opacity = '1';
+            activeTab.style.transform = 'scale(1)';
+        }, 10);
     }
     
     // Скрыть/показать навигацию и header

@@ -635,6 +635,128 @@ h1, h2, h3, .font-bold {
     to { transform: translateX(0); }
 }
 
+@keyframes slideInUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scaleIn {
+    from { 
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to { 
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { 
+        transform: scale(1);
+    }
+    50% { 
+        transform: scale(1.2);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% { 
+        transform: translateY(0) scale(1);
+    }
+    50% { 
+        transform: translateY(-10px) scale(1.05);
+    }
+}
+
+@keyframes fadeInScale {
+    from { 
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to { 
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Плавные переходы для вкладок */
+.tab-content {
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-content.active {
+    animation: fadeInScale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Анимация появления карточек товаров */
+.product-card {
+    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    opacity: 0;
+}
+
+.product-card.animate-in {
+    opacity: 1;
+    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Анимация счетчика корзины */
+.nav-badge {
+    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.nav-badge.pulse {
+    animation: pulse 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Анимация элементов корзины */
+.cart-item-new {
+    animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    opacity: 0;
+}
+
+.cart-item-new.animate-in {
+    opacity: 1;
+    animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Плавные переходы для кнопок */
+.product-add-btn,
+.product-minus-btn,
+.product-plus-btn,
+.cart-quantity-btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-add-btn:active,
+.product-minus-btn:active,
+.product-plus-btn:active {
+    transform: scale(0.95);
+}
+
+/* Анимация добавления в корзину */
+@keyframes addToCart {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.product-action-row-filled {
+    animation: addToCart 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
 .cart-header {
     padding: 20px;
     border-bottom: 1px solid var(--border-color);
