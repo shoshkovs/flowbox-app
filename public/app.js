@@ -1776,7 +1776,7 @@ function renderAdditionalProducts() {
             return itemId === productId || item.id === product.id || item.id === Number(product.id);
         });
         // Используем изображение товара или дефолтное изображение
-        const productImage = product.image || product.image_url || '/logo.jpg';
+        const productImage = product.image || product.image_url || '/logo2.jpg';
         // Экранируем ID для безопасного использования в onclick
         const safeProductId = String(product.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         console.log('Рендеринг товара:', product.name, 'ID:', safeProductId, 'isInCart:', isInCart);
