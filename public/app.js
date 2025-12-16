@@ -6645,7 +6645,37 @@ function renderCheckoutAddresses(forSimple = false) {
     
     if (!addressesList || !addNewAddressBtn || !addressForm) return;
     
-    // Если есть сохраненные адреса - показываем список
+    // В стандартном оформлении заказа (не упрощенном) всегда показываем форму, а не список
+    // В упрощенном режиме показываем список, если есть сохраненные адреса
+    const isStandardCheckout = !forSimple && !isSimpleCheckout && checkoutMode !== 'simple';
+    
+    if (isStandardCheckout) {
+        // В стандартном оформлении всегда показываем форму
+        addressesList.style.display = 'none';
+        addNewAddressBtn.style.display = 'none';
+        addressForm.style.display = 'block';
+        
+        // Если есть сохраненные адреса, заполняем форму первым адресом автоматически
+        if (savedAddresses && savedAddresses.length > 0) {
+            const firstAddress = savedAddresses[0];
+            fillOrderFormWithAddress(firstAddress);
+            checkoutData.addressId = firstAddress.id;
+            checkoutData.address = {
+                id: firstAddress.id,
+                city: firstAddress.city || 'Санкт-Петербург',
+                street: firstAddress.street || '',
+                house: firstAddress.house || '',
+                apartment: firstAddress.apartment || '',
+                floor: firstAddress.floor || '',
+                entrance: firstAddress.entrance || '',
+                intercom: firstAddress.intercom || '',
+                comment: firstAddress.comment || ''
+            };
+        }
+        return; // Выходим раньше, не рендерим список
+    }
+    
+    // Если есть сохраненные адреса - показываем список (для упрощенного режима)
     if (savedAddresses && savedAddresses.length > 0) {
         // ВСЕГДА показываем список адресов и скрываем форму, если есть сохраненные адреса
         addressesList.style.display = 'block';
