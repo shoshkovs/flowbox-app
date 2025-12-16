@@ -2290,9 +2290,18 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
 // Функция для отправки подтверждения заказа с информацией и кнопкой оплаты
 // Функция для отправки уведомления о новом заказе в группу с темой
 async function sendOrderNotificationToGroup(orderId, orderData) {
+  console.log(`🔍 sendOrderNotificationToGroup вызвана для заказа #${orderId}`);
+  console.log(`🔍 Проверка условий: bot=${!!bot}, ORDERS_GROUP_ID=${ORDERS_GROUP_ID}, ORDERS_TOPIC_ID=${ORDERS_TOPIC_ID}`);
+  
   if (!bot || !ORDERS_GROUP_ID || !ORDERS_TOPIC_ID) {
-    if (!ORDERS_GROUP_ID || !ORDERS_TOPIC_ID) {
-      console.log('⚠️ ORDERS_GROUP_ID или ORDERS_TOPIC_ID не установлены, пропускаем отправку в группу');
+    if (!bot) {
+      console.log('⚠️ Бот не инициализирован, пропускаем отправку в группу');
+    }
+    if (!ORDERS_GROUP_ID) {
+      console.log('⚠️ ORDERS_GROUP_ID не установлен, пропускаем отправку в группу');
+    }
+    if (!ORDERS_TOPIC_ID) {
+      console.log('⚠️ ORDERS_TOPIC_ID не установлен, пропускаем отправку в группу');
     }
     return;
   }
@@ -2376,16 +2385,34 @@ async function sendOrderNotificationToGroup(orderId, orderData) {
     
     message += `Статус: <b>Новый</b>`;
     
+    console.log(`📝 Сформировано сообщение для отправки (длина: ${message.length} символов)`);
+    console.log(`📝 Первые 200 символов: ${message.substring(0, 200)}...`);
+    
     // Отправляем сообщение в группу с указанием темы
-    await bot.telegram.sendMessage(ORDERS_GROUP_ID, message, {
+    console.log(`📤 Вызываем bot.telegram.sendMessage с параметрами:`);
+    console.log(`   - chat_id: ${ORDERS_GROUP_ID}`);
+    console.log(`   - message_thread_id: ${ORDERS_TOPIC_ID}`);
+    console.log(`   - parse_mode: HTML`);
+    
+    const result = await bot.telegram.sendMessage(ORDERS_GROUP_ID, message, {
       parse_mode: 'HTML',
       message_thread_id: ORDERS_TOPIC_ID
     });
     
     console.log(`✅ Уведомление о заказе #${orderId} успешно отправлено в группу`);
+    console.log(`✅ Результат отправки:`, JSON.stringify(result, null, 2));
   } catch (error) {
-    console.error(`❌ Ошибка отправки уведомления о заказе #${orderId} в группу:`, error.message);
+    console.error(`❌ Ошибка отправки уведомления о заказе #${orderId} в группу:`);
+    console.error(`   Сообщение об ошибке: ${error.message}`);
+    console.error(`   Код ошибки: ${error.response?.error_code || 'N/A'}`);
+    console.error(`   Описание ошибки: ${error.response?.description || 'N/A'}`);
+    console.error(`   Параметры запроса:`, JSON.stringify(error.response?.parameters || {}, null, 2));
     console.error('Stack trace:', error.stack);
+    
+    // Дополнительная информация об ошибке
+    if (error.response) {
+      console.error('Полный ответ от Telegram API:', JSON.stringify(error.response, null, 2));
+    }
   }
 }
 
@@ -2893,10 +2920,12 @@ app.post('/api/orders', async (req, res) => {
         }
         
         // Отправляем уведомление о новом заказе в группу с темой (асинхронно, не блокируем ответ)
+        console.log(`🔍 Проверка настроек для отправки в группу: bot=${!!bot}, ORDERS_GROUP_ID=${ORDERS_GROUP_ID}, ORDERS_TOPIC_ID=${ORDERS_TOPIC_ID}`);
         if (bot && ORDERS_GROUP_ID && ORDERS_TOPIC_ID) {
+          console.log(`✅ Все условия выполнены, планируем отправку уведомления о заказе #${result.orderId} в группу`);
           setImmediate(async () => {
             try {
-              console.log(`📤 Начинаем отправку уведомления о заказе #${result.orderId} в группу`);
+              console.log(`📤 Начинаем отправку уведомления о заказе #${result.orderId} в группу ${ORDERS_GROUP_ID}, тема ${ORDERS_TOPIC_ID}`);
               
               // Формируем данные для уведомления в группу
               const orderDataForGroup = {
@@ -2917,18 +2946,23 @@ app.post('/api/orders', async (req, res) => {
                 leaveAtDoor: orderData.leaveAtDoor || false
               };
               
+              console.log(`📋 Данные для отправки в группу:`, JSON.stringify(orderDataForGroup, null, 2));
+              
               // Отправляем уведомление в группу
               await sendOrderNotificationToGroup(result.orderId, orderDataForGroup);
+              console.log(`✅ Функция sendOrderNotificationToGroup завершена для заказа #${result.orderId}`);
             } catch (groupNotificationError) {
               // Не прерываем выполнение, если не удалось отправить уведомление в группу
-              console.error('⚠️  Ошибка отправки уведомления о заказе в группу:', groupNotificationError.message);
+              console.error('❌ Ошибка отправки уведомления о заказе в группу:', groupNotificationError.message);
               console.error('Stack trace:', groupNotificationError.stack);
+              console.error('Детали ошибки:', JSON.stringify(groupNotificationError, null, 2));
             }
           });
         } else {
-          if (!ORDERS_GROUP_ID || !ORDERS_TOPIC_ID) {
-            console.log(`⚠️ Не отправляем уведомление в группу: ORDERS_GROUP_ID=${ORDERS_GROUP_ID}, ORDERS_TOPIC_ID=${ORDERS_TOPIC_ID}`);
-          }
+          console.warn(`⚠️ Не отправляем уведомление в группу:`);
+          console.warn(`   - bot: ${!!bot}`);
+          console.warn(`   - ORDERS_GROUP_ID: ${ORDERS_GROUP_ID} (type: ${typeof ORDERS_GROUP_ID})`);
+          console.warn(`   - ORDERS_TOPIC_ID: ${ORDERS_TOPIC_ID} (type: ${typeof ORDERS_TOPIC_ID})`);
         }
         
         // Возвращаем явный успешный ответ
