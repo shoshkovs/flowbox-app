@@ -135,7 +135,7 @@ h1, h2, h3, .font-bold {
 .filter-btn {
     border: none;
     border-radius: 20px;
-    padding: 10px 32px;
+    padding: 10px 20px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -143,24 +143,28 @@ h1, h2, h3, .font-bold {
     transition: all 0.08s ease-out;
     background: white;
     color: var(--text-color);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     min-height: 40px;
     box-shadow: none;
+    flex-shrink: 0;
+    width: auto;
 }
 
 .filter-btn-large {
     border: 1px solid #000;
-    padding: 8px 30px;
+    padding: 8px 20px;
     font-size: 13px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     min-height: 36px;
     box-shadow: none;
+    flex-shrink: 0;
+    width: auto;
 }
 
 .filter-btn-large.active {
@@ -171,14 +175,16 @@ h1, h2, h3, .font-bold {
 
 .filter-btn-small {
     border: 1px solid #ccc;
-    padding: 6px 28px;
+    padding: 6px 18px;
     font-size: 12px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     min-height: 32px;
     box-shadow: none;
+    flex-shrink: 0;
+    width: auto;
 }
 
 .filter-btn-small.active {
