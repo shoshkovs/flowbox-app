@@ -4402,17 +4402,27 @@ async function maybeAskAddToHome() {
             try {
                 // Пробуем вызвать с разными подходами
                 if (typeof tg.addToHomeScreen === 'function') {
-                    // Вызываем напрямую
-                    const result = tg.addToHomeScreen();
-                    console.log('[home] tg.addToHomeScreen() вызван, результат:', result);
-                    
-                    // Если метод возвращает Promise, ждем его
-                    if (result && typeof result.then === 'function') {
-                        await result;
-                        console.log('[home] tg.addToHomeScreen() Promise выполнен');
+                    // Пробуем вызвать как синхронный метод
+                    try {
+                        tg.addToHomeScreen();
+                        console.log('[home] tg.addToHomeScreen() вызван синхронно');
+                        return true;
+                    } catch (syncError) {
+                        console.log('[home] Синхронный вызов не сработал, пробуем асинхронный:', syncError);
                     }
                     
-                    // Возвращаем true, так как метод вызван (диалог показывается нативно)
+                    // Пробуем вызвать как асинхронный метод
+                    try {
+                        const result = await Promise.resolve(tg.addToHomeScreen());
+                        console.log('[home] tg.addToHomeScreen() вызван асинхронно, результат:', result);
+                        return true;
+                    } catch (asyncError) {
+                        console.log('[home] Асинхронный вызов не сработал:', asyncError);
+                    }
+                    
+                    // Если оба подхода не сработали, все равно возвращаем true,
+                    // так как метод существует и был вызван (диалог может показаться нативно)
+                    console.log('[home] Метод вызван, но результат неизвестен');
                     return true;
                 }
             } catch (addError) {
