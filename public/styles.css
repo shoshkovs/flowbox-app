@@ -3102,6 +3102,19 @@ h1, h2, h3, .font-bold {
 
 .menu-btn-icon {
     font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.menu-btn-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    color: var(--text-color);
 }
 
 .menu-btn-text {
