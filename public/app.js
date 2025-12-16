@@ -5022,21 +5022,21 @@ async function handleAddressFormSubmit(event) {
             console.warn('[handleAddressFormSubmit] ⚠️ createdAddressId не найден после сохранения адреса');
         }
         
-        // Если мы были на странице списка адресов, возвращаемся туда и обновляем список
-        if (checkoutScreen === 'addressesList') {
-            console.log('[handleAddressFormSubmit] ✅ Возвращаемся на страницу списка адресов и обновляем список');
-            // Обновляем список адресов перед возвратом
-            renderMyAddressesListForSimple();
-            openCheckoutAddressesForSimple();
-        } else {
-            // Иначе возвращаемся на вкладку оформления
-            console.log('[handleAddressFormSubmit] ✅ Возвращаемся на вкладку оформления');
-            // Обновляем отображение на странице оформления, чтобы показать выбранный адрес
-            if (typeof renderCheckoutSummary === 'function') {
-                renderCheckoutSummary();
-            }
-            showSimpleSummary();
+        // После сохранения адреса всегда переходим к дате/времени (summary),
+        // чтобы избежать мигания страницы списка адресов
+        console.log('[handleAddressFormSubmit] ✅ Возвращаемся на страницу оформления (дата/время)');
+        
+        // Скрываем список адресов, если он был открыт
+        const myAddressesTab = document.getElementById('myAddressesTab');
+        if (myAddressesTab) {
+            myAddressesTab.style.display = 'none';
         }
+        
+        // Обновляем отображение на странице оформления, чтобы показать выбранный адрес
+        if (typeof renderCheckoutSummary === 'function') {
+            renderCheckoutSummary();
+        }
+        showSimpleSummary();
     } else if (source === 'profile') {
         // Возвращаемся в профиль
     switchTab('profileTab');
