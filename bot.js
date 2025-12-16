@@ -7872,8 +7872,24 @@ bot.on('message', async (ctx) => {
   
   // 2) Сообщение в чате поддержки (форум) - обрабатываем ответы менеджеров
   if (SUPPORT_CHAT_ID && chat.id === SUPPORT_CHAT_ID) {
-    // Проверяем, что сообщение находится в топике (message_thread_id присутствует)
-    const messageThreadId = ctx.message.message_thread_id;
+  // ВРЕМЕННО: Логируем chat.id и message_thread_id для настройки ORDERS_GROUP_ID и ORDERS_TOPIC_ID
+  if (ctx.message && ctx.chat) {
+    console.log('🔍 ===== ИНФОРМАЦИЯ ДЛЯ НАСТРОЙКИ УВЕДОМЛЕНИЙ О ЗАКАЗАХ =====');
+    console.log(`📱 Chat ID: ${ctx.chat.id}`);
+    console.log(`📋 Chat Title: ${ctx.chat.title || 'N/A'}`);
+    if (ctx.message.message_thread_id) {
+      console.log(`🎯 Message Thread ID (ID темы): ${ctx.message.message_thread_id}`);
+      console.log(`✅ Используйте эти значения:`);
+      console.log(`   ORDERS_GROUP_ID=${ctx.chat.id}`);
+      console.log(`   ORDERS_TOPIC_ID=${ctx.message.message_thread_id}`);
+    } else {
+      console.log(`⚠️  Это сообщение не в топике. Отправьте сообщение в тему "Заказы"`);
+    }
+    console.log('🔍 ========================================================');
+  }
+  
+  // Проверяем, что сообщение находится в топике (message_thread_id присутствует)
+  const messageThreadId = ctx.message.message_thread_id;
     
     if (!messageThreadId) {
       // Сообщение не в топике, игнорируем
