@@ -4381,14 +4381,28 @@ async function maybeAskAddToHome() {
         if (status === 'can_be_added') {
             console.log('[home] показываем диалог добавления на главный экран через Telegram WebApp');
             
+            // Убеждаемся, что приложение развернуто (может быть необходимо для показа диалога)
+            if (typeof tg.expand === 'function') {
+                try {
+                    tg.expand();
+                    console.log('[home] tg.expand() вызван перед addToHomeScreen');
+                } catch (expandError) {
+                    console.warn('[home] ошибка при вызове tg.expand():', expandError);
+                }
+            }
+            
+            // Небольшая задержка перед вызовом addToHomeScreen
+            // Это может помочь, если диалог требует, чтобы приложение было полностью развернуто
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             // Вызываем метод добавления на главный экран
             // На Android это должно показать нативный диалог
             try {
                 tg.addToHomeScreen();
                 console.log('[home] tg.addToHomeScreen() вызван успешно');
                 
-                // Даем время на показ диалога
                 // Возвращаем true, так как метод вызван (диалог показывается нативно)
+                // На Android диалог показывается нативно, поэтому мы не можем точно знать результат
                 return true;
             } catch (addError) {
                 console.error('[home] ошибка при вызове tg.addToHomeScreen():', addError);
