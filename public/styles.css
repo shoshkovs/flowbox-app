@@ -1695,7 +1695,7 @@ h1, h2, h3, .font-bold {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(251, 45, 92, 0.1); /* Нежно розовый фон */
     display: none;
     z-index: 3000;
     justify-content: center;
@@ -1746,18 +1746,22 @@ h1, h2, h3, .font-bold {
 .back-to-shop-btn {
     width: 100%;
     padding: 12px;
-    background: var(--primary-color);
+    background: #fb2d5c; /* Ярко розовый цвет кнопки */
     color: white;
     border: none;
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s ease-out;
+    transition: opacity 0.2s ease-out;
 }
 
 .back-to-shop-btn:hover {
-    background: var(--secondary-color);
+    opacity: 0.9;
+}
+
+.back-to-shop-btn:active {
+    opacity: 0.8;
 }
 
 /* Нижняя навигация */
