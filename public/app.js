@@ -5588,10 +5588,16 @@ function initServiceFeeHelpModal() {
         e.preventDefault();
         e.stopPropagation();
         modal.style.display = 'flex';
+        // Принудительно показываем модальное окно
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
         lockBodyScroll();
         showBackButton(true);
-        tg.HapticFeedback.impactOccurred('light');
-    });
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('light');
+        }
+    }, true); // Используем capture phase
     
     // Обработчик закрытия
     closeBtn.addEventListener('click', (e) => {
@@ -5623,20 +5629,28 @@ if (document.readyState === 'loading') {
 // Также используем делегирование событий для динамически созданных элементов
 document.addEventListener('click', (e) => {
     // Обработчик для кнопки знака вопроса (fallback)
-    if (e.target.closest('#serviceFeeHelpBtn') || 
-        e.target.id === 'serviceFeeHelpBtn' || 
-        e.target.classList.contains('help-icon-btn')) {
+    const helpBtn = e.target.closest('#serviceFeeHelpBtn') || 
+                    (e.target.id === 'serviceFeeHelpBtn' ? e.target : null) ||
+                    (e.target.classList.contains('help-icon-btn') ? e.target : null);
+    
+    if (helpBtn) {
         e.preventDefault();
         e.stopPropagation();
         const modal = document.getElementById('serviceFeeHelpModal');
-        if (modal && modal.style.display !== 'flex') {
+        if (modal) {
             modal.style.display = 'flex';
+            // Принудительно показываем модальное окно
+            setTimeout(() => {
+                modal.classList.add('active');
+            }, 10);
             lockBodyScroll();
             showBackButton(true);
-            tg.HapticFeedback.impactOccurred('light');
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
         }
     }
-});
+}, true); // Используем capture phase для более раннего перехвата
 
 // Скрытие нижнего меню при открытии клавиатуры
 function initKeyboardHandling() {

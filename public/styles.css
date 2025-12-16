@@ -133,12 +133,12 @@ h1, h2, h3, .font-bold {
 .filter-btn {
     border: none;
     border-radius: 20px;
-    padding: 10px 16px;
+    padding: 10px 20px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
-    transition: all 0.15s ease-out;
+    transition: all 0.08s ease-out;
     background: white;
     color: var(--text-color);
     display: flex;
@@ -151,7 +151,7 @@ h1, h2, h3, .font-bold {
 
 .filter-btn-large {
     border: 1px solid #000;
-    padding: 8px 14px;
+    padding: 8px 18px;
     font-size: 13px;
     display: flex;
     align-items: center;
@@ -169,7 +169,7 @@ h1, h2, h3, .font-bold {
 
 .filter-btn-small {
     border: 1px solid #ccc;
-    padding: 6px 12px;
+    padding: 6px 16px;
     font-size: 12px;
     display: flex;
     align-items: center;
@@ -403,6 +403,11 @@ h1, h2, h3, .font-bold {
 }
 
 /* Кнопка в залитом состоянии (когда товар в корзине) */
+.product-action-row {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
 .product-action-row-filled {
     background: var(--primary-color);
     border-radius: 20px;
@@ -412,6 +417,18 @@ h1, h2, h3, .font-bold {
     gap: 0;
     width: 100%;
     min-width: 0; /* Позволяет дочерним элементам сжиматься */
+    animation: stretchExpand 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes stretchExpand {
+    0% {
+        transform: scaleX(0.3);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scaleX(1);
+        opacity: 1;
+    }
 }
 
 .product-action-row-filled .product-minus-btn,
@@ -448,19 +465,20 @@ h1, h2, h3, .font-bold {
     bottom: 0;
     background: rgba(0, 0, 0, 0.4); /* Полупрозрачный черный фильтр */
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
+    padding-bottom: 20px;
     z-index: 10;
     border-radius: 12px;
     opacity: 0;
-    transform: scale(0.9);
+    transform: translateY(20px);
     transition: opacity 0.25s ease-out, transform 0.25s ease-out;
     pointer-events: none;
 }
 
 .product-quantity-overlay.show {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
 }
 
 .product-quantity-overlay-text {
@@ -468,14 +486,14 @@ h1, h2, h3, .font-bold {
     font-weight: 600;
     color: white;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transform: scale(0.8);
+    transform: translateY(20px);
     opacity: 0;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
-                opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.25s ease-out, 
+                opacity 0.25s ease-out;
 }
 
 .product-quantity-overlay.show .product-quantity-overlay-text {
-    transform: scale(1);
+    transform: translateY(0);
     opacity: 1;
 }
 
@@ -826,15 +844,11 @@ h1, h2, h3, .font-bold {
 }
 
 /* Мягкая анимация добавления в корзину */
-/* Анимация addToCart убрана для простоты */
-
-.product-action-row-filled {
-    /* Убрана анимация для простоты */
-}
+/* Анимация растягивания для кнопки + */
 
 /* Улучшенная анимация для фильтров */
 .filter-btn {
-    transition: all 0.15s ease-out;
+    transition: background-color 0.08s ease-out, color 0.08s ease-out;
     position: relative;
     overflow: hidden;
 }
@@ -844,21 +858,23 @@ h1, h2, h3, .font-bold {
 }
 
 .filter-btn:active {
-    opacity: 0.7;
+    background-color: rgba(0, 0, 0, 0.05);
+    transition: background-color 0.05s ease-out;
 }
 
 /* Улучшенная анимация для навигации */
 .nav-item {
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.2s ease, opacity 0.2s ease;
     position: relative;
 }
 
 .nav-item:active {
-    opacity: 0.7;
+    color: #000;
+    opacity: 0.8;
 }
 
 .nav-item.active {
-    transform: scale(1.05);
+    color: #333;
 }
 
 /* Плавная анимация для счетчика корзины */
@@ -1827,16 +1843,16 @@ h1, h2, h3, .font-bold {
 
 .nav-badge {
     position: absolute;
-    top: 0;
+    top: -2px;
     right: 20%;
     background: var(--primary-color);
     color: white;
-    border-radius: 10px;
-    padding: 4px 8px;
-    font-size: 11px;
+    border-radius: 8px;
+    padding: 2px 6px;
+    font-size: 10px;
     font-weight: 600;
-    min-width: 22px;
-    min-height: 20px;
+    min-width: 18px;
+    min-height: 16px;
     text-align: center;
     display: flex;
     align-items: center;
