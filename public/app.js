@@ -4342,32 +4342,74 @@ const addToHomeScreenModal = document.getElementById('addToHomeScreenModal');
 const closeAddToHomeModal = document.getElementById('closeAddToHomeModal');
 const openInBrowserBtn = document.getElementById('openInBrowserBtn');
 
+// Переменная для хранения beforeinstallprompt события
+let deferredPrompt = null;
+
+// Перехватываем событие beforeinstallprompt для PWA
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('[home] beforeinstallprompt событие перехвачено');
+    // Предотвращаем автоматическое отображение баннера
+    e.preventDefault();
+    // Сохраняем событие для использования позже
+    deferredPrompt = e;
+});
+
 // Функция для добавления на главный экран через Telegram WebApp API
 async function maybeAskAddToHome() {
     if (!tg || !tg.checkHomeScreenStatus || !tg.addToHomeScreen) {
-        console.log('[home] API недоступно');
+        console.log('[home] Telegram WebApp API недоступно');
         return false;
     }
 
     try {
         // Узнаём статус
         const status = await tg.checkHomeScreenStatus();
-        console.log('[home] status =', status);
+        console.log('[home] Telegram WebApp status =', status);
         // варианты: 'unsupported' | 'unknown' | 'added' | 'can_be_added'
 
         if (status === 'can_be_added') {
-            console.log('[home] показываем диалог добавления на главный экран');
+            console.log('[home] показываем диалог добавления на главный экран через Telegram WebApp');
             tg.addToHomeScreen();
             return true;
         } else if (status === 'added') {
             console.log('[home] уже добавлено на главный экран');
+            if (tg && tg.showAlert) {
+                tg.showAlert('Приложение уже добавлено на главный экран');
+            }
             return false;
         } else {
-            console.log('[home] статус:', status);
+            console.log('[home] Telegram WebApp статус:', status);
             return false;
         }
     } catch (e) {
-        console.error('[home] ошибка при проверке статуса:', e);
+        console.error('[home] ошибка при проверке статуса Telegram WebApp:', e);
+        return false;
+    }
+}
+
+// Функция для добавления через стандартный PWA API (для браузеров Chrome/Edge)
+async function installPWA() {
+    if (!deferredPrompt) {
+        console.log('[home] PWA install prompt недоступен');
+        return false;
+    }
+
+    try {
+        console.log('[home] показываем стандартный PWA install prompt');
+        // Показываем prompt установки
+        deferredPrompt.prompt();
+        
+        // Ждем ответа пользователя
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('[home] пользователь выбрал:', outcome);
+        
+        // Очищаем сохраненное событие
+        deferredPrompt = null;
+        
+        return outcome === 'accepted';
+    } catch (e) {
+        console.error('[home] ошибка при показе PWA install prompt:', e);
+        deferredPrompt = null;
         return false;
     }
 }
@@ -4378,10 +4420,21 @@ if (addToHomeScreenBtn) {
         console.log('[home] платформа:', platform);
 
         if (platform === 'android') {
-            // Для Android используем нативный метод Telegram WebApp
-            const success = await maybeAskAddToHome();
+            // Для Android пробуем сначала Telegram WebApp API, затем стандартный PWA API
+            let success = false;
+            
+            // Пробуем Telegram WebApp API
+            success = await maybeAskAddToHome();
+            
+            // Если Telegram API не сработал, пробуем стандартный PWA API
+            if (!success && deferredPrompt) {
+                console.log('[home] пробуем стандартный PWA install prompt');
+                success = await installPWA();
+            }
+            
+            // Если ничего не сработало, показываем инструкции
             if (!success) {
-                // Если метод не сработал, показываем инструкции
+                console.log('[home] оба метода не сработали, показываем инструкции');
                 if (addToHomeScreenModal) {
                     addToHomeScreenModal.style.display = 'flex';
                     lockBodyScroll();
@@ -4397,11 +4450,21 @@ if (addToHomeScreenBtn) {
                 window.open(link, '_blank');
             }
         } else {
-            // Для других платформ: показываем инструкции
-            if (addToHomeScreenModal) {
-                addToHomeScreenModal.style.display = 'flex';
-                lockBodyScroll();
-                showBackButton(true);
+            // Для других платформ: пробуем PWA API, если доступен
+            if (deferredPrompt) {
+                const success = await installPWA();
+                if (!success && addToHomeScreenModal) {
+                    addToHomeScreenModal.style.display = 'flex';
+                    lockBodyScroll();
+                    showBackButton(true);
+                }
+            } else {
+                // Показываем инструкции
+                if (addToHomeScreenModal) {
+                    addToHomeScreenModal.style.display = 'flex';
+                    lockBodyScroll();
+                    showBackButton(true);
+                }
             }
         }
     });

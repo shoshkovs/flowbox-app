@@ -2943,6 +2943,18 @@ h1, h2, h3, .font-bold {
 .add-to-home-icon {
     font-size: 24px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--primary-color);
+}
+
+.add-to-home-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
 }
 
 .add-to-home-content {
