@@ -4361,6 +4361,9 @@ async function maybeAskAddToHome() {
         return false;
     }
 
+    // Логируем все доступные методы для отладки
+    console.log('[home] Доступные методы Telegram WebApp:', Object.keys(tg).filter(key => typeof tg[key] === 'function'));
+
     // Проверяем доступность методов
     if (typeof tg.checkHomeScreenStatus !== 'function') {
         console.log('[home] tg.checkHomeScreenStatus недоступно');
@@ -4391,19 +4394,27 @@ async function maybeAskAddToHome() {
                 }
             }
             
-            // Небольшая задержка перед вызовом addToHomeScreen
-            // Это может помочь, если диалог требует, чтобы приложение было полностью развернуто
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Увеличиваем задержку для более стабильной работы
+            await new Promise(resolve => setTimeout(resolve, 200));
             
             // Вызываем метод добавления на главный экран
             // На Android это должно показать нативный диалог
             try {
-                tg.addToHomeScreen();
-                console.log('[home] tg.addToHomeScreen() вызван успешно');
-                
-                // Возвращаем true, так как метод вызван (диалог показывается нативно)
-                // На Android диалог показывается нативно, поэтому мы не можем точно знать результат
-                return true;
+                // Пробуем вызвать с разными подходами
+                if (typeof tg.addToHomeScreen === 'function') {
+                    // Вызываем напрямую
+                    const result = tg.addToHomeScreen();
+                    console.log('[home] tg.addToHomeScreen() вызван, результат:', result);
+                    
+                    // Если метод возвращает Promise, ждем его
+                    if (result && typeof result.then === 'function') {
+                        await result;
+                        console.log('[home] tg.addToHomeScreen() Promise выполнен');
+                    }
+                    
+                    // Возвращаем true, так как метод вызван (диалог показывается нативно)
+                    return true;
+                }
             } catch (addError) {
                 console.error('[home] ошибка при вызове tg.addToHomeScreen():', addError);
                 return false;
@@ -4464,23 +4475,14 @@ if (addToHomeScreenBtn) {
             // Если Telegram API вернул true, считаем что диалог показан
             if (telegramResult) {
                 console.log('[home] Android: Telegram WebApp API вызван, диалог должен появиться');
+                // Даем время на показ диалога, если он не появился сразу
+                setTimeout(() => {
+                    console.log('[home] Проверяем, появился ли диалог');
+                }, 500);
                 return;
             }
             
-            // Если Telegram API не сработал, показываем инструкцию через Telegram WebApp API
-            // с указанием использовать встроенное меню Telegram (3 точки справа)
-            console.log('[home] Android: Telegram WebApp API не сработал, показываем инструкцию');
-            if (tg && typeof tg.showAlert === 'function') {
-                tg.showAlert(
-                    'Нажмите на три точки (⋮) в правом верхнем углу Telegram, затем выберите "Добавить на главный экран"',
-                    () => {
-                        console.log('[home] Пользователь закрыл инструкцию');
-                    }
-                );
-                return;
-            }
-            
-            // Если showAlert недоступен, пробуем стандартный PWA API
+            // Если Telegram API не сработал, пробуем стандартный PWA API
             if (deferredPrompt) {
                 console.log('[home] Android: пробуем стандартный PWA install prompt');
                 const success = await installPWA();
