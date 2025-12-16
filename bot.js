@@ -2383,10 +2383,16 @@ async function sendOrderNotificationToGroup(orderId, orderData) {
       message += `🚪 <b>Оставить у двери</b>\n\n`;
     }
     
-    message += `Статус: <b>Новый</b>`;
+    message += `Статус: <b>Новый</b>\n\n`;
+    
+    // Добавляем ссылку на заказ в админке
+    const adminUrl = process.env.WEBAPP_URL || process.env.APP_URL || `http://localhost:${PORT}`;
+    const orderUrl = `${adminUrl}/admin/orders/${orderId}`;
+    message += `🔗 <a href="${orderUrl}">Открыть заказ в админке</a>`;
     
     console.log(`📝 Сформировано сообщение для отправки (длина: ${message.length} символов)`);
     console.log(`📝 Первые 200 символов: ${message.substring(0, 200)}...`);
+    console.log(`🔗 Ссылка на заказ в админке: ${orderUrl}`);
     
     // Отправляем сообщение в группу с указанием темы
     console.log(`📤 Вызываем bot.telegram.sendMessage с параметрами:`);
@@ -2396,7 +2402,8 @@ async function sendOrderNotificationToGroup(orderId, orderData) {
     
     const result = await bot.telegram.sendMessage(ORDERS_GROUP_ID, message, {
       parse_mode: 'HTML',
-      message_thread_id: ORDERS_TOPIC_ID
+      message_thread_id: ORDERS_TOPIC_ID,
+      disable_web_page_preview: false // Разрешаем превью ссылки
     });
     
     console.log(`✅ Уведомление о заказе #${orderId} успешно отправлено в группу`);
