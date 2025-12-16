@@ -135,7 +135,7 @@ h1, h2, h3, .font-bold {
 .filter-btn {
     border: none;
     border-radius: 20px;
-    padding: 10px 20px;
+    padding: 10px 24px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
