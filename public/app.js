@@ -510,7 +510,7 @@ if (document.readyState === 'loading') {
 }
 
 // Поиск логотипа в разных форматах
-let logoFormats = ['logo2.jpg?v=3', 'logo2.jpg', 'logo.jpg', 'logo.png', 'logo.svg', 'logo.jpeg'];
+let logoFormats = ['logo2.jpg?v=3', 'logo2.jpg'];
 let currentLogoIndex = 0;
 
 function tryNextLogoFormat() {
