@@ -510,26 +510,65 @@ if (document.readyState === 'loading') {
 }
 
 // Поиск логотипа в разных форматах
-let logoFormats = ['/logo2.jpg?v=4', '/logo2.jpg?v=3', '/logo2.jpg', 'logo2.jpg?v=4', 'logo2.jpg'];
-let currentLogoIndex = 0;
-
-function tryNextLogoFormat() {
+// Инициализация логотипа при загрузке
+function initLogo() {
     const logoImg = document.getElementById('logoImg');
     const logoFallback = document.getElementById('logoFallback');
     
-    console.log('[tryNextLogoFormat] Попытка загрузки логотипа, индекс:', currentLogoIndex, 'форматы:', logoFormats);
+    if (!logoImg) return;
     
-    if (currentLogoIndex < logoFormats.length - 1) {
-        currentLogoIndex++;
-        const nextFormat = logoFormats[currentLogoIndex];
-        console.log('[tryNextLogoFormat] Пробуем следующий формат:', nextFormat);
-        logoImg.src = nextFormat;
-    } else {
-        // Если ни один формат не найден, показываем fallback
-        console.warn('[tryNextLogoFormat] Все форматы не загрузились, показываем fallback');
-        logoImg.style.display = 'none';
-        logoFallback.style.display = 'block';
+    // Устанавливаем начальный путь к логотипу
+    logoImg.src = '/logo2.jpg?v=5';
+    
+    // Обработчик успешной загрузки
+    logoImg.onload = function() {
+        console.log('[initLogo] ✅ Логотип успешно загружен:', logoImg.src);
+        logoImg.style.display = 'block';
+        if (logoFallback) {
+            logoFallback.style.display = 'none';
+        }
+    };
+    
+    // Обработчик ошибки загрузки
+    logoImg.onerror = function() {
+        console.error('[initLogo] ❌ Ошибка загрузки логотипа:', logoImg.src);
+        // Пробуем альтернативные пути
+        const alternatives = ['/logo2.jpg', 'logo2.jpg', '/logo.jpg', 'logo.jpg'];
+        let altIndex = 0;
+        
+        const tryAlternative = () => {
+            if (altIndex < alternatives.length) {
+                logoImg.src = alternatives[altIndex];
+                altIndex++;
+            } else {
+                // Если ничего не помогло, показываем fallback
+                console.warn('[initLogo] Все пути не сработали, показываем fallback');
+                logoImg.style.display = 'none';
+                if (logoFallback) {
+                    logoFallback.style.display = 'block';
+                }
+            }
+        };
+        
+        logoImg.onerror = tryAlternative;
+        tryAlternative();
+    };
+}
+
+// Старая функция для совместимости
+function tryNextLogoFormat() {
+    const logoImg = document.getElementById('logoImg');
+    if (logoImg && logoImg.src) {
+        console.log('[tryNextLogoFormat] Повторная попытка загрузки логотипа');
+        logoImg.src = logoImg.src.split('?')[0] + '?v=' + Date.now();
     }
+}
+
+// Инициализируем логотип при загрузке DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLogo);
+} else {
+    initLogo();
 }
 
 // Экспорт для использования в onerror
