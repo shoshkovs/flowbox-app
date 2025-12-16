@@ -1764,6 +1764,143 @@ h1, h2, h3, .font-bold {
     opacity: 0.8;
 }
 
+/* Страница успешной оплаты */
+.payment-success-page {
+    min-height: 100vh;
+    background: rgba(251, 45, 92, 0.08); /* Нежно розовый фон */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    padding-bottom: 100px; /* Место для нижнего меню, если оно появится */
+}
+
+.payment-success-container {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 24px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    animation: scaleIn 0.25s ease-out;
+}
+
+.payment-success-icon {
+    margin-bottom: 24px;
+}
+
+.success-checkmark {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #4caf50; /* Зеленый цвет для галочки */
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: bold;
+    margin: 0 auto;
+    animation: scaleIn 0.3s ease-out;
+}
+
+.payment-success-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 8px;
+}
+
+.payment-success-subtitle {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 32px;
+    line-height: 1.5;
+}
+
+.payment-success-steps {
+    text-align: left;
+    margin-bottom: 32px;
+}
+
+.payment-success-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease-out;
+}
+
+.payment-success-step:last-child {
+    margin-bottom: 0;
+}
+
+.payment-success-step.completed {
+    background-color: rgba(76, 175, 80, 0.05);
+}
+
+.step-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(251, 45, 92, 0.1);
+    color: rgba(251, 45, 92, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.step-icon.completed {
+    background: #4caf50;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.step-text {
+    font-size: 14px;
+    color: var(--text-color);
+    flex: 1;
+}
+
+.payment-success-btn {
+    width: 100%;
+    padding: 14px;
+    background: #fb2d5c; /* Ярко розовый цвет кнопки */
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease-out;
+    margin-bottom: 16px;
+}
+
+.payment-success-btn:hover {
+    opacity: 0.9;
+}
+
+.payment-success-btn:active {
+    opacity: 0.8;
+}
+
+.payment-success-countdown {
+    font-size: 14px;
+    color: #999;
+    margin-top: 8px;
+}
+
+#countdownSeconds {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
 /* Нижняя навигация */
 .bottom-nav {
     position: fixed;

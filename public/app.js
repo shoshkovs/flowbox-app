@@ -1913,6 +1913,60 @@ function openProfileScreen() {
     console.log('[openProfileScreen] ✅ Профиль открыт');
 }
 
+// Функция для открытия страницы успешной оплаты
+function openPaymentSuccessPage(orderId) {
+    console.log('[openPaymentSuccessPage] 🎉 Открытие страницы успешной оплаты для заказа #' + orderId);
+    
+    // Закрываем оформление заказа
+    closeCheckoutUI();
+    
+    // Устанавливаем номер заказа
+    const orderIdElement = document.getElementById('paymentSuccessOrderId');
+    if (orderIdElement) {
+        orderIdElement.textContent = orderId;
+    }
+    
+    // Переключаемся на страницу успешной оплаты
+    switchTab('paymentSuccessTab');
+    
+    // Скрываем BackButton
+    showBackButton(false);
+    
+    // Скрываем нижнее меню
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) {
+        bottomNav.style.display = 'none';
+        bottomNav.classList.add('hidden');
+    }
+    
+    // Запускаем таймер автоперехода (25 секунд)
+    let countdown = 25;
+    const countdownElement = document.getElementById('countdownSeconds');
+    const countdownContainer = document.getElementById('paymentSuccessCountdown');
+    
+    if (countdownContainer) {
+        countdownContainer.style.display = 'block';
+    }
+    
+    const countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdownElement) {
+            countdownElement.textContent = countdown;
+        }
+        
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            // Автоматический переход в профиль
+            openProfileScreen();
+        }
+    }, 1000);
+    
+    // Сохраняем interval для возможности отмены
+    window.paymentSuccessCountdownInterval = countdownInterval;
+    
+    console.log('[openPaymentSuccessPage] ✅ Страница успешной оплаты открыта');
+}
+
 // Переключение вкладок
 function switchTab(tabId) {
     // Скрыть все вкладки (и через класс, и через display)
@@ -3868,13 +3922,8 @@ async function validateAndSubmitOrder(e) {
                 leaveAtDoor: false
             };
             
-            // После успешного заказа переходим в профиль
-            openProfileScreen();
-            
-            // Показываем алерт с номером заказа
-            if (tg && tg.showAlert) {
-                tg.showAlert(`Заказ #${orderId} успешно создан! Мы скоро всё подтвердим 😊`);
-            }
+            // После успешного заказа переходим на страницу успешной оплаты
+            openPaymentSuccessPage(orderId);
             
             // Тактильная обратная связь
             if (tg && tg.HapticFeedback) {
@@ -4076,17 +4125,34 @@ if (orderTabBtn) {
     });
 }
 
-// Возврат в магазин
-backToShop.addEventListener('click', () => {
-    successOverlay.classList.remove('active');
-    // Убеждаемся, что нижнее меню видно после закрытия overlay
-    const bottomNav = document.querySelector('.bottom-nav');
-    if (bottomNav) {
-        bottomNav.style.display = 'flex';
-        bottomNav.classList.remove('hidden');
-    }
-    switchTab('menuTab');
-});
+// Возврат в магазин (старый обработчик для overlay - оставляем для совместимости)
+if (backToShop) {
+    backToShop.addEventListener('click', () => {
+        successOverlay.classList.remove('active');
+        // Убеждаемся, что нижнее меню видно после закрытия overlay
+        const bottomNav = document.querySelector('.bottom-nav');
+        if (bottomNav) {
+            bottomNav.style.display = 'flex';
+            bottomNav.classList.remove('hidden');
+        }
+        switchTab('menuTab');
+    });
+}
+
+// Обработчик кнопки "Отслеживать" на странице успешной оплаты
+const trackOrderBtn = document.getElementById('trackOrderBtn');
+if (trackOrderBtn) {
+    trackOrderBtn.addEventListener('click', () => {
+        // Отменяем автопереход, если он активен
+        if (window.paymentSuccessCountdownInterval) {
+            clearInterval(window.paymentSuccessCountdownInterval);
+            window.paymentSuccessCountdownInterval = null;
+        }
+        
+        // Переходим в профиль для отслеживания заказа
+        openProfileScreen();
+    });
+}
 
 // Загрузка данных профиля
 function loadProfile() {

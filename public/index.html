@@ -841,12 +841,34 @@
 
 
         <!-- Успешное оформление -->
-        <div class="success-overlay" id="successOverlay">
-            <div class="success-panel">
-                <div class="success-icon">✅</div>
-                <h2>Спасибо за заказ!</h2>
-                <p>Ваш заказ принят и будет обработан в ближайшее время</p>
-                <button class="back-to-shop-btn" id="backToShop">Отслеживать</button>
+        <!-- Вкладка: Успешная оплата -->
+        <div class="tab-content" id="paymentSuccessTab" style="display: none;">
+            <div class="payment-success-page">
+                <div class="payment-success-container">
+                    <div class="payment-success-icon">
+                        <div class="success-checkmark">✓</div>
+                    </div>
+                    <h1 class="payment-success-title">Оплата успешно прошла!</h1>
+                    <p class="payment-success-subtitle" id="paymentSuccessOrderText">Ваш заказ #<span id="paymentSuccessOrderId">-</span> уже передан в обработку.</p>
+                    
+                    <div class="payment-success-steps">
+                        <div class="payment-success-step completed">
+                            <div class="step-icon completed">✓</div>
+                            <div class="step-text">Заказ принят в обработку</div>
+                        </div>
+                        <div class="payment-success-step">
+                            <div class="step-icon">📦</div>
+                            <div class="step-text">Скоро начнем подготовку к отправке</div>
+                        </div>
+                        <div class="payment-success-step">
+                            <div class="step-icon">🔔</div>
+                            <div class="step-text">Вы получите уведомление о статусе</div>
+                        </div>
+                    </div>
+                    
+                    <button class="payment-success-btn" id="trackOrderBtn">Отслеживать</button>
+                    <p class="payment-success-countdown" id="paymentSuccessCountdown" style="display: none;">Автоматический переход через <span id="countdownSeconds">25</span> секунд...</p>
+                </div>
             </div>
         </div>
     </div>
