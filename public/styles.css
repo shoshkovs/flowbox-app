@@ -329,13 +329,14 @@ h1, h2, h3, .font-bold {
     justify-content: flex-start;
     margin-top: auto;
     gap: 8px;
+    padding: 0 4px; /* Отступ от краев карточки */
 }
 
 .product-add-btn {
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
+    padding: 10px 16px;
     background: rgba(251, 45, 92, 0.3); /* Полупрозрачный розовый */
     color: var(--text-color);
     border: none;
