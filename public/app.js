@@ -510,18 +510,23 @@ if (document.readyState === 'loading') {
 }
 
 // Поиск логотипа в разных форматах
-let logoFormats = ['logo2.jpg?v=3', 'logo2.jpg'];
+let logoFormats = ['/logo2.jpg?v=4', '/logo2.jpg?v=3', '/logo2.jpg', 'logo2.jpg?v=4', 'logo2.jpg'];
 let currentLogoIndex = 0;
 
 function tryNextLogoFormat() {
     const logoImg = document.getElementById('logoImg');
     const logoFallback = document.getElementById('logoFallback');
     
+    console.log('[tryNextLogoFormat] Попытка загрузки логотипа, индекс:', currentLogoIndex, 'форматы:', logoFormats);
+    
     if (currentLogoIndex < logoFormats.length - 1) {
         currentLogoIndex++;
-        logoImg.src = logoFormats[currentLogoIndex];
+        const nextFormat = logoFormats[currentLogoIndex];
+        console.log('[tryNextLogoFormat] Пробуем следующий формат:', nextFormat);
+        logoImg.src = nextFormat;
     } else {
         // Если ни один формат не найден, показываем fallback
+        console.warn('[tryNextLogoFormat] Все форматы не загрузились, показываем fallback');
         logoImg.style.display = 'none';
         logoFallback.style.display = 'block';
     }
