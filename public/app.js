@@ -4356,8 +4356,19 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 // Функция для добавления на главный экран через Telegram WebApp API
 async function maybeAskAddToHome() {
-    if (!tg || !tg.checkHomeScreenStatus || !tg.addToHomeScreen) {
-        console.log('[home] Telegram WebApp API недоступно');
+    if (!tg) {
+        console.log('[home] Telegram WebApp недоступно');
+        return false;
+    }
+
+    // Проверяем доступность методов
+    if (typeof tg.checkHomeScreenStatus !== 'function') {
+        console.log('[home] tg.checkHomeScreenStatus недоступно');
+        return false;
+    }
+
+    if (typeof tg.addToHomeScreen !== 'function') {
+        console.log('[home] tg.addToHomeScreen недоступно');
         return false;
     }
 
@@ -4369,16 +4380,28 @@ async function maybeAskAddToHome() {
 
         if (status === 'can_be_added') {
             console.log('[home] показываем диалог добавления на главный экран через Telegram WebApp');
-            tg.addToHomeScreen();
-            return true;
+            
+            // Вызываем метод добавления на главный экран
+            // На Android это должно показать нативный диалог
+            try {
+                tg.addToHomeScreen();
+                console.log('[home] tg.addToHomeScreen() вызван успешно');
+                
+                // Даем время на показ диалога
+                // Возвращаем true, так как метод вызван (диалог показывается нативно)
+                return true;
+            } catch (addError) {
+                console.error('[home] ошибка при вызове tg.addToHomeScreen():', addError);
+                return false;
+            }
         } else if (status === 'added') {
             console.log('[home] уже добавлено на главный экран');
-            if (tg && tg.showAlert) {
+            if (tg && typeof tg.showAlert === 'function') {
                 tg.showAlert('Приложение уже добавлено на главный экран');
             }
             return false;
         } else {
-            console.log('[home] Telegram WebApp статус:', status);
+            console.log('[home] Telegram WebApp статус:', status, '- добавление недоступно');
             return false;
         }
     } catch (e) {
@@ -4424,22 +4447,33 @@ if (addToHomeScreenBtn) {
             let success = false;
             
             // Пробуем Telegram WebApp API
-            success = await maybeAskAddToHome();
+            console.log('[home] Android: пробуем Telegram WebApp API');
+            const telegramResult = await maybeAskAddToHome();
+            
+            // Если Telegram API вернул true, считаем что диалог показан
+            // (на Android диалог показывается нативно, поэтому мы не можем точно знать результат)
+            if (telegramResult) {
+                console.log('[home] Android: Telegram WebApp API вызван, диалог должен появиться');
+                // Не показываем инструкции, так как нативный диалог должен появиться
+                return;
+            }
             
             // Если Telegram API не сработал, пробуем стандартный PWA API
-            if (!success && deferredPrompt) {
-                console.log('[home] пробуем стандартный PWA install prompt');
+            if (deferredPrompt) {
+                console.log('[home] Android: пробуем стандартный PWA install prompt');
                 success = await installPWA();
+                if (success) {
+                    console.log('[home] Android: PWA install prompt показан успешно');
+                    return;
+                }
             }
             
             // Если ничего не сработало, показываем инструкции
-            if (!success) {
-                console.log('[home] оба метода не сработали, показываем инструкции');
-                if (addToHomeScreenModal) {
-                    addToHomeScreenModal.style.display = 'flex';
-                    lockBodyScroll();
-                    showBackButton(true);
-                }
+            console.log('[home] Android: оба метода не сработали, показываем инструкции');
+            if (addToHomeScreenModal) {
+                addToHomeScreenModal.style.display = 'flex';
+                lockBodyScroll();
+                showBackButton(true);
             }
         } else if (platform === 'ios') {
             // Для iOS: открываем ссылку в Safari
