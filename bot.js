@@ -7562,6 +7562,23 @@ bot.on('message', async (ctx) => {
   const chat = ctx.chat;
   const from = ctx.from;
   
+  // ВРЕМЕННО: Логируем chat.id и message_thread_id для настройки ORDERS_GROUP_ID и ORDERS_TOPIC_ID
+  // Это поможет получить ID группы и темы "Заказы"
+  if (ctx.message && ctx.chat && ctx.chat.type === 'supergroup') {
+    console.log('🔍 ===== ИНФОРМАЦИЯ ДЛЯ НАСТРОЙКИ УВЕДОМЛЕНИЙ О ЗАКАЗАХ =====');
+    console.log(`📱 Chat ID: ${ctx.chat.id}`);
+    console.log(`📋 Chat Title: ${ctx.chat.title || 'N/A'}`);
+    if (ctx.message.message_thread_id) {
+      console.log(`🎯 Message Thread ID (ID темы): ${ctx.message.message_thread_id}`);
+      console.log(`✅ Используйте эти значения в Render:`);
+      console.log(`   ORDERS_GROUP_ID=${ctx.chat.id}`);
+      console.log(`   ORDERS_TOPIC_ID=${ctx.message.message_thread_id}`);
+    } else {
+      console.log(`⚠️  Это сообщение не в топике. Отправьте сообщение в тему "Заказы"`);
+    }
+    console.log('🔍 ========================================================');
+  }
+  
   // 1) Личный чат с пользователем - пересылаем в чат поддержки
   if (chat.type === 'private') {
     // Пропускаем команды
