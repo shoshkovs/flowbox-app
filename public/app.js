@@ -4457,33 +4457,41 @@ if (addToHomeScreenBtn) {
         console.log('[home] платформа:', platform);
 
         if (platform === 'android') {
-            // Для Android пробуем сначала Telegram WebApp API, затем стандартный PWA API
-            let success = false;
-            
-            // Пробуем Telegram WebApp API
+            // Для Android пробуем сначала Telegram WebApp API
             console.log('[home] Android: пробуем Telegram WebApp API');
             const telegramResult = await maybeAskAddToHome();
             
             // Если Telegram API вернул true, считаем что диалог показан
-            // (на Android диалог показывается нативно, поэтому мы не можем точно знать результат)
             if (telegramResult) {
                 console.log('[home] Android: Telegram WebApp API вызван, диалог должен появиться');
-                // Не показываем инструкции, так как нативный диалог должен появиться
                 return;
             }
             
-            // Если Telegram API не сработал, пробуем стандартный PWA API
+            // Если Telegram API не сработал, показываем инструкцию через Telegram WebApp API
+            // с указанием использовать встроенное меню Telegram (3 точки справа)
+            console.log('[home] Android: Telegram WebApp API не сработал, показываем инструкцию');
+            if (tg && typeof tg.showAlert === 'function') {
+                tg.showAlert(
+                    'Нажмите на три точки (⋮) в правом верхнем углу Telegram, затем выберите "Добавить на главный экран"',
+                    () => {
+                        console.log('[home] Пользователь закрыл инструкцию');
+                    }
+                );
+                return;
+            }
+            
+            // Если showAlert недоступен, пробуем стандартный PWA API
             if (deferredPrompt) {
                 console.log('[home] Android: пробуем стандартный PWA install prompt');
-                success = await installPWA();
+                const success = await installPWA();
                 if (success) {
                     console.log('[home] Android: PWA install prompt показан успешно');
                     return;
                 }
             }
             
-            // Если ничего не сработало, показываем инструкции
-            console.log('[home] Android: оба метода не сработали, показываем инструкции');
+            // Если ничего не сработало, показываем модальное окно с инструкциями
+            console.log('[home] Android: все методы не сработали, показываем модальное окно');
             if (addToHomeScreenModal) {
                 addToHomeScreenModal.style.display = 'flex';
                 lockBodyScroll();
