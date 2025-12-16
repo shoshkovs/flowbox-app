@@ -3105,16 +3105,17 @@ h1, h2, h3, .font-bold {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
+    margin-right: 4px;
 }
 
 .menu-btn-icon svg {
     width: 24px;
     height: 24px;
-    stroke: currentColor;
-    color: var(--text-color);
+    stroke: #fb2d5c;
+    color: #fb2d5c;
 }
 
 .menu-btn-text {

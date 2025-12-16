@@ -197,14 +197,17 @@
                     <div class="profile-menu-buttons">
                         <button class="profile-menu-btn" id="orderHistoryBtn">
                             <span class="menu-btn-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <!-- Коробка -->
-                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                                    <!-- Символ "хрупкое" -->
-                                    <path d="M9 10h6" stroke-width="1.5"></path>
-                                    <path d="M9 13h6" stroke-width="1.5"></path>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fb2d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <!-- Коробка (3D вид) -->
+                                    <!-- Передняя грань -->
+                                    <path d="M7 8l5-3 5 3v8l-5 3-5-3V8z" fill="none"></path>
+                                    <!-- Верхняя грань -->
+                                    <path d="M7 8l5-3 5 3" fill="none"></path>
+                                    <!-- Боковая грань -->
+                                    <path d="M12 5v13M17 8v8" fill="none"></path>
+                                    <!-- Лента на коробке -->
+                                    <line x1="7" y1="12" x2="17" y2="12" stroke-width="1.5"></line>
+                                    <line x1="12" y1="5" x2="12" y2="21" stroke-width="1.5"></line>
                                 </svg>
                             </span>
                             <span class="menu-btn-text">История заказов</span>
@@ -212,13 +215,13 @@
                         </button>
                         <button class="profile-menu-btn" id="supportBtn">
                             <span class="menu-btn-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fb2d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <!-- Речевой пузырь -->
                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                                     <!-- Три точки -->
-                                    <circle cx="9" cy="10" r="1" fill="currentColor"></circle>
-                                    <circle cx="12" cy="10" r="1" fill="currentColor"></circle>
-                                    <circle cx="15" cy="10" r="1" fill="currentColor"></circle>
+                                    <circle cx="9" cy="10" r="1.5" fill="#fb2d5c"></circle>
+                                    <circle cx="12" cy="10" r="1.5" fill="#fb2d5c"></circle>
+                                    <circle cx="15" cy="10" r="1.5" fill="#fb2d5c"></circle>
                                 </svg>
                             </span>
                             <span class="menu-btn-text">Поддержка</span>
