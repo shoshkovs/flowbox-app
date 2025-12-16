@@ -937,7 +937,7 @@ function renderProducts() {
                 <div class="product-image-wrapper">
                     <img src="${product.image}" alt="${product.name}" class="product-image">
                     ${isInCart && bunchesCount > 0 ? `
-                        <div class="product-quantity-overlay">
+                        <div class="product-quantity-overlay show">
                             <div class="product-quantity-overlay-text">${bunchesCount}</div>
                         </div>
                     ` : ''}
@@ -1153,14 +1153,23 @@ function updateProductCard(productId) {
                 overlayText.className = 'product-quantity-overlay-text';
                 overlay.appendChild(overlayText);
                 imageWrapper.appendChild(overlay);
+                // Принудительный reflow для запуска анимации
+                void overlay.offsetWidth;
             }
             const overlayText = overlay.querySelector('.product-quantity-overlay-text');
             if (overlayText) {
                 overlayText.textContent = bunchesCount;
             }
+            // Добавляем класс show для анимации
+            setTimeout(() => {
+                overlay.classList.add('show');
+            }, 10);
         } else {
             if (overlay) {
-                overlay.remove();
+                overlay.classList.remove('show');
+                setTimeout(() => {
+                    overlay.remove();
+                }, 300);
             }
         }
     }
@@ -5400,7 +5409,12 @@ editProfileBtn.addEventListener('click', () => {
     validateField(editProfilePhoneField, true);
     validateField(editProfileEmailField, true);
     
+    // Показываем модальное окно с анимацией
     profileEditModal.style.display = 'flex';
+    // Принудительный reflow для запуска анимации
+    void profileEditModal.offsetWidth;
+    void profileEditModal.querySelector('.modal-content')?.offsetWidth;
+    profileEditModal.classList.add('active');
     lockBodyScroll();
     showBackButton(true);
     
@@ -5456,7 +5470,10 @@ editProfileBtn.addEventListener('click', () => {
 });
 
 closeProfileEditModal.addEventListener('click', () => {
-    profileEditModal.style.display = 'none';
+    profileEditModal.classList.remove('active');
+    setTimeout(() => {
+        profileEditModal.style.display = 'none';
+    }, 200);
     tg.BackButton.hide();
     unlockBodyScroll();
 });
@@ -5614,7 +5631,10 @@ profileEditForm.addEventListener('submit', (e) => {
     // Обновление отображения
     profileName.textContent = profileData.name || 'Пользователь';
     
-    profileEditModal.style.display = 'none';
+    profileEditModal.classList.remove('active');
+    setTimeout(() => {
+        profileEditModal.style.display = 'none';
+    }, 200);
     tg.BackButton.hide();
     unlockBodyScroll();
     tg.HapticFeedback.notificationOccurred('success');
