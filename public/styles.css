@@ -1799,10 +1799,14 @@ h1, h2, h3, .font-bold {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 48px;
-    font-weight: bold;
     margin: 0 auto;
     animation: scaleIn 0.3s ease-out;
+}
+
+.success-checkmark svg {
+    width: 48px;
+    height: 48px;
+    stroke: white;
 }
 
 .payment-success-title {
@@ -1851,15 +1855,22 @@ h1, h2, h3, .font-bold {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
     flex-shrink: 0;
+}
+
+.step-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
 }
 
 .step-icon.completed {
     background: #4caf50;
     color: white;
-    font-size: 18px;
-    font-weight: bold;
+}
+
+.step-icon.completed svg {
+    stroke: white;
 }
 
 .step-text {
