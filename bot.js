@@ -2288,6 +2288,107 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
 }
 
 // Функция для отправки подтверждения заказа с информацией и кнопкой оплаты
+// Функция для отправки уведомления о новом заказе в группу с темой
+async function sendOrderNotificationToGroup(orderId, orderData) {
+  if (!bot || !ORDERS_GROUP_ID || !ORDERS_TOPIC_ID) {
+    if (!ORDERS_GROUP_ID || !ORDERS_TOPIC_ID) {
+      console.log('⚠️ ORDERS_GROUP_ID или ORDERS_TOPIC_ID не установлены, пропускаем отправку в группу');
+    }
+    return;
+  }
+  
+  try {
+    console.log(`📤 Отправка уведомления о заказе #${orderId} в группу ${ORDERS_GROUP_ID}, тема ${ORDERS_TOPIC_ID}`);
+    
+    // Формируем информацию о заказе
+    let message = `🆕 <b>Новый заказ #${orderId}</b>\n\n`;
+    
+    // Информация о клиенте
+    if (orderData.clientName) {
+      message += `👤 <b>Клиент:</b> ${orderData.clientName}\n`;
+    }
+    if (orderData.clientPhone) {
+      message += `📞 <b>Телефон:</b> ${orderData.clientPhone}\n`;
+    }
+    if (orderData.recipientName && orderData.recipientName !== orderData.clientName) {
+      message += `👥 <b>Получатель:</b> ${orderData.recipientName}\n`;
+    }
+    if (orderData.recipientPhone && orderData.recipientPhone !== orderData.clientPhone) {
+      message += `📱 <b>Телефон получателя:</b> ${orderData.recipientPhone}\n`;
+    }
+    message += `\n`;
+    
+    // Состав заказа
+    if (orderData.items && orderData.items.length > 0) {
+      message += `🛍️ <b>Состав заказа:</b>\n`;
+      orderData.items.forEach((item, index) => {
+        const itemTotal = (item.price || 0) * (item.quantity || 1);
+        message += `${index + 1}. ${item.name} × ${item.quantity} = ${itemTotal.toLocaleString('ru-RU')} ₽\n`;
+      });
+      message += `\n`;
+    }
+    
+    // Суммы
+    message += `💰 <b>Итого:</b>\n`;
+    if (orderData.flowersTotal) {
+      message += `Товары: ${parseFloat(orderData.flowersTotal).toLocaleString('ru-RU')} ₽\n`;
+    }
+    if (orderData.serviceFee) {
+      message += `Сервисный сбор: ${parseFloat(orderData.serviceFee).toLocaleString('ru-RU')} ₽\n`;
+    }
+    if (orderData.deliveryPrice) {
+      message += `Доставка: ${parseFloat(orderData.deliveryPrice).toLocaleString('ru-RU')} ₽\n`;
+    }
+    message += `\n<b>К оплате: ${parseFloat(orderData.total).toLocaleString('ru-RU')} ₽</b>\n\n`;
+    
+    // Адрес доставки
+    if (orderData.address) {
+      message += `📍 <b>Адрес доставки:</b>\n${orderData.address}\n\n`;
+    }
+    
+    // Дата и время доставки
+    if (orderData.deliveryDate) {
+      const deliveryDate = new Date(orderData.deliveryDate).toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+      message += `📅 <b>Дата доставки:</b> ${deliveryDate}\n`;
+    }
+    if (orderData.deliveryTime) {
+      message += `🕐 <b>Время доставки:</b> ${orderData.deliveryTime}\n\n`;
+    }
+    
+    // Комментарий
+    if (orderData.comment || orderData.userComment) {
+      message += `💬 <b>Комментарий:</b> ${orderData.comment || orderData.userComment}\n\n`;
+    }
+    
+    // Комментарий для курьера
+    if (orderData.courierComment) {
+      message += `🚚 <b>Комментарий для курьера:</b> ${orderData.courierComment}\n\n`;
+    }
+    
+    // Оставить у двери
+    if (orderData.leaveAtDoor) {
+      message += `🚪 <b>Оставить у двери</b>\n\n`;
+    }
+    
+    message += `Статус: <b>Новый</b>`;
+    
+    // Отправляем сообщение в группу с указанием темы
+    await bot.telegram.sendMessage(ORDERS_GROUP_ID, message, {
+      parse_mode: 'HTML',
+      message_thread_id: ORDERS_TOPIC_ID
+    });
+    
+    console.log(`✅ Уведомление о заказе #${orderId} успешно отправлено в группу`);
+  } catch (error) {
+    console.error(`❌ Ошибка отправки уведомления о заказе #${orderId} в группу:`, error.message);
+    console.error('Stack trace:', error.stack);
+  }
+}
+
 async function sendOrderConfirmation(orderId, telegramId, orderData) {
   if (!bot || !telegramId) {
     console.warn(`⚠️ sendOrderConfirmation: bot=${!!bot}, telegramId=${telegramId}`);
@@ -2769,7 +2870,13 @@ app.post('/api/orders', async (req, res) => {
                 address: orderData.address || '',
                 deliveryDate: orderData.deliveryDate || null,
                 deliveryTime: orderData.deliveryTime || null,
-                comment: orderData.comment || orderData.userComment || null
+                comment: orderData.comment || orderData.userComment || null,
+                clientName: orderData.name || null,
+                clientPhone: orderData.phone || null,
+                recipientName: orderData.recipientName || null,
+                recipientPhone: orderData.recipientPhone || null,
+                courierComment: orderData.courierComment || null,
+                leaveAtDoor: orderData.leaveAtDoor || false
               };
               
               // Отправляем сообщение с подтверждением заказа
@@ -2783,6 +2890,45 @@ app.post('/api/orders', async (req, res) => {
           });
         } else {
           console.warn(`⚠️ Не отправляем подтверждение: userId=${orderData.userId}, bot=${!!bot}`);
+        }
+        
+        // Отправляем уведомление о новом заказе в группу с темой (асинхронно, не блокируем ответ)
+        if (bot && ORDERS_GROUP_ID && ORDERS_TOPIC_ID) {
+          setImmediate(async () => {
+            try {
+              console.log(`📤 Начинаем отправку уведомления о заказе #${result.orderId} в группу`);
+              
+              // Формируем данные для уведомления в группу
+              const orderDataForGroup = {
+                items: orderData.items || [],
+                total: parseFloat(orderData.total),
+                flowersTotal: parseFloat(orderData.flowersTotal || 0),
+                serviceFee: parseFloat(orderData.serviceFee || 450),
+                deliveryPrice: parseFloat(orderData.deliveryPrice || 0),
+                address: orderData.address || '',
+                deliveryDate: orderData.deliveryDate || null,
+                deliveryTime: orderData.deliveryTime || null,
+                comment: orderData.comment || orderData.userComment || null,
+                clientName: orderData.name || null,
+                clientPhone: orderData.phone || null,
+                recipientName: orderData.recipientName || null,
+                recipientPhone: orderData.recipientPhone || null,
+                courierComment: orderData.courierComment || null,
+                leaveAtDoor: orderData.leaveAtDoor || false
+              };
+              
+              // Отправляем уведомление в группу
+              await sendOrderNotificationToGroup(result.orderId, orderDataForGroup);
+            } catch (groupNotificationError) {
+              // Не прерываем выполнение, если не удалось отправить уведомление в группу
+              console.error('⚠️  Ошибка отправки уведомления о заказе в группу:', groupNotificationError.message);
+              console.error('Stack trace:', groupNotificationError.stack);
+            }
+          });
+        } else {
+          if (!ORDERS_GROUP_ID || !ORDERS_TOPIC_ID) {
+            console.log(`⚠️ Не отправляем уведомление в группу: ORDERS_GROUP_ID=${ORDERS_GROUP_ID}, ORDERS_TOPIC_ID=${ORDERS_TOPIC_ID}`);
+          }
         }
         
         // Возвращаем явный успешный ответ
@@ -6970,6 +7116,50 @@ const setupReplyKeyboard = () => {
 // Валидация и приведение SUPPORT_CHAT_ID к числу
 const SUPPORT_CHAT_ID_RAW = process.env.SUPPORT_CHAT_ID;
 const SUPPORT_CHAT_ID = SUPPORT_CHAT_ID_RAW ? Number(String(SUPPORT_CHAT_ID_RAW).trim()) : null;
+
+// Валидация и приведение ORDERS_GROUP_ID и ORDERS_TOPIC_ID к числу
+const ORDERS_GROUP_ID_RAW = process.env.ORDERS_GROUP_ID;
+const ORDERS_GROUP_ID = ORDERS_GROUP_ID_RAW ? Number(String(ORDERS_GROUP_ID_RAW).trim()) : null;
+
+const ORDERS_TOPIC_ID_RAW = process.env.ORDERS_TOPIC_ID;
+const ORDERS_TOPIC_ID = ORDERS_TOPIC_ID_RAW ? Number(String(ORDERS_TOPIC_ID_RAW).trim()) : null;
+
+if (ORDERS_GROUP_ID_RAW) {
+  console.log(`🔍 ORDERS_GROUP_ID (raw): "${ORDERS_GROUP_ID_RAW}" (type: ${typeof ORDERS_GROUP_ID_RAW})`);
+  console.log(`🔍 ORDERS_GROUP_ID (parsed): ${ORDERS_GROUP_ID} (type: ${typeof ORDERS_GROUP_ID})`);
+  
+  if (isNaN(ORDERS_GROUP_ID)) {
+    console.error('❌ ORDERS_GROUP_ID не является валидным числом!');
+  }
+}
+
+if (ORDERS_TOPIC_ID_RAW) {
+  console.log(`🔍 ORDERS_TOPIC_ID (raw): "${ORDERS_TOPIC_ID_RAW}" (type: ${typeof ORDERS_TOPIC_ID_RAW})`);
+  console.log(`🔍 ORDERS_TOPIC_ID (parsed): ${ORDERS_TOPIC_ID} (type: ${typeof ORDERS_TOPIC_ID})`);
+  
+  if (isNaN(ORDERS_TOPIC_ID)) {
+    console.error('❌ ORDERS_TOPIC_ID не является валидным числом!');
+  }
+}
+
+if (ORDERS_GROUP_ID && ORDERS_TOPIC_ID) {
+  console.log(`✅ Группа заказов настроена: ${ORDERS_GROUP_ID}, тема: ${ORDERS_TOPIC_ID}`);
+  console.log('💡 Убедитесь, что:');
+  console.log('   1. Группа является форумом (Topics включены)');
+  console.log('   2. Бот имеет права администратора');
+  console.log('   3. У бота есть права "Manage Topics" и "Send messages"');
+  console.log('   4. Тема "Заказы" создана в группе');
+} else {
+  console.log('⚠️  ORDERS_GROUP_ID или ORDERS_TOPIC_ID не установлены. Уведомления о заказах не будут отправляться в группу.');
+  console.log('💡 Для настройки:');
+  console.log('   1. Создай супергруппу в Telegram');
+  console.log('   2. Включи режим "Topics" (Форум) в настройках чата');
+  console.log('   3. Создай тему "Заказы"');
+  console.log('   4. Добавь туда бота и дай ему права администратора с "Manage Topics"');
+  console.log('   5. Отправь любое сообщение в тему "Заказы"');
+  console.log('   6. В логах найди chat.id (будет отрицательное число) и message_thread_id (ID темы)');
+  console.log('   7. Добавь ORDERS_GROUP_ID=<chat_id> и ORDERS_TOPIC_ID=<topic_id> в переменные окружения');
+}
 
 if (SUPPORT_CHAT_ID_RAW) {
   console.log(`🔍 SUPPORT_CHAT_ID (raw): "${SUPPORT_CHAT_ID_RAW}" (type: ${typeof SUPPORT_CHAT_ID_RAW})`);
