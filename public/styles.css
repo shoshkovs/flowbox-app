@@ -291,8 +291,7 @@ h1, h2, h3, .font-bold {
 }
 
 .quantity-btn-small:active {
-    transform: scale(0.9);
-    background: #f5f5f5;
+    opacity: 0.7;
 }
 
 .quantity-btn-small:disabled,
@@ -341,7 +340,7 @@ h1, h2, h3, .font-bold {
 }
 
 .product-add-btn:active {
-    transform: scale(0.98);
+    opacity: 0.7;
 }
 
 .product-add-btn svg {
@@ -400,8 +399,7 @@ h1, h2, h3, .font-bold {
 
 .product-minus-btn:active,
 .product-plus-btn:active {
-    transform: scale(0.95);
-    background: var(--secondary-color);
+    opacity: 0.8;
 }
 
 /* Кнопка в залитом состоянии (когда товар в корзине) */
@@ -501,7 +499,7 @@ h1, h2, h3, .font-bold {
 }
 
 .add-to-cart-btn:active {
-    transform: scale(0.98);
+    opacity: 0.8;
 }
 
 /* Кнопка перейти в корзину */
@@ -530,13 +528,8 @@ h1, h2, h3, .font-bold {
     box-shadow: 0 4px 12px rgba(255, 105, 180, 0.4), 0 0 20px rgba(255, 105, 180, 0.3);
 }
 
-.go-to-cart-btn-small:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(255, 105, 180, 0.5);
-}
-
 .go-to-cart-btn-small:active {
-    transform: scale(0.95);
+    opacity: 0.8;
 }
 
 .go-to-cart-price {
@@ -805,71 +798,9 @@ h1, h2, h3, .font-bold {
     animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Ripple эффект для кнопок (как у Самоката/Яндекс Еды) */
-.ripple {
-    position: relative;
-    overflow: hidden;
-    transform: translateZ(0);
-}
+/* Ripple эффекты убраны для простоты */
 
-.ripple::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.5);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-    pointer-events: none;
-    opacity: 0;
-}
-
-.ripple.ripple-active::before {
-    width: 300px;
-    height: 300px;
-    opacity: 1;
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
-                height 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Ripple эффект через span элемент */
-.ripple-effect {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    transform: scale(0);
-    animation: ripple-animation 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
-    z-index: 1;
-}
-
-@keyframes ripple-animation {
-    to {
-        transform: scale(4);
-        opacity: 0;
-    }
-}
-
-/* Для темных кнопок используем более светлый ripple */
-.product-minus-btn .ripple-effect,
-.product-plus-btn .ripple-effect,
-.checkout-btn .ripple-effect,
-.submit-address-btn .ripple-effect,
-.go-to-cart-btn-small .ripple-effect {
-    background: rgba(255, 255, 255, 0.4);
-}
-
-/* Для светлых кнопок используем темный ripple */
-.product-add-btn .ripple-effect,
-.filter-btn .ripple-effect {
-    background: rgba(251, 45, 92, 0.3);
-}
-
-/* Плавные переходы для кнопок с улучшенными easing функциями */
+/* Простые переходы для кнопок */
 .product-add-btn,
 .product-minus-btn,
 .product-plus-btn,
@@ -879,9 +810,7 @@ h1, h2, h3, .font-bold {
 .submit-address-btn,
 .go-to-cart-btn-small {
     position: relative;
-    overflow: hidden;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateZ(0);
+    transition: opacity 0.15s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -893,25 +822,14 @@ h1, h2, h3, .font-bold {
 .checkout-btn:active,
 .submit-address-btn:active,
 .go-to-cart-btn-small:active {
-    transform: scale(0.96) translateZ(0);
-    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.7;
 }
 
 /* Мягкая анимация добавления в корзину */
-@keyframes addToCart {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
+/* Анимация addToCart убрана для простоты */
 
 .product-action-row-filled {
-    animation: addToCart 0.3s ease-out;
+    /* Убрана анимация для простоты */
 }
 
 /* Улучшенная анимация для фильтров */
@@ -926,7 +844,7 @@ h1, h2, h3, .font-bold {
 }
 
 .filter-btn:active {
-    transform: scale(0.95);
+    opacity: 0.7;
 }
 
 /* Улучшенная анимация для навигации */
@@ -936,7 +854,7 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item:active {
-    transform: scale(0.9);
+    opacity: 0.7;
 }
 
 .nav-item.active {
@@ -1045,7 +963,7 @@ h1, h2, h3, .font-bold {
 }
 
 .quantity-btn:active {
-    transform: scale(0.9);
+    opacity: 0.7;
 }
 
 .quantity {
@@ -2030,8 +1948,7 @@ h1, h2, h3, .font-bold {
 }
 
 .cart-quantity-btn:active {
-    background: #e0e0e0;
-    transform: scale(0.9);
+    opacity: 0.7;
 }
 
 .cart-quantity-value {

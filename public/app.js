@@ -1074,16 +1074,7 @@ function addToCart(productId, quantity = null) {
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
     
-    // Анимация добавления в корзину
-    const productCard = document.querySelector(`[data-product-id="${productId}"]`);
-    if (productCard) {
-        const actionRow = productCard.querySelector('.product-action-row');
-        if (actionRow) {
-            actionRow.style.animation = 'none';
-            void actionRow.offsetWidth; // Принудительный reflow
-            actionRow.style.animation = 'addToCart 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-        }
-    }
+    // Убрана анимация добавления в корзину для простоты
     
     // Обновляем только эту карточку
     updateProductCard(productId);
@@ -2112,67 +2103,13 @@ const initNavigation = () => {
 // Инициализируем навигацию при загрузке
 initNavigation();
 
-// Ripple эффект для кнопок (как у Самоката/Яндекс Еды)
-function createRipple(event) {
-    const button = event.currentTarget;
-    
-    // Проверяем, есть ли уже класс ripple
-    if (!button.classList.contains('ripple')) {
-        button.classList.add('ripple');
-    }
-    
-    const circle = document.createElement('span');
-    const diameter = Math.max(button.clientWidth, button.clientHeight);
-    const radius = diameter / 2;
-    
-    const rect = button.getBoundingClientRect();
-    circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${event.clientX - rect.left - radius}px`;
-    circle.style.top = `${event.clientY - rect.top - radius}px`;
-    circle.classList.add('ripple-effect');
-    
-    const ripple = button.getElementsByClassName('ripple-effect')[0];
-    if (ripple) {
-        ripple.remove();
-    }
-    
-    button.appendChild(circle);
-    
-    // Активируем ripple
-    button.classList.add('ripple-active');
-    
-    // Удаляем ripple после анимации
-    setTimeout(() => {
-        button.classList.remove('ripple-active');
-        circle.remove();
-    }, 600);
-}
+// Упрощенные анимации без ripple эффектов
 
-// Применяем ripple эффект ко всем кнопкам
-function initRippleButtons() {
-    const buttons = document.querySelectorAll('button, .filter-btn, .product-add-btn, .product-minus-btn, .product-plus-btn, .cart-quantity-btn, .checkout-btn, .submit-address-btn, .go-to-cart-btn-small, .nav-item');
-    
-    buttons.forEach(button => {
-        // Добавляем класс ripple
-        if (!button.classList.contains('ripple')) {
-            button.classList.add('ripple');
-        }
-        
-        // Удаляем старые обработчики и добавляем новый
-        button.removeEventListener('click', createRipple);
-        button.addEventListener('click', createRipple);
-    });
-}
-
-// Инициализируем ripple эффект при загрузке и после рендера
-initRippleButtons();
-
-// Переинициализируем ripple после рендера товаров и применяем мягкую анимацию
+// Переинициализируем анимацию после рендера товаров
 const originalRenderProducts = renderProducts;
 renderProducts = function() {
     originalRenderProducts();
     setTimeout(() => {
-        initRippleButtons();
         // Применяем мягкую анимацию к карточкам товаров
         const cards = productsContainer.querySelectorAll('.product-card');
         cards.forEach((card, index) => {
@@ -2180,24 +2117,6 @@ renderProducts = function() {
             card.classList.add('animate-in');
         });
     }, 50);
-};
-
-// Переинициализируем ripple после обновления корзины
-const originalUpdateCartUI = updateCartUI;
-updateCartUI = function() {
-    originalUpdateCartUI();
-    setTimeout(() => {
-        initRippleButtons();
-    }, 50);
-};
-
-// Переинициализируем ripple при переключении вкладок
-const originalSwitchTab = switchTab;
-switchTab = function(tabId) {
-    originalSwitchTab(tabId);
-    setTimeout(() => {
-        initRippleButtons();
-    }, 100);
 };
 
 // Проверка: можем ли сделать упрощённый чек-аут
