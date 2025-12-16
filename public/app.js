@@ -4492,7 +4492,19 @@ if (addToHomeScreenBtn) {
                 return;
             }
             
-            // Если Telegram API не сработал, пробуем стандартный PWA API
+            // Если Telegram API не сработал, показываем инструкцию
+            console.log('[home] Android: Telegram WebApp API не сработал, показываем инструкцию');
+            const instructionText = 'Нажмите на три точки в правом верхнем углу Telegram, затем выберите пункт "Добавить на главный экран"';
+            
+            // Пробуем показать через Telegram WebApp API (более красиво)
+            if (tg && typeof tg.showAlert === 'function') {
+                tg.showAlert(instructionText, () => {
+                    console.log('[home] Пользователь закрыл инструкцию');
+                });
+                return;
+            }
+            
+            // Если Telegram API не доступен, пробуем стандартный PWA API
             if (deferredPrompt) {
                 console.log('[home] Android: пробуем стандартный PWA install prompt');
                 const success = await installPWA();
