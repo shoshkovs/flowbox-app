@@ -1,19 +1,40 @@
-import { User, LogOut, Key } from 'lucide-react';
-import { useState } from 'react';
+import { User, LogOut, Key, Menu } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
-export function Header({ onLogout }) {
+export function Header({ onLogout, onMenuClick }) {
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Закрываем dropdown при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDropdown && !event.target.closest('.dropdown-container')) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showDropdown]);
+
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1">
-          {/* Убрали выбор города и поиск */}
+          {/* Кнопка меню для мобильных устройств */}
+          {onMenuClick && (
+            <button
+              onClick={onMenuClick}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Открыть меню"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
         </div>
-        <div className="relative">
+        <div className="relative dropdown-container">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Меню пользователя"
           >
             <User className="w-5 h-5" />
           </button>

@@ -45,3 +45,17 @@ body {
   font-size: var(--font-size);
 }
 
+/* Адаптивность для мобильных устройств */
+@media (max-width: 1023px) {
+  /* Улучшаем читаемость на мобильных */
+  body {
+    font-size: 14px;
+  }
+  
+  /* Таблицы с горизонтальной прокруткой на мобильных */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
