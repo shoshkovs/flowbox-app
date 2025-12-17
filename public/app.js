@@ -420,8 +420,36 @@ if (tg && typeof tg.onEvent === 'function') {
         }
     });
     
+    // Обработчик закрытия инвойса после оплаты
+    tg.onEvent('invoice_closed', (event) => {
+        console.log('[invoice_closed] Событие invoice_closed:', event);
+        // Если оплата прошла успешно (status: 'paid'), открываем страницу успеха
+        if (event && event.status === 'paid' && event.slug) {
+            // Извлекаем orderId из slug (если он был передан)
+            const orderIdMatch = event.slug.match(/order[_-]?(\d+)/i);
+            const orderId = orderIdMatch ? orderIdMatch[1] : null;
+            
+            if (orderId) {
+                console.log('[invoice_closed] Открываем страницу успеха для заказа:', orderId);
+                // Не закрываем приложение, а открываем страницу успеха
+                openPaymentSuccessPage(orderId);
+            } else {
+                console.warn('[invoice_closed] Не удалось извлечь orderId из slug:', event.slug);
+            }
+        } else {
+            console.log('[invoice_closed] Инвойс закрыт без оплаты или с ошибкой');
+        }
+    });
+    
     // Обработчик закрытия мини-аппа
     tg.onEvent('close', () => {
+        // Не закрываем приложение, если открыта страница успеха
+        const paymentSuccessTab = document.getElementById('paymentSuccessTab');
+        if (paymentSuccessTab && paymentSuccessTab.style.display !== 'none') {
+            console.log('[close] Страница успеха открыта, предотвращаем закрытие');
+            return false;
+        }
+        
         if (cart && cart.length > 0) {
             // Показываем предупреждение через alert (так как beforeunload не работает в Telegram WebApp)
             if (confirm('Изменения могут быть потеряны. Вы уверены, что хотите закрыть?')) {
