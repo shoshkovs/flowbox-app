@@ -5622,21 +5622,61 @@ async function openOrderDetail(orderId) {
     
     // Загружаем данные заказа
     try {
-        const userId = tg?.initDataUnsafe?.user?.id;
-        if (!userId) {
-            throw new Error('Не удалось получить userId');
+        // Получаем userId из Telegram WebApp или из localStorage
+        let userId = null;
+        
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
         }
         
+        // Если userId не получен из Telegram, пробуем получить из localStorage
+        if (!userId) {
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                try {
+                    const parsed = JSON.parse(userData);
+                    userId = parsed.userId || parsed.id;
+                } catch (e) {
+                    console.warn('[openOrderDetail] Не удалось распарсить userData из localStorage');
+                }
+            }
+        }
+        
+        // Если все еще нет userId, пробуем получить из userActiveOrders
+        if (!userId && userActiveOrders && userActiveOrders.length > 0) {
+            const order = userActiveOrders.find(o => o.id === orderId);
+            if (order && order.userId) {
+                userId = order.userId;
+            }
+        }
+        
+        if (!userId) {
+            console.error('[openOrderDetail] userId не найден. tg:', !!tg, 'initDataUnsafe:', !!tg?.initDataUnsafe, 'user:', !!tg?.initDataUnsafe?.user);
+            throw new Error('Не удалось получить userId. Пожалуйста, обновите страницу.');
+        }
+        
+        console.log('[openOrderDetail] Загрузка деталей заказа:', orderId, 'userId:', userId);
+        
         const response = await fetch(`/api/orders/${orderId}?userId=${userId}`);
+        
         if (!response.ok) {
-            throw new Error('Не удалось загрузить детали заказа');
+            const errorText = await response.text();
+            console.error('[openOrderDetail] Ошибка ответа сервера:', response.status, errorText);
+            throw new Error(`Ошибка сервера: ${response.status}. ${errorText}`);
         }
         
         const order = await response.json();
+        console.log('[openOrderDetail] Данные заказа получены:', order);
         renderOrderDetails(order);
     } catch (error) {
         console.error('[openOrderDetail] Ошибка загрузки деталей заказа:', error);
-        orderDetailsContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff4444;">Ошибка загрузки данных заказа</div>';
+        const errorMessage = error.message || 'Неизвестная ошибка';
+        orderDetailsContent.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ff4444;">
+                <div style="font-weight: 600; margin-bottom: 8px;">Ошибка загрузки данных заказа</div>
+                <div style="font-size: 14px; color: #999;">${errorMessage}</div>
+            </div>
+        `;
     }
 }
 

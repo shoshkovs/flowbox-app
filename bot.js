@@ -2839,19 +2839,55 @@ app.get('/api/user-data/:userId', async (req, res) => {
 // API endpoint для получения деталей заказа
 app.get('/api/orders/:orderId', async (req, res) => {
   const { orderId } = req.params;
-  const userId = req.query.userId || req.headers['x-user-id'];
+  let userId = req.query.userId || req.headers['x-user-id'];
+  
+  console.log(`[GET /api/orders/${orderId}] Запрос деталей заказа. userId из query: ${req.query.userId}, из headers: ${req.headers['x-user-id']}`);
+  
+  // Если userId не передан, пробуем получить из initData
+  if (!userId && req.query.initData) {
+    try {
+      const initData = parseInitData(req.query.initData);
+      if (initData && initData.user) {
+        userId = initData.user.id;
+        console.log(`[GET /api/orders/${orderId}] userId получен из initData: ${userId}`);
+      }
+    } catch (e) {
+      console.warn(`[GET /api/orders/${orderId}] Не удалось распарсить initData:`, e.message);
+    }
+  }
   
   if (!userId) {
+    console.error(`[GET /api/orders/${orderId}] userId не указан`);
     return res.status(401).json({ error: 'Не указан userId' });
+  }
+  
+  // Преобразуем userId в число, если это строка
+  userId = parseInt(userId, 10);
+  if (isNaN(userId)) {
+    console.error(`[GET /api/orders/${orderId}] userId не является числом: ${req.query.userId}`);
+    return res.status(400).json({ error: 'Некорректный userId' });
   }
   
   try {
     if (!pool) {
+      console.error(`[GET /api/orders/${orderId}] База данных не доступна`);
       return res.status(500).json({ error: 'База данных не доступна' });
     }
     
     const client = await pool.connect();
     try {
+      // Сначала проверяем, существует ли пользователь с таким telegram_id
+      const userCheckQuery = 'SELECT id FROM users WHERE telegram_id = $1';
+      const userCheckResult = await client.query(userCheckQuery, [userId]);
+      
+      if (userCheckResult.rows.length === 0) {
+        console.warn(`[GET /api/orders/${orderId}] Пользователь с telegram_id=${userId} не найден`);
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+      
+      const dbUserId = userCheckResult.rows[0].id;
+      console.log(`[GET /api/orders/${orderId}] Найден пользователь: telegram_id=${userId}, user_id=${dbUserId}`);
+      
       // Получаем заказ с товарами
       const orderQuery = `
         SELECT o.*, 
@@ -2870,7 +2906,8 @@ app.get('/api/orders/:orderId', async (req, res) => {
         GROUP BY o.id
       `;
       
-      const result = await client.query(orderQuery, [orderId, userId]);
+      console.log(`[GET /api/orders/${orderId}] Выполняем запрос с orderId=${orderId}, user_id=${dbUserId}`);
+      const result = await client.query(orderQuery, [orderId, dbUserId]);
       
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Заказ не найден' });
