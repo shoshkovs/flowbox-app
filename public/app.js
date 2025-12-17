@@ -9487,6 +9487,9 @@ function updateProductSheetButton(product) {
     
     // Обновляем структуру кнопки
     if (isInCart && bunchesCount > 0) {
+        // Убираем обработчик клика с основной кнопки, так как теперь кликаем по отдельным областям
+        addBtn.onclick = null;
+        
         // Показываем: - количество х цена +
         addBtn.innerHTML = `
             <!-- Кнопка минус -->
@@ -9520,6 +9523,13 @@ function updateProductSheetButton(product) {
         `;
     } else {
         // Показываем: цена +
+        // Если товар не добавлен - клик по всей кнопке добавляет товар
+        addBtn.onclick = (e) => {
+            e.stopPropagation();
+            addToCart(product.id, minQty);
+            updateProductSheetButton(product);
+        };
+        
         addBtn.innerHTML = `
             <!-- Цена -->
             <span class="product-sheet-price-text filled">
@@ -9528,8 +9538,7 @@ function updateProductSheetButton(product) {
             
             <!-- Кнопка плюс -->
             <span class="product-sheet-plus-wrapper">
-                <span class="product-sheet-plus-btn" 
-                      onclick="event.stopPropagation(); addToCart(${product.id}, ${minQty}); updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));">
+                <span class="product-sheet-plus-btn">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
                          stroke="white" 
                          stroke-width="1.5">

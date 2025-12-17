@@ -4525,18 +4525,19 @@ input[type="text"][inputmode="numeric"] {
 }
 
 .product-sheet-minus-wrapper.visible {
-    width: 56px;
+    width: 80px;
     opacity: 1;
 }
 
 .product-sheet-minus-btn {
-    width: 56px;
+    width: 80px;
     height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    padding: 0 12px;
 }
 
 .product-sheet-minus-btn:active {
@@ -4576,18 +4577,19 @@ input[type="text"][inputmode="numeric"] {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    flex: 0 0 56px;
+    width: 80px;
+    flex: 0 0 80px;
 }
 
 .product-sheet-plus-btn {
-    width: 56px;
+    width: 80px;
     height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    padding: 0 12px;
 }
 
 .product-sheet-add-btn:not(.product-sheet-add-btn-filled) .product-sheet-plus-btn {
