@@ -2364,6 +2364,16 @@ function openPaymentSuccessPage(orderId) {
         orderIdElement.textContent = orderId;
     }
     
+    // Убеждаемся, что приложение не закроется автоматически
+    if (tg && typeof tg.enableClosingConfirmation === 'function') {
+        tg.enableClosingConfirmation();
+    }
+    
+    // Убеждаемся, что приложение развернуто
+    if (tg && typeof tg.expand === 'function') {
+        tg.expand();
+    }
+    
     // Переключаемся на страницу успешной оплаты
     switchTab('paymentSuccessTab');
     
