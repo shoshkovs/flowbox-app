@@ -4275,3 +4275,38 @@ input[type="text"][inputmode="numeric"] {
     background: #fb2d5c;
 }
 
+/* История статусов заказа */
+.order-status-history {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.order-status-history-item {
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 12px;
+    border-left: 3px solid #fb2d5c;
+}
+
+.order-status-history-status {
+    font-weight: 800;
+    font-size: 14px;
+    color: #111;
+    margin-bottom: 4px;
+}
+
+.order-status-history-time {
+    font-size: 13px;
+    color: #777;
+    font-weight: 600;
+}
+
+.order-status-history-comment {
+    font-size: 12px;
+    color: #999;
+    margin-top: 6px;
+    font-style: italic;
+}
+

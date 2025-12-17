@@ -5793,6 +5793,23 @@ function renderOrderDetails(order) {
                 `).join('') : '<div style="color: #999; padding: 10px 0;">Товары не найдены</div>'}
             </div>
         </div>
+        
+        <!-- История статусов -->
+        ${order.statusHistory && order.statusHistory.length > 0 ? `
+            <div class="order-details-card">
+                <div class="order-details-h2">История статусов</div>
+                
+                <div class="order-status-history">
+                    ${order.statusHistory.map((entry, index) => `
+                        <div class="order-status-history-item">
+                            <div class="order-status-history-status">${entry.status}</div>
+                            <div class="order-status-history-time">${entry.date}, ${entry.time}</div>
+                            ${entry.comment ? `<div class="order-status-history-comment">${entry.comment}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
     `;
     
     // Добавляем анимацию появления

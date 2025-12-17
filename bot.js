@@ -2996,6 +2996,48 @@ app.get('/api/orders/:orderId', async (req, res) => {
       
       const userStatus = statusTextMap[row.status] || row.status;
       
+      // Загружаем историю статусов
+      let statusHistory = [];
+      try {
+        const historyQuery = `
+          SELECT status, created_at, changed_by, comment
+          FROM order_status_history
+          WHERE order_id = $1
+          ORDER BY created_at ASC
+        `;
+        const historyResult = await client.query(historyQuery, [orderIdNum]);
+        
+        // Маппинг статусов для отображения
+        const statusDisplayMap = {
+          'NEW': 'Новый',
+          'PROCESSING': 'В обработке',
+          'PURCHASE': 'Принят',
+          'COLLECTING': 'Собирается',
+          'DELIVERING': 'В пути',
+          'DELIVERED': 'Доставлен',
+          'COMPLETED': 'Доставлен',
+          'CANCELED': 'Отменен'
+        };
+        
+        statusHistory = historyResult.rows.map(h => ({
+          status: statusDisplayMap[h.status] || h.status,
+          statusRaw: h.status,
+          date: new Date(h.created_at).toLocaleDateString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+          }),
+          time: new Date(h.created_at).toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          changedBy: h.changed_by || 'Система',
+          comment: h.comment || null
+        }));
+      } catch (historyError) {
+        console.warn(`[GET /api/orders/${orderId}] Не удалось загрузить историю статусов:`, historyError.message);
+      }
+      
       const orderData = {
         id: row.id,
         total: row.total,
@@ -3014,7 +3056,8 @@ app.get('/api/orders/:orderId', async (req, res) => {
           price: item.price,
           totalPrice: item.total_price,
           imageUrl: item.image_url || ''
-        }))
+        })),
+        statusHistory: statusHistory
       };
       
       res.json(orderData);
