@@ -1895,7 +1895,15 @@ async function loadAdditionalProducts() {
         // Проверяем все возможные варианты названия категории
         additionalProducts = allProducts.filter(p => {
             const category = (p.category || p.type || p.category_name || '').toLowerCase().trim();
-            const matches = category === 'корзина' || category === 'cart' || category === 'дополнительно' || category === 'additional';
+            // Проверяем различные варианты названия категории "корзина"
+            const matches = category === 'корзина' || 
+                           category === 'cart' || 
+                           category === 'дополнительно' || 
+                           category === 'additional' ||
+                           category === 'дополнительные товары' ||
+                           category === 'additional products' ||
+                           category.includes('корзина') ||
+                           category.includes('cart');
             if (matches) {
                 console.log('✅ Найден товар из категории "корзина":', p.name, p.id, 'category:', p.category || p.type || p.category_name);
             }
@@ -1905,8 +1913,12 @@ async function loadAdditionalProducts() {
         
         // Если товары не найдены, выводим все категории для отладки
         if (additionalProducts.length === 0) {
-            const allCategories = [...new Set(allProducts.map(p => (p.category || p.type || p.category_name || '').toLowerCase().trim()).filter(Boolean))];
+            const allCategories = [...new Set(allProducts.map(p => {
+                const cat = p.category || p.type || p.category_name || '';
+                return cat.toLowerCase().trim();
+            }).filter(Boolean))];
             console.log('⚠️ Товары с категорией "корзина" не найдены. Доступные категории:', allCategories);
+            console.log('💡 Подсказка: создайте категорию с названием "корзина" или "cart" в админ-панели');
         }
         renderAdditionalProducts();
     } catch (error) {
