@@ -6989,7 +6989,11 @@ function initLeaveAtDoorCheckbox() {
     toggle.setAttribute('aria-checked', isChecked.toString());
     
     // Обработчик клика
-    const handleToggle = function() {
+    const handleToggle = function(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         const currentState = toggle.getAttribute('aria-checked') === 'true';
         const newState = !currentState;
         toggle.setAttribute('aria-checked', newState.toString());
@@ -7009,7 +7013,8 @@ function initLeaveAtDoorCheckbox() {
     if (label) {
         label.addEventListener('click', function(e) {
             e.preventDefault();
-            handleToggle();
+            e.stopPropagation();
+            handleToggle(e);
         });
     }
     

@@ -4091,7 +4091,7 @@ input[type="text"][inputmode="numeric"] {
 .leave-at-door-toggle-container {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
     width: 100%;
 }
 
@@ -4102,6 +4102,7 @@ input[type="text"][inputmode="numeric"] {
     font-size: 16px;
     color: var(--text-color);
     flex: 1;
+    user-select: none;
 }
 
 .leave-at-door-toggle {
