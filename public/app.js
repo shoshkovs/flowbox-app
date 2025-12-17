@@ -9392,8 +9392,12 @@ function openProductSheet(productId) {
     backdrop.style.display = 'block';
     sheet.style.display = 'flex';
     
-    // Сбрасываем transform перед открытием
-    sheet.style.transform = 'translateY(100%)';
+    // Убираем класс show если был
+    backdrop.classList.remove('show');
+    sheet.classList.remove('show');
+    
+    // Сбрасываем transform через класс, а не инлайн-стиль
+    sheet.style.transform = '';
     
     // Принудительный reflow
     void sheet.offsetWidth;
@@ -9418,8 +9422,10 @@ function closeProductSheet() {
         sheet.style.display = 'none';
         document.body.style.overflow = '';
         currentProductSheetProduct = null;
-        // Сбрасываем transform для следующего открытия
-        sheet.style.transform = 'translateY(100%)';
+        // Убираем класс show и инлайн-стили для следующего открытия
+        backdrop.classList.remove('show');
+        sheet.classList.remove('show');
+        sheet.style.transform = '';
     }, 400);
 }
 
