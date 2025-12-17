@@ -9473,8 +9473,9 @@ function updateProductSheetButton(product) {
     const isInCart = !!cartItem;
     const cartQuantity = cartItem ? cartItem.quantity : 0;
     const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
-    const pricePerBunch = product.price;
-    const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
+    // Используем цену напрямую из product.price без преобразований
+    const pricePerBunch = Number(product.price);
+    const totalPrice = Number(product.price) * (cartItem ? cartItem.quantity : minQty);
     
     // Обновляем класс для состояния (растягивание/сжатие)
     if (isInCart && bunchesCount > 0) {
