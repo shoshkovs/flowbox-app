@@ -2040,6 +2040,154 @@ function renderAdditionalProducts() {
             </div>
         `;
     }).join('');
+    
+    // После рендеринга обновляем все карточки, чтобы применить правильные стили
+    additionalProducts.forEach(product => {
+        updateAdditionalProductCard(product.id);
+    });
+}
+
+// Обновление одной карточки дополнительного товара
+function updateAdditionalProductCard(productId) {
+    // Проверяем, есть ли товар в additionalProducts
+    const product = additionalProducts.find(p => {
+        const pId = String(p.id);
+        const searchId = String(productId);
+        return pId === searchId || p.id === productId || p.id === Number(productId);
+    });
+    
+    if (!product) return;
+    
+    const minQty = getMinQty(product);
+    const cartItem = cart.find(item => {
+        const itemId = String(item.id);
+        const productIdStr = String(productId);
+        return itemId === productIdStr || item.id === productId || item.id === Number(productId);
+    });
+    const isInCart = !!cartItem;
+    const cartQuantity = cartItem ? cartItem.quantity : 0;
+    const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
+    const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
+    
+    const button = document.getElementById(`additional-product-action-btn-${product.id}`);
+    if (!button) return;
+    
+    // Обновляем класс кнопки
+    if (isInCart) {
+        button.classList.add('product-action-btn-filled');
+    } else {
+        button.classList.remove('product-action-btn-filled');
+    }
+    
+    // Обновляем onclick для основной кнопки
+    button.onclick = (e) => {
+        e.stopPropagation();
+        if (!isInCart) {
+            addAdditionalProduct(product.id);
+        }
+    };
+    
+    // Обновляем видимость минуса
+    const minusWrapper = button.querySelector('.product-minus-btn-wrapper');
+    if (minusWrapper) {
+        if (isInCart) {
+            minusWrapper.classList.add('visible');
+        } else {
+            minusWrapper.classList.remove('visible');
+        }
+    }
+    
+    const minusBtn = button.querySelector('.product-minus-btn');
+    if (minusBtn) {
+        minusBtn.style.display = isInCart ? 'flex' : 'none';
+        minusBtn.onclick = (e) => {
+            e.stopPropagation();
+            changeCartQuantity(product.id, -1);
+        };
+    }
+    
+    // Обновляем цену
+    const priceSpan = button.querySelector('.product-action-price');
+    if (priceSpan) {
+        priceSpan.innerHTML = `${totalPrice} <span class="ruble">₽</span>`;
+        if (isInCart) {
+            priceSpan.classList.add('filled');
+            priceSpan.classList.remove('semi-transparent');
+        } else {
+            priceSpan.classList.remove('filled');
+            priceSpan.classList.add('semi-transparent');
+        }
+    }
+    
+    // Обновляем плюс
+    const plusBtn = button.querySelector('.product-plus-btn');
+    if (plusBtn) {
+        plusBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (isInCart) {
+                changeCartQuantity(product.id, 1);
+            } else {
+                addAdditionalProduct(product.id);
+            }
+        };
+        const svg = plusBtn.querySelector('svg');
+        if (svg) {
+            svg.setAttribute('stroke', isInCart ? 'white' : 'var(--primary-color)');
+        }
+    }
+    
+    // Обновляем количество штук под названием
+    const card = button.closest('.additional-product-card');
+    if (card) {
+        let cartQtyEl = card.querySelector('.additional-product-cart-qty');
+        if (isInCart && bunchesCount > 0) {
+            if (!cartQtyEl) {
+                const nameEl = card.querySelector('.additional-product-name');
+                if (nameEl) {
+                    cartQtyEl = document.createElement('div');
+                    cartQtyEl.className = 'additional-product-cart-qty';
+                    nameEl.parentNode.insertBefore(cartQtyEl, nameEl.nextSibling);
+                }
+            }
+            if (cartQtyEl) {
+                cartQtyEl.textContent = `${bunchesCount} шт`;
+            }
+        } else {
+            if (cartQtyEl) {
+                cartQtyEl.remove();
+            }
+        }
+        
+        // Обновляем overlay на картинке
+        const imageWrapper = card.querySelector('.additional-product-image-wrapper');
+        if (imageWrapper) {
+            let overlay = imageWrapper.querySelector('.product-quantity-overlay');
+            if (isInCart && bunchesCount > 0) {
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.className = 'product-quantity-overlay show';
+                    const overlayText = document.createElement('div');
+                    overlayText.className = 'product-quantity-overlay-text';
+                    overlay.appendChild(overlayText);
+                    imageWrapper.appendChild(overlay);
+                }
+                const overlayText = overlay.querySelector('.product-quantity-overlay-text');
+                if (overlayText) {
+                    overlayText.textContent = bunchesCount;
+                }
+                overlay.classList.add('show');
+            } else {
+                if (overlay) {
+                    overlay.classList.remove('show');
+                    setTimeout(() => {
+                        if (overlay && !overlay.classList.contains('show')) {
+                            overlay.remove();
+                        }
+                    }, 300);
+                }
+            }
+        }
+    }
 }
 
 // Добавление дополнительного товара в корзину
