@@ -4451,6 +4451,11 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         params.push(courier_comment);
         paramIndex++;
       }
+      if (leave_at_door !== undefined) {
+        updateQuery += `, leave_at_door = $${paramIndex}`;
+        params.push(leave_at_door);
+        paramIndex++;
+      }
       if (status_comment !== undefined) {
         updateQuery += `, status_comment = $${paramIndex}`;
         params.push(status_comment);

@@ -2,146 +2,99 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Лабораторная работа №8 — Обработка результатов</title>
+<title>Лабораторная №8 — Обработка результатов (твои данные)</title>
 <style>
-body {
-  font-family: "Times New Roman", serif;
-  background:#f7f7f7;
-  margin:0;
-  padding:40px;
-}
-.container {
-  max-width:900px;
-  margin:auto;
-  background:white;
-  padding:40px;
-}
-h1,h2,h3 {
-  text-align:center;
-}
-table {
-  width:100%;
-  border-collapse:collapse;
-  margin:15px 0;
-}
-td,th {
-  border:1px solid #000;
-  padding:6px;
-  text-align:center;
-}
-.formula {
-  font-family: monospace;
-  background:#eee;
-  padding:8px;
-  margin:10px 0;
-}
-p {
-  text-align:justify;
-}
+  body{font-family:"Times New Roman",serif;background:#f5f5f5;margin:0;padding:28px}
+  .page{max-width:920px;margin:0 auto;background:#fff;padding:28px 34px;border:1px solid #ddd}
+  h1,h2{margin:16px 0 10px}
+  h1{text-align:center;font-size:22px}
+  h2{font-size:18px}
+  table{width:100%;border-collapse:collapse;margin:10px 0 16px}
+  th,td{border:1px solid #000;padding:6px 8px;text-align:center}
+  .formula{font-family:ui-monospace,Consolas,monospace;background:#eee;padding:10px;border:1px solid #bbb;margin:10px 0;white-space:pre-wrap}
+  p{margin:8px 0;text-align:justify}
+  .ans{font-weight:bold;font-size:16px}
 </style>
 </head>
-
 <body>
-<div class="container">
+<div class="page">
 
-<h1>Задание по обработке результатов эксперимента</h1>
-<h3>Лабораторная работа №8</h3>
+<h1>Задание по обработке результатов эксперимента (Лабораторная №8)</h1>
 
-<h2>Таблица 8.1. Однократно измеряемые величины</h2>
+<h2>Исходные данные (Таблица 8.1)</h2>
 <table>
-<tr><th>ν₀, Гц</th><th>t, °C</th><th>T, K</th><th>p, Па</th></tr>
-<tr><td>2000</td><td>24</td><td>297</td><td>102391</td></tr>
+  <tr><th>ν₀, Гц</th><th>t, °C</th><th>T, K</th><th>p, Па</th><th>θν, Гц</th><th>θL, см</th></tr>
+  <tr><td>2000</td><td>24</td><td>297.15</td><td>102391</td><td>10 (цена деления)</td><td>±0.1</td></tr>
 </table>
+<p><i>Примечание:</i> часто берут θν = ±(цена деления)/2 = ±5 Гц. Если у вас в методичке иначе — подставь нужное значение.</p>
 
-<p>Приборные погрешности: θ<sub>L</sub> = 0.5 мм, θ<sub>ν</sub> = 5 Гц.</p>
-
-<h2>Таблица 8.2. Измерения длин резонатора</h2>
+<h2>Таблица 8.2 — измерения L₁, L₂, L₃ (10 наблюдений)</h2>
 <table>
-<tr><th>i</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr>
-<tr><th>L₁, м</th><td>0.167</td><td>0.168</td><td>0.1675</td><td>0.168</td><td>0.1675</td><td>0.167</td><td>0.167</td><td>0.167</td><td>0.167</td><td>0.1675</td></tr>
-<tr><th>L₂, м</th><td>0.333</td><td>0.3325</td><td>0.333</td><td>0.333</td><td>0.333</td><td>0.333</td><td>0.3335</td><td>0.333</td><td>0.3335</td><td>0.333</td></tr>
-<tr><th>L₃, м</th><td>0.500</td><td>0.501</td><td>0.500</td><td>0.501</td><td>0.501</td><td>0.5015</td><td>0.500</td><td>0.501</td><td>0.5015</td><td>0.500</td></tr>
+  <tr><th>i</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr>
+  <tr><th>L₁, см</th><td>8.9</td><td>8.8</td><td>8.9</td><td>8.8</td><td>9.0</td><td>8.9</td><td>8.8</td><td>9.0</td><td>8.9</td><td>8.8</td></tr>
+  <tr><th>L₂, см</th><td>17.1</td><td>17.0</td><td>17.1</td><td>17.0</td><td>17.2</td><td>17.1</td><td>17.0</td><td>17.2</td><td>17.1</td><td>17.0</td></tr>
+  <tr><th>L₃, см</th><td>25.3</td><td>25.2</td><td>25.3</td><td>25.2</td><td>25.4</td><td>25.3</td><td>25.2</td><td>25.4</td><td>25.3</td><td>25.2</td></tr>
 </table>
+<p>Средние (из этой таблицы): <b>L̄₁ = 8.88 см</b>, <b>L̄₂ = 17.08 см</b>, <b>L̄₃ = 25.28 см</b>.</p>
 
-<h2>1. Расчёт длин волн и скоростей звука</h2>
+<h2>1) Расчёт λₙ и uₙ для трёх резонансов</h2>
+<div class="formula">λₙ = 2·L̄ₙ / n
+uₙ = λₙ·ν₀ = (2·L̄ₙ·ν₀)/n</div>
 
-<div class="formula">
-λₙ = 2L̄ₙ / n  
-uₙ = λₙ · ν₀
-</div>
+<p>Перевод в метры: L̄₁=0.0888 м, L̄₂=0.1708 м, L̄₃=0.2528 м.</p>
 
 <table>
-<tr><th>n</th><th>L̄ₙ, м</th><th>λₙ, м</th><th>uₙ, м/с</th></tr>
-<tr><td>1</td><td>0.1675</td><td>0.335</td><td>335</td></tr>
-<tr><td>2</td><td>0.3330</td><td>0.333</td><td>333</td></tr>
-<tr><td>3</td><td>0.5008</td><td>0.334</td><td>334</td></tr>
+  <tr><th>n</th><th>L̄ₙ, м</th><th>λₙ, м</th><th>uₙ, м/с</th></tr>
+  <tr><td>1</td><td>0.0888</td><td>0.1776</td><td>355.2</td></tr>
+  <tr><td>2</td><td>0.1708</td><td>0.1708</td><td>341.6</td></tr>
+  <tr><td>3</td><td>0.2528</td><td>0.16853</td><td>337.1</td></tr>
 </table>
 
-<h2>2. Итоговая скорость звука</h2>
-
+<h2>Проверка на промахи (как мы считали в чате)</h2>
+<p>Среднее: <b>ū = 344.6 м/с</b>.</p>
+<div class="formula">σ = sqrt( ( (u₁-ū)² + (u₂-ū)² + (u₃-ū)² ) / (n-1) ),  n=3
+U_pn = |u_i - ū| / σ</div>
 <p>
-Среднее значение:
-<br>
-<b>ū = 333.9 м/с</b>
+(355.2−344.6)²=112.36; (341.6−344.6)²=9.00; (337.1−344.6)²=56.25<br>
+σ = sqrt((112.36+9.00+56.25)/2) = <b>9.4 м/с</b><br>
+U_p1=1.13; U_p2=0.32; U_p3=0.80; при Uкр≈1.41 → <b>промахов нет</b>.
 </p>
 
+<h2>2) Итоговая скорость звука u = ū ± Δu при P = 95%</h2>
+<p class="ans">ū = (u₁+u₂+u₃)/3 = 344.6 м/с ≈ 345 м/с</p>
+<p><i>Примечание:</i> полную Δu удобно считать по вашей методичке (через t-Стьюдента + приборные θuₙ).
+Если нужно — я подставлю окончательно ровно по той формуле, которая у вас в методичке (там бывают разные варианты суммирования).</p>
+
+<h2>3) Показатель политропы n и характеристика процесса</h2>
+<div class="formula">u = √(nRT/μ)  ⇒  n = μu²/(RT)</div>
 <p>
-С учётом случайной и приборной погрешностей при P = 95%:
-<br>
-<b>u = (333.9 ± 3.2) м/с</b>
+Берём: μ=0.02897 кг/моль, R=8.314, T=297.15 K, u=344.6 м/с.<br>
+n ≈ <b>1.397</b> (≈1.40). Сравнение с γ=1.4 ⇒ процесс распространения звука в воздухе <b>близок к адиабатическому</b>.
 </p>
 
-<h2>3. Показатель политропного процесса</h2>
-
-<div class="formula">
-n = μu² / (RT)
-</div>
-
+<h2>4) Плотность воздуха по Клапейрону и сравнение</h2>
+<div class="formula">ρ = pμ/(RT)</div>
 <p>
-При μ = 29·10⁻³ кг/моль и T = 297 K:
-<br>
-<b>n ≈ 1.31</b>
+ρ = 102391·0.02897 / (8.314·297.15) ≈ <b>1.201 кг/м³</b>.<br>
+Таблично при н.у.: 1.29 кг/м³ (при большей температуре плотность меньше — это нормально).
 </p>
 
+<h2>Таблица 8.3 — данные для АЧХ (L≈17 см)</h2>
+<table>
+  <tr><th>ν, Гц</th><th>1930</th><th>2000</th><th>2030</th></tr>
+  <tr><th>A, дел.</th><td>≈1.0</td><td>≈6.0</td><td>≈1.2</td></tr>
+</table>
+
+<h2>5) Ширина резонанса Δν₀ на уровне A₀/√2</h2>
 <p>
-Поскольку n &lt; γ = 1.4, процесс распространения звука в воздухе
-близок к изотермическому.
+A₀=6.0 ⇒ A₀/√2 = 6.0/1.414 ≈ <b>4.24 дел.</b><br>
+По линейной интерполяции между (2000;6.0) и (1930;1.0) слева и между (2000;6.0) и (2030;1.2) справа получили:
+<br><b>Δν₀ ≈ 36 Гц</b>.
 </p>
 
-<h2>4. Плотность воздуха</h2>
-
-<div class="formula">
-ρ = pμ / (RT)
-</div>
-
-<p>
-ρ ≈ <b>1.18 кг/м³</b>, табличное значение при н.у. — 1.29 кг/м³.
-</p>
-
-<h2>5. АЧХ резонатора</h2>
-
-<p>
-Максимальная амплитуда A₀ ≈ 0.021.
-<br>
-Уровень A₀ / √2 ≈ 0.015.
-<br>
-Ширина резонанса Δν₀ ≈ <b>36 Гц</b>.
-</p>
-
-<h2>6. Добротность резонатора</h2>
-
-<div class="formula">
-Q = ν₀ / Δν₀
-</div>
-
-<p>
-<b>Q ≈ 56</b>
-</p>
-
-<hr>
-<p style="text-align:center;">
-Отчёт подготовлен по экспериментальным данным.
-</p>
+<h2>6) Добротность резонатора</h2>
+<div class="formula">Q = ν₀ / Δν₀</div>
+<p class="ans">Q = 2000 / 36 ≈ 56</p>
 
 </div>
 </body>
