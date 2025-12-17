@@ -1161,11 +1161,23 @@ function addToCart(productId, quantity = null) {
 
 // Изменение количества товара в корзине из карточки
 function changeCartQuantity(productId, delta) {
-    const product = products.find(p => p.id === productId);
+    // Ищем товар сначала в основном списке, затем в дополнительных товарах
+    let product = products.find(p => p.id === productId);
+    if (!product) {
+        product = additionalProducts.find(p => {
+            const pId = String(p.id);
+            const searchId = String(productId);
+            return pId === searchId || p.id === productId || p.id === Number(productId);
+        });
+    }
     if (!product) return;
 
     const minQty = getMinQty(product);
-    const cartItem = cart.find(item => item.id === productId);
+    const cartItem = cart.find(item => {
+        const itemId = String(item.id);
+        const searchId = String(productId);
+        return itemId === searchId || item.id === productId || item.id === Number(productId);
+    });
 
     if (!cartItem) {
         // Если товара нет в корзине, добавляем
@@ -1178,7 +1190,11 @@ function changeCartQuantity(productId, delta) {
 
     if (newQty < minQty) {
         // Удаляем из корзины, если количество меньше минимума
-        cart = cart.filter(item => item.id !== productId);
+        cart = cart.filter(item => {
+            const itemId = String(item.id);
+            const searchId = String(productId);
+            return !(itemId === searchId || item.id === productId || item.id === Number(productId));
+        });
         updateCartUI();
         updateGoToCartButton();
         saveUserData();
