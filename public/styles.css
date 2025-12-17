@@ -4347,10 +4347,9 @@ input[type="text"][inputmode="numeric"] {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
     top: 8vh;
-    height: 84vh;
-    max-height: 84vh;
+    height: calc(100vh - 8vh);
+    max-height: calc(100vh - 8vh);
     background: #fff;
     border-top-left-radius: 26px;
     border-top-right-radius: 26px;

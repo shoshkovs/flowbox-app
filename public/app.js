@@ -9418,7 +9418,7 @@ function closeProductSheet() {
         document.body.style.overflow = '';
         currentProductSheetProduct = null;
         // Сбрасываем transform для следующего открытия
-        sheet.style.transform = '';
+        sheet.style.transform = 'translateY(100%)';
     }, 400);
 }
 
