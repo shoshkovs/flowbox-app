@@ -322,12 +322,22 @@ h1, h2, h3, .font-bold {
     font-size: 14px;
 }
 
+/* Обертка для кнопки действий */
+.product-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: auto;
+    gap: 8px;
+    padding: 0 4px;
+    width: 100%;
+}
+
 /* Единая кнопка с layout-анимацией (как у Самоката) */
 .product-action-btn {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: auto;
     padding: 10px 16px;
     background: rgba(251, 45, 92, 0.3); /* Полупрозрачный розовый */
     color: var(--text-color);
@@ -345,6 +355,7 @@ h1, h2, h3, .font-bold {
                 padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .product-action-btn:active {
@@ -391,6 +402,8 @@ h1, h2, h3, .font-bold {
     cursor: pointer;
     transition: opacity 0.2s, transform 0.2s;
     flex-shrink: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .product-minus-btn:active {
@@ -451,6 +464,8 @@ h1, h2, h3, .font-bold {
     cursor: pointer;
     transition: opacity 0.2s, transform 0.2s;
     flex-shrink: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .product-action-btn:not(.product-action-btn-filled) .product-plus-btn {

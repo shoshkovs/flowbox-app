@@ -989,38 +989,40 @@ function renderProducts() {
                 <div class="product-info">
                     <div class="product-name">${product.name}</div>
                     ${stemQuantity > 1 ? `<div class="product-stem-quantity">${stemQuantity} шт</div>` : ''}
-                    <button class="product-action-btn ${isInCart ? 'product-action-btn-filled' : ''}" 
-                            id="product-action-btn-${product.id}"
-                            onclick="${isInCart ? '' : `addToCart(${product.id}, ${quantity})`}">
-                        <!-- Кнопка минус (появляется только когда товар в корзине) -->
-                        <span class="product-minus-btn-wrapper ${isInCart ? 'visible' : ''}">
-                            <button class="product-minus-btn" 
-                                    onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1)"
-                                    style="display: ${isInCart ? 'flex' : 'none'}">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </button>
-                        </span>
-                        
-                        <!-- Цена (всегда видна) -->
-                        <span class="product-action-price ${isInCart ? 'filled' : 'semi-transparent'}">
-                            ${totalPrice} <span class="ruble">₽</span>
-                        </span>
-                        
-                        <!-- Кнопка плюс (всегда видна) -->
-                        <span class="product-plus-btn-wrapper">
-                            <button class="product-plus-btn" 
-                                    onclick="event.stopPropagation(); ${isInCart ? `changeCartQuantity(${product.id}, 1)` : `addToCart(${product.id}, ${quantity})`}">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                                     stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
-                                     stroke-width="1.5">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </button>
-                        </span>
-                    </button>
+                    <div class="product-action-row">
+                        <button class="product-action-btn ${isInCart ? 'product-action-btn-filled' : ''}" 
+                                id="product-action-btn-${product.id}"
+                                onclick="${isInCart ? 'void(0)' : `addToCart(${product.id}, ${quantity})`}">
+                            <!-- Кнопка минус (появляется только когда товар в корзине) -->
+                            <span class="product-minus-btn-wrapper ${isInCart ? 'visible' : ''}">
+                                <span class="product-minus-btn" 
+                                      onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1)"
+                                      style="display: ${isInCart ? 'flex' : 'none'}">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </span>
+                            </span>
+                            
+                            <!-- Цена (всегда видна) -->
+                            <span class="product-action-price ${isInCart ? 'filled' : 'semi-transparent'}">
+                                ${totalPrice} <span class="ruble">₽</span>
+                            </span>
+                            
+                            <!-- Кнопка плюс (всегда видна) -->
+                            <span class="product-plus-btn-wrapper">
+                                <span class="product-plus-btn" 
+                                      onclick="event.stopPropagation(); ${isInCart ? `changeCartQuantity(${product.id}, 1)` : `addToCart(${product.id}, ${quantity})`}">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                                         stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
+                                         stroke-width="1.5">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -1229,6 +1231,13 @@ function updateProductCard(productId) {
             actionBtn.onclick = () => addToCart(productId, minQty);
         }
         
+        // Обновляем обработчик клика на кнопку
+        if (isInCart) {
+            actionBtn.onclick = null;
+        } else {
+            actionBtn.onclick = () => addToCart(productId, minQty);
+        }
+        
         // Обновляем кнопку минус
         const minusWrapper = actionBtn.querySelector('.product-minus-btn-wrapper');
         const minusBtn = actionBtn.querySelector('.product-minus-btn');
@@ -1249,14 +1258,13 @@ function updateProductCard(productId) {
         // Обновляем цену
         const priceEl = actionBtn.querySelector('.product-action-price');
         if (priceEl) {
-            priceEl.textContent = '';
-            const priceSpan = document.createElement('span');
-            priceSpan.textContent = totalPrice;
-            const rubleSpan = document.createElement('span');
-            rubleSpan.className = 'ruble';
-            rubleSpan.textContent = ' ₽';
-            priceSpan.appendChild(rubleSpan);
-            priceEl.appendChild(priceSpan);
+            // Обновляем только текст, сохраняя структуру
+            const existingSpan = priceEl.querySelector('span:not(.ruble)');
+            if (existingSpan) {
+                existingSpan.textContent = totalPrice;
+            } else {
+                priceEl.innerHTML = `${totalPrice} <span class="ruble">₽</span>`;
+            }
             
             if (isInCart) {
                 priceEl.classList.remove('semi-transparent');
