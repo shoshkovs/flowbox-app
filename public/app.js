@@ -5714,22 +5714,42 @@ function renderOrderDetails(order) {
     const orderDetailsContent = document.getElementById('orderDetailsContent');
     if (!orderDetailsContent) return;
     
-    // Маппинг статусов для степпера (4 статуса)
+    // Маппинг статусов для степпера (5 статусов)
     const statusSteps = ['В обработке', 'Принят', 'Собирается', 'В пути', 'Доставлен'];
     
-    // Маппинг статусов из БД в индексы степпера
-    const statusMap = {
-        'NEW': 0,           // В обработке
-        'PROCESSING': 0,    // В обработке
-        'PURCHASE': 1,      // Принят
-        'COLLECTING': 2,    // Собирается
-        'DELIVERING': 3,    // В пути
-        'DELIVERED': 4,     // Доставлен
-        'COMPLETED': 4      // Доставлен
-    };
-    
-    const statusRaw = order.statusRaw || order.status;
-    const activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
+    // Определяем активный шаг на основе истории статусов
+    // Находим последний статус в истории и определяем его позицию в степпере
+    let activeStep = 0;
+    if (order.statusHistory && order.statusHistory.length > 0) {
+        // Берем последний статус из истории (самый актуальный)
+        const lastStatus = order.statusHistory[order.statusHistory.length - 1];
+        const statusRaw = lastStatus.statusRaw || order.statusRaw || order.status;
+        
+        const statusMap = {
+            'NEW': 0,           // В обработке
+            'PROCESSING': 0,    // В обработке
+            'PURCHASE': 1,      // Принят
+            'COLLECTING': 2,    // Собирается
+            'DELIVERING': 3,    // В пути
+            'DELIVERED': 4,     // Доставлен
+            'COMPLETED': 4      // Доставлен
+        };
+        
+        activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
+    } else {
+        // Fallback: используем текущий статус заказа
+        const statusRaw = order.statusRaw || order.status;
+        const statusMap = {
+            'NEW': 0,
+            'PROCESSING': 0,
+            'PURCHASE': 1,
+            'COLLECTING': 2,
+            'DELIVERING': 3,
+            'DELIVERED': 4,
+            'COMPLETED': 4
+        };
+        activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
+    }
     
     // Форматируем номер заказа
     const orderNumber = String(order.id).toUpperCase();
