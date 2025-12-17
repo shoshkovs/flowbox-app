@@ -5738,6 +5738,8 @@ async function openOrderDetail(orderId) {
         
         const order = await response.json();
         console.log('[openOrderDetail] Данные заказа получены:', order);
+        console.log('[openOrderDetail] statusRaw:', order.statusRaw, 'status:', order.status);
+        console.log('[openOrderDetail] statusHistory:', order.statusHistory);
         renderOrderDetails(order);
     } catch (error) {
         console.error('[openOrderDetail] Ошибка загрузки деталей заказа:', error);
@@ -5814,14 +5816,26 @@ function renderOrderDetails(order) {
                         const stepStatuses = stepStatusMap[step] || [];
                         
                         // Фильтруем все записи для этого статуса
-                        const matchingEntries = order.statusHistory.filter(h => 
-                            stepStatuses.includes(h.statusRaw)
-                        );
+                        const matchingEntries = order.statusHistory.filter(h => {
+                            const matches = stepStatuses.includes(h.statusRaw);
+                            if (matches) {
+                                console.log(`[renderOrderDetails] Найдена запись для "${step}":`, h);
+                            }
+                            return matches;
+                        });
                         
                         // Берем последнюю запись (самую свежую)
                         if (matchingEntries.length > 0) {
-                            // Сортируем по createdAt (если есть) или берем последнюю
-                            historyEntry = matchingEntries[matchingEntries.length - 1];
+                            // Если есть createdAt, сортируем по нему, иначе берем последнюю
+                            if (matchingEntries[0].createdAt) {
+                                matchingEntries.sort((a, b) => 
+                                    new Date(b.createdAt) - new Date(a.createdAt)
+                                );
+                            }
+                            historyEntry = matchingEntries[0];
+                            console.log(`[renderOrderDetails] Используем запись для "${step}":`, historyEntry);
+                        } else {
+                            console.log(`[renderOrderDetails] Не найдено записей для "${step}" со статусами:`, stepStatuses);
                         }
                     }
                     
@@ -5829,6 +5843,10 @@ function renderOrderDetails(order) {
                     const dateTime = historyEntry && historyEntry.date && historyEntry.time 
                         ? `${historyEntry.date}, ${historyEntry.time}` 
                         : '';
+                    
+                    if (!dateTime && historyEntry) {
+                        console.log(`[renderOrderDetails] Нет даты/времени для "${step}":`, historyEntry);
+                    }
                     
                     return `
                         <div class="order-details-step">
