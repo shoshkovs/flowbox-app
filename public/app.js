@@ -9337,13 +9337,20 @@ function openProductSheet(productId) {
     const sheet = document.getElementById('productSheet');
     const title = document.getElementById('productSheetTitle');
     const sub = document.getElementById('productSheetSub');
-    const price = document.getElementById('productSheetPrice');
     const addBtn = document.getElementById('productSheetAddBtn');
     const pagerTrack = document.getElementById('productSheetPagerTrack');
     const dots = document.getElementById('productSheetDots');
     
-    if (!backdrop || !sheet || !title || !sub || !price || !addBtn || !pagerTrack || !dots) {
-        console.error('[openProductSheet] Элементы bottom-sheet не найдены');
+    if (!backdrop || !sheet || !title || !sub || !addBtn || !pagerTrack || !dots) {
+        console.error('[openProductSheet] Элементы bottom-sheet не найдены', {
+            backdrop: !!backdrop,
+            sheet: !!sheet,
+            title: !!title,
+            sub: !!sub,
+            addBtn: !!addBtn,
+            pagerTrack: !!pagerTrack,
+            dots: !!dots
+        });
         return;
     }
     
@@ -9355,12 +9362,6 @@ function openProductSheet(productId) {
     
     const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
     sub.textContent = `${stemQuantity} шт`;
-    
-    const minQty = getMinQty(product);
-    const cartItem = cart.find(item => item.id === product.id);
-    const isInCart = !!cartItem;
-    const quantity = cartItem ? cartItem.quantity : minQty;
-    const totalPrice = product.price * quantity;
     
     // Обновляем кнопку добавления (как на карточке товара)
     updateProductSheetButton(product);
