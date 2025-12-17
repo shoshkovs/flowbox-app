@@ -246,17 +246,12 @@ export function Orders({ authToken }) {
       setFilterStatus(statusFromState);
     }
     
-    // Обновляем данные при возврате на страницу заказов (если есть флаг обновления или изменился путь)
-    const shouldRefresh = location.state?.shouldRefresh || false;
+    // Обновляем данные при возврате на страницу заказов (если есть флаг обновления)
+    const shouldRefresh = location.state?.shouldRefresh;
     if (location.pathname === '/orders' && shouldRefresh && !loading) {
       loadOrders();
-      // Очищаем флаг после обновления
-      navigate(location.pathname, { 
-        replace: true,
-        state: { filterStatus: location.state?.filterStatus }
-      });
     }
-  }, [location.pathname, location.state]);
+  }, [location.pathname, location.state, filterStatus, loading]);
 
   useEffect(() => {
     loadOrders();
