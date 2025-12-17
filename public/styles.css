@@ -4480,6 +4480,7 @@ input[type="text"][inputmode="numeric"] {
     align-items: center;
     justify-content: center;
     padding: 0;
+    margin: 0;
 }
 
 .product-sheet-pager-slide img {
@@ -4491,7 +4492,8 @@ input[type="text"][inputmode="numeric"] {
     object-position: center;
     border-radius: 26px;
     display: block;
-    margin: 0 auto;
+    margin: 0;
+    padding: 0;
 }
 
 .product-sheet-pager-stub {
