@@ -9473,12 +9473,10 @@ function updateProductSheetButton(product) {
     const isInCart = !!cartItem;
     const cartQuantity = cartItem ? cartItem.quantity : 0;
     const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
-    // Используем цену напрямую из product.price без преобразований
-    // Убеждаемся, что цена используется как есть (2350, а не 235)
-    const pricePerBunch = product.price;
+    // Цена за банч = цена за один цветок × минимальный заказ
+    const pricePerBunch = product.price * minQty;
+    // Общая цена = цена за один цветок × количество цветков в корзине (или мин заказ если не в корзине)
     const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
-    
-    console.log('[updateProductSheetButton] product.price:', product.price, 'pricePerBunch:', pricePerBunch, 'totalPrice:', totalPrice);
     
     // Обновляем класс для состояния (растягивание/сжатие)
     if (isInCart && bunchesCount > 0) {
