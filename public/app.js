@@ -9630,3 +9630,30 @@ function initProductSheetHandlers() {
         });
     }
 }
+
+// Accordion toggle function for About page
+function toggleAccordion(button) {
+    const section = button.closest('.accordion-section');
+    if (!section) return;
+    
+    const isActive = section.classList.contains('active');
+    
+    // Close all other accordions (optional - remove if you want multiple open)
+    // document.querySelectorAll('.accordion-section').forEach(s => {
+    //     if (s !== section) {
+    //         s.classList.remove('active');
+    //     }
+    // });
+    
+    // Toggle current section
+    if (isActive) {
+        section.classList.remove('active');
+    } else {
+        section.classList.add('active');
+    }
+    
+    // Haptic feedback
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.impactOccurred('light');
+    }
+}
