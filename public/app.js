@@ -2102,6 +2102,9 @@ function addAdditionalProduct(productId) {
     updateCartUI();
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
+    
+    // Обновляем карточку дополнительного товара
+    updateAdditionalProductCard(productId);
 }
 
 // Расчет итоговой суммы
