@@ -5808,7 +5808,7 @@ function renderOrderDetails(order) {
     const statusRaw = order.statusRaw || order.status;
     const statusMap = {
         'NEW': 0,           // В обработке
-        'PROCESSING': 0,    // В обработке
+        'PROCESSING': 1,    // Принят (когда статус меняется с NEW на PROCESSING)
         'PURCHASE': 1,      // Принят
         'COLLECTING': 2,    // Собирается
         'DELIVERING': 3,    // В пути
@@ -5852,8 +5852,8 @@ function renderOrderDetails(order) {
                     
                     if (order.statusHistory && order.statusHistory.length > 0) {
                         const stepStatusMap = {
-                            'В обработке': ['NEW', 'PROCESSING'],
-                            'Принят': ['PURCHASE'],
+                            'В обработке': ['NEW'],
+                            'Принят': ['PROCESSING', 'PURCHASE'],
                             'Собирается': ['COLLECTING'],
                             'В пути': ['DELIVERING'],
                             'Доставлен': ['DELIVERED', 'COMPLETED']
