@@ -4230,7 +4230,7 @@ input[type="text"][inputmode="numeric"] {
 .order-details-step {
     position: relative;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     padding: 10px 0;
 }
@@ -4243,11 +4243,19 @@ input[type="text"][inputmode="numeric"] {
     background: #fff;
     flex-shrink: 0;
     transition: all 0.3s;
+    margin-top: 2px;
 }
 
 .order-details-step-dot.on {
     border-color: #fb2d5c;
     background: #fb2d5c;
+}
+
+.order-details-step-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .order-details-step-text {
@@ -4259,6 +4267,17 @@ input[type="text"][inputmode="numeric"] {
 
 .order-details-step-text.on {
     color: #111;
+}
+
+.order-details-step-time {
+    font-size: 12px;
+    color: #999;
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.order-details-step-time.on {
+    color: #777;
 }
 
 .order-details-step-line {

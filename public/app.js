@@ -5759,13 +5759,34 @@ function renderOrderDetails(order) {
         <div class="order-details-card">
             <div class="order-details-h2">Статус заказа</div>
             <div class="order-details-stepper">
-                ${statusSteps.map((step, index) => `
-                    <div class="order-details-step">
-                        <div class="order-details-step-dot ${index <= activeStep ? 'on' : ''}"></div>
-                        <div class="order-details-step-text ${index <= activeStep ? 'on' : ''}">${step}</div>
-                        ${index < statusSteps.length - 1 ? `<div class="order-details-step-line ${index < activeStep ? 'on' : ''}"></div>` : ''}
-                    </div>
-                `).join('')}
+                ${statusSteps.map((step, index) => {
+                    // Находим запись в истории для этого статуса
+                    const historyEntry = order.statusHistory && order.statusHistory.find(h => {
+                        const stepStatusMap = {
+                            'В обработке': ['NEW', 'PROCESSING'],
+                            'Принят': ['PURCHASE'],
+                            'Собирается': ['COLLECTING'],
+                            'В пути': ['DELIVERING'],
+                            'Доставлен': ['DELIVERED', 'COMPLETED']
+                        };
+                        const stepStatuses = stepStatusMap[step] || [];
+                        return stepStatuses.includes(h.statusRaw);
+                    });
+                    
+                    const isActive = index <= activeStep;
+                    const dateTime = historyEntry ? `${historyEntry.date}, ${historyEntry.time}` : '';
+                    
+                    return `
+                        <div class="order-details-step">
+                            <div class="order-details-step-dot ${isActive ? 'on' : ''}"></div>
+                            <div class="order-details-step-content">
+                                <div class="order-details-step-text ${isActive ? 'on' : ''}">${step}</div>
+                                ${dateTime ? `<div class="order-details-step-time ${isActive ? 'on' : ''}">${dateTime}</div>` : ''}
+                            </div>
+                            ${index < statusSteps.length - 1 ? `<div class="order-details-step-line ${index < activeStep ? 'on' : ''}"></div>` : ''}
+                        </div>
+                    `;
+                }).join('')}
             </div>
         </div>
         

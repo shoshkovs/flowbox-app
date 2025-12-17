@@ -3007,9 +3007,9 @@ app.get('/api/orders/:orderId', async (req, res) => {
         `;
         const historyResult = await client.query(historyQuery, [orderIdNum]);
         
-        // Маппинг статусов для отображения
+        // Маппинг статусов для отображения (совпадает с админкой)
         const statusDisplayMap = {
-          'NEW': 'Новый',
+          'NEW': 'В обработке',
           'PROCESSING': 'В обработке',
           'PURCHASE': 'Принят',
           'COLLECTING': 'Собирается',
@@ -3032,7 +3032,8 @@ app.get('/api/orders/:orderId', async (req, res) => {
             minute: '2-digit'
           }),
           changedBy: h.changed_by || 'Система',
-          comment: h.comment || null
+          comment: h.comment || null,
+          createdAt: h.created_at
         }));
       } catch (historyError) {
         console.warn(`[GET /api/orders/${orderId}] Не удалось загрузить историю статусов:`, historyError.message);
