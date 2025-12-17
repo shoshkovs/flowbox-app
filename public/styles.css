@@ -893,6 +893,8 @@ h1, h2, h3, .font-bold {
 
 .filter-btn.active {
     box-shadow: none;
+    background: rgba(251, 45, 92, 0.3);
+    color: var(--primary-color);
 }
 
 .filter-btn:active {
