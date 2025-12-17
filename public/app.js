@@ -6578,7 +6578,25 @@ if (document.readyState === 'loading') {
 
 // Загружаем фильтры, затем товары
 loadFilters().then(() => {
-    loadProducts();
+    loadProducts().then(() => {
+        // Проверяем параметр product в URL для автоматического открытия карточки товара
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('product');
+        if (productId) {
+            console.log('[init] Найден параметр product в URL:', productId);
+            // Ждем немного, чтобы товары успели загрузиться и отрендериться
+            setTimeout(() => {
+                const product = products.find(p => p.id === parseInt(productId)) || 
+                               additionalProducts.find(p => p.id === parseInt(productId));
+                if (product) {
+                    console.log('[init] Открываем карточку товара:', product.name);
+                    openProductSheet(parseInt(productId));
+                } else {
+                    console.warn('[init] Товар с ID', productId, 'не найден');
+                }
+            }, 800);
+        }
+    });
     loadUserData(); // Загружаем все данные пользователя с сервера
     loadProfile();
     loadSavedAddresses();
@@ -9656,14 +9674,25 @@ function updateProductSheetButton(product) {
 function shareProduct(product) {
     if (!product) return;
     
-    // Формируем ссылку для шаринга
-    // TODO: Замените на реальный URL вашего мини-аппа
-    const botUsername = 'FlowboxBot'; // Замените на реальное имя бота
-    const link = `https://t.me/${botUsername}/flowbox_app?startapp=product_${product.id}`;
+    // Формируем ссылку для шаринга в формате как у конкурента
+    // https://t.me/FlowboxBot?start=PRODUCT_<productId>
+    const botUsername = 'FlowboxBot';
+    const shareLink = `https://t.me/${botUsername}?start=PRODUCT_${product.id}`;
     
-    // Telegram share chooser
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(product.name)}`;
-    window.open(shareUrl, '_blank');
+    // Используем Telegram WebApp API для открытия ссылки
+    if (window.tg && window.tg.openTelegramLink) {
+        window.tg.openTelegramLink(shareLink);
+    } else if (window.tg && window.tg.openLink) {
+        window.tg.openLink(shareLink);
+    } else {
+        // Fallback: открываем в новом окне
+        window.open(shareLink, '_blank');
+    }
+    
+    // Haptic feedback
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.impactOccurred('light');
+    }
 }
 
 // Инициализация обработчиков для bottom-sheet

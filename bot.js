@@ -7745,6 +7745,13 @@ bot.command('start', async (ctx) => {
     return;
   }
   
+  // Если передан параметр PRODUCT_<id>, отправляем информацию о товаре
+  if (startParam && startParam.startsWith('PRODUCT_')) {
+    const productId = startParam.replace('PRODUCT_', '');
+    await handleProductShare(ctx, productId);
+    return;
+  }
+  
   // Используем Direct Link для обеих кнопок, так как web_app не всегда открывает в fullscreen
   // Direct Link с параметром mode=fullscreen гарантирует корректную работу fullscreen
   const directLinkUrl = 'https://t.me/FlowboxBot/flowbox_app?startapp=main&mode=fullscreen';
@@ -7777,6 +7784,88 @@ bot.command('start', async (ctx) => {
     }
   );
 });
+
+// Обработка шаринга товара
+const handleProductShare = async (ctx, productId) => {
+  if (!pool) {
+    await ctx.reply('❌ База данных недоступна. Попробуйте позже.');
+    return;
+  }
+  
+  const webAppUrl = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
+  
+  try {
+    const client = await pool.connect();
+    try {
+      // Получаем товар из БД
+      const productResult = await client.query(
+        'SELECT id, name, price, min_qty, image_url FROM products WHERE id = $1',
+        [parseInt(productId)]
+      );
+      
+      if (productResult.rows.length === 0) {
+        await ctx.reply('❌ Товар не найден.');
+        return;
+      }
+      
+      const product = productResult.rows[0];
+      const productPrice = product.price * (product.min_qty || 1);
+      
+      // Формируем сообщение с информацией о товаре
+      let message = `🌸 ${product.name}\n\n`;
+      message += `💰 Стоимость: ${productPrice.toLocaleString('ru-RU')} ₽\n\n`;
+      
+      // URL для открытия товара в мини-приложении
+      const productUrl = `${webAppUrl}?product=${productId}`;
+      
+      // Если есть изображение, отправляем фото с подписью
+      if (product.image_url) {
+        await ctx.replyWithPhoto(
+          product.image_url,
+          {
+            caption: message,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: '🛍️ Открыть товар',
+                    web_app: {
+                      url: productUrl
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        );
+      } else {
+        // Если нет изображения, отправляем текстовое сообщение
+        await ctx.reply(
+          message,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: '🛍️ Открыть товар',
+                    web_app: {
+                      url: productUrl
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        );
+      }
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка при обработке шаринга товара:', error);
+    await ctx.reply('❌ Произошла ошибка при загрузке товара. Попробуйте позже.');
+  }
+};
 
 // Обработка запроса поддержки - просто сообщаем пользователю, что он может писать
 const handleSupportRequest = async (ctx) => {
