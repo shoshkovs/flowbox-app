@@ -5842,8 +5842,10 @@ function renderOrderDetails(order) {
                         <div class="order-details-step">
                             <div class="order-details-step-dot ${isActive ? 'on' : ''}"></div>
                             <div class="order-details-step-content">
-                                <div class="order-details-step-text ${isActive ? 'on' : ''}">${step}</div>
-                                ${dateTime ? `<div class="order-details-step-time ${isActive ? 'on' : ''}">${dateTime}</div>` : ''}
+                                <div class="order-details-step-text-wrapper">
+                                    <div class="order-details-step-text ${isActive ? 'on' : ''}">${step}</div>
+                                    ${dateTime ? `<div class="order-details-step-time ${isActive ? 'on' : ''}">${dateTime}</div>` : ''}
+                                </div>
                             </div>
                             ${index < statusSteps.length - 1 ? `<div class="order-details-step-line ${index < activeStep ? 'on' : ''}"></div>` : ''}
                         </div>

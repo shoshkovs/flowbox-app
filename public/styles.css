@@ -4305,11 +4305,20 @@ input[type="text"][inputmode="numeric"] {
     gap: 2px;
 }
 
+.order-details-step-text-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
 .order-details-step-text {
     font-weight: 800;
     color: #9a9a9a;
     font-size: 14px;
     transition: color 0.3s;
+    flex: 1;
 }
 
 .order-details-step-text.on {
@@ -4321,6 +4330,8 @@ input[type="text"][inputmode="numeric"] {
     color: #999;
     font-weight: 600;
     transition: color 0.3s;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .order-details-step-time.on {
