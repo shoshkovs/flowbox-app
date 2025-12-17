@@ -2246,12 +2246,29 @@ function switchTab(tabId) {
                 }
             }
         }, 150);
+    } else if (tabId === 'editRecipientTab' || tabId === 'editAddressTab' || tabId === 'myAddressesTab') {
+        // Скрыть навигацию для вкладок редактирования
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (header) header.style.display = 'flex';
+        // Показать BackButton для вкладок редактирования
+        showBackButton(true);
+        setTimeout(() => {
+            const tab = document.getElementById(tabId);
+            if (tab) {
+                tab.scrollTop = 0;
+                if (window.scrollTo) {
+                    window.scrollTo(0, 0);
+                }
+            }
+        }, 150);
     } else {
         // Показать навигацию и header для других вкладок
         if (bottomNav) bottomNav.style.display = 'flex';
         if (header) header.style.display = 'flex';
         // Скрыть BackButton для основных вкладок (меню, корзина, профиль)
-        tg.BackButton.hide();
+        if (tg && tg.BackButton) {
+            tg.BackButton.hide();
+        }
     }
     
     // Обновить навигацию (перезапрашиваем элементы каждый раз, так как DOM может пересоздаваться)
@@ -2511,12 +2528,86 @@ function showSimpleSummary() {
         renderCheckoutSummary();
     }
     
+    // Устанавливаем обработчики для кнопок редактирования
+    initSimpleCheckoutEditButtons();
+    
     // Скроллим наверх
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     
     console.log('[SimpleMenu] ✅ Экран "Итого" показан, checkoutScreen:', checkoutScreen);
+}
+
+// Инициализация кнопок редактирования в упрощенном оформлении
+function initSimpleCheckoutEditButtons() {
+    // Кнопка редактирования получателя
+    const editRecipientBtn = document.querySelector('#editRecipient .summary-edit-btn');
+    if (editRecipientBtn) {
+        editRecipientBtn.onclick = (e) => {
+            e.stopPropagation();
+            openEditRecipientForSimple();
+        };
+    }
+    
+    // Кнопка редактирования адреса
+    const editAddressBtn = document.querySelector('#editAddress .summary-edit-btn');
+    if (editAddressBtn) {
+        editAddressBtn.onclick = (e) => {
+            e.stopPropagation();
+            openCheckoutAddressesForSimple();
+        };
+    }
+}
+
+// Открытие редактирования получателя в упрощенном режиме
+function openEditRecipientForSimple() {
+    console.log('[SimpleMenu] 📍 Открытие редактирования получателя');
+    checkoutScreen = 'editRecipient';
+    
+    // Скрываем orderTab
+    const orderTab = document.getElementById('orderTab');
+    if (orderTab) {
+        orderTab.style.display = 'none';
+        orderTab.classList.remove('active');
+    }
+    
+    // Показываем editRecipientTab
+    const editRecipientTab = document.getElementById('editRecipientTab');
+    if (editRecipientTab) {
+        // Заполняем форму текущими данными
+        const nameField = document.getElementById('editRecipientName');
+        const phoneField = document.getElementById('editRecipientPhone');
+        
+        if (nameField) {
+            nameField.value = checkoutData.recipientName || 
+                            document.getElementById('customerName')?.value || 
+                            '';
+        }
+        if (phoneField) {
+            phoneField.value = checkoutData.recipientPhone || 
+                             document.getElementById('customerPhone')?.value || 
+                             '';
+        }
+        
+        // Показываем вкладку
+        editRecipientTab.style.display = 'block';
+        editRecipientTab.classList.add('active');
+        
+        // Скрываем навигацию
+        const bottomNav = document.querySelector('.bottom-nav');
+        if (bottomNav) bottomNav.style.display = 'none';
+        
+        // Показываем BackButton
+        showBackButton(true);
+        
+        // Прокручиваем наверх
+        setTimeout(() => {
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+        }, 10);
+    }
 }
 
 // Функции возврата из экранов редактирования в упрощенном режиме
@@ -6933,11 +7024,22 @@ function initCheckoutSteps() {
             }
             
             // Обновляем отображение на странице итого
-            renderCheckoutSummary();
+            if (typeof renderCheckoutSummary === 'function') {
+                renderCheckoutSummary();
+            }
+            if (typeof prefillSimpleCheckoutSummary === 'function') {
+                prefillSimpleCheckoutSummary();
+            }
             
             // Возвращаемся на страницу итого
-            document.getElementById('editRecipientTab').style.display = 'none';
-            goToStep(4);
+            if (isSimpleCheckout || checkoutMode === 'simple') {
+                // Упрощенный режим - возвращаемся на summary
+                closeEditRecipientAndReturnToSummary();
+            } else {
+                // Обычный режим - возвращаемся на шаг 4
+                document.getElementById('editRecipientTab').style.display = 'none';
+                goToStep(4);
+            }
         };
     }
     
