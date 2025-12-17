@@ -2982,25 +2982,26 @@ app.get('/api/orders/:orderId', async (req, res) => {
         deliveryAddress = row.address_string || '';
       }
       
-      // Маппим статус для пользователя
-      const statusMap = {
-        'NEW': 'Собирается',
-        'PROCESSING': 'Собирается',
+      // Маппим статус для пользователя (для отображения текста)
+      const statusTextMap = {
+        'NEW': 'В обработке',
+        'PROCESSING': 'В обработке',
+        'PURCHASE': 'Принят',
         'COLLECTING': 'Собирается',
         'DELIVERING': 'В пути',
-        'DELIVERED': 'Доставлено',
-        'COMPLETED': 'Доставлено',
+        'DELIVERED': 'Доставлен',
+        'COMPLETED': 'Доставлен',
         'CANCELED': 'Отменен'
       };
       
-      const userStatus = statusMap[row.status] || row.status;
+      const userStatus = statusTextMap[row.status] || row.status;
       
       const orderData = {
         id: row.id,
         total: row.total,
         createdAt: new Date(row.created_at).toLocaleDateString('ru-RU'),
         status: userStatus,
-        statusRaw: row.status,
+        statusRaw: row.status, // Сохраняем оригинальный статус для маппинга в степпер
         delivery: {
           address: deliveryAddress,
           date: deliveryDateFormatted,

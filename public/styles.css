@@ -4046,7 +4046,7 @@ input[type="text"][inputmode="numeric"] {
     padding: 12px 14px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     z-index: 10;
 }
@@ -4057,33 +4057,61 @@ input[type="text"][inputmode="numeric"] {
     color: #111;
 }
 
+.order-details-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    display: flex;
+    gap: 12px;
+    z-index: 100;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
 .order-details-back-btn,
 .order-details-support-btn {
-    all: unset;
-    cursor: pointer;
-    padding: 10px 12px;
+    flex: 1;
+    padding: 14px 20px;
     border-radius: 12px;
+    font-size: 16px;
     font-weight: 700;
-    color: #111;
-    transition: background-color 0.2s;
+    cursor: pointer;
+    transition: all 0.2s;
     -webkit-tap-highlight-color: transparent;
+    border: none;
 }
 
-.order-details-back-btn:active,
-.order-details-support-btn:active {
-    background-color: rgba(0, 0, 0, 0.05);
+.order-details-back-btn {
+    background: #f5f5f5;
+    color: #111;
+}
+
+.order-details-back-btn:active {
+    background: #e5e5e5;
+    transform: scale(0.98);
 }
 
 .order-details-support-btn {
-    color: #fb2d5c;
+    background: #fb2d5c;
+    color: white;
+}
+
+.order-details-support-btn:active {
+    background: #e01d4a;
+    transform: scale(0.98);
 }
 
 .order-details-content {
-    padding: 14px 14px 24px;
+    padding: 14px 14px calc(24px + 80px); /* Отступ снизу для footer */
     display: flex;
     flex-direction: column;
     gap: 12px;
     flex: 1;
+    padding-bottom: calc(24px + 80px + env(safe-area-inset-bottom));
 }
 
 .order-details-card {

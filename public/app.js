@@ -5699,10 +5699,22 @@ function renderOrderDetails(order) {
     const orderDetailsContent = document.getElementById('orderDetailsContent');
     if (!orderDetailsContent) return;
     
-    // Маппинг статусов для степпера
-    const statusSteps = ['Собирается', 'В пути', 'Доставлено'];
-    const statusIndex = statusSteps.indexOf(order.status);
-    const activeStep = statusIndex >= 0 ? statusIndex : 0;
+    // Маппинг статусов для степпера (4 статуса)
+    const statusSteps = ['В обработке', 'Принят', 'Собирается', 'В пути', 'Доставлен'];
+    
+    // Маппинг статусов из БД в индексы степпера
+    const statusMap = {
+        'NEW': 0,           // В обработке
+        'PROCESSING': 0,    // В обработке
+        'PURCHASE': 1,      // Принят
+        'COLLECTING': 2,    // Собирается
+        'DELIVERING': 3,    // В пути
+        'DELIVERED': 4,     // Доставлен
+        'COMPLETED': 4      // Доставлен
+    };
+    
+    const statusRaw = order.statusRaw || order.status;
+    const activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
     
     // Форматируем номер заказа
     const orderNumber = String(order.id).toUpperCase();
