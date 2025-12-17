@@ -2011,7 +2011,7 @@ h1, h2, h3, .font-bold {
     border: none;
     cursor: pointer;
     color: #999;
-    transition: color 0.2s ease-out, opacity 0.2s ease-out;
+    transition: color 0.2s ease-out, opacity 0.15s ease, transform 0.15s ease;
     position: relative;
 }
 
