@@ -410,6 +410,9 @@ h1, h2, h3, .font-bold {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     border-radius: 20px 0 0 20px;
+    pointer-events: auto;
+    z-index: 10;
+    position: relative;
 }
 
 .product-minus-btn:active {
