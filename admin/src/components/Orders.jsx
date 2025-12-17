@@ -183,6 +183,7 @@ export function Orders({ authToken }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [searchOrderId, setSearchOrderId] = useState(''); // Поиск по номеру заказа
+  const [searchOrderId, setSearchOrderId] = useState(''); // Поиск по номеру заказа
 
   // Функция для форматирования даты в YYYY-MM-DD
   const formatDate = (date) => {
@@ -326,19 +327,28 @@ export function Orders({ authToken }) {
         const allData = await allResponse.json();
         setAllOrders(allData);
         
-        // Фильтруем локально по статусу
-        if (filterStatus === 'all') {
-          setOrders(allData);
-        } else {
-          // Фильтруем по статусу (приводим к верхнему регистру для сравнения)
-          const filtered = allData.filter(order => {
+        // Фильтруем локально по статусу и поиску
+        let filtered = allData;
+        
+        // Фильтр по статусу
+        if (filterStatus !== 'all') {
+          filtered = filtered.filter(order => {
             const orderStatus = (order.status || '').toUpperCase();
             // Для 'processing' сравниваем с 'PROCESSING'
             const filterStatusUpper = filterStatus === 'processing' ? 'PROCESSING' : filterStatus.toUpperCase();
             return orderStatus === filterStatusUpper;
           });
-          setOrders(filtered);
         }
+        
+        // Фильтр по номеру заказа
+        if (searchOrderId.trim()) {
+          const searchId = searchOrderId.trim();
+          filtered = filtered.filter(order => {
+            return String(order.id).includes(searchId);
+          });
+        }
+        
+        setOrders(filtered);
       }
     } catch (error) {
       console.error('Ошибка загрузки заказов:', error);
