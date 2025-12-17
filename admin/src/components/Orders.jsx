@@ -248,13 +248,10 @@ export function Orders({ authToken }) {
     
     // Обновляем данные при возврате на страницу заказов (если есть флаг обновления)
     const shouldRefresh = location.state?.shouldRefresh;
-    const isReturningToOrders = prevPathnameRef.current !== '/orders' && location.pathname === '/orders';
     
-    if ((isReturningToOrders && shouldRefresh) && location.pathname === '/orders') {
+    if (shouldRefresh && location.pathname === '/orders') {
       loadOrders();
     }
-    
-    prevPathnameRef.current = location.pathname;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.state]);
 
