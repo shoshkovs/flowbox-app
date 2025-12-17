@@ -1131,6 +1131,22 @@
             </div>
         </div>
     </div>
+    
+    <!-- Модальное окно подтверждения закрытия -->
+    <div class="modal-overlay" id="closeConfirmModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Подтверждение закрытия</h3>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <p style="margin: 0 0 20px 0; color: var(--text-color);">Вы уверены, что хотите закрыть приложение? Изменения могут не сохраниться.</p>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" class="submit-address-btn" id="confirmCloseBtn" style="flex: 1; background: #999;">Отмена</button>
+                    <button type="button" class="submit-address-btn" id="proceedCloseBtn" style="flex: 1;">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 

@@ -441,8 +441,26 @@ if (tg && typeof tg.onEvent === 'function') {
         }
     });
     
+    // Отключаем стандартное подтверждение закрытия, используем кастомное
+    if (typeof tg.disableClosingConfirmation === 'function') {
+        tg.disableClosingConfirmation();
+        console.log('[init] Отключено стандартное подтверждение закрытия, используем кастомное');
+    }
+    
+    // Флаг для отслеживания попытки закрытия
+    let isClosing = false;
+    let closeEventPending = false;
+    
     // Обработчик закрытия мини-аппа
     tg.onEvent('close', () => {
+        console.log('[close] Событие close получено, isClosing:', isClosing, 'closeEventPending:', closeEventPending);
+        
+        // Если уже подтвердили закрытие, просто закрываем
+        if (isClosing) {
+            saveCartOnClose();
+            return;
+        }
+        
         // Не закрываем приложение, если открыта страница успеха
         const paymentSuccessTab = document.getElementById('paymentSuccessTab');
         if (paymentSuccessTab && paymentSuccessTab.style.display !== 'none') {
@@ -450,18 +468,86 @@ if (tg && typeof tg.onEvent === 'function') {
             return false;
         }
         
-        if (cart && cart.length > 0) {
-            // Показываем предупреждение через alert (так как beforeunload не работает в Telegram WebApp)
-            if (confirm('Изменения могут быть потеряны. Вы уверены, что хотите закрыть?')) {
-                saveCartOnClose();
-            } else {
-                // Отменяем закрытие (если возможно)
-                return false;
-            }
+        // Если модальное окно уже открыто, не показываем его снова
+        const closeConfirmModal = document.getElementById('closeConfirmModal');
+        if (closeConfirmModal && closeConfirmModal.style.display === 'flex') {
+            console.log('[close] Модальное окно уже открыто, игнорируем событие');
+            return false;
+        }
+        
+        // Показываем модальное окно подтверждения с кастомным сообщением
+        if (closeConfirmModal) {
+            closeEventPending = true;
+            closeConfirmModal.style.display = 'flex';
+            closeConfirmModal.classList.add('active');
+            
+            // Предотвращаем закрытие (пытаемся)
+            return false;
         } else {
-            saveCartOnClose();
+            // Если модальное окно не найдено, используем стандартный confirm
+            if (confirm('Вы уверены, что хотите закрыть приложение? Изменения могут не сохраниться.')) {
+                isClosing = true;
+                saveCartOnClose();
+                if (tg && typeof tg.close === 'function') {
+                    tg.close();
+                }
+            }
+            return false;
         }
     });
+    
+    // Инициализация обработчиков модального окна подтверждения закрытия
+    const initCloseConfirmModal = () => {
+        const closeConfirmModal = document.getElementById('closeConfirmModal');
+        const confirmCloseBtn = document.getElementById('confirmCloseBtn');
+        const proceedCloseBtn = document.getElementById('proceedCloseBtn');
+        
+        if (!closeConfirmModal || !confirmCloseBtn || !proceedCloseBtn) {
+            console.warn('[initCloseConfirmModal] Элементы модального окна не найдены');
+            return;
+        }
+        
+        // Кнопка "Отмена" - закрываем модальное окно
+        confirmCloseBtn.addEventListener('click', () => {
+            closeConfirmModal.style.display = 'none';
+            closeConfirmModal.classList.remove('active');
+            isClosing = false;
+            closeEventPending = false;
+        });
+        
+        // Кнопка "Закрыть" - подтверждаем закрытие
+        proceedCloseBtn.addEventListener('click', () => {
+            isClosing = true;
+            closeEventPending = false;
+            saveCartOnClose();
+            closeConfirmModal.style.display = 'none';
+            closeConfirmModal.classList.remove('active');
+            
+            // Закрываем приложение
+            if (tg && typeof tg.close === 'function') {
+                setTimeout(() => {
+                    tg.close();
+                }, 100);
+            }
+        });
+        
+        // Закрытие по клику на overlay (отмена закрытия)
+        closeConfirmModal.addEventListener('click', (e) => {
+            if (e.target === closeConfirmModal) {
+                closeConfirmModal.style.display = 'none';
+                closeConfirmModal.classList.remove('active');
+                isClosing = false;
+                closeEventPending = false;
+            }
+        });
+    };
+    
+    // Инициализируем при загрузке
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCloseConfirmModal);
+    } else {
+        initCloseConfirmModal();
+    }
 }
 
 // Сохранение корзины при закрытии мини-аппа
