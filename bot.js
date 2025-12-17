@@ -2952,7 +2952,8 @@ app.get('/api/orders/:orderId', async (req, res) => {
                  'price', oi.price,
                  'quantity', oi.quantity,
                  'total_price', oi.total_price,
-                 'image_url', p.image_url
+                 'image_url', p.image_url,
+                 'min_order_quantity', COALESCE(p.min_order_quantity, 1)
                )) FILTER (WHERE oi.id IS NOT NULL) as items
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
