@@ -909,9 +909,9 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item:active {
-    opacity: 0.6;
+    background-color: rgba(251, 45, 92, 0.1);
     transform: scale(0.95);
-    transition: opacity 0.1s ease, transform 0.1s ease;
+    transition: background-color 0.2s ease-out, transform 0.15s ease;
 }
 
 .nav-item.active {
@@ -2011,8 +2011,9 @@ h1, h2, h3, .font-bold {
     border: none;
     cursor: pointer;
     color: #999;
-    transition: color 0.2s ease-out, opacity 0.15s ease, transform 0.15s ease;
+    transition: color 0.2s ease-out, background-color 0.2s ease-out, opacity 0.15s ease, transform 0.15s ease;
     position: relative;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item.active {
