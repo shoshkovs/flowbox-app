@@ -152,6 +152,52 @@ if (process.env.DATABASE_URL) {
       // Игнорируем ошибки при миграции
     }
     
+    // Миграция image_url_2 и image_url_3 для товаров
+    setTimeout(async () => {
+      try {
+        const client = await pool.connect();
+        try {
+          const columnCheck2 = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'products' AND column_name = 'image_url_2'
+          `);
+          
+          if (columnCheck2.rows.length === 0) {
+            console.log('🔄 Выполняем миграцию: добавление image_url_2...');
+            await client.query(`
+              ALTER TABLE products 
+              ADD COLUMN IF NOT EXISTS image_url_2 TEXT
+            `);
+            console.log('✅ Миграция image_url_2 завершена');
+          }
+          
+          const columnCheck3 = await client.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'products' AND column_name = 'image_url_3'
+          `);
+          
+          if (columnCheck3.rows.length === 0) {
+            console.log('🔄 Выполняем миграцию: добавление image_url_3...');
+            await client.query(`
+              ALTER TABLE products 
+              ADD COLUMN IF NOT EXISTS image_url_3 TEXT
+            `);
+            console.log('✅ Миграция image_url_3 завершена');
+          }
+        } catch (migrationError) {
+          if (migrationError.code !== '42P16') {
+            console.log('⚠️  Миграция image_url_2/image_url_3:', migrationError.message);
+          }
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        // Игнорируем ошибки при миграции
+      }
+    }, 2000);
+    
     // Миграция справочников товаров
     setTimeout(async () => {
       try {
@@ -1146,12 +1192,21 @@ app.get('/api/products', async (req, res) => {
             features = qualitiesResult.rows.map(r => r.name);
           }
           
+          // Формируем массив изображений
+          const images = [];
+          if (row.image_url) images.push(row.image_url);
+          if (row.image_url_2) images.push(row.image_url_2);
+          if (row.image_url_3) images.push(row.image_url_3);
+          
           return {
             id: row.id,
             name: row.name,
             price: row.price_per_stem || row.price || 0,
             image: row.image_url || 'https://via.placeholder.com/300x300?text=Цветы',
             image_url: row.image_url,
+            image_url_2: row.image_url_2 || null,
+            image_url_3: row.image_url_3 || null,
+            images: images.length > 0 ? images : [row.image_url || 'https://via.placeholder.com/300x300?text=Цветы'],
             type: categoryResult.rows[0]?.name || row.type || '',
             category: categoryResult.rows[0]?.name || row.type || '',
             color: colorResult.rows[0]?.name || row.color || '',
@@ -3768,6 +3823,8 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
     tag_ids,
     tags, // Массив строк тегов (TEXT[])
     image_url,
+    image_url_2,
+    image_url_3,
     is_active,
     stock,
     min_stock
@@ -3847,9 +3904,11 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
           country_id,
           variety_id,
           image_url,
+          image_url_2,
+          image_url_3,
           is_active
         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           name,
@@ -3863,6 +3922,8 @@ app.post('/api/admin/products', checkAdminAuth, async (req, res) => {
           country_id || null,
           variety_id || null,
           image_url || null,
+          image_url_2 || null,
+          image_url_3 || null,
           is_active !== false
         ]
       );
@@ -3923,6 +3984,8 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
     tag_ids,
     tags, // Массив строк тегов (TEXT[]) - опционально
     image_url,
+    image_url_2,
+    image_url_3,
     is_active,
     stock,
     min_stock
@@ -4009,6 +4072,16 @@ app.put('/api/admin/products/:id', checkAdminAuth, async (req, res) => {
       if (image_url !== undefined) {
         updates.push(`image_url = $${paramIndex}`);
         params.push(image_url);
+        paramIndex++;
+      }
+      if (image_url_2 !== undefined) {
+        updates.push(`image_url_2 = $${paramIndex}`);
+        params.push(image_url_2);
+        paramIndex++;
+      }
+      if (image_url_3 !== undefined) {
+        updates.push(`image_url_3 = $${paramIndex}`);
+        params.push(image_url_3);
         paramIndex++;
       }
       if (is_active !== undefined) {

@@ -23,6 +23,8 @@ export function ProductForm({ authToken, productId, onClose, onSave }) {
     variety_id: null,
     tag_ids: [],
     image_url: '',
+    image_url_2: '',
+    image_url_3: '',
     is_active: true,
   });
 
@@ -93,6 +95,8 @@ export function ProductForm({ authToken, productId, onClose, onSave }) {
           variety_id: product.variety_id || null,
           tag_ids: product.tag_ids || (product.tags ? product.tags.map(t => t.id) : []),
           image_url: product.image_url || '',
+          image_url_2: product.image_url_2 || '',
+          image_url_3: product.image_url_3 || '',
           is_active: product.is_active !== false,
         });
       } else {
@@ -273,6 +277,8 @@ export function ProductForm({ authToken, productId, onClose, onSave }) {
         variety_id: productForm.variety_id,
         tag_ids: productForm.tag_ids,
         image_url: productForm.image_url || null,
+        image_url_2: productForm.image_url_2 || null,
+        image_url_3: productForm.image_url_3 || null,
         is_active: productForm.is_active,
       };
 
@@ -476,38 +482,46 @@ export function ProductForm({ authToken, productId, onClose, onSave }) {
 
         {/* Правая колонка - Изображение и настройки */}
         <div className="space-y-6">
-          {/* Изображение */}
+          {/* Изображения */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">Изображение</h2>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              {productForm.image_url ? (
-                <div className="relative">
-                  <img
-                    src={productForm.image_url}
-                    alt="Preview"
-                    className="w-full h-64 object-cover rounded-lg mb-4"
-                  />
-                  <button
-                    onClick={() => setProductForm({ ...productForm, image_url: '' })}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">Загрузить изображение</p>
-                  <p className="text-sm text-gray-500">PNG, JPG до 5МВ</p>
-                </>
-              )}
-              <input
-                type="text"
-                value={productForm.image_url}
-                onChange={(e) => setProductForm({ ...productForm, image_url: e.target.value })}
-                className="mt-4 w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="URL изображения"
-              />
+            <h2 className="text-xl font-semibold mb-4">Изображения (до 3 шт)</h2>
+            <div className="space-y-4">
+              {[1, 2, 3].map((num) => {
+                const imageKey = num === 1 ? 'image_url' : num === 2 ? 'image_url_2' : 'image_url_3';
+                const imageValue = productForm[imageKey];
+                return (
+                  <div key={num} className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <label className="block text-sm font-medium mb-2">Изображение {num}</label>
+                    {imageValue ? (
+                      <div className="relative mb-2">
+                        <img
+                          src={imageValue}
+                          alt={`Preview ${num}`}
+                          className="w-full h-48 object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={() => setProductForm({ ...productForm, [imageKey]: '' })}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">Изображение {num} не загружено</p>
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      value={imageValue}
+                      onChange={(e) => setProductForm({ ...productForm, [imageKey]: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder={`URL изображения ${num}`}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
 

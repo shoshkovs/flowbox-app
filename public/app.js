@@ -989,10 +989,18 @@ function renderProducts() {
         // Количество банчей = количество товара / мин заказ (сколько раз добавлен мин заказ)
         const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
         
+        // Получаем первое изображение из массива images или из image_url
+        let productImage = product.image;
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            productImage = product.images[0];
+        } else if (product.image_url) {
+            productImage = product.image_url;
+        }
+        
         return `
             <div class="product-card" data-product-id="${product.id}" onclick="openProductSheet(${product.id})">
                 <div class="product-image-wrapper">
-                    <img src="${product.image}" alt="${product.name}" class="product-image">
+                    <img src="${productImage}" alt="${product.name}" class="product-image">
                     ${isInCart && bunchesCount > 0 ? `
                         <div class="product-quantity-overlay show">
                             <div class="product-quantity-overlay-text">${bunchesCount}</div>
@@ -1920,7 +1928,11 @@ function renderAdditionalProducts() {
             return itemId === productId || item.id === product.id || item.id === Number(product.id);
         });
         // Используем изображение товара или дефолтное изображение
-        const productImage = product.image || product.image_url || '/logo2.jpg';
+        // Получаем первое изображение из массива images или из image_url
+        let productImage = product.image || product.image_url || '/logo2.jpg';
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            productImage = product.images[0];
+        }
         // Экранируем ID для безопасного использования в onclick
         const safeProductId = String(product.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         console.log('Рендеринг товара:', product.name, 'ID:', safeProductId, 'isInCart:', isInCart);
@@ -9473,8 +9485,24 @@ function openProductSheet(productId) {
     // Обновляем кнопку добавления (как на карточке товара)
     updateProductSheetButton(product);
     
-    // Загружаем изображения
-    const images = [product.image].filter(Boolean); // Пока одно изображение, можно расширить
+    // Загружаем изображения: собираем из image_url, image_url_2, image_url_3 или используем массив images
+    const images = [];
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+        // Если есть массив images, используем его
+        images.push(...product.images.filter(Boolean));
+    } else {
+        // Иначе собираем из отдельных полей
+        if (product.image_url) images.push(product.image_url);
+        if (product.image_url_2) images.push(product.image_url_2);
+        if (product.image_url_3) images.push(product.image_url_3);
+        // Fallback на старое поле image
+        if (images.length === 0 && product.image) images.push(product.image);
+    }
+    
+    // Если изображений нет, используем placeholder
+    if (images.length === 0) {
+        images.push('https://via.placeholder.com/300x300?text=Цветы');
+    }
     
     pagerTrack.innerHTML = images.map((img, idx) => `
         <div class="product-sheet-pager-slide">
@@ -9482,7 +9510,7 @@ function openProductSheet(productId) {
         </div>
     `).join('');
     
-    // Обновляем точки
+    // Обновляем точки (показываем только если больше 1 изображения)
     if (images.length > 1) {
         dots.innerHTML = images.map((_, idx) => `
             <button class="product-sheet-dot ${idx === 0 ? 'on' : ''}" 
@@ -9494,6 +9522,13 @@ function openProductSheet(productId) {
         dots.innerHTML = '';
         dots.style.display = 'none';
     }
+    
+    // Сбрасываем индекс на первое изображение
+    productSheetCurrentImageIndex = 0;
+    pagerTrack.style.transform = 'translateX(0%)';
+    
+    // Инициализируем свайп для листания изображений
+    initProductSheetImageSwipe(pagerTrack, images.length);
     
     // Показываем sheet
     backdrop.style.display = 'block';
@@ -9516,6 +9551,73 @@ function openProductSheet(productId) {
         // Показываем Telegram BackButton
         showBackButton(true);
     }, 10);
+}
+
+// Инициализация свайпа для листания изображений
+function initProductSheetImageSwipe(pagerTrack, totalImages) {
+    if (totalImages <= 1) return;
+    
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+    
+    const handleStart = (e) => {
+        startX = e.touches ? e.touches[0].clientX : e.clientX;
+        isDragging = true;
+        pagerTrack.style.transition = 'none';
+    };
+    
+    const handleMove = (e) => {
+        if (!isDragging) return;
+        currentX = e.touches ? e.touches[0].clientX : e.clientX;
+        const diff = currentX - startX;
+        const currentTranslate = -productSheetCurrentImageIndex * 100;
+        const newTranslate = currentTranslate + (diff / pagerTrack.offsetWidth) * 100;
+        pagerTrack.style.transform = `translateX(${newTranslate}%)`;
+    };
+    
+    const handleEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        pagerTrack.style.transition = 'transform 0.3s ease-out';
+        
+        const diff = currentX - startX;
+        const threshold = pagerTrack.offsetWidth * 0.2; // 20% для переключения
+        
+        if (Math.abs(diff) > threshold) {
+            if (diff > 0 && productSheetCurrentImageIndex > 0) {
+                // Свайп вправо - предыдущее изображение
+                productSheetGoToImage(productSheetCurrentImageIndex - 1);
+            } else if (diff < 0 && productSheetCurrentImageIndex < totalImages - 1) {
+                // Свайп влево - следующее изображение
+                productSheetGoToImage(productSheetCurrentImageIndex + 1);
+            } else {
+                // Возвращаемся к текущему
+                productSheetGoToImage(productSheetCurrentImageIndex);
+            }
+        } else {
+            // Возвращаемся к текущему
+            productSheetGoToImage(productSheetCurrentImageIndex);
+        }
+    };
+    
+    // Удаляем старые обработчики
+    pagerTrack.removeEventListener('touchstart', handleStart);
+    pagerTrack.removeEventListener('touchmove', handleMove);
+    pagerTrack.removeEventListener('touchend', handleEnd);
+    pagerTrack.removeEventListener('mousedown', handleStart);
+    pagerTrack.removeEventListener('mousemove', handleMove);
+    pagerTrack.removeEventListener('mouseup', handleEnd);
+    pagerTrack.removeEventListener('mouseleave', handleEnd);
+    
+    // Добавляем новые обработчики
+    pagerTrack.addEventListener('touchstart', handleStart, { passive: true });
+    pagerTrack.addEventListener('touchmove', handleMove, { passive: true });
+    pagerTrack.addEventListener('touchend', handleEnd);
+    pagerTrack.addEventListener('mousedown', handleStart);
+    pagerTrack.addEventListener('mousemove', handleMove);
+    pagerTrack.addEventListener('mouseup', handleEnd);
+    pagerTrack.addEventListener('mouseleave', handleEnd);
 }
 
 function closeProductSheet() {
