@@ -2836,6 +2836,134 @@ app.get('/api/user-data/:userId', async (req, res) => {
   }
 });
 
+// API endpoint для получения деталей заказа
+app.get('/api/orders/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+  const userId = req.query.userId || req.headers['x-user-id'];
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Не указан userId' });
+  }
+  
+  try {
+    if (!pool) {
+      return res.status(500).json({ error: 'База данных не доступна' });
+    }
+    
+    const client = await pool.connect();
+    try {
+      // Получаем заказ с товарами
+      const orderQuery = `
+        SELECT o.*, 
+               json_agg(json_build_object(
+                 'id', oi.product_id,
+                 'name', oi.name,
+                 'price', oi.price,
+                 'quantity', oi.quantity,
+                 'total_price', oi.total_price,
+                 'image_url', p.image_url
+               )) FILTER (WHERE oi.id IS NOT NULL) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE o.id = $1 AND o.user_id = $2
+        GROUP BY o.id
+      `;
+      
+      const result = await client.query(orderQuery, [orderId, userId]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      const row = result.rows[0];
+      
+      // Форматируем дату доставки
+      let deliveryDateFormatted = '';
+      if (row.delivery_date) {
+        const deliveryDate = new Date(row.delivery_date);
+        deliveryDateFormatted = deliveryDate.toLocaleDateString('ru-RU', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+      
+      // Форматируем время доставки
+      let deliveryTimeFormatted = row.delivery_time || '';
+      if (deliveryTimeFormatted && !deliveryTimeFormatted.includes(':')) {
+        const timeParts = deliveryTimeFormatted.split('-');
+        if (timeParts.length === 2) {
+          deliveryTimeFormatted = `${timeParts[0]}:00–${timeParts[1]}:00`;
+        }
+      }
+      
+      // Формируем адрес доставки
+      let deliveryAddress = '';
+      if (row.address_json) {
+        try {
+          const address = typeof row.address_json === 'string' 
+            ? JSON.parse(row.address_json) 
+            : row.address_json;
+          
+          const addressParts = [];
+          if (address.city) addressParts.push(address.city);
+          if (address.street) addressParts.push(address.street);
+          if (address.house) addressParts.push(address.house);
+          if (address.apartment) addressParts.push(`кв. ${address.apartment}`);
+          
+          deliveryAddress = addressParts.join(', ');
+        } catch (e) {
+          deliveryAddress = row.address_string || '';
+        }
+      } else {
+        deliveryAddress = row.address_string || '';
+      }
+      
+      // Маппим статус для пользователя
+      const statusMap = {
+        'NEW': 'Собирается',
+        'PROCESSING': 'Собирается',
+        'COLLECTING': 'Собирается',
+        'DELIVERING': 'В пути',
+        'DELIVERED': 'Доставлено',
+        'COMPLETED': 'Доставлено',
+        'CANCELED': 'Отменен'
+      };
+      
+      const userStatus = statusMap[row.status] || row.status;
+      
+      const orderData = {
+        id: row.id,
+        total: row.total,
+        createdAt: new Date(row.created_at).toLocaleDateString('ru-RU'),
+        status: userStatus,
+        statusRaw: row.status,
+        delivery: {
+          address: deliveryAddress,
+          date: deliveryDateFormatted,
+          timeSlot: deliveryTimeFormatted
+        },
+        items: (row.items || []).filter(item => item.id !== null).map(item => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.total_price,
+          imageUrl: item.image_url || ''
+        }))
+      };
+      
+      res.json(orderData);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения деталей заказа:', error);
+    res.status(500).json({ error: 'Ошибка получения деталей заказа' });
+  }
+});
+
 // API endpoint для создания заказа
 app.post('/api/orders', async (req, res) => {
   const orderData = req.body;

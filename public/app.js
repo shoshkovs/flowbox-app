@@ -540,13 +540,13 @@ function initLogo() {
             if (altIndex < alternatives.length) {
                 logoImg.src = alternatives[altIndex];
                 altIndex++;
-            } else {
+    } else {
                 // Если ничего не помогло, показываем fallback
                 console.warn('[initLogo] Все пути не сработали, показываем fallback');
-                logoImg.style.display = 'none';
+        logoImg.style.display = 'none';
                 if (logoFallback) {
-                    logoFallback.style.display = 'block';
-                }
+        logoFallback.style.display = 'block';
+    }
             }
         };
         
@@ -998,9 +998,9 @@ function renderProducts() {
                                 <span class="product-minus-btn" 
                                       onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1)"
                                       style="display: ${isInCart ? 'flex' : 'none'}">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
                                 </span>
                             </span>
                             
@@ -1016,12 +1016,12 @@ function renderProducts() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
                                          stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
                                          stroke-width="1.5">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
                                 </span>
                             </span>
-                        </button>
+                            </button>
                     </div>
                 </div>
             </div>
@@ -1213,7 +1213,7 @@ function updateProductCard(productId) {
             if (overlay) {
                 overlay.classList.remove('show');
                 setTimeout(() => {
-                    overlay.remove();
+                overlay.remove();
                 }, 300);
             }
         }
@@ -2075,9 +2075,9 @@ function switchTab(tabId) {
         tab.classList.remove('active');
         // Явно скрываем все вкладки через display после анимации
         setTimeout(() => {
-            if (tab.id !== tabId) {
-                tab.style.display = 'none';
-            }
+        if (tab.id !== tabId) {
+            tab.style.display = 'none';
+        }
         }, 200);
     });
     
@@ -4224,16 +4224,16 @@ if (orderTabBtn) {
 
 // Возврат в магазин (старый обработчик для overlay - оставляем для совместимости)
 if (backToShop) {
-    backToShop.addEventListener('click', () => {
-        successOverlay.classList.remove('active');
-        // Убеждаемся, что нижнее меню видно после закрытия overlay
-        const bottomNav = document.querySelector('.bottom-nav');
-        if (bottomNav) {
-            bottomNav.style.display = 'flex';
-            bottomNav.classList.remove('hidden');
-        }
-        switchTab('menuTab');
-    });
+backToShop.addEventListener('click', () => {
+    successOverlay.classList.remove('active');
+    // Убеждаемся, что нижнее меню видно после закрытия overlay
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) {
+        bottomNav.style.display = 'flex';
+        bottomNav.classList.remove('hidden');
+    }
+    switchTab('menuTab');
+});
 }
 
 // Обработчик кнопки "Отслеживать" на странице успешной оплаты
@@ -4457,9 +4457,9 @@ async function maybeAskAddToHome() {
                 if (typeof tg.addToHomeScreen === 'function') {
                     // Пробуем вызвать как синхронный метод
                     try {
-                        tg.addToHomeScreen();
+            tg.addToHomeScreen();
                         console.log('[home] tg.addToHomeScreen() вызван синхронно');
-                        return true;
+            return true;
                     } catch (syncError) {
                         console.log('[home] Синхронный вызов не сработал, пробуем асинхронный:', syncError);
                     }
@@ -4569,10 +4569,10 @@ if (addToHomeScreenBtn) {
             
             // Если ничего не сработало, показываем модальное окно с инструкциями
             console.log('[home] Android: все методы не сработали, показываем модальное окно');
-            if (addToHomeScreenModal) {
-                addToHomeScreenModal.style.display = 'flex';
-                lockBodyScroll();
-                showBackButton(true);
+                if (addToHomeScreenModal) {
+                    addToHomeScreenModal.style.display = 'flex';
+                    lockBodyScroll();
+                    showBackButton(true);
             }
         } else if (platform === 'ios') {
             // Для iOS: открываем ссылку в Safari
@@ -4593,10 +4593,10 @@ if (addToHomeScreenBtn) {
                 }
             } else {
                 // Показываем инструкции
-                if (addToHomeScreenModal) {
-                    addToHomeScreenModal.style.display = 'flex';
-                    lockBodyScroll();
-                    showBackButton(true);
+            if (addToHomeScreenModal) {
+                addToHomeScreenModal.style.display = 'flex';
+                lockBodyScroll();
+                showBackButton(true);
                 }
             }
         }
@@ -4621,6 +4621,56 @@ if (openInBrowserBtn) {
             tg.openLink(currentUrl, { try_instant_view: false });
         } else {
             window.open(currentUrl, '_blank');
+        }
+    });
+}
+
+// Обработчики для страницы деталей заказа
+const orderDetailsBackBtn = document.getElementById('orderDetailsBackBtn');
+const orderDetailsSupportBtn = document.getElementById('orderDetailsSupportBtn');
+
+if (orderDetailsBackBtn) {
+    orderDetailsBackBtn.addEventListener('click', () => {
+        const orderDetailsTab = document.getElementById('orderDetailsTab');
+        if (orderDetailsTab) {
+            orderDetailsTab.style.display = 'none';
+        }
+        // Возвращаемся на профиль
+        switchTab('profileTab');
+    });
+}
+
+if (orderDetailsSupportBtn) {
+    orderDetailsSupportBtn.addEventListener('click', async () => {
+        // Используем ту же логику, что и для кнопки поддержки в профиле
+        let botUsername = 'FlowboxBot';
+        
+        try {
+            const response = await fetch('/api/bot-info');
+            if (response.ok) {
+                const botInfo = await response.json();
+                if (botInfo && botInfo.username) {
+                    botUsername = botInfo.username;
+                }
+            }
+        } catch (e) {
+            console.log('Не удалось получить имя бота, используем дефолтное');
+        }
+        
+        const supportUrl = `https://t.me/${botUsername}?start=support`;
+        
+        if (tg && tg.openTelegramLink) {
+            tg.openTelegramLink(supportUrl);
+            if (tg.close) {
+                tg.close();
+            }
+        } else if (tg && tg.openLink) {
+            tg.openLink(supportUrl);
+            if (tg.close) {
+                tg.close();
+            }
+        } else {
+            window.open(supportUrl, '_blank');
         }
     });
 }
@@ -5228,11 +5278,11 @@ async function handleAddressFormSubmit(event) {
             myAddressesTab.style.display = 'none';
         }
         
-        // Обновляем отображение на странице оформления, чтобы показать выбранный адрес
-        if (typeof renderCheckoutSummary === 'function') {
-            renderCheckoutSummary();
-        }
-        showSimpleSummary();
+            // Обновляем отображение на странице оформления, чтобы показать выбранный адрес
+            if (typeof renderCheckoutSummary === 'function') {
+                renderCheckoutSummary();
+            }
+            showSimpleSummary();
     } else if (source === 'profile') {
         // Возвращаемся в профиль
     switchTab('profileTab');
@@ -5326,7 +5376,7 @@ function renderProfileAddresses() {
                         </button>
                         <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); deleteAddressFromProfile(${addressId})">
                             Удалить
-                        </button>
+                    </button>
                     </div>
                 </div>
                 </div>
@@ -5554,13 +5604,139 @@ function loadActiveOrders() {
 }
 
 // Функция для открытия детального экрана заказа
-function openOrderDetail(orderId) {
-    const order = userActiveOrders.find(o => o.id === orderId);
-    if (!order) return;
+async function openOrderDetail(orderId) {
+    const orderDetailsTab = document.getElementById('orderDetailsTab');
+    const orderDetailsContent = document.getElementById('orderDetailsContent');
     
-    // Показываем модальное окно с деталями заказа
-    // Можно использовать существующее модальное окно или создать новое
-    alert(`Детали заказа #${orderId}\n\nСтатус: ${getOrderStatusText(order.status)}\nСумма: ${order.total} ₽\nДата: ${order.date}`);
+    if (!orderDetailsTab || !orderDetailsContent) {
+        console.error('[openOrderDetail] Элементы страницы деталей заказа не найдены');
+        return;
+    }
+    
+    // Показываем индикатор загрузки
+    orderDetailsContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Загрузка...</div>';
+    
+    // Показываем страницу деталей
+    orderDetailsTab.style.display = 'block';
+    switchTab('orderDetailsTab');
+    
+    // Загружаем данные заказа
+    try {
+        const userId = tg?.initDataUnsafe?.user?.id;
+        if (!userId) {
+            throw new Error('Не удалось получить userId');
+        }
+        
+        const response = await fetch(`/api/orders/${orderId}?userId=${userId}`);
+        if (!response.ok) {
+            throw new Error('Не удалось загрузить детали заказа');
+        }
+        
+        const order = await response.json();
+        renderOrderDetails(order);
+    } catch (error) {
+        console.error('[openOrderDetail] Ошибка загрузки деталей заказа:', error);
+        orderDetailsContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff4444;">Ошибка загрузки данных заказа</div>';
+    }
+}
+
+// Функция рендеринга деталей заказа
+function renderOrderDetails(order) {
+    const orderDetailsContent = document.getElementById('orderDetailsContent');
+    if (!orderDetailsContent) return;
+    
+    // Маппинг статусов для степпера
+    const statusSteps = ['Собирается', 'В пути', 'Доставлено'];
+    const statusIndex = statusSteps.indexOf(order.status);
+    const activeStep = statusIndex >= 0 ? statusIndex : 0;
+    
+    // Форматируем номер заказа
+    const orderNumber = String(order.id).toUpperCase();
+    
+    orderDetailsContent.innerHTML = `
+        <!-- Информация о заказе -->
+        <div class="order-details-card">
+            <div class="order-details-h1">Заказ</div>
+            
+            <div class="order-details-meta-row">
+                <div class="order-details-meta-label">Итоговая сумма</div>
+                <div class="order-details-meta-value">${order.total}₽</div>
+            </div>
+            
+            <div class="order-details-meta-row">
+                <div class="order-details-meta-label">Дата заказа</div>
+                <div class="order-details-meta-value">${order.createdAt}</div>
+            </div>
+            
+            <div class="order-details-meta-row">
+                <div class="order-details-meta-label">Номер заказа</div>
+                <div class="order-details-meta-pill">${orderNumber}</div>
+            </div>
+        </div>
+        
+        <!-- Статус заказа -->
+        <div class="order-details-card">
+            <div class="order-details-h2">Статус заказа</div>
+            <div class="order-details-stepper">
+                ${statusSteps.map((step, index) => `
+                    <div class="order-details-step">
+                        <div class="order-details-step-dot ${index <= activeStep ? 'on' : ''}"></div>
+                        <div class="order-details-step-text ${index <= activeStep ? 'on' : ''}">${step}</div>
+                        ${index < statusSteps.length - 1 ? `<div class="order-details-step-line ${index < activeStep ? 'on' : ''}"></div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        
+        <!-- Информация о доставке -->
+        <div class="order-details-card">
+            <div class="order-details-h2">Информация о доставке</div>
+            
+            <div class="order-details-info-row">
+                <div class="order-details-info-title">Адрес доставки</div>
+                <div class="order-details-info-text">${order.delivery.address || 'Не указан'}</div>
+            </div>
+            
+            ${order.delivery.date || order.delivery.timeSlot ? `
+                <div class="order-details-info-row">
+                    <div class="order-details-info-title">Дата и время</div>
+                    <div class="order-details-info-text">
+                        ${order.delivery.date || ''}${order.delivery.date && order.delivery.timeSlot ? ' • ' : ''}${order.delivery.timeSlot || ''}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+        
+        <!-- Товары в заказе -->
+        <div class="order-details-card">
+            <div class="order-details-h2">Товары в заказе</div>
+            
+            <div class="order-details-items">
+                ${order.items && order.items.length > 0 ? order.items.map(item => `
+                    <div class="order-details-item">
+                        ${item.imageUrl ? `
+                            <img src="${item.imageUrl}" alt="${item.name}" class="order-details-item-img">
+                        ` : `
+                            <div class="order-details-item-img"></div>
+                        `}
+                        <div class="order-details-item-body">
+                            <div class="order-details-item-title">${item.name}</div>
+                            <div class="order-details-item-sub">${item.quantity} шт. × ${item.price}₽</div>
+                        </div>
+                    </div>
+                `).join('') : '<div style="color: #999; padding: 10px 0;">Товары не найдены</div>'}
+            </div>
+        </div>
+    `;
+    
+    // Добавляем анимацию появления
+    orderDetailsContent.style.opacity = '0';
+    orderDetailsContent.style.transform = 'translateY(16px)';
+    setTimeout(() => {
+        orderDetailsContent.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
+        orderDetailsContent.style.opacity = '1';
+        orderDetailsContent.style.transform = 'translateY(0)';
+    }, 10);
 }
 
 // Загрузка истории заказов
@@ -5697,7 +5873,7 @@ editProfileBtn.addEventListener('click', () => {
 closeProfileEditModal.addEventListener('click', () => {
     profileEditModal.classList.remove('active');
     setTimeout(() => {
-        profileEditModal.style.display = 'none';
+    profileEditModal.style.display = 'none';
     }, 200);
     tg.BackButton.hide();
     unlockBodyScroll();
@@ -5858,7 +6034,7 @@ profileEditForm.addEventListener('submit', (e) => {
     
     profileEditModal.classList.remove('active');
     setTimeout(() => {
-        profileEditModal.style.display = 'none';
+    profileEditModal.style.display = 'none';
     }, 200);
     tg.BackButton.hide();
     unlockBodyScroll();
@@ -5901,7 +6077,7 @@ function initServiceFeeHelpModal() {
         lockBodyScroll();
         showBackButton(true);
         if (tg && tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('light');
+        tg.HapticFeedback.impactOccurred('light');
         }
     }, true); // Используем capture phase
     
@@ -5952,9 +6128,9 @@ document.addEventListener('click', (e) => {
             lockBodyScroll();
             showBackButton(true);
             if (tg && tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
+            tg.HapticFeedback.impactOccurred('light');
         }
+    }
     }
 }, true); // Используем capture phase для более раннего перехвата
 
