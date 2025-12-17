@@ -1836,7 +1836,7 @@ function updateCartUI() {
         if (emptyCartContainer) emptyCartContainer.style.display = 'none';
         if (cartWithItems) cartWithItems.style.display = 'block';
         
-        // Рендер товаров в корзине
+        // Рендер товаров в корзине (используем тот же дизайн, что и на главной странице)
         if (cartItemsList) {
             cartItemsList.innerHTML = cart.map((item, index) => {
                 const minQty = getMinQty(item);
@@ -1846,19 +1846,62 @@ function updateCartUI() {
                 const bunchesCount = Math.floor(item.quantity / minQty);
                 const totalPrice = item.price * item.quantity;
                 
+                // Получаем первое изображение из массива images или из image_url
+                let productImage = item.image;
+                if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+                    productImage = item.images[0];
+                } else if (item.image_url) {
+                    productImage = item.image_url;
+                }
+                
                 return `
-                <div class="cart-item-new" style="animation-delay: ${index * 0.05}s">
-                    <img src="${item.image}" alt="${item.name}" class="cart-item-new-image">
-                    <div class="cart-item-new-info">
-                        <div class="cart-item-new-name">${item.name}</div>
-                        ${minQty > 1 ? `<div class="cart-item-new-min-qty">${minQty} шт</div>` : ''}
-                        <div class="cart-item-new-quantity-controls">
-                            <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, -1)">−</button>
-                            <span class="cart-quantity-value">${bunchesCount}</span>
-                            <button class="cart-quantity-btn" onclick="changeQuantity(${item.id}, 1)">+</button>
+                <div class="product-card cart-item-new" style="animation-delay: ${index * 0.05}s" data-product-id="${item.id}" onclick="openProductSheet(${item.id})">
+                    <div class="product-image-wrapper">
+                        <img src="${productImage}" alt="${item.name}" class="product-image">
+                        ${bunchesCount > 0 ? `
+                            <div class="product-quantity-overlay show">
+                                <div class="product-quantity-overlay-text">${bunchesCount}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${item.name}</div>
+                        ${minQty > 1 ? `<div class="product-stem-quantity">${minQty} шт</div>` : ''}
+                        <div class="product-action-row">
+                            <button class="product-action-btn product-action-btn-filled" 
+                                    id="cart-product-action-btn-${item.id}"
+                                    onclick="event.stopPropagation(); void(0)">
+                                <!-- Кнопка минус -->
+                                <span class="product-minus-btn-wrapper visible">
+                                    <span class="product-minus-btn" 
+                                          onclick="event.stopPropagation(); changeCartQuantity(${item.id}, -1)"
+                                          style="display: flex">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    </span>
+                                </span>
+                                
+                                <!-- Цена -->
+                                <span class="product-action-price filled">
+                                    ${totalPrice} <span class="ruble">₽</span>
+                                </span>
+                                
+                                <!-- Кнопка плюс -->
+                                <span class="product-plus-btn-wrapper">
+                                    <span class="product-plus-btn" 
+                                          onclick="event.stopPropagation(); changeCartQuantity(${item.id}, 1)">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                                             stroke="white" 
+                                             stroke-width="1.5">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                    </span>
+                                </span>
+                            </button>
                         </div>
                     </div>
-                    <div class="cart-item-new-price">${totalPrice} <span class="ruble">₽</span></div>
                 </div>
                 `;
             }).join('');

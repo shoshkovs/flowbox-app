@@ -908,7 +908,7 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item.active {
-    color: #333;
+    color: var(--primary-color);
 }
 
 /* Плавная анимация для счетчика корзины */
@@ -1995,7 +1995,7 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item.active {
-    color: #333;
+    color: var(--primary-color);
 }
 
 .nav-icon {
@@ -2149,14 +2149,18 @@ h1, h2, h3, .font-bold {
 
 .cart-items-list {
     margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 }
 
 .cart-item-new {
+    /* Используем те же стили, что и product-card */
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
     display: flex;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid #eee;
-    align-items: center;
+    flex-direction: column;
 }
 
 .cart-item-new-image {
