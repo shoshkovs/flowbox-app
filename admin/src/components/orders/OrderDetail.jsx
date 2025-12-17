@@ -170,7 +170,11 @@ export function OrderDetail({ authToken, orderId }) {
           if (returnTo === '/orders' && filterStatus && filterStatus !== 'all') {
             // Если возвращаемся на страницу заказов с фильтром, передаем его через state
             navigate(returnTo, { 
-              state: { filterStatus: filterStatus }
+              state: { filterStatus: filterStatus, shouldRefresh: true }
+            });
+          } else if (returnTo === '/orders') {
+            navigate(returnTo, { 
+              state: { shouldRefresh: true }
             });
           } else if (returnTo) {
             navigate(returnTo);

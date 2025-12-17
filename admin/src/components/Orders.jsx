@@ -239,13 +239,24 @@ export function Orders({ authToken }) {
     }
   };
 
-  // Восстанавливаем фильтр при возврате со страницы деталей заказа
+  // Восстанавливаем фильтр при возврате со страницы деталей заказа и обновляем данные
   useEffect(() => {
     const statusFromState = location.state?.filterStatus;
     if (statusFromState && statusFromState !== filterStatus) {
       setFilterStatus(statusFromState);
     }
-  }, [location.state]);
+    
+    // Обновляем данные при возврате на страницу заказов (если есть флаг обновления или изменился путь)
+    const shouldRefresh = location.state?.shouldRefresh || false;
+    if (location.pathname === '/orders' && shouldRefresh && !loading) {
+      loadOrders();
+      // Очищаем флаг после обновления
+      navigate(location.pathname, { 
+        replace: true,
+        state: { filterStatus: location.state?.filterStatus }
+      });
+    }
+  }, [location.pathname, location.state]);
 
   useEffect(() => {
     loadOrders();
@@ -549,7 +560,12 @@ export function Orders({ authToken }) {
                 return (
                   <tr 
                     key={order.id} 
-                    className="border-b border-gray-100 hover:bg-gray-50"
+                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => {
+                      navigate(`/orders/${order.id}`, {
+                        state: { returnTo: '/orders', filterStatus: filterStatus }
+                      });
+                    }}
                   >
                     <td className="py-3 px-2">
                       <span className="text-blue-600 font-medium">#{order.id}</span>
