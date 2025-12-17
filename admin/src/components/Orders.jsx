@@ -183,7 +183,6 @@ export function Orders({ authToken }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [searchOrderId, setSearchOrderId] = useState(''); // Поиск по номеру заказа
-  const [searchOrderId, setSearchOrderId] = useState(''); // Поиск по номеру заказа
 
   // Функция для форматирования даты в YYYY-MM-DD
   const formatDate = (date) => {
