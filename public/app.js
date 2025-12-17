@@ -1992,11 +1992,6 @@ function renderAdditionalProducts() {
             <div class="additional-product-card">
                 <div class="additional-product-image-wrapper">
                     <img src="${productImage}" alt="${product.name}" class="additional-product-image">
-                    ${isInCart && bunchesCount > 0 ? `
-                        <div class="product-quantity-overlay show">
-                            <div class="product-quantity-overlay-text">${bunchesCount}</div>
-                        </div>
-                    ` : ''}
                 </div>
                 <div class="additional-product-info">
                     <div class="additional-product-name">${product.name}</div>
@@ -2158,35 +2153,7 @@ function updateAdditionalProductCard(productId) {
             }
         }
         
-        // Обновляем overlay на картинке
-        const imageWrapper = card.querySelector('.additional-product-image-wrapper');
-        if (imageWrapper) {
-            let overlay = imageWrapper.querySelector('.product-quantity-overlay');
-            if (isInCart && bunchesCount > 0) {
-                if (!overlay) {
-                    overlay = document.createElement('div');
-                    overlay.className = 'product-quantity-overlay show';
-                    const overlayText = document.createElement('div');
-                    overlayText.className = 'product-quantity-overlay-text';
-                    overlay.appendChild(overlayText);
-                    imageWrapper.appendChild(overlay);
-                }
-                const overlayText = overlay.querySelector('.product-quantity-overlay-text');
-                if (overlayText) {
-                    overlayText.textContent = bunchesCount;
-                }
-                overlay.classList.add('show');
-            } else {
-                if (overlay) {
-                    overlay.classList.remove('show');
-                    setTimeout(() => {
-                        if (overlay && !overlay.classList.contains('show')) {
-                            overlay.remove();
-                        }
-                    }, 300);
-                }
-            }
-        }
+        // Overlay на картинке убран по запросу пользователя
     }
 }
 
