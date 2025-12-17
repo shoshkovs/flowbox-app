@@ -4348,8 +4348,8 @@ input[type="text"][inputmode="numeric"] {
     left: 0;
     right: 0;
     bottom: 0;
-    height: 92vh;
-    max-height: 92vh;
+    max-height: calc(100vh - 8vh);
+    height: calc(100vh - 8vh);
     background: #fff;
     border-top-left-radius: 26px;
     border-top-right-radius: 26px;
@@ -4359,7 +4359,6 @@ input[type="text"][inputmode="numeric"] {
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
-    margin-top: 8vh;
 }
 
 .product-sheet.show {
