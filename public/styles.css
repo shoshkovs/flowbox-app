@@ -169,7 +169,7 @@ h1, h2, h3, .font-bold {
 
 .filter-btn-large.active {
     background: rgba(251, 45, 92, 0.3);
-    color: var(--primary-color);
+    color: #111;
     border-color: rgba(251, 45, 92, 0.3);
 }
 
@@ -190,7 +190,7 @@ h1, h2, h3, .font-bold {
 .filter-btn-small.active {
     border-color: rgba(251, 45, 92, 0.3);
     background: rgba(251, 45, 92, 0.3);
-    color: var(--primary-color);
+    color: #111;
 }
 
 .products-container {
@@ -894,7 +894,7 @@ h1, h2, h3, .font-bold {
 .filter-btn.active {
     box-shadow: none;
     background: rgba(251, 45, 92, 0.3);
-    color: var(--primary-color);
+    color: #111;
 }
 
 .filter-btn:active {
