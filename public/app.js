@@ -7393,14 +7393,10 @@ function goToStep(step) {
         
         // ВАЖНО: Убеждаемся, что состояние чекбокса синхронизировано с checkoutData
         setTimeout(() => {
-            const checkbox = document.getElementById('leaveAtDoorCheckbox');
-            if (checkbox) {
-                checkbox.checked = !!checkoutData.leaveAtDoor;
-                if (checkbox.checked) {
-                    checkbox.setAttribute('checked', 'checked');
-                } else {
-                    checkbox.removeAttribute('checked');
-                }
+            const toggle = document.getElementById('leaveAtDoorToggle');
+            if (toggle) {
+                const isChecked = !!checkoutData.leaveAtDoor;
+                toggle.setAttribute('aria-checked', isChecked.toString());
             }
         }, 100);
     }
