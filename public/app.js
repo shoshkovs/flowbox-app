@@ -9405,6 +9405,14 @@ function openProductSheet(productId) {
     setTimeout(() => {
         backdrop.classList.add('show');
         sheet.classList.add('show');
+        
+        // Меняем кнопку закрыть на кнопку назад
+        const closeIcon = document.getElementById('productSheetCloseIcon');
+        const backIcon = document.getElementById('productSheetBackIcon');
+        if (closeIcon && backIcon) {
+            closeIcon.style.display = 'none';
+            backIcon.style.display = 'block';
+        }
     }, 10);
 }
 
@@ -9416,6 +9424,14 @@ function closeProductSheet() {
     
     backdrop.classList.remove('show');
     sheet.classList.remove('show');
+    
+    // Меняем кнопку назад на кнопку закрыть
+    const closeIcon = document.getElementById('productSheetCloseIcon');
+    const backIcon = document.getElementById('productSheetBackIcon');
+    if (closeIcon && backIcon) {
+        closeIcon.style.display = 'block';
+        backIcon.style.display = 'none';
+    }
     
     setTimeout(() => {
         backdrop.style.display = 'none';
@@ -9459,46 +9475,71 @@ function updateProductSheetButton(product) {
     const isInCart = !!cartItem;
     const cartQuantity = cartItem ? cartItem.quantity : 0;
     const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
+    const pricePerBunch = product.price;
     const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
     
     // Обновляем класс для состояния (растягивание/сжатие)
-    if (isInCart) {
+    if (isInCart && bunchesCount > 0) {
         addBtn.classList.add('product-sheet-add-btn-filled');
     } else {
         addBtn.classList.remove('product-sheet-add-btn-filled');
     }
     
-    // Обновляем структуру кнопки (как на карточке товара)
-    addBtn.innerHTML = `
-        <!-- Кнопка минус (появляется только когда товар в корзине) -->
-        <span class="product-sheet-minus-wrapper ${isInCart ? 'visible' : ''}">
-            <span class="product-sheet-minus-btn" 
-                  onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1); updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));"
-                  style="display: ${isInCart ? 'flex' : 'none'}">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+    // Обновляем структуру кнопки
+    if (isInCart && bunchesCount > 0) {
+        // Показываем: - количество х цена +
+        addBtn.innerHTML = `
+            <!-- Кнопка минус -->
+            <span class="product-sheet-minus-wrapper visible">
+                <span class="product-sheet-minus-btn" 
+                      onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1); updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));"
+                      style="display: flex">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </span>
             </span>
-        </span>
-        
-        <!-- Цена (всегда видна) -->
-        <span class="product-sheet-price-text ${isInCart ? 'filled' : 'semi-transparent'}">
-            ${totalPrice} <span class="ruble">₽</span>
-        </span>
-        
-        <!-- Кнопка плюс (всегда видна) -->
-        <span class="product-sheet-plus-wrapper">
-            <span class="product-sheet-plus-btn" 
-                  onclick="event.stopPropagation(); ${isInCart ? `changeCartQuantity(${product.id}, 1)` : `addToCart(${product.id}, ${minQty})`}; updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                     stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
-                     stroke-width="1.5">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+            
+            <!-- Количество х Цена -->
+            <span class="product-sheet-price-text filled">
+                ${bunchesCount} × ${pricePerBunch} <span class="ruble">₽</span>
             </span>
-        </span>
-    `;
+            
+            <!-- Кнопка плюс -->
+            <span class="product-sheet-plus-wrapper">
+                <span class="product-sheet-plus-btn" 
+                      onclick="event.stopPropagation(); changeCartQuantity(${product.id}, 1); updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                         stroke="white" 
+                         stroke-width="1.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </span>
+            </span>
+        `;
+    } else {
+        // Показываем: цена +
+        addBtn.innerHTML = `
+            <!-- Цена -->
+            <span class="product-sheet-price-text filled">
+                ${totalPrice} <span class="ruble">₽</span>
+            </span>
+            
+            <!-- Кнопка плюс -->
+            <span class="product-sheet-plus-wrapper">
+                <span class="product-sheet-plus-btn" 
+                      onclick="event.stopPropagation(); addToCart(${product.id}, ${minQty}); updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                         stroke="white" 
+                         stroke-width="1.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </span>
+            </span>
+        `;
+    }
 }
 
 // Функция initProductSheetDrag удалена - закрытие только по крестику

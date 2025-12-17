@@ -4351,8 +4351,7 @@ input[type="text"][inputmode="numeric"] {
     max-height: calc(100vh - 8vh);
     height: calc(100vh - 8vh);
     background: #fff;
-    border-top-left-radius: 26px;
-    border-top-right-radius: 26px;
+    border-radius: 26px;
     z-index: 1001;
     overflow: hidden;
     transform: translateY(100%);
@@ -4363,20 +4362,6 @@ input[type="text"][inputmode="numeric"] {
 
 .product-sheet.show {
     transform: translateY(0);
-}
-
-.product-sheet-handle-wrap {
-    padding: 10px 0 6px;
-    display: flex;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.product-sheet-handle {
-    width: 44px;
-    height: 5px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.18);
 }
 
 .product-sheet-top-btns {
@@ -4432,7 +4417,7 @@ input[type="text"][inputmode="numeric"] {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 20px;
+    border-radius: 26px;
 }
 
 .product-sheet-pager-stub {
@@ -4496,8 +4481,8 @@ input[type="text"][inputmode="numeric"] {
     height: 56px;
     border: 0;
     border-radius: 28px;
-    background: rgba(251, 45, 92, 0.1);
-    color: var(--primary-color);
+    background: #fb2d5c;
+    color: white;
     font-size: 20px;
     font-weight: 700;
     display: flex;
@@ -4505,7 +4490,7 @@ input[type="text"][inputmode="numeric"] {
     justify-content: space-between;
     gap: 0;
     padding: 0;
-    box-shadow: 0 4px 12px rgba(251, 45, 92, 0.15);
+    box-shadow: 0 14px 30px rgba(251, 45, 92, 0.25);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     -webkit-tap-highlight-color: transparent;
