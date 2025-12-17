@@ -9275,3 +9275,260 @@ function initCheckoutStepsModal() {
         }
     });
 }
+
+// Bottom-sheet для товара
+let currentProductSheetProduct = null;
+let productSheetCurrentImageIndex = 0;
+
+function openProductSheet(productId) {
+    const product = products.find(p => p.id === productId) || 
+                    additionalProducts.find(p => p.id === productId);
+    
+    if (!product) {
+        console.error('[openProductSheet] Товар не найден:', productId);
+        return;
+    }
+    
+    currentProductSheetProduct = product;
+    productSheetCurrentImageIndex = 0;
+    
+    const backdrop = document.getElementById('productSheetBackdrop');
+    const sheet = document.getElementById('productSheet');
+    const title = document.getElementById('productSheetTitle');
+    const sub = document.getElementById('productSheetSub');
+    const price = document.getElementById('productSheetPrice');
+    const addBtn = document.getElementById('productSheetAddBtn');
+    const pagerTrack = document.getElementById('productSheetPagerTrack');
+    const dots = document.getElementById('productSheetDots');
+    
+    if (!backdrop || !sheet || !title || !sub || !price || !addBtn || !pagerTrack || !dots) {
+        console.error('[openProductSheet] Элементы bottom-sheet не найдены');
+        return;
+    }
+    
+    // Блокируем скролл фона
+    document.body.style.overflow = 'hidden';
+    
+    // Заполняем данные
+    title.textContent = product.name;
+    
+    const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
+    sub.textContent = `${stemQuantity} шт`;
+    
+    const minQty = getMinQty(product);
+    const cartItem = cart.find(item => item.id === product.id);
+    const isInCart = !!cartItem;
+    const quantity = cartItem ? cartItem.quantity : minQty;
+    const totalPrice = product.price * quantity;
+    
+    price.textContent = `${totalPrice}₽`;
+    
+    // Обновляем кнопку добавления
+    if (isInCart) {
+        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
+        addBtn.onclick = () => {
+            changeCartQuantity(product.id, 1);
+            updateProductSheetButton(product);
+        };
+    } else {
+        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
+        addBtn.onclick = () => {
+            addToCart(product.id, minQty);
+            updateProductSheetButton(product);
+        };
+    }
+    
+    // Загружаем изображения
+    const images = [product.image].filter(Boolean); // Пока одно изображение, можно расширить
+    
+    pagerTrack.innerHTML = images.map((img, idx) => `
+        <div class="product-sheet-pager-slide">
+            ${img ? `<img src="${img}" alt="${product.name}">` : '<div class="product-sheet-pager-stub"></div>'}
+        </div>
+    `).join('');
+    
+    // Обновляем точки
+    if (images.length > 1) {
+        dots.innerHTML = images.map((_, idx) => `
+            <button class="product-sheet-dot ${idx === 0 ? 'on' : ''}" 
+                    onclick="productSheetGoToImage(${idx})" 
+                    aria-label="Фото ${idx + 1}"></button>
+        `).join('');
+        dots.style.display = 'flex';
+    } else {
+        dots.innerHTML = '';
+        dots.style.display = 'none';
+    }
+    
+    // Показываем sheet
+    backdrop.style.display = 'block';
+    sheet.style.display = 'flex';
+    
+    setTimeout(() => {
+        backdrop.classList.add('show');
+        sheet.classList.add('show');
+    }, 10);
+    
+    // Инициализируем свайп
+    initProductSheetDrag(sheet);
+}
+
+function closeProductSheet() {
+    const backdrop = document.getElementById('productSheetBackdrop');
+    const sheet = document.getElementById('productSheet');
+    
+    if (!backdrop || !sheet) return;
+    
+    backdrop.classList.remove('show');
+    sheet.classList.remove('show');
+    
+    setTimeout(() => {
+        backdrop.style.display = 'none';
+        sheet.style.display = 'none';
+        document.body.style.overflow = '';
+        currentProductSheetProduct = null;
+    }, 400);
+}
+
+function productSheetGoToImage(index) {
+    productSheetCurrentImageIndex = index;
+    const pagerTrack = document.getElementById('productSheetPagerTrack');
+    const dots = document.getElementById('productSheetDots');
+    
+    if (!pagerTrack || !dots) return;
+    
+    pagerTrack.style.transform = `translateX(-${index * 100}%)`;
+    
+    const dotButtons = dots.querySelectorAll('.product-sheet-dot');
+    dotButtons.forEach((dot, idx) => {
+        if (idx === index) {
+            dot.classList.add('on');
+        } else {
+            dot.classList.remove('on');
+        }
+    });
+}
+
+function updateProductSheetButton(product) {
+    if (!currentProductSheetProduct || currentProductSheetProduct.id !== product.id) return;
+    
+    const price = document.getElementById('productSheetPrice');
+    const addBtn = document.getElementById('productSheetAddBtn');
+    
+    if (!price || !addBtn) return;
+    
+    const minQty = getMinQty(product);
+    const cartItem = cart.find(item => item.id === product.id);
+    const isInCart = !!cartItem;
+    const quantity = cartItem ? cartItem.quantity : minQty;
+    const totalPrice = product.price * quantity;
+    
+    price.textContent = `${totalPrice}₽`;
+    
+    if (isInCart) {
+        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
+        addBtn.onclick = () => {
+            changeCartQuantity(product.id, 1);
+            updateProductSheetButton(product);
+        };
+    } else {
+        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
+        addBtn.onclick = () => {
+            addToCart(product.id, minQty);
+            updateProductSheetButton(product);
+        };
+    }
+}
+
+function initProductSheetDrag(sheet) {
+    if (!sheet) return;
+    
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    
+    const handleTouchStart = (e) => {
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        sheet.style.transition = 'none';
+    };
+    
+    const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        
+        currentY = e.touches[0].clientY - startY;
+        
+        if (currentY > 0) {
+            sheet.style.transform = `translateY(${currentY}px)`;
+        }
+    };
+    
+    const handleTouchEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        sheet.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        
+        if (currentY > 120) {
+            closeProductSheet();
+        } else {
+            sheet.style.transform = 'translateY(0)';
+        }
+        
+        currentY = 0;
+    };
+    
+    // Удаляем старые обработчики если есть
+    sheet.removeEventListener('touchstart', handleTouchStart);
+    sheet.removeEventListener('touchmove', handleTouchMove);
+    sheet.removeEventListener('touchend', handleTouchEnd);
+    
+    // Добавляем новые обработчики
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true });
+    sheet.addEventListener('touchmove', handleTouchMove, { passive: true });
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true });
+}
+
+function shareProduct(product) {
+    if (!product) return;
+    
+    // Формируем ссылку для шаринга
+    // TODO: Замените на реальный URL вашего мини-аппа
+    const botUsername = 'FlowboxBot'; // Замените на реальное имя бота
+    const link = `https://t.me/${botUsername}/flowbox_app?startapp=product_${product.id}`;
+    
+    // Telegram share chooser
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(product.name)}`;
+    window.open(shareUrl, '_blank');
+}
+
+// Инициализация обработчиков для bottom-sheet
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initProductSheetHandlers();
+    });
+} else {
+    initProductSheetHandlers();
+}
+
+function initProductSheetHandlers() {
+    const backdrop = document.getElementById('productSheetBackdrop');
+    const closeBtn = document.getElementById('productSheetCloseBtn');
+    const shareBtn = document.getElementById('productSheetShareBtn');
+    
+    if (backdrop) {
+        backdrop.addEventListener('click', closeProductSheet);
+    }
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeProductSheet);
+    }
+    
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            if (currentProductSheetProduct) {
+                shareProduct(currentProductSheetProduct);
+            }
+        });
+    }
+}
