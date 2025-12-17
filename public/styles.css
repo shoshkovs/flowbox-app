@@ -322,20 +322,12 @@ h1, h2, h3, .font-bold {
     font-size: 14px;
 }
 
-/* Новая кнопка добавления с полупрозрачной ценой */
-.product-action-row {
+/* Единая кнопка с layout-анимацией (как у Самоката) */
+.product-action-btn {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    margin-top: auto;
-    gap: 8px;
-    padding: 0 4px; /* Отступ от краев карточки */
-}
-
-.product-add-btn {
-    display: inline-flex;
-    align-items: center;
     justify-content: space-between;
+    margin-top: auto;
     padding: 10px 16px;
     background: rgba(251, 45, 92, 0.3); /* Полупрозрачный розовый */
     color: var(--text-color);
@@ -344,125 +336,125 @@ h1, h2, h3, .font-bold {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
     gap: 8px;
+    width: auto;
+    min-width: fit-content;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
 }
 
-.product-add-btn:active {
+.product-action-btn:active {
     opacity: 0.7;
 }
 
-.product-add-btn svg {
-    stroke: var(--primary-color);
-    color: var(--primary-color);
-}
-
-.product-price-semi-transparent {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    gap: 2px;
-}
-
-.product-price-semi-transparent .ruble {
-    font-size: 14px;
-}
-
-.product-price-filled {
-    font-size: 16px;
-    font-weight: 600;
+/* Состояние когда товар в корзине - растягивается на всю ширину */
+.product-action-btn-filled {
+    width: 100%;
+    background: var(--primary-color);
     color: white;
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    min-width: fit-content;
-    padding: 0 12px;
+    padding: 0;
+    gap: 0;
 }
 
-.product-price-filled .ruble {
-    font-size: 14px;
+/* Обертка для кнопки минус */
+.product-minus-btn-wrapper {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease-out;
+    flex-shrink: 0;
 }
 
-.product-minus-btn,
-.product-plus-btn {
+.product-minus-btn-wrapper.visible {
+    width: 40px;
+    opacity: 1;
+}
+
+.product-minus-btn {
     width: 40px;
     height: 40px;
     border: none;
-    background: var(--primary-color);
+    background: transparent;
     color: white;
-    border-radius: 8px;
+    border-radius: 20px 0 0 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: opacity 0.2s;
     flex-shrink: 0;
 }
 
-.product-minus-btn svg,
-.product-plus-btn svg {
+.product-minus-btn:active {
+    opacity: 0.7;
+}
+
+.product-minus-btn svg {
     stroke-width: 1.5;
 }
 
-.product-minus-btn:active,
-.product-plus-btn:active {
-    opacity: 0.8;
-}
-
-/* Кнопка в залитом состоянии (когда товар в корзине) */
-.product-action-row {
-    transition: all 0.2s ease-out;
-    overflow: hidden;
-}
-
-.product-action-row-filled {
-    background: var(--primary-color);
-    border-radius: 20px;
-    padding: 0;
+/* Цена */
+.product-action-price {
     display: flex;
     align-items: center;
-    gap: 0;
-    width: 100%;
-    min-width: 0; /* Позволяет дочерним элементам сжиматься */
-    animation: stretchExpand 0.2s ease-out;
+    gap: 2px;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
 }
 
-@keyframes stretchExpand {
-    0% {
-        transform: scaleX(0.5);
-        opacity: 0.8;
-    }
-    100% {
-        transform: scaleX(1);
-        opacity: 1;
-    }
+.product-action-price.semi-transparent {
+    color: var(--text-color);
+    padding: 0;
 }
 
-.product-action-row-filled .product-minus-btn,
-.product-action-row-filled .product-plus-btn {
-    border-radius: 0;
+.product-action-price.filled {
+    color: white;
+    padding: 0 12px;
+}
+
+.product-action-price .ruble {
+    font-size: 14px;
+}
+
+/* Обертка для кнопки плюс */
+.product-plus-btn-wrapper {
+    flex-shrink: 0;
+}
+
+.product-plus-btn {
     width: 40px;
     height: 40px;
+    border: none;
     background: transparent;
-    flex-shrink: 0; /* Кнопки +/- не сжимаются */
-}
-
-.product-action-row-filled .product-minus-btn {
-    border-radius: 20px 0 0 20px;
-}
-
-.product-action-row-filled .product-plus-btn {
+    color: white;
     border-radius: 0 20px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
 }
 
-.product-action-row-filled .product-price-filled {
-    padding: 0 12px;
-    flex: 0 0 auto; /* Кнопка с ценой не расширяется, фиксированная ширина */
-    min-width: fit-content; /* Минимальная ширина по содержимому */
-    white-space: nowrap; /* Текст не переносится */
-    overflow: visible; /* Показываем весь текст */
+.product-action-btn:not(.product-action-btn-filled) .product-plus-btn {
+    background: transparent;
+    border-radius: 0;
+    width: auto;
+    height: auto;
+    padding: 0;
+}
+
+.product-plus-btn:active {
+    opacity: 0.7;
+}
+
+.product-plus-btn svg {
+    stroke-width: 1.5;
+    transition: stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Overlay с количеством банчей на изображении (полупрозрачный фильтр) */

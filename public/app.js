@@ -989,30 +989,38 @@ function renderProducts() {
                 <div class="product-info">
                     <div class="product-name">${product.name}</div>
                     ${stemQuantity > 1 ? `<div class="product-stem-quantity">${stemQuantity} шт</div>` : ''}
-                    <div class="product-action-row ${isInCart ? 'product-action-row-filled' : ''}">
-                        ${isInCart ? `
-                            <button class="product-minus-btn" onclick="changeCartQuantity(${product.id}, -1)">
+                    <button class="product-action-btn ${isInCart ? 'product-action-btn-filled' : ''}" 
+                            id="product-action-btn-${product.id}"
+                            onclick="${isInCart ? '' : `addToCart(${product.id}, ${quantity})`}">
+                        <!-- Кнопка минус (появляется только когда товар в корзине) -->
+                        <span class="product-minus-btn-wrapper ${isInCart ? 'visible' : ''}">
+                            <button class="product-minus-btn" 
+                                    onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1)"
+                                    style="display: ${isInCart ? 'flex' : 'none'}">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
                             </button>
-                            <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
-                            <button class="product-plus-btn" onclick="changeCartQuantity(${product.id}, 1)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                        </span>
+                        
+                        <!-- Цена (всегда видна) -->
+                        <span class="product-action-price ${isInCart ? 'filled' : 'semi-transparent'}">
+                            ${totalPrice} <span class="ruble">₽</span>
+                        </span>
+                        
+                        <!-- Кнопка плюс (всегда видна) -->
+                        <span class="product-plus-btn-wrapper">
+                            <button class="product-plus-btn" 
+                                    onclick="event.stopPropagation(); ${isInCart ? `changeCartQuantity(${product.id}, 1)` : `addToCart(${product.id}, ${quantity})`}">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                                     stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
+                                     stroke-width="1.5">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
                             </button>
-                        ` : `
-                            <button class="product-add-btn" onclick="addToCart(${product.id}, ${quantity})" id="add-btn-${product.id}">
-                                <span class="product-price-semi-transparent">${totalPrice} <span class="ruble">₽</span></span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.5">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </button>
-                        `}
-                    </div>
+                        </span>
+                    </button>
                 </div>
             </div>
         `;
