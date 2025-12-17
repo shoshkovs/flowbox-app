@@ -7016,7 +7016,7 @@ function initLeaveAtDoorCheckbox() {
     console.log('[leaveAtDoor] ✅ Тумблер инициализирован, начальное состояние:', isChecked);
 }
 
-// Инициализация чекбокса "Оставить у двери" для упрощенного режима
+// Инициализация тумблера "Оставить у двери" для упрощенного режима
 let simpleLeaveAtDoorInited = false;
 
 function initSimpleLeaveAtDoorCheckbox() {
