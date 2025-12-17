@@ -3036,8 +3036,10 @@ app.get('/api/orders/:orderId', async (req, res) => {
           comment: h.comment || null,
           createdAt: h.created_at
         }));
+        console.log(`[GET /api/orders/${orderId}] История статусов сформирована:`, statusHistory.length, 'записей');
       } catch (historyError) {
         console.warn(`[GET /api/orders/${orderId}] Не удалось загрузить историю статусов:`, historyError.message);
+        console.warn(`[GET /api/orders/${orderId}] Stack:`, historyError.stack);
       }
       
       const orderData = {
