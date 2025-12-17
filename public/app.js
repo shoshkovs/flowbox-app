@@ -7022,7 +7022,7 @@ let simpleLeaveAtDoorInited = false;
 function initSimpleLeaveAtDoorCheckbox() {
     const toggle = document.getElementById('simple-leave-at-door-toggle');
     if (!checkbox) {
-        console.warn('[leaveAtDoor] чекбокс simple-leave-at-door-checkbox не найден');
+        console.warn('[leaveAtDoor] тумблер simple-leave-at-door-toggle не найден');
         return;
     }
 
