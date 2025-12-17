@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, Phone, RefreshCw, Calendar } from 'lucide-react';
+import { Eye, Phone, RefreshCw, Calendar, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
@@ -249,7 +249,7 @@ export function Orders({ authToken }) {
 
   useEffect(() => {
     loadOrders();
-  }, [filterStatus, dateFrom, dateTo, dateFilter]);
+  }, [filterStatus, dateFrom, dateTo, dateFilter, searchOrderId]);
 
   const handleRefreshOrders = async () => {
     try {
