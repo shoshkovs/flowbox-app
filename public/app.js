@@ -7862,11 +7862,11 @@ function renderMyAddressesListForSimple() {
         
         return `
             <div class="address-card-item" style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 2px solid ${isSelected ? '#fb2d5c' : 'transparent'};">
-                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
                 <input type="radio" name="addressRadio" value="${addressId}" ${isSelected ? 'checked' : ''} 
                        onchange="selectCheckoutAddressForSimple(${addressId})" 
                        class="address-radio-simple"
-                           style="margin-top: 2px; width: 20px; height: 20px; cursor: pointer; accent-color: #fb2d5c; flex-shrink: 0;">
+                           style="width: 20px; height: 20px; cursor: pointer; accent-color: #fb2d5c; flex-shrink: 0; align-self: center;">
                 <div style="flex: 1; cursor: pointer;" onclick="selectCheckoutAddressForSimple(${addressId})">
                         <div style="font-weight: 500; font-size: 15px; line-height: 1.4; color: #111;">${addressStr}</div>
                 </div>
