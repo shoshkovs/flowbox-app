@@ -1964,81 +1964,27 @@ function renderAdditionalProducts() {
         });
         
         // Получаем первое изображение из массива images или из image_url
-        let productImage = product.image;
+        let productImage = product.image || product.image_url || '/logo2.jpg';
         if (product.images && Array.isArray(product.images) && product.images.length > 0) {
             productImage = product.images[0];
-        } else if (product.image_url) {
-            productImage = product.image_url;
-        } else if (product.image) {
-            productImage = product.image;
-        } else {
-            productImage = '/logo2.jpg';
         }
-        
-        const minQty = getMinQty(product);
-        const quantity = minQty;
-        const cartItem = cart.find(item => {
-            const itemId = String(item.id);
-            const productId = String(product.id);
-            return itemId === productId || item.id === product.id || item.id === Number(product.id);
-        });
-        const cartQuantity = cartItem ? cartItem.quantity : 0;
-        const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
-        const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
-        const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
         
         // Экранируем ID для безопасного использования в onclick
         const safeProductId = String(product.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         console.log('Рендеринг товара:', product.name, 'ID:', safeProductId, 'isInCart:', isInCart);
         
         return `
-            <div class="product-card" data-product-id="${product.id}" onclick="openProductSheet(${product.id})">
-                <div class="product-image-wrapper">
-                    <img src="${productImage}" alt="${product.name}" class="product-image">
-                    ${isInCart && bunchesCount > 0 ? `
-                        <div class="product-quantity-overlay show">
-                            <div class="product-quantity-overlay-text">${bunchesCount}</div>
-                        </div>
-                    ` : ''}
+            <div class="additional-product-card">
+                <div class="additional-product-image-wrapper">
+                    <img src="${productImage}" alt="${product.name}" class="additional-product-image">
                 </div>
-                <div class="product-info">
-                    <div class="product-name">${product.name}</div>
-                    ${stemQuantity > 1 ? `<div class="product-stem-quantity">${stemQuantity} шт</div>` : ''}
-                    <div class="product-action-row">
-                        <button class="product-action-btn ${isInCart ? 'product-action-btn-filled' : ''}" 
-                                id="additional-product-action-btn-${product.id}"
-                                onclick="${isInCart ? 'void(0)' : `addAdditionalProduct(${JSON.stringify(product.id)})`}">
-                            <!-- Кнопка минус (появляется только когда товар в корзине) -->
-                            <span class="product-minus-btn-wrapper ${isInCart ? 'visible' : ''}">
-                                <span class="product-minus-btn" 
-                                      onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1)"
-                                      style="display: ${isInCart ? 'flex' : 'none'}">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                                </span>
-                            </span>
-                            
-                            <!-- Цена (всегда видна) -->
-                            <span class="product-action-price ${isInCart ? 'filled' : 'semi-transparent'}">
-                                ${totalPrice} <span class="ruble">₽</span>
-                            </span>
-                            
-                            <!-- Кнопка плюс (всегда видна) -->
-                            <span class="product-plus-btn-wrapper">
-                                <span class="product-plus-btn" 
-                                      onclick="event.stopPropagation(); ${isInCart ? `changeCartQuantity(${product.id}, 1)` : `addAdditionalProduct(${JSON.stringify(product.id)})`}">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                                         stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
-                                         stroke-width="1.5">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                </span>
-                            </span>
-                        </button>
-                    </div>
+                <div class="additional-product-info">
+                    <div class="additional-product-name">${product.name}</div>
+                    <div class="additional-product-price">${product.price} ₽</div>
                 </div>
+                <button class="additional-product-add-btn" onclick="addAdditionalProduct(${JSON.stringify(product.id)})" ${isInCart ? 'disabled' : ''}>
+                    ${isInCart ? 'В корзине' : 'Добавить'}
+                </button>
             </div>
         `;
     }).join('');
