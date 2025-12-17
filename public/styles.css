@@ -4149,7 +4149,7 @@ input[type="text"][inputmode="numeric"] {
 }
 
 .order-details-meta-value {
-    font-weight: 900;
+    font-weight: 600;
     font-size: 16px;
     color: #111;
 }
@@ -4159,7 +4159,7 @@ input[type="text"][inputmode="numeric"] {
     border-radius: 12px;
     background: rgba(251, 45, 92, 0.08);
     color: #fb2d5c;
-    font-weight: 900;
+    font-weight: 600;
     font-size: 14px;
     text-transform: uppercase;
 }

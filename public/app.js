@@ -2157,6 +2157,21 @@ function switchTab(tabId) {
                 }
             }
         }, 150);
+    } else if (tabId === 'orderDetailsTab') {
+        // Скрыть навигацию, но оставить header видимым
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (header) header.style.display = 'flex';
+        // Показать BackButton для возврата в профиль
+        showBackButton(true);
+        setTimeout(() => {
+            const detailsTab = document.getElementById('orderDetailsTab');
+            if (detailsTab) {
+                detailsTab.scrollTop = 0;
+                if (window.scrollTo) {
+                    window.scrollTo(0, 0);
+                }
+            }
+        }, 150);
     } else if (tabId === 'orderHistoryTab') {
         // Скрыть навигацию, но оставить header видимым
         if (bottomNav) bottomNav.style.display = 'none';
