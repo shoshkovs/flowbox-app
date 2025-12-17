@@ -4457,9 +4457,25 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
         paramIndex++;
       }
       if (address_json !== undefined) {
+        const addressJsonStr = typeof address_json === 'object' ? JSON.stringify(address_json) : address_json;
         updateQuery += `, address_json = $${paramIndex}::jsonb`;
-        params.push(typeof address_json === 'object' ? JSON.stringify(address_json) : address_json);
+        params.push(addressJsonStr);
         paramIndex++;
+        
+        // Обновляем address_string на основе address_json
+        if (typeof address_json === 'object' && address_json !== null) {
+          const addressParts = [];
+          if (address_json.city) addressParts.push(address_json.city);
+          if (address_json.street) addressParts.push(address_json.street);
+          if (address_json.house) addressParts.push(`д. ${address_json.house}`);
+          if (address_json.apartment) addressParts.push(`кв. ${address_json.apartment}`);
+          const addressString = addressParts.join(', ');
+          if (addressString) {
+            updateQuery += `, address_string = $${paramIndex}`;
+            params.push(addressString);
+            paramIndex++;
+          }
+        }
       }
       
       // Получаем старый статус ДО обновления для проверки изменений и уведомлений
