@@ -523,10 +523,20 @@
                         
                         <!-- Оставить у двери -->
                         <div class="form-group" style="margin-top: 16px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="checkbox" id="leaveAtDoorCheckbox" style="width: 20px; height: 20px; cursor: pointer;">
-                                <span>Оставить у двери</span>
-                            </label>
+                            <div class="leave-at-door-toggle-container">
+                                <label for="leaveAtDoorToggle" class="leave-at-door-label">
+                                    <span>Оставить у двери</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    id="leaveAtDoorToggle"
+                                    class="leave-at-door-toggle"
+                                    role="switch"
+                                    aria-checked="false"
+                                >
+                                    <span class="leave-at-door-toggle-thumb"></span>
+                                </button>
+                            </div>
                         </div>
                         
                         <button type="button" class="checkout-continue-btn" id="continueStep3">Продолжить</button>
@@ -619,10 +629,20 @@
                                 </div>
                             </div>
                             <div class="form-group" style="margin-top: 16px;">
-                                <label for="simple-leave-at-door-checkbox" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                    <input type="checkbox" id="simple-leave-at-door-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
-                                    <span>Оставить у двери</span>
-                                </label>
+                                <div class="leave-at-door-toggle-container">
+                                    <label for="simple-leave-at-door-toggle" class="leave-at-door-label">
+                                        <span>Оставить у двери</span>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        id="simple-leave-at-door-toggle"
+                                        class="leave-at-door-toggle"
+                                        role="switch"
+                                        aria-checked="false"
+                                    >
+                                        <span class="leave-at-door-toggle-thumb"></span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         

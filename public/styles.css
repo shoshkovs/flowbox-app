@@ -4087,29 +4087,60 @@ input[type="text"][inputmode="numeric"] {
 }
 
 /* Стили для чекбокса "Оставить у двери" */
-#leaveAtDoorCheckbox {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    accent-color: var(--primary-color);
-    -webkit-appearance: checkbox;
-    -moz-appearance: checkbox;
-    appearance: checkbox;
-}
-
-#leaveAtDoorCheckbox:checked {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-#leaveAtDoorCheckbox:checked::after {
-    content: '✓';
-    color: white;
-    font-size: 14px;
-    font-weight: bold;
+/* Тумблер "Оставить у двери" */
+.leave-at-door-toggle-container {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.leave-at-door-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-color);
+    flex: 1;
+}
+
+.leave-at-door-toggle {
+    position: relative;
+    display: inline-flex;
+    height: 24px;
+    width: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    border-radius: 9999px;
+    background-color: #d1d5db; /* bg-gray-300 */
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+    outline: none;
+}
+
+.leave-at-door-toggle:focus {
+    outline: 2px solid rgba(251, 45, 92, 0.5);
+    outline-offset: 2px;
+}
+
+.leave-at-door-toggle[aria-checked="true"] {
+    background-color: #f9a8d4; /* bg-pink-300 - нежно-розовый */
+}
+
+.leave-at-door-toggle-thumb {
+    display: inline-block;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    background-color: white;
+    transform: translateX(4px);
+    transition: transform 0.2s ease-in-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.leave-at-door-toggle[aria-checked="true"] .leave-at-door-toggle-thumb {
+    transform: translateX(24px);
 }
 
 /* Страница деталей заказа */

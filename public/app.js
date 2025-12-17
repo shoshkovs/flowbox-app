@@ -6976,82 +6976,44 @@ window.openOrderDetail = openOrderDetail;
 
 // checkoutData уже объявлен выше в начале файла
 
-// Инициализация чекбокса "Оставить у двери"
+// Инициализация тумблера "Оставить у двери"
 function initLeaveAtDoorCheckbox() {
-    const checkbox = document.getElementById('leaveAtDoorCheckbox');
-    if (!checkbox) {
-        console.warn('[leaveAtDoor] ⚠️ Чекбокс не найден в DOM');
+    const toggle = document.getElementById('leaveAtDoorToggle');
+    if (!toggle) {
+        console.warn('[leaveAtDoor] ⚠️ Тумблер не найден в DOM');
         return;
     }
     
-    // На всякий случай снимаем disabled
-    checkbox.disabled = false;
-    
     // Начальное состояние из checkoutData
-    checkbox.checked = !!checkoutData.leaveAtDoor;
+    const isChecked = !!checkoutData.leaveAtDoor;
+    toggle.setAttribute('aria-checked', isChecked.toString());
     
-    // Удаляем все старые обработчики, заменяя родительский элемент
-    const label = checkbox.closest('label');
+    // Обработчик клика
+    const handleToggle = function() {
+        const currentState = toggle.getAttribute('aria-checked') === 'true';
+        const newState = !currentState;
+        toggle.setAttribute('aria-checked', newState.toString());
+        checkoutData.leaveAtDoor = newState;
+        console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
+        
+        // Обновляем отображение на шаге 4
+        if (typeof renderCheckoutSummary === 'function') {
+            renderCheckoutSummary();
+        }
+    };
+    
+    toggle.addEventListener('click', handleToggle);
+    
+    // Также делаем кликабельным label
+    const label = document.querySelector('label[for="leaveAtDoorToggle"]');
     if (label) {
-        const newLabel = label.cloneNode(true);
-        const newCheckbox = newLabel.querySelector('#leaveAtDoorCheckbox');
-        label.parentNode.replaceChild(newLabel, label);
-        
-        if (newCheckbox) {
-            newCheckbox.disabled = false;
-            newCheckbox.checked = !!checkoutData.leaveAtDoor;
-            
-            // ВАЖНО: Убеждаемся, что checked состояние визуально отображается
-            if (newCheckbox.checked) {
-                newCheckbox.setAttribute('checked', 'checked');
-            } else {
-                newCheckbox.removeAttribute('checked');
-            }
-            
-            newCheckbox.addEventListener('change', function() {
-                checkoutData.leaveAtDoor = this.checked;
-                console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
-                
-                // ВАЖНО: Обновляем атрибут checked для визуального отображения
-                if (this.checked) {
-                    this.setAttribute('checked', 'checked');
-                } else {
-                    this.removeAttribute('checked');
-                }
-                
-                // Обновляем отображение на шаге 4
-                if (typeof renderCheckoutSummary === 'function') {
-                    renderCheckoutSummary();
-                }
-            });
-            
-            console.log('[leaveAtDoor] ✅ Чекбокс инициализирован, начальное состояние:', newCheckbox.checked);
-        }
-    } else {
-        // Если label нет, работаем напрямую
-        // ВАЖНО: Убеждаемся, что checked состояние визуально отображается
-        if (checkbox.checked) {
-            checkbox.setAttribute('checked', 'checked');
-        } else {
-            checkbox.removeAttribute('checked');
-        }
-        
-        checkbox.addEventListener('change', function() {
-            checkoutData.leaveAtDoor = this.checked;
-            console.log('[leaveAtDoor] ✅ Состояние изменено:', checkoutData.leaveAtDoor);
-            
-            // ВАЖНО: Обновляем атрибут checked для визуального отображения
-            if (this.checked) {
-                this.setAttribute('checked', 'checked');
-            } else {
-                this.removeAttribute('checked');
-            }
-            
-            if (typeof renderCheckoutSummary === 'function') {
-                renderCheckoutSummary();
-            }
+        label.addEventListener('click', function(e) {
+            e.preventDefault();
+            handleToggle();
         });
     }
+    
+    console.log('[leaveAtDoor] ✅ Тумблер инициализирован, начальное состояние:', isChecked);
 }
 
 // Инициализация чекбокса "Оставить у двери" для упрощенного режима
