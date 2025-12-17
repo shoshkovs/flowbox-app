@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, Phone, RefreshCw, Calendar, Search } from 'lucide-react';
 import { toast } from 'sonner';
@@ -246,12 +246,16 @@ export function Orders({ authToken }) {
       setFilterStatus(statusFromState);
     }
     
-    // Обновляем данные при возврате на страницу заказов (если есть флаг обновления)
+    // Обновляем данные при возврате на страницу заказов (если вернулись со страницы деталей)
     const shouldRefresh = location.state?.shouldRefresh;
-    if (location.pathname === '/orders' && shouldRefresh && !loading) {
+    const isReturningToOrders = prevPathnameRef.current !== '/orders' && location.pathname === '/orders';
+    
+    if ((isReturningToOrders || shouldRefresh) && location.pathname === '/orders' && !loading) {
       loadOrders();
     }
-  }, [location.pathname, location.state, filterStatus, loading]);
+    
+    prevPathnameRef.current = location.pathname;
+  }, [location.pathname, location.state]);
 
   useEffect(() => {
     loadOrders();
