@@ -2267,7 +2267,7 @@ function switchTab(tabId) {
         if (header) header.style.display = 'flex';
         // Скрыть BackButton для основных вкладок (меню, корзина, профиль)
         if (tg && tg.BackButton) {
-            tg.BackButton.hide();
+        tg.BackButton.hide();
         }
     }
     
@@ -6996,7 +6996,7 @@ function initCheckoutSteps() {
             
             // Обновляем отображение на странице итого
             if (typeof renderCheckoutSummary === 'function') {
-                renderCheckoutSummary();
+            renderCheckoutSummary();
             }
             if (typeof prefillSimpleCheckoutSummary === 'function') {
                 prefillSimpleCheckoutSummary();
@@ -7008,8 +7008,8 @@ function initCheckoutSteps() {
                 closeEditRecipientAndReturnToSummary();
             } else {
                 // Обычный режим - возвращаемся на шаг 4
-                document.getElementById('editRecipientTab').style.display = 'none';
-                goToStep(4);
+            document.getElementById('editRecipientTab').style.display = 'none';
+            goToStep(4);
             }
         };
     }
@@ -7578,7 +7578,7 @@ function renderMyAddressesListForSimple() {
                     <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
                 </div>
                 <div class="address-menu">
-                    <button type="button" class="address-menu-btn" onclick="window.toggleAddressMenu(${addressId}); return false;" aria-label="Меню адреса">
+                    <button type="button" class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" aria-label="Меню адреса">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="5" r="2" fill="currentColor"/>
                             <circle cx="12" cy="12" r="2" fill="currentColor"/>
@@ -7586,10 +7586,10 @@ function renderMyAddressesListForSimple() {
                         </svg>
                     </button>
                     <div class="address-menu-dropdown" id="addressMenu${addressId}">
-                        <button type="button" class="address-menu-item" onclick="window.toggleAddressMenu(${addressId}); window.editAddressFromSimple(${addressId}); return false;">
+                        <button type="button" class="address-menu-item" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); editAddressFromSimple(${addressId})">
                             Изменить
                         </button>
-                        <button type="button" class="address-menu-item address-menu-item-delete" onclick="window.toggleAddressMenu(${addressId}); window.deleteAddressFromSimple(${addressId}); return false;">
+                        <button type="button" class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); deleteAddressFromSimple(${addressId})">
                             Удалить
                         </button>
                     </div>

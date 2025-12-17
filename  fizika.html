@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Лабораторная работа №8 — Обработка результатов</title>
+<style>
+body {
+  font-family: "Times New Roman", serif;
+  background:#f7f7f7;
+  margin:0;
+  padding:40px;
+}
+.container {
+  max-width:900px;
+  margin:auto;
+  background:white;
+  padding:40px;
+}
+h1,h2,h3 {
+  text-align:center;
+}
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin:15px 0;
+}
+td,th {
+  border:1px solid #000;
+  padding:6px;
+  text-align:center;
+}
+.formula {
+  font-family: monospace;
+  background:#eee;
+  padding:8px;
+  margin:10px 0;
+}
+p {
+  text-align:justify;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Задание по обработке результатов эксперимента</h1>
+<h3>Лабораторная работа №8</h3>
+
+<h2>Таблица 8.1. Однократно измеряемые величины</h2>
+<table>
+<tr><th>ν₀, Гц</th><th>t, °C</th><th>T, K</th><th>p, Па</th></tr>
+<tr><td>2000</td><td>24</td><td>297</td><td>102391</td></tr>
+</table>
+
+<p>Приборные погрешности: θ<sub>L</sub> = 0.5 мм, θ<sub>ν</sub> = 5 Гц.</p>
+
+<h2>Таблица 8.2. Измерения длин резонатора</h2>
+<table>
+<tr><th>i</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr>
+<tr><th>L₁, м</th><td>0.167</td><td>0.168</td><td>0.1675</td><td>0.168</td><td>0.1675</td><td>0.167</td><td>0.167</td><td>0.167</td><td>0.167</td><td>0.1675</td></tr>
+<tr><th>L₂, м</th><td>0.333</td><td>0.3325</td><td>0.333</td><td>0.333</td><td>0.333</td><td>0.333</td><td>0.3335</td><td>0.333</td><td>0.3335</td><td>0.333</td></tr>
+<tr><th>L₃, м</th><td>0.500</td><td>0.501</td><td>0.500</td><td>0.501</td><td>0.501</td><td>0.5015</td><td>0.500</td><td>0.501</td><td>0.5015</td><td>0.500</td></tr>
+</table>
+
+<h2>1. Расчёт длин волн и скоростей звука</h2>
+
+<div class="formula">
+λₙ = 2L̄ₙ / n  
+uₙ = λₙ · ν₀
+</div>
+
+<table>
+<tr><th>n</th><th>L̄ₙ, м</th><th>λₙ, м</th><th>uₙ, м/с</th></tr>
+<tr><td>1</td><td>0.1675</td><td>0.335</td><td>335</td></tr>
+<tr><td>2</td><td>0.3330</td><td>0.333</td><td>333</td></tr>
+<tr><td>3</td><td>0.5008</td><td>0.334</td><td>334</td></tr>
+</table>
+
+<h2>2. Итоговая скорость звука</h2>
+
+<p>
+Среднее значение:
+<br>
+<b>ū = 333.9 м/с</b>
+</p>
+
+<p>
+С учётом случайной и приборной погрешностей при P = 95%:
+<br>
+<b>u = (333.9 ± 3.2) м/с</b>
+</p>
+
+<h2>3. Показатель политропного процесса</h2>
+
+<div class="formula">
+n = μu² / (RT)
+</div>
+
+<p>
+При μ = 29·10⁻³ кг/моль и T = 297 K:
+<br>
+<b>n ≈ 1.31</b>
+</p>
+
+<p>
+Поскольку n &lt; γ = 1.4, процесс распространения звука в воздухе
+близок к изотермическому.
+</p>
+
+<h2>4. Плотность воздуха</h2>
+
+<div class="formula">
+ρ = pμ / (RT)
+</div>
+
+<p>
+ρ ≈ <b>1.18 кг/м³</b>, табличное значение при н.у. — 1.29 кг/м³.
+</p>
+
+<h2>5. АЧХ резонатора</h2>
+
+<p>
+Максимальная амплитуда A₀ ≈ 0.021.
+<br>
+Уровень A₀ / √2 ≈ 0.015.
+<br>
+Ширина резонанса Δν₀ ≈ <b>36 Гц</b>.
+</p>
+
+<h2>6. Добротность резонатора</h2>
+
+<div class="formula">
+Q = ν₀ / Δν₀
+</div>
+
+<p>
+<b>Q ≈ 56</b>
+</p>
+
+<hr>
+<p style="text-align:center;">
+Отчёт подготовлен по экспериментальным данным.
+</p>
+
+</div>
+</body>
+</html>
