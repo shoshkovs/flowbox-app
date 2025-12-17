@@ -9681,14 +9681,20 @@ function shareProduct(product) {
     const botUsername = 'FlowboxBot';
     const shareLink = `https://t.me/${botUsername}?start=PRODUCT_${product.id}`;
     
-    // Используем Telegram WebApp API для открытия ссылки
+    // Формируем текст для шаринга
+    const shareText = `${product.name}\n\n${shareLink}`;
+    
+    // Используем Telegram Share URL для открытия окна выбора контактов
+    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(product.name)}`;
+    
+    // Используем Telegram WebApp API для открытия окна шаринга
     if (window.tg && window.tg.openTelegramLink) {
-        window.tg.openTelegramLink(shareLink);
+        window.tg.openTelegramLink(telegramShareUrl);
     } else if (window.tg && window.tg.openLink) {
-        window.tg.openLink(shareLink);
+        window.tg.openLink(telegramShareUrl);
     } else {
         // Fallback: открываем в новом окне
-        window.open(shareLink, '_blank');
+        window.open(telegramShareUrl, '_blank');
     }
     
     // Haptic feedback
