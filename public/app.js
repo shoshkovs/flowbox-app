@@ -5771,6 +5771,39 @@ function renderOrderDetails(order) {
     // Маппинг статусов для степпера (5 статусов)
     const statusSteps = ['В обработке', 'Принят', 'Собирается', 'В пути', 'Доставлен'];
     
+    // Если история пустая, создаем виртуальную запись из текущего статуса
+    if (!order.statusHistory || order.statusHistory.length === 0) {
+        console.log('[renderOrderDetails] История статусов пустая, создаем виртуальную запись из текущего статуса');
+        const statusRaw = order.statusRaw || order.status;
+        const statusDisplayMap = {
+            'NEW': 'В обработке',
+            'PROCESSING': 'В обработке',
+            'PURCHASE': 'Принят',
+            'COLLECTING': 'Собирается',
+            'DELIVERING': 'В пути',
+            'DELIVERED': 'Доставлен',
+            'COMPLETED': 'Доставлен'
+        };
+        
+        // Используем дату создания заказа
+        const orderDate = order.createdAt || new Date().toLocaleDateString('ru-RU');
+        const orderTime = new Date().toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        order.statusHistory = [{
+            status: statusDisplayMap[statusRaw] || order.status,
+            statusRaw: statusRaw,
+            date: orderDate.split(' ')[0] || orderDate,
+            time: orderTime,
+            changedBy: 'Система',
+            comment: null,
+            createdAt: new Date()
+        }];
+        console.log('[renderOrderDetails] Создана виртуальная запись:', order.statusHistory[0]);
+    }
+    
     // Определяем активный шаг на основе текущего статуса заказа (не из истории!)
     const statusRaw = order.statusRaw || order.status;
     const statusMap = {
