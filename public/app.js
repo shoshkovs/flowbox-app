@@ -347,6 +347,23 @@ function handleBackButton() {
         return;
     }
     
+    // Если пользователь на главной странице (меню или корзина) и нет активных модальных окон,
+    // показываем подтверждение закрытия
+    const menuTab = document.getElementById('menuTab');
+    const cartTab = document.getElementById('cartTab');
+    const currentTab = menuTab && menuTab.classList.contains('active') ? 'menuTab' : 
+                      cartTab && cartTab.classList.contains('active') ? 'cartTab' : null;
+    
+    if (currentTab && !checkoutMode && cart && cart.length > 0) {
+        console.log('[BackButton] Пользователь на главной странице с товарами в корзине, показываем подтверждение закрытия');
+        const closeConfirmModal = document.getElementById('closeConfirmModal');
+        if (closeConfirmModal) {
+            closeConfirmModal.style.display = 'flex';
+            closeConfirmModal.classList.add('active');
+            return;
+        }
+    }
+    
     console.log('[BackButton] Не обработано, checkoutMode =', checkoutMode, 'checkoutScreen =', checkoutScreen);
 }
 
@@ -441,19 +458,13 @@ if (tg && typeof tg.onEvent === 'function') {
         }
     });
     
-    // Отключаем стандартное подтверждение закрытия, используем кастомное
-    if (typeof tg.disableClosingConfirmation === 'function') {
-        tg.disableClosingConfirmation();
-        console.log('[init] Отключено стандартное подтверждение закрытия, используем кастомное');
-    }
-    
     // Флаг для отслеживания попытки закрытия
     let isClosing = false;
     let closeEventPending = false;
     
     // Обработчик закрытия мини-аппа
     tg.onEvent('close', () => {
-        console.log('[close] Событие close получено, isClosing:', isClosing, 'closeEventPending:', closeEventPending);
+        console.log('[close] Событие close получено, isClosing:', isClosing);
         
         // Если уже подтвердили закрытие, просто закрываем
         if (isClosing) {
@@ -475,8 +486,8 @@ if (tg && typeof tg.onEvent === 'function') {
             return false;
         }
         
-        // Показываем модальное окно подтверждения с кастомным сообщением
-        if (closeConfirmModal) {
+        // Показываем кастомное модальное окно подтверждения
+        if (closeConfirmModal && cart && cart.length > 0) {
             closeEventPending = true;
             closeConfirmModal.style.display = 'flex';
             closeConfirmModal.classList.add('active');
@@ -484,15 +495,8 @@ if (tg && typeof tg.onEvent === 'function') {
             // Предотвращаем закрытие (пытаемся)
             return false;
         } else {
-            // Если модальное окно не найдено, используем стандартный confirm
-            if (confirm('Вы уверены, что хотите закрыть приложение? Изменения могут не сохраниться.')) {
-                isClosing = true;
-                saveCartOnClose();
-                if (tg && typeof tg.close === 'function') {
-                    tg.close();
-                }
-            }
-            return false;
+            // Если нет товаров в корзине или модальное окно не найдено, просто сохраняем и закрываем
+            saveCartOnClose();
         }
     });
     
@@ -2153,6 +2157,7 @@ function renderAdditionalProducts() {
                 </div>
                 <div class="additional-product-info">
                     <div class="additional-product-name">${product.name}</div>
+                    <div class="additional-product-quantity-label">количество штук</div>
                     ${stemQuantity > 1 ? `<div class="additional-product-stem-qty">${stemQuantity} шт</div>` : ''}
                     ${isInCart && bunchesCount > 0 ? `<div class="additional-product-cart-qty">${bunchesCount} шт</div>` : ''}
                     <div class="product-action-row">
@@ -6448,6 +6453,15 @@ function renderOrderDetails(order) {
         <!-- Информация о доставке -->
         <div class="order-details-card">
             <div class="order-details-h2">Информация о доставке</div>
+            
+            ${order.recipient_name || order.recipient_phone ? `
+                <div class="order-details-info-row">
+                    <div class="order-details-info-title">Получатель</div>
+                    <div class="order-details-info-text">
+                        ${order.recipient_name || ''}${order.recipient_name && order.recipient_phone ? '<br>' : ''}${order.recipient_phone || ''}
+                    </div>
+                </div>
+            ` : ''}
             
             <div class="order-details-info-row">
                 <div class="order-details-info-title">Адрес доставки</div>
