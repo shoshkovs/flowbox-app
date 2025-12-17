@@ -2004,8 +2004,8 @@ function renderAdditionalProducts() {
                             <!-- Кнопка минус (появляется только когда товар в корзине) -->
                             <span class="product-minus-btn-wrapper ${isInCart ? 'visible' : ''}">
                                 <span class="product-minus-btn" 
-                                      onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1)"
-                                      style="display: ${isInCart ? 'flex' : 'none'}">
+                                      onclick="event.stopPropagation(); event.preventDefault(); changeCartQuantity(${product.id}, -1); return false;"
+                                      style="display: ${isInCart ? 'flex' : 'none'}; pointer-events: auto; z-index: 10; position: relative;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
