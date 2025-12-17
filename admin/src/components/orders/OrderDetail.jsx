@@ -742,8 +742,8 @@ export function OrderDetail({ authToken, orderId }) {
                     e.stopPropagation();
                     setEditableLeaveAtDoor(!editableLeaveAtDoor);
                   }}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
-                    editableLeaveAtDoor ? 'bg-green-500' : 'bg-gray-300'
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 ${
+                    editableLeaveAtDoor ? 'bg-pink-300' : 'bg-gray-300'
                   }`}
                   role="switch"
                   aria-checked={editableLeaveAtDoor}
