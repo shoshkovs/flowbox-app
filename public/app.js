@@ -6340,32 +6340,26 @@ function renderOrderDetails(order) {
                     // min_order_quantity - минимальное количество для заказа (количество цветков в одном букете)
                     let minQty = item.min_order_quantity;
                     
-                    // Если min_order_quantity не пришло, пытаемся вычислить из total_price
-                    // total_price = price * quantity, где price - цена за цветок
-                    // Если min_order_quantity отсутствует, используем fallback: вычисляем из total_price
-                    if (!minQty || minQty === 1) {
-                        // Пытаемся вычислить minQty из total_price
-                        // Если total_price / quantity = price, то minQty может быть вычислен
-                        // Но проще использовать значение из products через API
-                        // Пока используем fallback: если min_order_quantity отсутствует, считаем что minQty = quantity (один букет)
-                        if (item.total_price && item.price && item.quantity) {
-                            // total_price = price * quantity, где price - цена за цветок
-                            // Если total_price / quantity = price, то это подтверждает, что price - цена за цветок
-                            const calculatedPrice = item.total_price / item.quantity;
-                            if (Math.abs(calculatedPrice - item.price) < 0.01) {
-                                // price действительно цена за цветок
-                                // Пытаемся найти minQty из соотношения: если quantity кратно какому-то числу
-                                // Для хризантем обычно minQty = 10, для тюльпанов = 7
-                                // Но без данных из products сложно определить
-                                // Используем fallback: minQty = quantity (один букет)
-                                minQty = item.quantity;
-                            } else {
-                                // price может быть ценой за букет
-                                minQty = 1;
-                            }
+                    // Если min_order_quantity не пришло или равно 1, но quantity > 1,
+                    // пытаемся вычислить minQty из делимости quantity
+                    // Для хризантем обычно minQty = 10, для тюльпанов = 7
+                    if ((!minQty || minQty === 1) && item.quantity > 1) {
+                        // Проверяем делимость quantity на типичные значения min_order_quantity
+                        if (item.quantity % 10 === 0) {
+                            minQty = 10; // Хризантемы
+                        } else if (item.quantity % 7 === 0) {
+                            minQty = 7; // Тюльпаны
+                        } else if (item.quantity % 5 === 0) {
+                            minQty = 5; // Другие цветы
                         } else {
-                            minQty = item.quantity || 1;
+                            // Если не кратно типичным значениям, используем quantity (один букет)
+                            minQty = item.quantity;
                         }
+                    }
+                    
+                    // Если minQty все еще не определено, используем 1
+                    if (!minQty || minQty < 1) {
+                        minQty = 1;
                     }
                     
                     const bunchesCount = Math.floor(item.quantity / minQty);
