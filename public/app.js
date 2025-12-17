@@ -5846,7 +5846,7 @@ function renderOrderDetails(order) {
             <div class="order-details-h2">Статус заказа</div>
             <div class="order-details-stepper">
                 ${statusSteps.map((step, index) => {
-                    // Находим ПОСЛЕДНЮЮ запись в истории для этого статуса
+                    // Находим ПЕРВУЮ запись в истории для этого статуса (когда он был впервые установлен)
                     let historyEntry = null;
                     let dateTime = '';
                     
@@ -5866,17 +5866,17 @@ function renderOrderDetails(order) {
                             return stepStatuses.includes(h.statusRaw);
                         });
                         
-                        // Берем последнюю запись (самую свежую по времени)
+                        // Берем ПЕРВУЮ запись (когда статус был впервые установлен)
                         if (matchingEntries.length > 0) {
-                            // Сортируем по createdAt (если есть) или по индексу в массиве
+                            // Сортируем по createdAt по возрастанию (самая ранняя = первая)
                             matchingEntries.sort((a, b) => {
                                 if (a.createdAt && b.createdAt) {
-                                    return new Date(b.createdAt) - new Date(a.createdAt);
+                                    return new Date(a.createdAt) - new Date(b.createdAt);
                                 }
-                                // Если createdAt нет, используем порядок в массиве (последний = самый свежий)
+                                // Если createdAt нет, используем порядок в массиве (первый = самый ранний)
                                 const indexA = order.statusHistory.indexOf(a);
                                 const indexB = order.statusHistory.indexOf(b);
-                                return indexB - indexA;
+                                return indexA - indexB;
                             });
                             historyEntry = matchingEntries[0];
                             
@@ -5901,6 +5901,8 @@ function renderOrderDetails(order) {
                     }
                     
                     const isActive = index <= activeStep;
+                    // Показываем дату/время для всех пройденных статусов (не только последнего)
+                    const shouldShowDateTime = isActive && dateTime;
                     
                     return `
                         <div class="order-details-step">
@@ -5908,7 +5910,7 @@ function renderOrderDetails(order) {
                             <div class="order-details-step-content">
                                 <div class="order-details-step-text-wrapper">
                                     <div class="order-details-step-text ${isActive ? 'on' : ''}">${step}</div>
-                                    ${dateTime ? `<div class="order-details-step-time ${isActive ? 'on' : ''}">${dateTime}</div>` : ''}
+                                    ${shouldShowDateTime ? `<div class="order-details-step-time ${isActive ? 'on' : ''}">${dateTime}</div>` : ''}
                                 </div>
                             </div>
                             ${index < statusSteps.length - 1 ? `<div class="order-details-step-line ${index < activeStep ? 'on' : ''}"></div>` : ''}
