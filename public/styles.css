@@ -2899,7 +2899,7 @@ h1, h2, h3, .font-bold {
 }
 
 .final-total-amount {
-    color: var(--primary-color);
+    color: #111;
 }
 
 /* Модальное окно выбора адреса */
