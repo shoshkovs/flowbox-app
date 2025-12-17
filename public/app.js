@@ -372,6 +372,29 @@ if (tg && shouldExpand() && typeof tg.expand === 'function') {
     if (typeof tg.viewportStableHeight !== 'undefined') {
         tg.viewportStableHeight = true;
     }
+    
+    // Для Android добавляем дополнительный вызов с задержкой
+    const platform = (tg.platform || '').toLowerCase();
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroid = platform === 'android' || userAgent.includes('android');
+    
+    if (isAndroid) {
+        console.log('[init] Android обнаружен, добавляем дополнительные вызовы tg.expand() с задержкой');
+        setTimeout(() => {
+            if (tg && typeof tg.expand === 'function') {
+                tg.expand();
+                console.log('[init] Дополнительный tg.expand() для Android выполнен (300ms)');
+            }
+        }, 300);
+        
+        // Еще одна попытка через 1 секунду (на случай, если WebApp еще не полностью готов)
+        setTimeout(() => {
+            if (tg && typeof tg.expand === 'function') {
+                tg.expand();
+                console.log('[init] Финальный tg.expand() для Android выполнен (1000ms)');
+            }
+        }, 1000);
+    }
 } else {
     console.log('[init] НЕ вызываем tg.expand() - десктоп или tg.expand недоступен');
 }
