@@ -335,27 +335,35 @@ h1, h2, h3, .font-bold {
 
 /* Единая кнопка с layout-анимацией (как у Самоката) */
 .product-action-btn {
+    all: unset; /* Убирает дефолтные стили button */
+    box-sizing: border-box;
+    height: 40px; /* Фиксированная высота = ровная таблетка */
+    border-radius: 20px;
+    padding: 0 16px;
+    
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
-    background: rgba(251, 45, 92, 0.3); /* Полупрозрачный розовый */
-    color: var(--text-color);
-    border: none;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
     gap: 8px;
+    
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 1; /* Чтобы текст не давал "высоту" */
+    cursor: pointer;
+    
     width: auto;
     min-width: fit-content;
-    height: 40px;
+    background: rgba(251, 45, 92, 0.3); /* Полупрозрачный розовый */
+    color: var(--text-color);
+    
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
     flex-shrink: 0;
+    
+    -webkit-tap-highlight-color: transparent;
 }
 
 .product-action-btn:active {
@@ -392,18 +400,16 @@ h1, h2, h3, .font-bold {
 .product-minus-btn {
     width: 40px;
     height: 40px;
-    border: none;
-    background: transparent;
-    color: white;
-    border-radius: 20px 0 0 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: opacity 0.2s, transform 0.2s;
     flex-shrink: 0;
+    flex: 0 0 40px;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    border-radius: 20px 0 0 20px;
 }
 
 .product-minus-btn:active {
@@ -417,26 +423,26 @@ h1, h2, h3, .font-bold {
 
 /* Цена */
 .product-action-price {
+    flex: 1;
+    text-align: center;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 2px;
     font-size: 16px;
     font-weight: 600;
     white-space: nowrap;
-    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    flex-shrink: 0;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
+    line-height: 1;
 }
 
 .product-action-price.semi-transparent {
     color: var(--text-color);
-    padding: 0;
 }
 
 .product-action-price.filled {
     color: white;
-    padding: 0 12px;
 }
 
 .product-action-price .ruble {
@@ -449,31 +455,27 @@ h1, h2, h3, .font-bold {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 40px;
+    flex: 0 0 40px;
 }
 
 .product-plus-btn {
     width: 40px;
     height: 40px;
-    border: none;
-    background: transparent;
-    color: white;
-    border-radius: 0 20px 20px 0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: opacity 0.2s, transform 0.2s;
     flex-shrink: 0;
+    flex: 0 0 40px;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    border-radius: 0 20px 20px 0;
 }
 
 .product-action-btn:not(.product-action-btn-filled) .product-plus-btn {
-    background: transparent;
     border-radius: 0;
-    width: auto;
-    height: auto;
-    padding: 0;
 }
 
 .product-plus-btn:active {
