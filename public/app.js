@@ -33,6 +33,11 @@ function shouldExpand() {
     const platform = (tg.platform || '').toLowerCase();
     const userAgent = navigator.userAgent.toLowerCase();
     
+    // Явная проверка на Android
+    const isAndroid = platform === 'android' || 
+                     userAgent.includes('android') ||
+                     (platform === 'tdesktop' && userAgent.includes('android'));
+    
     // Определяем десктоп более строго
     const isDesktop = platform.includes('desktop') || 
                      platform.includes('web') ||
@@ -41,10 +46,10 @@ function shouldExpand() {
                      userAgent.includes('linux') ||
                      (window.innerWidth > 768 && window.innerHeight < 1200); // Широкий и невысокий = десктоп
     
-    console.log('[shouldExpand] Platform:', platform, 'isDesktop:', isDesktop, 'viewport:', window.innerWidth, 'x', window.innerHeight);
+    console.log('[shouldExpand] Platform:', platform, 'isAndroid:', isAndroid, 'isDesktop:', isDesktop, 'viewport:', window.innerWidth, 'x', window.innerHeight);
     
-    // НЕ разворачиваем на десктопе
-    return !isDesktop;
+    // На Android всегда разворачиваем, на десктопе - нет
+    return isAndroid || !isDesktop;
 }
 
 // Включаем fullscreen режим только на мобильных устройствах

@@ -20,6 +20,11 @@
                 const platform = (tg.platform || '').toLowerCase();
                 const userAgent = navigator.userAgent.toLowerCase();
                 
+                // Явная проверка на Android
+                const isAndroid = platform === 'android' || 
+                                 userAgent.includes('android') ||
+                                 (platform === 'tdesktop' && userAgent.includes('android'));
+                
                 // Определяем десктоп более строго
                 const isDesktop = platform.includes('desktop') || 
                                  platform.includes('web') ||
@@ -28,7 +33,7 @@
                                  userAgent.includes('linux') ||
                                  (window.innerWidth > 768 && window.innerHeight < 1200); // Широкий и невысокий = десктоп
                 
-                console.log('[init] Platform:', platform, 'isDesktop:', isDesktop, 'viewport:', window.innerWidth, 'x', window.innerHeight);
+                console.log('[init] Platform:', platform, 'isAndroid:', isAndroid, 'isDesktop:', isDesktop, 'viewport:', window.innerWidth, 'x', window.innerHeight);
                 
                 // НЕ разворачиваем на десктопе - оставляем встроенный режим
                 if (isDesktop) {
@@ -39,6 +44,22 @@
                     // Разворачиваем только на мобильных устройствах
                     if (typeof tg.expand === 'function') {
                         tg.expand();
+                        
+                        // Для Android добавляем дополнительные вызовы с задержкой
+                        if (isAndroid) {
+                            console.log('[init] Android обнаружен, добавляем дополнительные вызовы tg.expand()');
+                            setTimeout(() => {
+                                if (typeof tg.expand === 'function') {
+                                    tg.expand();
+                                }
+                            }, 300);
+                            
+                            setTimeout(() => {
+                                if (typeof tg.expand === 'function') {
+                                    tg.expand();
+                                }
+                            }, 1000);
+                        }
                     }
                 }
             }
