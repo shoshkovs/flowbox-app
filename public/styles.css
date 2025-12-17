@@ -1168,9 +1168,23 @@ h1, h2, h3, .font-bold {
 }
 
 .address-page-footer .submit-address-btn,
-.address-page-footer .delete-address-btn-outline {
+.address-page-footer .delete-address-btn-outline,
+.address-page-footer .checkout-btn-final {
     margin: 0;
     flex: 1;
+}
+
+.add-address-card:hover {
+    background: rgba(251, 45, 92, 0.4) !important;
+    border-color: rgba(251, 45, 92, 0.5) !important;
+}
+
+.address-card-item {
+    transition: all 0.2s ease;
+}
+
+.address-card-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
 }
 
 /* Стили для страницы заказа */
