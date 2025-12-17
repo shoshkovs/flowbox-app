@@ -479,28 +479,55 @@ export function OrderDetail({ authToken, orderId }) {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-medium mb-3">Получатель</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium">Получатель</h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingRecipient(!isEditingRecipient)}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      title={isEditingRecipient ? 'Завершить редактирование' : 'Редактировать'}
+                    >
+                      <Edit className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
                   <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Имя получателя</label>
-                      <input
-                        type="text"
-                        value={editableRecipientName}
-                        onChange={(e) => setEditableRecipientName(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="Введите имя получателя"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Телефон получателя</label>
-                      <input
-                        type="tel"
-                        value={editableRecipientPhone}
-                        onChange={(e) => setEditableRecipientPhone(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="+7 (999) 123-45-67"
-                      />
-                    </div>
+                    {isEditingRecipient ? (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Имя получателя</label>
+                          <input
+                            type="text"
+                            value={editableRecipientName}
+                            onChange={(e) => setEditableRecipientName(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="Введите имя получателя"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Телефон получателя</label>
+                          <input
+                            type="tel"
+                            value={editableRecipientPhone}
+                            onChange={(e) => setEditableRecipientPhone(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="+7 (999) 123-45-67"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Имя получателя</p>
+                          <p className="text-gray-900">{editableRecipientName || '-'}</p>
+                        </div>
+                        {editableRecipientPhone && (
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">Телефон получателя</p>
+                            <p className="text-gray-900">{editableRecipientPhone}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
