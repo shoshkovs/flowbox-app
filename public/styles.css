@@ -3970,7 +3970,7 @@ input[type="text"][inputmode="numeric"] {
 .about-section h3 {
     font-size: 18px;
     margin-bottom: 12px;
-    color: var(--primary-color);
+    color: #111;
     font-weight: 700;
 }
 
