@@ -16,6 +16,20 @@ export function OrderDetail({ authToken, orderId }) {
   const [internalComment, setInternalComment] = useState('');
   const [courierComment, setCourierComment] = useState('');
   const [userComment, setUserComment] = useState('');
+  const [editableRecipientName, setEditableRecipientName] = useState('');
+  const [editableRecipientPhone, setEditableRecipientPhone] = useState('');
+  const [editableDeliveryDate, setEditableDeliveryDate] = useState('');
+  const [editableDeliveryTime, setEditableDeliveryTime] = useState('');
+  const [editableAddress, setEditableAddress] = useState({
+    city: '',
+    street: '',
+    house: '',
+    apartment: '',
+    entrance: '',
+    floor: '',
+    intercom: '',
+    comment: ''
+  });
 
   useEffect(() => {
     loadOrderDetails();
@@ -69,6 +83,35 @@ export function OrderDetail({ authToken, orderId }) {
         setInternalComment(orderData.internal_comment || '');
         setCourierComment(orderData.courier_comment || '');
         setUserComment(orderData.user_comment || '');
+        
+        // Инициализируем редактируемые поля
+        setEditableRecipientName(orderData.recipient_name || '');
+        setEditableRecipientPhone(orderData.recipient_phone || '');
+        
+        // Форматируем дату для input type="date" (YYYY-MM-DD)
+        if (orderData.delivery_date) {
+          const date = new Date(orderData.delivery_date);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          setEditableDeliveryDate(`${year}-${month}-${day}`);
+        } else {
+          setEditableDeliveryDate('');
+        }
+        setEditableDeliveryTime(orderData.delivery_time || '');
+        
+        // Инициализируем адрес
+        const addressData = orderData.address_data || orderData.address_json || {};
+        setEditableAddress({
+          city: addressData.city || '',
+          street: addressData.street || '',
+          house: addressData.house || '',
+          apartment: addressData.apartment || '',
+          entrance: addressData.entrance || '',
+          floor: addressData.floor || '',
+          intercom: addressData.intercom || '',
+          comment: addressData.comment || ''
+        });
       } else if (orderRes.status === 404) {
         setOrder(null);
         toast.error('Заказ не найден');
@@ -97,11 +140,11 @@ export function OrderDetail({ authToken, orderId }) {
         },
         body: JSON.stringify({
           status: order.status,
-          recipient_name: order.recipient_name,
-          recipient_phone: order.recipient_phone,
-          delivery_date: order.delivery_date,
-          delivery_time: order.delivery_time,
-          address_json: order.address_data || order.address_json || null,
+          recipient_name: editableRecipientName || null,
+          recipient_phone: editableRecipientPhone || null,
+          delivery_date: editableDeliveryDate || null,
+          delivery_time: editableDeliveryTime || null,
+          address_json: editableAddress,
           internal_comment: internalComment || null,
           courier_comment: courierComment || null,
           user_comment: userComment || null,
@@ -432,16 +475,27 @@ export function OrderDetail({ authToken, orderId }) {
                 </div>
                 <div>
                   <h3 className="font-medium mb-3">Получатель</h3>
-                  <div className="space-y-2">
-                    {/* Имя получателя - из формы заказа */}
-                    <p className="text-gray-900">{order.recipient_name || '-'}</p>
-                    {/* Телефон получателя - из формы заказа (показываем только если есть) */}
-                    {order.recipient_phone && (
-                      <button className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm">
-                        <Phone className="w-4 h-4" />
-                        {order.recipient_phone}
-                      </button>
-                    )}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Имя получателя</label>
+                      <input
+                        type="text"
+                        value={editableRecipientName}
+                        onChange={(e) => setEditableRecipientName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="Введите имя получателя"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Телефон получателя</label>
+                      <input
+                        type="tel"
+                        value={editableRecipientPhone}
+                        onChange={(e) => setEditableRecipientPhone(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="+7 (999) 123-45-67"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -452,25 +506,122 @@ export function OrderDetail({ authToken, orderId }) {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold mb-4">Доставка</h2>
             <div className="space-y-4">
+              {/* Дата доставки */}
               <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Адрес доставки</p>
-                  <p className="text-gray-900">{formatAddress(order)}</p>
-                  {formatAddressDetails(order) && (
-                    <p className="text-sm text-gray-500 mt-1">{formatAddressDetails(order)}</p>
-                  )}
+                <Clock className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Дата доставки</label>
+                    <input
+                      type="date"
+                      value={editableDeliveryDate}
+                      onChange={(e) => setEditableDeliveryDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Время доставки</label>
+                    <input
+                      type="text"
+                      value={editableDeliveryTime}
+                      onChange={(e) => setEditableDeliveryTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      placeholder="10:00-12:00"
+                    />
+                  </div>
                 </div>
               </div>
+              
+              {/* Адрес доставки */}
               <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Время доставки</p>
-                  <p className="text-gray-900">
-                    {order.delivery_date 
-                      ? `${new Date(order.delivery_date).toLocaleDateString('ru-RU')} • ${order.delivery_time || ''}`
-                      : '-'}
-                  </p>
+                <MapPin className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Город</label>
+                    <input
+                      type="text"
+                      value={editableAddress.city}
+                      onChange={(e) => setEditableAddress({ ...editableAddress, city: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      placeholder="Санкт-Петербург"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Улица</label>
+                      <input
+                        type="text"
+                        value={editableAddress.street}
+                        onChange={(e) => setEditableAddress({ ...editableAddress, street: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="Невский проспект"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Дом</label>
+                      <input
+                        type="text"
+                        value={editableAddress.house}
+                        onChange={(e) => setEditableAddress({ ...editableAddress, house: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="1"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Квартира</label>
+                      <input
+                        type="text"
+                        value={editableAddress.apartment}
+                        onChange={(e) => setEditableAddress({ ...editableAddress, apartment: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="27"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Парадная</label>
+                      <input
+                        type="text"
+                        value={editableAddress.entrance}
+                        onChange={(e) => setEditableAddress({ ...editableAddress, entrance: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="1"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Этаж</label>
+                      <input
+                        type="text"
+                        value={editableAddress.floor}
+                        onChange={(e) => setEditableAddress({ ...editableAddress, floor: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="3"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Домофон</label>
+                      <input
+                        type="text"
+                        value={editableAddress.intercom}
+                        onChange={(e) => setEditableAddress({ ...editableAddress, intercom: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="123 или нет"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Комментарий к адресу</label>
+                    <textarea
+                      value={editableAddress.comment}
+                      onChange={(e) => setEditableAddress({ ...editableAddress, comment: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
+                      placeholder="Дополнительная информация об адресе"
+                      rows={2}
+                    />
+                  </div>
                 </div>
               </div>
               {order.leave_at_door && (
