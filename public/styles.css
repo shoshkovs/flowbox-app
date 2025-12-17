@@ -4348,14 +4348,14 @@ input[type="text"][inputmode="numeric"] {
     left: 0;
     right: 0;
     bottom: 0;
-    height: 92vh;
-    max-height: 92vh;
+    top: 8vh;
+    height: 84vh;
+    max-height: 84vh;
     background: #fff;
     border-top-left-radius: 26px;
     border-top-right-radius: 26px;
     z-index: 1001;
     overflow: hidden;
-    touch-action: pan-y;
     transform: translateY(100%);
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
@@ -4433,6 +4433,7 @@ input[type="text"][inputmode="numeric"] {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 20px;
 }
 
 .product-sheet-pager-stub {
@@ -4495,28 +4496,122 @@ input[type="text"][inputmode="numeric"] {
     width: 100%;
     height: 56px;
     border: 0;
-    border-radius: 999px;
-    background: #fb2d5c;
-    color: #fff;
-    font-size: 22px;
-    font-weight: 900;
+    border-radius: 28px;
+    background: rgba(251, 45, 92, 0.1);
+    color: var(--primary-color);
+    font-size: 20px;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
-    box-shadow: 0 14px 30px rgba(251, 45, 92, 0.25);
+    justify-content: space-between;
+    gap: 0;
+    padding: 0;
+    box-shadow: 0 4px 12px rgba(251, 45, 92, 0.15);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+}
+
+.product-sheet-add-btn-filled {
+    background: #fb2d5c;
+    color: white;
+    box-shadow: 0 14px 30px rgba(251, 45, 92, 0.25);
 }
 
 .product-sheet-add-btn:active {
-    transform: scale(0.98);
-    box-shadow: 0 8px 20px rgba(251, 45, 92, 0.25);
+    opacity: 0.7;
 }
 
-.product-sheet-plus {
-    font-size: 26px;
-    line-height: 1;
+/* Обертка для кнопки минус */
+.product-sheet-minus-wrapper {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease-out;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-sheet-minus-wrapper.visible {
+    width: 56px;
+    opacity: 1;
+}
+
+.product-sheet-minus-btn {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.product-sheet-minus-btn:active {
+    opacity: 0.7;
+    transform: scale(0.95);
+}
+
+/* Цена */
+.product-sheet-price-text {
+    flex: 1;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 20px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-sheet-price-text.semi-transparent {
+    color: var(--primary-color);
+}
+
+.product-sheet-price-text.filled {
+    color: white;
+}
+
+.product-sheet-price-text .ruble {
+    font-size: 18px;
+}
+
+/* Обертка для кнопки плюс */
+.product-sheet-plus-wrapper {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    flex: 0 0 56px;
+}
+
+.product-sheet-plus-btn {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.product-sheet-add-btn:not(.product-sheet-add-btn-filled) .product-sheet-plus-btn {
+    border-radius: 0;
+}
+
+.product-sheet-plus-btn:active {
+    opacity: 0.7;
+    transform: scale(0.95);
+}
+
+.product-sheet-plus-btn svg {
+    stroke-width: 1.5;
 }
 

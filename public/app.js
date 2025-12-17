@@ -9362,22 +9362,8 @@ function openProductSheet(productId) {
     const quantity = cartItem ? cartItem.quantity : minQty;
     const totalPrice = product.price * quantity;
     
-    price.textContent = `${totalPrice}₽`;
-    
-    // Обновляем кнопку добавления
-    if (isInCart) {
-        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
-        addBtn.onclick = () => {
-            changeCartQuantity(product.id, 1);
-            updateProductSheetButton(product);
-        };
-    } else {
-        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
-        addBtn.onclick = () => {
-            addToCart(product.id, minQty);
-            updateProductSheetButton(product);
-        };
-    }
+    // Обновляем кнопку добавления (как на карточке товара)
+    updateProductSheetButton(product);
     
     // Загружаем изображения
     const images = [product.image].filter(Boolean); // Пока одно изображение, можно расширить
@@ -9405,13 +9391,16 @@ function openProductSheet(productId) {
     backdrop.style.display = 'block';
     sheet.style.display = 'flex';
     
+    // Сбрасываем transform перед открытием
+    sheet.style.transform = 'translateY(100%)';
+    
+    // Принудительный reflow
+    void sheet.offsetWidth;
+    
     setTimeout(() => {
         backdrop.classList.add('show');
         sheet.classList.add('show');
     }, 10);
-    
-    // Инициализируем свайп
-    initProductSheetDrag(sheet);
 }
 
 function closeProductSheet() {
@@ -9428,6 +9417,8 @@ function closeProductSheet() {
         sheet.style.display = 'none';
         document.body.style.overflow = '';
         currentProductSheetProduct = null;
+        // Сбрасываем transform для следующего открытия
+        sheet.style.transform = '';
     }, 400);
 }
 
@@ -9453,82 +9444,57 @@ function productSheetGoToImage(index) {
 function updateProductSheetButton(product) {
     if (!currentProductSheetProduct || currentProductSheetProduct.id !== product.id) return;
     
-    const price = document.getElementById('productSheetPrice');
     const addBtn = document.getElementById('productSheetAddBtn');
-    
-    if (!price || !addBtn) return;
+    if (!addBtn) return;
     
     const minQty = getMinQty(product);
     const cartItem = cart.find(item => item.id === product.id);
     const isInCart = !!cartItem;
-    const quantity = cartItem ? cartItem.quantity : minQty;
-    const totalPrice = product.price * quantity;
+    const cartQuantity = cartItem ? cartItem.quantity : 0;
+    const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
+    const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
     
-    price.textContent = `${totalPrice}₽`;
-    
+    // Обновляем класс для состояния (растягивание/сжатие)
     if (isInCart) {
-        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
-        addBtn.onclick = () => {
-            changeCartQuantity(product.id, 1);
-            updateProductSheetButton(product);
-        };
+        addBtn.classList.add('product-sheet-add-btn-filled');
     } else {
-        addBtn.innerHTML = `${totalPrice}₽ <span class="product-sheet-plus">+</span>`;
-        addBtn.onclick = () => {
-            addToCart(product.id, minQty);
-            updateProductSheetButton(product);
-        };
+        addBtn.classList.remove('product-sheet-add-btn-filled');
     }
+    
+    // Обновляем структуру кнопки (как на карточке товара)
+    addBtn.innerHTML = `
+        <!-- Кнопка минус (появляется только когда товар в корзине) -->
+        <span class="product-sheet-minus-wrapper ${isInCart ? 'visible' : ''}">
+            <span class="product-sheet-minus-btn" 
+                  onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1); updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));"
+                  style="display: ${isInCart ? 'flex' : 'none'}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </span>
+        </span>
+        
+        <!-- Цена (всегда видна) -->
+        <span class="product-sheet-price-text ${isInCart ? 'filled' : 'semi-transparent'}">
+            ${totalPrice} <span class="ruble">₽</span>
+        </span>
+        
+        <!-- Кнопка плюс (всегда видна) -->
+        <span class="product-sheet-plus-wrapper">
+            <span class="product-sheet-plus-btn" 
+                  onclick="event.stopPropagation(); ${isInCart ? `changeCartQuantity(${product.id}, 1)` : `addToCart(${product.id}, ${minQty})`}; updateProductSheetButton(products.find(p => p.id === ${product.id}) || additionalProducts.find(p => p.id === ${product.id}));">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                     stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
+                     stroke-width="1.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </span>
+        </span>
+    `;
 }
 
-function initProductSheetDrag(sheet) {
-    if (!sheet) return;
-    
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-    
-    const handleTouchStart = (e) => {
-        startY = e.touches[0].clientY;
-        isDragging = true;
-        sheet.style.transition = 'none';
-    };
-    
-    const handleTouchMove = (e) => {
-        if (!isDragging) return;
-        
-        currentY = e.touches[0].clientY - startY;
-        
-        if (currentY > 0) {
-            sheet.style.transform = `translateY(${currentY}px)`;
-        }
-    };
-    
-    const handleTouchEnd = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        
-        sheet.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
-        
-        if (currentY > 120) {
-            closeProductSheet();
-        } else {
-            sheet.style.transform = 'translateY(0)';
-        }
-        
-        currentY = 0;
-    };
-    
-    // Удаляем старые обработчики если есть
-    sheet.removeEventListener('touchstart', handleTouchStart);
-    sheet.removeEventListener('touchmove', handleTouchMove);
-    sheet.removeEventListener('touchend', handleTouchEnd);
-    
-    // Добавляем новые обработчики
-    sheet.addEventListener('touchstart', handleTouchStart, { passive: true });
-    sheet.addEventListener('touchmove', handleTouchMove, { passive: true });
-    sheet.addEventListener('touchend', handleTouchEnd, { passive: true });
-}
+// Функция initProductSheetDrag удалена - закрытие только по крестику
 
 function shareProduct(product) {
     if (!product) return;
