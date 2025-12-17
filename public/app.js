@@ -2590,23 +2590,8 @@ function openEditRecipientForSimple() {
                              '';
         }
         
-        // Показываем вкладку
-        editRecipientTab.style.display = 'block';
-        editRecipientTab.classList.add('active');
-        
-        // Скрываем навигацию
-        const bottomNav = document.querySelector('.bottom-nav');
-        if (bottomNav) bottomNav.style.display = 'none';
-        
-        // Показываем BackButton
-        showBackButton(true);
-        
-        // Прокручиваем наверх
-        setTimeout(() => {
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-        }, 10);
+        // Используем switchTab для правильного отображения
+        switchTab('editRecipientTab');
     }
 }
 
@@ -5188,13 +5173,6 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
             delete editAddressTab.dataset.editingAddressId;
         }
         
-        // Скрываем все вкладки
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            if (tab.id !== 'editAddressTab') {
-                tab.style.display = 'none';
-            }
-        });
-        
         // Скрываем все шаги checkout
         document.querySelectorAll('.checkout-step').forEach(s => {
             s.classList.remove('active');
@@ -5207,9 +5185,6 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
             orderPageHeader.style.display = 'none';
         }
         
-        // Показываем форму редактирования
-        editAddressTab.style.display = 'block';
-        
         // Сохраняем предыдущий экран для возврата после сохранения
         editAddressTab.dataset.previousScreen = checkoutScreen;
         editAddressTab.dataset.mode = mode;
@@ -5218,12 +5193,8 @@ function openAddressForm({ mode = 'create', source = 'profile', addressId = null
         checkoutScreen = 'editAddress';
         console.log('[SimpleMenu] 📍 Переход: открытие формы адреса, checkoutScreen:', checkoutScreen, 'mode:', mode, 'previousScreen:', editAddressTab.dataset.previousScreen);
         
-        // Прокручиваем страницу вверх
-        window.scrollTo(0, 0);
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
-        
-        showBackButton(true);
+        // Используем switchTab для правильного отображения
+        switchTab('editAddressTab');
     } else {
         // Для профиля переключаемся на вкладку адресов
         switchTab('addressTab');
@@ -7532,13 +7503,6 @@ function openCheckoutAddressesForSimple() {
         s.style.display = 'none';
     });
     
-    // Скрываем все вкладки
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        if (tab.id !== 'myAddressesTab') {
-            tab.style.display = 'none';
-        }
-    });
-    
     // Скрываем заголовок
     const orderPageHeader = document.querySelector('.order-page-header');
     if (orderPageHeader) {
@@ -7556,20 +7520,12 @@ function openCheckoutAddressesForSimple() {
         };
     }
     
-    // Показываем вкладку со списком адресов
-    myAddressesTab.style.display = 'block';
-    
     const previousScreen = checkoutScreen;
     checkoutScreen = 'addressesList';
     console.log('[SimpleMenu] ✅ Переход выполнен: список адресов, было:', previousScreen, 'стало:', checkoutScreen);
     
-    // Прокручиваем страницу вверх
-    window.scrollTo(0, 0);
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-    
-    // Показываем BackButton
-    showBackButton(true);
+    // Используем switchTab для правильного отображения
+    switchTab('myAddressesTab');
 }
 
 // Рендеринг списка адресов для упрощенного режима с радио кнопками
