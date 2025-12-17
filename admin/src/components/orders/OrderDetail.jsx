@@ -627,16 +627,30 @@ export function OrderDetail({ authToken, orderId }) {
                   </div>
                 </div>
               </div>
-              {order.leave_at_door && (
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 mt-0.5 flex-shrink-0 flex items-center justify-center">
-                    <DoorOpen className="w-5 h-5 text-pink-600" />
-                  </div>
+              {/* Тумблер "Оставить у двери" */}
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center gap-3">
+                  <DoorOpen className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-sm font-medium text-pink-600">Оставить у двери</p>
+                    <p className="text-sm font-medium text-gray-700">Оставить у двери</p>
                   </div>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setEditableLeaveAtDoor(!editableLeaveAtDoor)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${
+                    editableLeaveAtDoor ? 'bg-pink-600' : 'bg-gray-300'
+                  }`}
+                  role="switch"
+                  aria-checked={editableLeaveAtDoor}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out ${
+                      editableLeaveAtDoor ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
               {order.courier_comment && (
                 <div className="flex items-start gap-3">
                   <MessageSquare className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
