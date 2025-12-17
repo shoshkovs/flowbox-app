@@ -1892,15 +1892,22 @@ async function loadAdditionalProducts() {
         const allProducts = await response.json();
         console.log('Все товары загружены:', allProducts.length);
         // Фильтруем товары с категорией "корзина"
+        // Проверяем все возможные варианты названия категории
         additionalProducts = allProducts.filter(p => {
-            const category = (p.category || p.type || '').toLowerCase();
-            const matches = category === 'корзина' || category === 'cart';
+            const category = (p.category || p.type || p.category_name || '').toLowerCase().trim();
+            const matches = category === 'корзина' || category === 'cart' || category === 'дополнительно' || category === 'additional';
             if (matches) {
-                console.log('Найден товар из категории "корзина":', p.name, p.id, 'category:', p.category || p.type);
+                console.log('✅ Найден товар из категории "корзина":', p.name, p.id, 'category:', p.category || p.type || p.category_name);
             }
             return matches;
         });
-        console.log('Товаров из категории "корзина":', additionalProducts.length);
+        console.log('📦 Товаров из категории "корзина":', additionalProducts.length);
+        
+        // Если товары не найдены, выводим все категории для отладки
+        if (additionalProducts.length === 0) {
+            const allCategories = [...new Set(allProducts.map(p => (p.category || p.type || p.category_name || '').toLowerCase().trim()).filter(Boolean))];
+            console.log('⚠️ Товары с категорией "корзина" не найдены. Доступные категории:', allCategories);
+        }
         renderAdditionalProducts();
     } catch (error) {
         console.error('Ошибка загрузки дополнительных товаров:', error);
@@ -1913,11 +1920,27 @@ async function loadAdditionalProducts() {
 // Рендеринг карусели дополнительных товаров
 function renderAdditionalProducts() {
     const carousel = document.getElementById('additionalProductsCarousel');
-    if (!carousel) return;
+    const section = document.querySelector('.additional-products-section');
+    
+    if (!carousel) {
+        console.warn('[renderAdditionalProducts] Карусель не найдена');
+        return;
+    }
+    
+    console.log('[renderAdditionalProducts] Товаров для отображения:', additionalProducts.length);
     
     if (additionalProducts.length === 0) {
         carousel.innerHTML = '';
+        // Скрываем секцию, если товаров нет
+        if (section) {
+            section.style.display = 'none';
+        }
         return;
+    }
+    
+    // Показываем секцию, если товары есть
+    if (section) {
+        section.style.display = 'block';
     }
     
     carousel.innerHTML = additionalProducts.map(product => {
