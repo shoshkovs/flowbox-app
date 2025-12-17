@@ -2597,6 +2597,29 @@ function switchTab(tabId) {
 }
 
 // Обработчики навигации
+// Функция для принудительного отключения всех подсветок на элементах навигации
+const disableNavHighlights = () => {
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        // Убираем все возможные подсветки через inline стили
+        item.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
+        item.style.setProperty('outline', 'none', 'important');
+        item.style.setProperty('box-shadow', 'none', 'important');
+        item.style.setProperty('-webkit-appearance', 'none', 'important');
+        item.style.setProperty('-moz-appearance', 'none', 'important');
+        item.style.setProperty('appearance', 'none', 'important');
+        
+        // Обработчики для предотвращения подсветки
+        item.addEventListener('touchstart', (e) => {
+            e.target.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
+        }, { passive: true });
+        
+        item.addEventListener('touchend', (e) => {
+            e.target.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
+        }, { passive: true });
+    });
+};
+
 // Инициализация навигации с делегированием событий (обработчики не теряются)
 // Используем делегирование событий на document - это гарантирует работу даже после пересоздания DOM
 document.addEventListener('click', (e) => {
@@ -2606,6 +2629,8 @@ document.addEventListener('click', (e) => {
         console.log('[navigation] ✅ Клик по навигации:', tabId);
         e.preventDefault();
         e.stopPropagation();
+        // Принудительно убираем подсветку
+        navItem.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
         switchTab(tabId);
     }
 });
@@ -2618,10 +2643,17 @@ const initNavigation = () => {
         const newItem = item.cloneNode(true);
         item.parentNode.replaceChild(newItem, item);
         
+        // Принудительно убираем подсветку
+        newItem.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
+        newItem.style.setProperty('outline', 'none', 'important');
+        newItem.style.setProperty('box-shadow', 'none', 'important');
+        
         // Добавляем новый обработчик
         newItem.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            // Принудительно убираем подсветку при клике
+            newItem.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
             const tabId = newItem.dataset.tab;
             console.log('[navigation] ✅ Прямой клик по навигации:', tabId);
             switchTab(tabId);
@@ -2631,11 +2663,29 @@ const initNavigation = () => {
     // Обновляем глобальную переменную navItems для совместимости
     navItems = document.querySelectorAll('.nav-item');
     
+    // Принудительно отключаем подсветки
+    disableNavHighlights();
+    
     console.log('[navigation] ✅ Инициализирована навигация, элементов:', navItems.length);
 };
 
 // Инициализируем навигацию при загрузке
 initNavigation();
+
+// Также вызываем отключение подсветки при загрузке и после любых изменений DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        disableNavHighlights();
+    });
+} else {
+    disableNavHighlights();
+}
+
+// Отключаем подсветку при любых изменениях DOM (на случай динамического добавления элементов)
+const observer = new MutationObserver(() => {
+    disableNavHighlights();
+});
+observer.observe(document.body, { childList: true, subtree: true });
 
 // Упрощенные анимации без ripple эффектов
 

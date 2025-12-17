@@ -903,15 +903,29 @@ h1, h2, h3, .font-bold {
 }
 
 /* Улучшенная анимация для навигации */
-.nav-item {
-    transition: color 0.2s ease, opacity 0.2s ease;
-    position: relative;
+.nav-item:focus,
+.nav-item:focus-visible,
+.nav-item:focus-within,
+.nav-item:focus-visible:active {
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+    background-color: transparent !important;
 }
 
 .nav-item:active {
-    background-color: rgba(251, 45, 92, 0.1);
+    background-color: rgba(251, 45, 92, 0.1) !important;
     transform: scale(0.95);
     transition: background-color 0.2s ease-out, transform 0.15s ease;
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+    /* Убираем все возможные системные подсветки */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
 .nav-item.active {
@@ -1990,6 +2004,27 @@ h1, h2, h3, .font-bold {
     padding: 8px 0;
     z-index: 100;
     transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+}
+
+.bottom-nav *,
+.bottom-nav *:active,
+.bottom-nav *:focus,
+.bottom-nav *:focus-visible,
+.bottom-nav button,
+.bottom-nav button:active,
+.bottom-nav button:focus,
+.bottom-nav button:focus-visible {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-touch-callout: none;
+    /* Убираем все возможные системные подсветки */
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
 }
 
 .bottom-nav.hidden {
@@ -2007,13 +2042,25 @@ h1, h2, h3, .font-bold {
     align-items: center;
     justify-content: center;
     padding: 8px 4px;
-    background: none;
-    border: none;
+    background: none !important;
+    border: none !important;
     cursor: pointer;
     color: #999;
     transition: color 0.2s ease-out, background-color 0.2s ease-out, opacity 0.15s ease, transform 0.15s ease;
     position: relative;
-    -webkit-tap-highlight-color: transparent;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    outline: none !important;
+    box-shadow: none !important;
+    /* Убираем все системные эффекты для кнопок */
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    /* Убираем возможные системные подсветки на мобильных */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
 }
 
 .nav-item.active {
