@@ -6343,7 +6343,7 @@ function renderOrderDetails(order) {
                     // Цена за букет = цена за один цветок × количество цветков в букете
                     const pricePerBunch = item.price * minQty;
                     
-                    console.log('[renderOrderDetails] Item:', item.name, 'quantity:', item.quantity, 'price:', item.price, 'minQty:', minQty, 'bunchesCount:', bunchesCount, 'pricePerBunch:', pricePerBunch);
+                    console.log('[renderOrderDetails] Item:', item.name, 'quantity:', item.quantity, 'price:', item.price, 'minQty:', minQty, 'bunchesCount:', bunchesCount, 'pricePerBunch:', pricePerBunch, 'total_price:', item.total_price, 'min_order_quantity:', item.min_order_quantity);
                     
                     return `
                     <div class="order-details-item">
