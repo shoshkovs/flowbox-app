@@ -908,7 +908,7 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item.active {
-    color: var(--primary-color);
+    color: #333; /* Текст остается черным */
 }
 
 /* Плавная анимация для счетчика корзины */
@@ -1995,7 +1995,7 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item.active {
-    color: var(--primary-color);
+    color: #333; /* Текст остается черным */
 }
 
 .nav-icon {
@@ -2020,6 +2020,14 @@ h1, h2, h3, .font-bold {
 
 .nav-item.active .nav-icon {
     opacity: 1;
+    /* Делаем иконку розовой через filter */
+    filter: brightness(0) saturate(100%) invert(27%) sepia(95%) saturate(7482%) hue-rotate(332deg) brightness(98%) contrast(98%);
+}
+
+.nav-item.active .nav-icon-fallback {
+    opacity: 1;
+    stroke: var(--primary-color);
+    fill: none;
 }
 
 .nav-label {
@@ -2149,18 +2157,14 @@ h1, h2, h3, .font-bold {
 
 .cart-items-list {
     margin-bottom: 16px;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
 }
 
 .cart-item-new {
-    /* Используем те же стили, что и product-card */
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
     display: flex;
-    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+    align-items: center;
 }
 
 .cart-item-new-image {
