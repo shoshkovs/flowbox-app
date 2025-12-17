@@ -5803,8 +5803,10 @@ function renderOrderDetails(order) {
             <div class="order-details-h2">Статус заказа</div>
             <div class="order-details-stepper">
                 ${statusSteps.map((step, index) => {
-                    // Находим ПОСЛЕДНЮЮ запись в истории для этого статуса (может быть несколько записей)
+                    // Находим ПОСЛЕДНЮЮ запись в истории для этого статуса
                     let historyEntry = null;
+                    let dateTime = '';
+                    
                     if (order.statusHistory && order.statusHistory.length > 0) {
                         const stepStatusMap = {
                             'В обработке': ['NEW', 'PROCESSING'],
@@ -5817,36 +5819,45 @@ function renderOrderDetails(order) {
                         
                         // Фильтруем все записи для этого статуса
                         const matchingEntries = order.statusHistory.filter(h => {
-                            const matches = stepStatuses.includes(h.statusRaw);
-                            if (matches) {
-                                console.log(`[renderOrderDetails] Найдена запись для "${step}":`, h);
-                            }
-                            return matches;
+                            if (!h || !h.statusRaw) return false;
+                            return stepStatuses.includes(h.statusRaw);
                         });
                         
-                        // Берем последнюю запись (самую свежую)
+                        // Берем последнюю запись (самую свежую по времени)
                         if (matchingEntries.length > 0) {
-                            // Если есть createdAt, сортируем по нему, иначе берем последнюю
-                            if (matchingEntries[0].createdAt) {
-                                matchingEntries.sort((a, b) => 
-                                    new Date(b.createdAt) - new Date(a.createdAt)
-                                );
-                            }
+                            // Сортируем по createdAt (если есть) или по индексу в массиве
+                            matchingEntries.sort((a, b) => {
+                                if (a.createdAt && b.createdAt) {
+                                    return new Date(b.createdAt) - new Date(a.createdAt);
+                                }
+                                // Если createdAt нет, используем порядок в массиве (последний = самый свежий)
+                                const indexA = order.statusHistory.indexOf(a);
+                                const indexB = order.statusHistory.indexOf(b);
+                                return indexB - indexA;
+                            });
                             historyEntry = matchingEntries[0];
-                            console.log(`[renderOrderDetails] Используем запись для "${step}":`, historyEntry);
-                        } else {
-                            console.log(`[renderOrderDetails] Не найдено записей для "${step}" со статусами:`, stepStatuses);
+                            
+                            // Формируем строку даты и времени
+                            if (historyEntry.date && historyEntry.time) {
+                                dateTime = `${historyEntry.date}, ${historyEntry.time}`;
+                            } else if (historyEntry.createdAt) {
+                                // Fallback: форматируем из createdAt
+                                const date = new Date(historyEntry.createdAt);
+                                const formattedDate = date.toLocaleDateString('ru-RU', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                });
+                                const formattedTime = date.toLocaleTimeString('ru-RU', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                dateTime = `${formattedDate}, ${formattedTime}`;
+                            }
                         }
                     }
                     
                     const isActive = index <= activeStep;
-                    const dateTime = historyEntry && historyEntry.date && historyEntry.time 
-                        ? `${historyEntry.date}, ${historyEntry.time}` 
-                        : '';
-                    
-                    if (!dateTime && historyEntry) {
-                        console.log(`[renderOrderDetails] Нет даты/времени для "${step}":`, historyEntry);
-                    }
                     
                     return `
                         <div class="order-details-step">
