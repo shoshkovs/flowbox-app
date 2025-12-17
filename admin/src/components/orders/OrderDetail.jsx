@@ -724,24 +724,22 @@ export function OrderDetail({ authToken, orderId }) {
               )}
               {/* Тумблер "Оставить у двери" */}
               <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-3">
+                <label className="flex items-center gap-3 cursor-pointer">
                   <DoorOpen className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Оставить у двери</p>
-                  </div>
-                </div>
+                  <span className="text-sm font-medium text-gray-700">Оставить у двери</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => setEditableLeaveAtDoor(!editableLeaveAtDoor)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${
-                    editableLeaveAtDoor ? 'bg-pink-600' : 'bg-gray-300'
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                    editableLeaveAtDoor ? 'bg-green-500' : 'bg-gray-300'
                   }`}
                   role="switch"
                   aria-checked={editableLeaveAtDoor}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out ${
-                      editableLeaveAtDoor ? 'translate-x-6' : 'translate-x-1'
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out ${
+                      editableLeaveAtDoor ? 'translate-x-6' : 'translate-x-0.5'
                     }`}
                   />
                 </button>
