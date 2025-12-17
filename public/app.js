@@ -6333,19 +6333,26 @@ function renderOrderDetails(order) {
             <div class="order-details-h2">Товары в заказе</div>
             
             <div class="order-details-items">
-                ${order.items && order.items.length > 0 ? order.items.map(item => `
+                ${order.items && order.items.length > 0 ? order.items.map(item => {
+                    // Вычисляем количество букетов и цену за букет
+                    const minQty = item.min_order_quantity || 1;
+                    const bunchesCount = Math.floor(item.quantity / minQty);
+                    const pricePerBunch = item.price * minQty;
+                    
+                    return `
                     <div class="order-details-item">
-                        ${item.imageUrl ? `
-                            <img src="${item.imageUrl}" alt="${item.name}" class="order-details-item-img">
+                        ${item.imageUrl || item.image_url ? `
+                            <img src="${item.imageUrl || item.image_url}" alt="${item.name}" class="order-details-item-img">
                         ` : `
                             <div class="order-details-item-img"></div>
                         `}
                         <div class="order-details-item-body">
                             <div class="order-details-item-title">${item.name}</div>
-                            <div class="order-details-item-sub">${item.quantity} шт. × ${item.price}₽</div>
+                            <div class="order-details-item-sub">${item.quantity}шт ${bunchesCount} × ${pricePerBunch}₽</div>
                         </div>
                     </div>
-                `).join('') : '<div style="color: #999; padding: 10px 0;">Товары не найдены</div>'}
+                `;
+                }).join('') : '<div style="color: #999; padding: 10px 0;">Товары не найдены</div>'}
             </div>
         </div>
         
