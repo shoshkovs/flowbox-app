@@ -208,6 +208,14 @@ function handleBackButton() {
         return;
     }
     
+    // Product sheet (карточка товара)
+    const productSheet = document.getElementById('productSheet');
+    if (productSheet && productSheet.style.display !== 'none' && productSheet.classList.contains('show')) {
+        console.log('[BackButton] Закрытие карточки товара');
+        closeProductSheet();
+        return;
+    }
+    
     // История заказов
     if (orderHistoryTab && orderHistoryTab.classList.contains('active')) {
         console.log('[BackButton] Возврат из истории заказов в профиль');
@@ -9406,13 +9414,8 @@ function openProductSheet(productId) {
         backdrop.classList.add('show');
         sheet.classList.add('show');
         
-        // Меняем кнопку закрыть на кнопку назад
-        const closeIcon = document.getElementById('productSheetCloseIcon');
-        const backIcon = document.getElementById('productSheetBackIcon');
-        if (closeIcon && backIcon) {
-            closeIcon.style.display = 'none';
-            backIcon.style.display = 'block';
-        }
+        // Показываем Telegram BackButton
+        showBackButton(true);
     }, 10);
 }
 
@@ -9425,13 +9428,8 @@ function closeProductSheet() {
     backdrop.classList.remove('show');
     sheet.classList.remove('show');
     
-    // Меняем кнопку назад на кнопку закрыть
-    const closeIcon = document.getElementById('productSheetCloseIcon');
-    const backIcon = document.getElementById('productSheetBackIcon');
-    if (closeIcon && backIcon) {
-        closeIcon.style.display = 'block';
-        backIcon.style.display = 'none';
-    }
+    // Скрываем Telegram BackButton
+    showBackButton(false);
     
     setTimeout(() => {
         backdrop.style.display = 'none';

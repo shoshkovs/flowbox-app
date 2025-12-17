@@ -4398,6 +4398,7 @@ input[type="text"][inputmode="numeric"] {
     background: #f4f4f4;
     flex-shrink: 0;
     overflow: hidden;
+    border-radius: 26px;
 }
 
 .product-sheet-pager-track {
@@ -4495,6 +4496,9 @@ input[type="text"][inputmode="numeric"] {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     -webkit-tap-highlight-color: transparent;
     box-sizing: border-box;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
 }
 
 .product-sheet-add-btn-filled {
