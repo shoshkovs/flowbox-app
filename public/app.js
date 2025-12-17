@@ -1172,7 +1172,7 @@ function changeCartQuantity(productId, delta) {
         updateProductCard(productId);
         // Тактильный отклик при удалении товара
         if (tg && tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('light');
+        tg.HapticFeedback.impactOccurred('light');
         }
         return;
     }
@@ -1184,7 +1184,7 @@ function changeCartQuantity(productId, delta) {
     updateProductCard(productId);
     // Тактильный отклик при изменении количества
     if (tg && tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
+    tg.HapticFeedback.impactOccurred('light');
     }
 }
 
@@ -1246,14 +1246,26 @@ function updateProductCard(productId) {
             actionBtn.onclick = null; // Убираем обработчик добавления
         } else {
             actionBtn.classList.remove('product-action-btn-filled');
-            actionBtn.onclick = () => addToCart(productId, minQty);
+            actionBtn.onclick = () => {
+                // Тактильный отклик при добавлении товара
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
+                addToCart(productId, minQty);
+            };
         }
         
         // Обновляем обработчик клика на кнопку
         if (isInCart) {
             actionBtn.onclick = null;
         } else {
-            actionBtn.onclick = () => addToCart(productId, minQty);
+            actionBtn.onclick = () => {
+                // Тактильный отклик при добавлении товара
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
+                addToCart(productId, minQty);
+            };
         }
         
         // Обновляем кнопку минус
@@ -1265,6 +1277,10 @@ function updateProductCard(productId) {
                 minusBtn.style.display = 'flex';
                 minusBtn.onclick = (e) => {
                     e.stopPropagation();
+                    // Тактильный отклик при уменьшении количества
+                    if (tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.impactOccurred('light');
+                    }
                     changeCartQuantity(productId, -1);
                 };
             } else {
@@ -1302,6 +1318,14 @@ function updateProductCard(productId) {
             }
             plusBtn.onclick = (e) => {
                 e.stopPropagation();
+                // Тактильный отклик при добавлении/увеличении количества
+                if (tg && tg.HapticFeedback) {
+                    if (isInCart) {
+                        tg.HapticFeedback.impactOccurred('light');
+                    } else {
+                        tg.HapticFeedback.impactOccurred('medium');
+                    }
+                }
                 if (isInCart) {
                     changeCartQuantity(productId, 1);
                 } else {
