@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, Clock, MapPin, User, Phone, Package, MessageSquare, DoorOpen } from 'lucide-react';
+import { ArrowLeft, Save, Clock, MapPin, User, Phone, Package, MessageSquare, DoorOpen, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
@@ -31,6 +31,8 @@ export function OrderDetail({ authToken, orderId }) {
     comment: ''
   });
   const [editableLeaveAtDoor, setEditableLeaveAtDoor] = useState(false);
+  const [isEditingRecipient, setIsEditingRecipient] = useState(false);
+  const [isEditingDelivery, setIsEditingDelivery] = useState(false);
 
   useEffect(() => {
     loadOrderDetails();
@@ -507,126 +509,192 @@ export function OrderDetail({ authToken, orderId }) {
 
           {/* Доставка */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">Доставка</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Доставка</h2>
+              <button
+                type="button"
+                onClick={() => setIsEditingDelivery(!isEditingDelivery)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                title={isEditingDelivery ? 'Завершить редактирование' : 'Редактировать'}
+              >
+                <Edit className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
             <div className="space-y-4">
-              {/* Дата доставки */}
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Дата доставки</label>
-                    <input
-                      type="date"
-                      value={editableDeliveryDate}
-                      onChange={(e) => setEditableDeliveryDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Время доставки</label>
-                    <input
-                      type="text"
-                      value={editableDeliveryTime}
-                      onChange={(e) => setEditableDeliveryTime(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      placeholder="10:00-12:00"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Адрес доставки */}
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Город</label>
-                    <input
-                      type="text"
-                      value={editableAddress.city}
-                      onChange={(e) => setEditableAddress({ ...editableAddress, city: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      placeholder="Санкт-Петербург"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Улица</label>
-                      <input
-                        type="text"
-                        value={editableAddress.street}
-                        onChange={(e) => setEditableAddress({ ...editableAddress, street: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="Невский проспект"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Дом</label>
-                      <input
-                        type="text"
-                        value={editableAddress.house}
-                        onChange={(e) => setEditableAddress({ ...editableAddress, house: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="1"
-                      />
+              {isEditingDelivery ? (
+                <>
+                  {/* Редактируемые поля */}
+                  {/* Дата доставки */}
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Дата доставки</label>
+                        <input
+                          type="date"
+                          value={editableDeliveryDate}
+                          onChange={(e) => setEditableDeliveryDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Время доставки</label>
+                        <select
+                          value={editableDeliveryTime}
+                          onChange={(e) => setEditableDeliveryTime(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        >
+                          <option value="">Выберите время</option>
+                          <option value="10-12">10:00 - 12:00</option>
+                          <option value="12-14">12:00 - 14:00</option>
+                          <option value="14-16">14:00 - 16:00</option>
+                          <option value="16-18">16:00 - 18:00</option>
+                          <option value="18-20">18:00 - 20:00</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Квартира</label>
-                      <input
-                        type="text"
-                        value={editableAddress.apartment}
-                        onChange={(e) => setEditableAddress({ ...editableAddress, apartment: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="27"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Парадная</label>
-                      <input
-                        type="text"
-                        value={editableAddress.entrance}
-                        onChange={(e) => setEditableAddress({ ...editableAddress, entrance: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="1"
-                      />
+                  
+                  {/* Адрес доставки */}
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Город</label>
+                        <input
+                          type="text"
+                          value={editableAddress.city}
+                          onChange={(e) => setEditableAddress({ ...editableAddress, city: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          placeholder="Санкт-Петербург"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Улица</label>
+                          <input
+                            type="text"
+                            value={editableAddress.street}
+                            onChange={(e) => setEditableAddress({ ...editableAddress, street: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="Невский проспект"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Дом</label>
+                          <input
+                            type="text"
+                            value={editableAddress.house}
+                            onChange={(e) => setEditableAddress({ ...editableAddress, house: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="1"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Квартира</label>
+                          <input
+                            type="text"
+                            value={editableAddress.apartment}
+                            onChange={(e) => setEditableAddress({ ...editableAddress, apartment: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="27"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Парадная</label>
+                          <input
+                            type="text"
+                            value={editableAddress.entrance}
+                            onChange={(e) => setEditableAddress({ ...editableAddress, entrance: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="1"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Этаж</label>
+                          <input
+                            type="text"
+                            value={editableAddress.floor}
+                            onChange={(e) => setEditableAddress({ ...editableAddress, floor: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="3"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1">Домофон</label>
+                          <input
+                            type="text"
+                            value={editableAddress.intercom}
+                            onChange={(e) => setEditableAddress({ ...editableAddress, intercom: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            placeholder="123 или нет"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Комментарий к адресу</label>
+                        <textarea
+                          value={editableAddress.comment}
+                          onChange={(e) => setEditableAddress({ ...editableAddress, comment: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
+                          placeholder="Дополнительная информация об адресе"
+                          rows={2}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Этаж</label>
-                      <input
-                        type="text"
-                        value={editableAddress.floor}
-                        onChange={(e) => setEditableAddress({ ...editableAddress, floor: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="3"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Домофон</label>
-                      <input
-                        type="text"
-                        value={editableAddress.intercom}
-                        onChange={(e) => setEditableAddress({ ...editableAddress, intercom: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                        placeholder="123 или нет"
-                      />
+                </>
+              ) : (
+                <>
+                  {/* Отображение в виде текста */}
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Дата доставки</p>
+                        <p className="text-gray-900">{editableDeliveryDate ? new Date(editableDeliveryDate).toLocaleDateString('ru-RU') : '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Время доставки</p>
+                        <p className="text-gray-900">
+                          {editableDeliveryTime === '10-12' ? '10:00 - 12:00' :
+                           editableDeliveryTime === '12-14' ? '12:00 - 14:00' :
+                           editableDeliveryTime === '14-16' ? '14:00 - 16:00' :
+                           editableDeliveryTime === '16-18' ? '16:00 - 18:00' :
+                           editableDeliveryTime === '18-20' ? '18:00 - 20:00' :
+                           editableDeliveryTime || '-'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Комментарий к адресу</label>
-                    <textarea
-                      value={editableAddress.comment}
-                      onChange={(e) => setEditableAddress({ ...editableAddress, comment: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
-                      placeholder="Дополнительная информация об адресе"
-                      rows={2}
-                    />
+                  
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-gray-400 mt-2 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Адрес доставки</p>
+                        <p className="text-gray-900">{formatAddress(order) || '-'}</p>
+                      </div>
+                      {formatAddressDetails(order) && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Дополнительно</p>
+                          <p className="text-gray-700">{formatAddressDetails(order)}</p>
+                        </div>
+                      )}
+                      {editableAddress.comment && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Комментарий к адресу</p>
+                          <p className="text-gray-700">{editableAddress.comment}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
               {/* Тумблер "Оставить у двери" */}
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-3">
