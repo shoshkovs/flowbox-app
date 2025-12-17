@@ -977,7 +977,7 @@ function renderProducts() {
         const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
         
         return `
-            <div class="product-card" data-product-id="${product.id}">
+            <div class="product-card" data-product-id="${product.id}" onclick="openProductSheet(${product.id})">
                 <div class="product-image-wrapper">
                     <img src="${product.image}" alt="${product.name}" class="product-image">
                     ${isInCart && bunchesCount > 0 ? `

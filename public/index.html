@@ -960,6 +960,43 @@
 
     <script src="app.js?v=3.23"></script>
     
+    <!-- Bottom-sheet для товара -->
+    <div class="product-sheet-backdrop" id="productSheetBackdrop" style="display: none;"></div>
+    <div class="product-sheet" id="productSheet" style="display: none;">
+        <div class="product-sheet-handle-wrap">
+            <div class="product-sheet-handle"></div>
+        </div>
+        
+        <div class="product-sheet-top-btns">
+            <button class="product-sheet-icon-btn" id="productSheetShareBtn" aria-label="Поделиться">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13"></path>
+                    <path d="M22 2L15 22l-4-9-9-4 20-7z"></path>
+                </svg>
+            </button>
+            <button class="product-sheet-icon-btn" id="productSheetCloseBtn" aria-label="Закрыть">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6L6 18"></path>
+                    <path d="M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="product-sheet-pager" id="productSheetPager">
+            <div class="product-sheet-pager-track" id="productSheetPagerTrack"></div>
+            <div class="product-sheet-dots" id="productSheetDots"></div>
+        </div>
+        
+        <div class="product-sheet-info">
+            <div class="product-sheet-title" id="productSheetTitle"></div>
+            <div class="product-sheet-sub" id="productSheetSub"></div>
+            <button class="product-sheet-add-btn" id="productSheetAddBtn">
+                <span id="productSheetPrice"></span>
+                <span class="product-sheet-plus">+</span>
+            </button>
+        </div>
+    </div>
+    
     <!-- Модальное окно объяснения сборов -->
     <div class="modal-overlay" id="serviceFeeHelpModal" style="display: none;">
         <div class="modal-content">
