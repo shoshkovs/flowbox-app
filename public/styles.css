@@ -559,7 +559,7 @@ h1, h2, h3, .font-bold {
     right: 20px;
     z-index: 999;
     opacity: 0;
-    transform: translateX(-40px);
+    transform: translateX(calc(100% + 20px)); /* Выезжает справа из-за края экрана */
     pointer-events: none;
     transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
                 transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -567,7 +567,7 @@ h1, h2, h3, .font-bold {
 
 .go-to-cart-fixed.show {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0); /* Выезжает на свою позицию */
     pointer-events: auto;
 }
 
