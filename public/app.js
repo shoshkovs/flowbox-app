@@ -7020,7 +7020,7 @@ function initLeaveAtDoorCheckbox() {
 let simpleLeaveAtDoorInited = false;
 
 function initSimpleLeaveAtDoorCheckbox() {
-    const checkbox = document.getElementById('simple-leave-at-door-checkbox');
+    const toggle = document.getElementById('simple-leave-at-door-toggle');
     if (!checkbox) {
         console.warn('[leaveAtDoor] чекбокс simple-leave-at-door-checkbox не найден');
         return;
