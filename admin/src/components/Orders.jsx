@@ -415,8 +415,9 @@ export function Orders({ authToken }) {
           <p className="text-gray-600 mt-1">Управление заказами клиентов</p>
         </div>
         
-        {/* Поиск по номеру заказа */}
-        <div className="flex items-center gap-3">
+        {/* Поиск и фильтр по датам */}
+        <div className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3">
+          {/* Поиск по номеру заказа */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -435,10 +436,6 @@ export function Orders({ authToken }) {
               </button>
             )}
           </div>
-        </div>
-        
-        {/* Фильтр по датам */}
-        <div className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600">с</label>
             <input
