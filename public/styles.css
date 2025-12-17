@@ -909,8 +909,9 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item:active {
-    color: #000;
-    opacity: 0.8;
+    opacity: 0.6;
+    transform: scale(0.95);
+    transition: opacity 0.1s ease, transform 0.1s ease;
 }
 
 .nav-item.active {
