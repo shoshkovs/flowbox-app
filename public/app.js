@@ -1183,6 +1183,8 @@ function changeCartQuantity(productId, delta) {
         updateGoToCartButton();
         saveUserData();
         updateProductCard(productId);
+        // Обновляем карточку дополнительного товара, если товар в additionalProducts
+        updateAdditionalProductCard(productId);
         // Тактильный отклик при удалении товара
         if (tg && tg.HapticFeedback) {
         tg.HapticFeedback.impactOccurred('light');
@@ -1195,6 +1197,8 @@ function changeCartQuantity(productId, delta) {
     updateGoToCartButton();
     saveUserData();
     updateProductCard(productId);
+    // Обновляем карточку дополнительного товара, если товар в additionalProducts
+    updateAdditionalProductCard(productId);
     // Тактильный отклик при изменении количества
     if (tg && tg.HapticFeedback) {
     tg.HapticFeedback.impactOccurred('light');
@@ -1969,6 +1973,17 @@ function renderAdditionalProducts() {
             productImage = product.images[0];
         }
         
+        const minQty = getMinQty(product);
+        const cartItem = cart.find(item => {
+            const itemId = String(item.id);
+            const productId = String(product.id);
+            return itemId === productId || item.id === product.id || item.id === Number(product.id);
+        });
+        const cartQuantity = cartItem ? cartItem.quantity : 0;
+        const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
+        const totalPrice = product.price * (cartItem ? cartItem.quantity : minQty);
+        const stemQuantity = product.min_stem_quantity || product.minStemQuantity || product.min_order_quantity || 1;
+        
         // Экранируем ID для безопасного использования в onclick
         const safeProductId = String(product.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         console.log('Рендеринг товара:', product.name, 'ID:', safeProductId, 'isInCart:', isInCart);
@@ -1977,14 +1992,51 @@ function renderAdditionalProducts() {
             <div class="additional-product-card">
                 <div class="additional-product-image-wrapper">
                     <img src="${productImage}" alt="${product.name}" class="additional-product-image">
+                    ${isInCart && bunchesCount > 0 ? `
+                        <div class="product-quantity-overlay show">
+                            <div class="product-quantity-overlay-text">${bunchesCount}</div>
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="additional-product-info">
                     <div class="additional-product-name">${product.name}</div>
-                    <div class="additional-product-price">${product.price} ₽</div>
+                    ${stemQuantity > 1 ? `<div class="additional-product-stem-qty">${stemQuantity} шт</div>` : ''}
+                    ${isInCart && bunchesCount > 0 ? `<div class="additional-product-cart-qty">${bunchesCount} шт</div>` : ''}
+                    <div class="product-action-row">
+                        <button class="product-action-btn ${isInCart ? 'product-action-btn-filled' : ''}" 
+                                id="additional-product-action-btn-${product.id}"
+                                onclick="event.stopPropagation(); ${isInCart ? 'void(0)' : `addAdditionalProduct(${JSON.stringify(product.id)})`}">
+                            <!-- Кнопка минус (появляется только когда товар в корзине) -->
+                            <span class="product-minus-btn-wrapper ${isInCart ? 'visible' : ''}">
+                                <span class="product-minus-btn" 
+                                      onclick="event.stopPropagation(); changeCartQuantity(${product.id}, -1)"
+                                      style="display: ${isInCart ? 'flex' : 'none'}">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                </span>
+                            </span>
+                            
+                            <!-- Цена (всегда видна) -->
+                            <span class="product-action-price ${isInCart ? 'filled' : 'semi-transparent'}">
+                                ${totalPrice} <span class="ruble">₽</span>
+                            </span>
+                            
+                            <!-- Кнопка плюс (всегда видна) -->
+                            <span class="product-plus-btn-wrapper">
+                                <span class="product-plus-btn" 
+                                      onclick="event.stopPropagation(); ${isInCart ? `changeCartQuantity(${product.id}, 1)` : `addAdditionalProduct(${JSON.stringify(product.id)})`}">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                                         stroke="${isInCart ? 'white' : 'var(--primary-color)'}" 
+                                         stroke-width="1.5">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
-                <button class="additional-product-add-btn" onclick="addAdditionalProduct(${JSON.stringify(product.id)})" ${isInCart ? 'disabled' : ''}>
-                    ${isInCart ? 'В корзине' : 'Добавить'}
-                </button>
             </div>
         `;
     }).join('');
