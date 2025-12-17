@@ -216,6 +216,16 @@ function handleBackButton() {
         return;
     }
     
+    // Детали заказа
+    const orderDetailsTab = document.getElementById('orderDetailsTab');
+    if (orderDetailsTab && orderDetailsTab.style.display === 'block') {
+        console.log('[BackButton] Возврат из деталей заказа в профиль');
+        orderDetailsTab.style.display = 'none';
+        switchTab('profileTab');
+        showBackButton(false);
+        return;
+    }
+    
     // История заказов
     if (orderHistoryTab && orderHistoryTab.classList.contains('active')) {
         console.log('[BackButton] Возврат из истории заказов в профиль');

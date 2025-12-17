@@ -3006,6 +3006,7 @@ app.get('/api/orders/:orderId', async (req, res) => {
           ORDER BY created_at ASC
         `;
         const historyResult = await client.query(historyQuery, [orderIdNum]);
+        console.log(`[GET /api/orders/${orderId}] Найдено записей в истории: ${historyResult.rows.length}`);
         
         // Маппинг статусов для отображения (совпадает с админкой)
         const statusDisplayMap = {
