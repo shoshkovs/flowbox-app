@@ -5759,39 +5759,18 @@ function renderOrderDetails(order) {
     // Маппинг статусов для степпера (5 статусов)
     const statusSteps = ['В обработке', 'Принят', 'Собирается', 'В пути', 'Доставлен'];
     
-    // Определяем активный шаг на основе истории статусов
-    // Находим последний статус в истории и определяем его позицию в степпере
-    let activeStep = 0;
-    if (order.statusHistory && order.statusHistory.length > 0) {
-        // Берем последний статус из истории (самый актуальный)
-        const lastStatus = order.statusHistory[order.statusHistory.length - 1];
-        const statusRaw = lastStatus.statusRaw || order.statusRaw || order.status;
-        
-        const statusMap = {
-            'NEW': 0,           // В обработке
-            'PROCESSING': 0,    // В обработке
-            'PURCHASE': 1,      // Принят
-            'COLLECTING': 2,    // Собирается
-            'DELIVERING': 3,    // В пути
-            'DELIVERED': 4,     // Доставлен
-            'COMPLETED': 4      // Доставлен
-        };
-        
-        activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
-    } else {
-        // Fallback: используем текущий статус заказа
-        const statusRaw = order.statusRaw || order.status;
-        const statusMap = {
-            'NEW': 0,
-            'PROCESSING': 0,
-            'PURCHASE': 1,
-            'COLLECTING': 2,
-            'DELIVERING': 3,
-            'DELIVERED': 4,
-            'COMPLETED': 4
-        };
-        activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
-    }
+    // Определяем активный шаг на основе текущего статуса заказа (не из истории!)
+    const statusRaw = order.statusRaw || order.status;
+    const statusMap = {
+        'NEW': 0,           // В обработке
+        'PROCESSING': 0,    // В обработке
+        'PURCHASE': 1,      // Принят
+        'COLLECTING': 2,    // Собирается
+        'DELIVERING': 3,    // В пути
+        'DELIVERED': 4,     // Доставлен
+        'COMPLETED': 4      // Доставлен
+    };
+    const activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
     
     // Форматируем номер заказа
     const orderNumber = String(order.id).toUpperCase();
@@ -5822,8 +5801,9 @@ function renderOrderDetails(order) {
             <div class="order-details-h2">Статус заказа</div>
             <div class="order-details-stepper">
                 ${statusSteps.map((step, index) => {
-                    // Находим запись в истории для этого статуса
-                    const historyEntry = order.statusHistory && order.statusHistory.find(h => {
+                    // Находим ПОСЛЕДНЮЮ запись в истории для этого статуса (может быть несколько записей)
+                    let historyEntry = null;
+                    if (order.statusHistory && order.statusHistory.length > 0) {
                         const stepStatusMap = {
                             'В обработке': ['NEW', 'PROCESSING'],
                             'Принят': ['PURCHASE'],
@@ -5832,11 +5812,23 @@ function renderOrderDetails(order) {
                             'Доставлен': ['DELIVERED', 'COMPLETED']
                         };
                         const stepStatuses = stepStatusMap[step] || [];
-                        return stepStatuses.includes(h.statusRaw);
-                    });
+                        
+                        // Фильтруем все записи для этого статуса
+                        const matchingEntries = order.statusHistory.filter(h => 
+                            stepStatuses.includes(h.statusRaw)
+                        );
+                        
+                        // Берем последнюю запись (самую свежую)
+                        if (matchingEntries.length > 0) {
+                            // Сортируем по createdAt (если есть) или берем последнюю
+                            historyEntry = matchingEntries[matchingEntries.length - 1];
+                        }
+                    }
                     
                     const isActive = index <= activeStep;
-                    const dateTime = historyEntry ? `${historyEntry.date}, ${historyEntry.time}` : '';
+                    const dateTime = historyEntry && historyEntry.date && historyEntry.time 
+                        ? `${historyEntry.date}, ${historyEntry.time}` 
+                        : '';
                     
                     return `
                         <div class="order-details-step">
