@@ -2541,7 +2541,21 @@ function showSimpleSummary() {
 
 // Инициализация кнопок редактирования в упрощенном оформлении
 function initSimpleCheckoutEditButtons() {
-    // Кнопка редактирования получателя
+    // Блок редактирования получателя - обработчик на весь блок
+    const editRecipientBlock = document.getElementById('editRecipient');
+    if (editRecipientBlock) {
+        editRecipientBlock.onclick = (e) => {
+            // Если клик был на кнопку, не обрабатываем (кнопка сама обработает)
+            if (e.target.closest('.summary-edit-btn')) {
+                return;
+            }
+            // Иначе открываем редактирование
+            e.stopPropagation();
+            openEditRecipientForSimple();
+        };
+    }
+    
+    // Кнопка редактирования получателя (для явного клика на стрелку)
     const editRecipientBtn = document.querySelector('#editRecipient .summary-edit-btn');
     if (editRecipientBtn) {
         editRecipientBtn.onclick = (e) => {
@@ -2550,7 +2564,21 @@ function initSimpleCheckoutEditButtons() {
         };
     }
     
-    // Кнопка редактирования адреса
+    // Блок редактирования адреса - обработчик на весь блок
+    const editAddressBlock = document.getElementById('editAddress');
+    if (editAddressBlock) {
+        editAddressBlock.onclick = (e) => {
+            // Если клик был на кнопку, не обрабатываем (кнопка сама обработает)
+            if (e.target.closest('.summary-edit-btn')) {
+                return;
+            }
+            // Иначе открываем редактирование
+            e.stopPropagation();
+            openCheckoutAddressesForSimple();
+        };
+    }
+    
+    // Кнопка редактирования адреса (для явного клика на стрелку)
     const editAddressBtn = document.querySelector('#editAddress .summary-edit-btn');
     if (editAddressBtn) {
         editAddressBtn.onclick = (e) => {
