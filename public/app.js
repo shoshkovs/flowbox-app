@@ -1300,9 +1300,11 @@ function updateGoToCartButton() {
     fixedCartTotal.textContent = total;
     
     if (cart.length > 0) {
-        goToCartFixed.style.display = 'block';
+        // Выезжает слева с анимацией
+        goToCartFixed.classList.add('show');
     } else {
-        goToCartFixed.style.display = 'none';
+        // Уезжает влево с анимацией
+        goToCartFixed.classList.remove('show');
     }
 }
 
