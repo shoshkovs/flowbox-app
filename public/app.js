@@ -7880,12 +7880,12 @@ function renderMyAddressesListForSimple() {
         <div class="add-address-card" style="background: rgba(251, 45, 92, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" onclick="openAddressForm({ mode: 'create', source: 'simple' })">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb2d5c" stroke-width="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
                     </div>
-                <div style="font-weight: 500; font-size: 15px; color: #fb2d5c;">Добавить новый адрес</div>
+                <div style="font-weight: 500; font-size: 15px; color: #111;">Добавить новый адрес</div>
                 </div>
             </div>
         `;
