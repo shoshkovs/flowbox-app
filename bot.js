@@ -4390,7 +4390,7 @@ app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
     return res.status(400).json({ error: 'Неверный ID заказа' });
   }
   
-  const { status, recipient_name, recipient_phone, delivery_date, delivery_time, user_comment, comment, address_json, internal_comment, courier_comment, status_comment } = req.body;
+  const { status, recipient_name, recipient_phone, delivery_date, delivery_time, user_comment, comment, address_json, internal_comment, courier_comment, status_comment, leave_at_door } = req.body;
   
   try {
     const client = await pool.connect();

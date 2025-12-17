@@ -30,6 +30,7 @@ export function OrderDetail({ authToken, orderId }) {
     intercom: '',
     comment: ''
   });
+  const [editableLeaveAtDoor, setEditableLeaveAtDoor] = useState(false);
 
   useEffect(() => {
     loadOrderDetails();
@@ -112,6 +113,7 @@ export function OrderDetail({ authToken, orderId }) {
           intercom: addressData.intercom || '',
           comment: addressData.comment || ''
         });
+        setEditableLeaveAtDoor(orderData.leave_at_door || false);
       } else if (orderRes.status === 404) {
         setOrder(null);
         toast.error('Заказ не найден');
@@ -145,6 +147,7 @@ export function OrderDetail({ authToken, orderId }) {
           delivery_date: editableDeliveryDate || null,
           delivery_time: editableDeliveryTime || null,
           address_json: editableAddress,
+          leave_at_door: editableLeaveAtDoor,
           internal_comment: internalComment || null,
           courier_comment: courierComment || null,
           user_comment: userComment || null,
