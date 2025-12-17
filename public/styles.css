@@ -4348,8 +4348,8 @@ input[type="text"][inputmode="numeric"] {
     left: 0;
     right: 0;
     bottom: 0;
-    max-height: calc(100vh - 8vh);
-    height: calc(100vh - 8vh);
+    max-height: calc(100vh - 12vh);
+    height: calc(100vh - 12vh);
     background: #fff;
     border-radius: 26px;
     z-index: 1001;
