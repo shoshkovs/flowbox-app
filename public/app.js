@@ -5644,7 +5644,7 @@ async function openOrderDetail(orderId) {
         
         // Если все еще нет userId, пробуем получить из userActiveOrders
         if (!userId && userActiveOrders && userActiveOrders.length > 0) {
-            const order = userActiveOrders.find(o => o.id === orderId);
+    const order = userActiveOrders.find(o => o.id === orderId);
             if (order && order.userId) {
                 userId = order.userId;
             }
@@ -5660,9 +5660,23 @@ async function openOrderDetail(orderId) {
         const response = await fetch(`/api/orders/${orderId}?userId=${userId}`);
         
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[openOrderDetail] Ошибка ответа сервера:', response.status, errorText);
-            throw new Error(`Ошибка сервера: ${response.status}. ${errorText}`);
+            let errorMessage = `Ошибка ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                const errorText = await response.text();
+                errorMessage = errorText || errorMessage;
+            }
+            console.error('[openOrderDetail] Ошибка ответа сервера:', response.status, errorMessage);
+            
+            if (response.status === 404) {
+                throw new Error('Заказ не найден. Возможно, он был удален или не принадлежит вам.');
+            } else if (response.status === 403) {
+                throw new Error('У вас нет доступа к этому заказу.');
+            } else {
+                throw new Error(errorMessage);
+            }
         }
         
         const order = await response.json();

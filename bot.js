@@ -2906,11 +2906,36 @@ app.get('/api/orders/:orderId', async (req, res) => {
         GROUP BY o.id
       `;
       
-      console.log(`[GET /api/orders/${orderId}] Выполняем запрос с orderId=${orderId}, user_id=${dbUserId}`);
-      const result = await client.query(orderQuery, [orderId, dbUserId]);
+      // Преобразуем orderId в число
+      const orderIdNum = parseInt(orderId, 10);
+      if (isNaN(orderIdNum)) {
+        console.error(`[GET /api/orders/${orderId}] orderId не является числом: ${orderId}`);
+        return res.status(400).json({ error: 'Некорректный ID заказа' });
+      }
+      
+      console.log(`[GET /api/orders/${orderId}] Выполняем запрос с orderId=${orderIdNum}, user_id=${dbUserId}`);
+      
+      // Сначала проверяем, существует ли заказ вообще
+      const orderExistsQuery = 'SELECT id, user_id FROM orders WHERE id = $1';
+      const orderExistsResult = await client.query(orderExistsQuery, [orderIdNum]);
+      
+      if (orderExistsResult.rows.length === 0) {
+        console.warn(`[GET /api/orders/${orderId}] Заказ с ID=${orderIdNum} не существует в БД`);
+        return res.status(404).json({ error: 'Заказ не найден' });
+      }
+      
+      const orderOwnerId = orderExistsResult.rows[0].user_id;
+      if (orderOwnerId !== dbUserId) {
+        console.warn(`[GET /api/orders/${orderId}] Заказ принадлежит другому пользователю. Заказ user_id=${orderOwnerId}, запрашивающий user_id=${dbUserId}`);
+        return res.status(403).json({ error: 'Доступ запрещен' });
+      }
+      
+      // Теперь получаем заказ с товарами
+      const result = await client.query(orderQuery, [orderIdNum, dbUserId]);
       
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Заказ не найден' });
+        console.error(`[GET /api/orders/${orderId}] Заказ найден, но не удалось загрузить данные с товарами`);
+        return res.status(500).json({ error: 'Ошибка загрузки данных заказа' });
       }
       
       const row = result.rows[0];
