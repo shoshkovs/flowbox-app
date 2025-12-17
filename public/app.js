@@ -2095,9 +2095,12 @@ function updateAdditionalProductCard(productId) {
     const minusBtn = button.querySelector('.product-minus-btn');
     if (minusBtn) {
         minusBtn.style.display = isInCart ? 'flex' : 'none';
+        minusBtn.style.pointerEvents = 'auto';
         minusBtn.onclick = (e) => {
             e.stopPropagation();
+            e.preventDefault();
             changeCartQuantity(product.id, -1);
+            return false;
         };
     }
     
