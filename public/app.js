@@ -7031,14 +7031,32 @@ function initSimpleLeaveAtDoorCheckbox() {
         return;
     }
 
-    checkbox.checked = !!checkoutData.leaveAtDoor;
-    checkbox.addEventListener('change', () => {
-        checkoutData.leaveAtDoor = checkbox.checked;
+    // Начальное состояние из checkoutData
+    const isChecked = !!checkoutData.leaveAtDoor;
+    toggle.setAttribute('aria-checked', isChecked.toString());
+    
+    // Обработчик клика
+    const handleToggle = function() {
+        const currentState = toggle.getAttribute('aria-checked') === 'true';
+        const newState = !currentState;
+        toggle.setAttribute('aria-checked', newState.toString());
+        checkoutData.leaveAtDoor = newState;
         console.log('[leaveAtDoor] состояние изменено:', checkoutData.leaveAtDoor);
-    });
+    };
+    
+    toggle.addEventListener('click', handleToggle);
+    
+    // Также делаем кликабельным label
+    const label = document.querySelector('label[for="simple-leave-at-door-toggle"]');
+    if (label) {
+        label.addEventListener('click', function(e) {
+            e.preventDefault();
+            handleToggle();
+        });
+    }
 
     simpleLeaveAtDoorInited = true;
-    console.log('[leaveAtDoor] инициализация, начальное состояние:', checkbox.checked);
+    console.log('[leaveAtDoor] инициализация, начальное состояние:', isChecked);
 }
 
 // Инициализация поэтапной формы
