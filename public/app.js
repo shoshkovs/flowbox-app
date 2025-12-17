@@ -1217,36 +1217,71 @@ function updateProductCard(productId) {
         }
     }
     
-    // Обновляем кнопку действий
-    const actionRow = card.querySelector('.product-action-row');
-    if (actionRow) {
+    // Обновляем кнопку действий (layout-анимация без замены DOM)
+    const actionBtn = card.querySelector(`#product-action-btn-${productId}`);
+    if (actionBtn) {
+        // Обновляем класс для состояния (растягивание/сжатие)
         if (isInCart) {
-            actionRow.classList.add('product-action-row-filled');
-            actionRow.innerHTML = `
-                <button class="product-minus-btn" onclick="changeCartQuantity(${productId}, -1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-                <div class="product-price-filled">${totalPrice} <span class="ruble">₽</span></div>
-                <button class="product-plus-btn" onclick="changeCartQuantity(${productId}, 1)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-            `;
+            actionBtn.classList.add('product-action-btn-filled');
+            actionBtn.onclick = null; // Убираем обработчик добавления
         } else {
-            actionRow.classList.remove('product-action-row-filled');
-            actionRow.innerHTML = `
-                <button class="product-add-btn" onclick="addToCart(${productId}, ${minQty})" id="add-btn-${productId}">
-                    <span class="product-price-semi-transparent">${totalPrice} <span class="ruble">₽</span></span>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="3">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-            `;
+            actionBtn.classList.remove('product-action-btn-filled');
+            actionBtn.onclick = () => addToCart(productId, minQty);
+        }
+        
+        // Обновляем кнопку минус
+        const minusWrapper = actionBtn.querySelector('.product-minus-btn-wrapper');
+        const minusBtn = actionBtn.querySelector('.product-minus-btn');
+        if (minusWrapper && minusBtn) {
+            if (isInCart) {
+                minusWrapper.classList.add('visible');
+                minusBtn.style.display = 'flex';
+                minusBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    changeCartQuantity(productId, -1);
+                };
+            } else {
+                minusWrapper.classList.remove('visible');
+                minusBtn.style.display = 'none';
+            }
+        }
+        
+        // Обновляем цену
+        const priceEl = actionBtn.querySelector('.product-action-price');
+        if (priceEl) {
+            priceEl.textContent = '';
+            const priceSpan = document.createElement('span');
+            priceSpan.textContent = totalPrice;
+            const rubleSpan = document.createElement('span');
+            rubleSpan.className = 'ruble';
+            rubleSpan.textContent = ' ₽';
+            priceSpan.appendChild(rubleSpan);
+            priceEl.appendChild(priceSpan);
+            
+            if (isInCart) {
+                priceEl.classList.remove('semi-transparent');
+                priceEl.classList.add('filled');
+            } else {
+                priceEl.classList.remove('filled');
+                priceEl.classList.add('semi-transparent');
+            }
+        }
+        
+        // Обновляем кнопку плюс
+        const plusBtn = actionBtn.querySelector('.product-plus-btn');
+        if (plusBtn) {
+            const plusSvg = plusBtn.querySelector('svg');
+            if (plusSvg) {
+                plusSvg.setAttribute('stroke', isInCart ? 'white' : 'var(--primary-color)');
+            }
+            plusBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (isInCart) {
+                    changeCartQuantity(productId, 1);
+                } else {
+                    addToCart(productId, minQty);
+                }
+            };
         }
     }
 }
