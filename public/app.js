@@ -5312,21 +5312,21 @@ function renderProfileAddresses() {
                         <div class="address-item-name">${streetName}</div>
                         ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
                     </div>
-                <div class="address-menu" style="position: relative;">
-                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="5" r="1"/>
-                            <circle cx="12" cy="12" r="1"/>
-                            <circle cx="12" cy="19" r="1"/>
+                <div class="address-menu">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" aria-label="Меню адреса">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="5" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="19" r="2" fill="currentColor"/>
                         </svg>
                     </button>
-                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
-                        <button onclick="event.stopPropagation(); editAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}">
+                        <button class="address-menu-item" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); editAddressFromProfile(${addressId})">
                             Изменить
                         </button>
-                        <button onclick="event.stopPropagation(); deleteAddressFromProfile(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                        <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); deleteAddressFromProfile(${addressId})">
                             Удалить
-                    </button>
+                        </button>
                     </div>
                 </div>
                 </div>
@@ -7085,19 +7085,19 @@ function renderMyAddressesListForSimple() {
                 <div style="flex: 1; cursor: pointer;" onclick="selectCheckoutAddressForSimple(${addressId})">
                     <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
                 </div>
-                <div class="address-menu" style="position: relative;">
-                    <button type="button" class="address-menu-btn" onclick="window.toggleAddressMenu(${addressId}); return false;" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666; z-index: 10001;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="5" r="1"/>
-                            <circle cx="12" cy="12" r="1"/>
-                            <circle cx="12" cy="19" r="1"/>
+                <div class="address-menu">
+                    <button type="button" class="address-menu-btn" onclick="window.toggleAddressMenu(${addressId}); return false;" aria-label="Меню адреса">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="5" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="19" r="2" fill="currentColor"/>
                         </svg>
                     </button>
-                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10002; min-width: 150px; margin-top: 4px;">
-                        <button type="button" class="address-menu-item" onclick="window.editAddressFromSimple(${addressId}); return false;" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}">
+                        <button type="button" class="address-menu-item" onclick="window.toggleAddressMenu(${addressId}); window.editAddressFromSimple(${addressId}); return false;">
                             Изменить
                         </button>
-                        <button type="button" class="address-menu-item address-menu-item-delete" onclick="window.deleteAddressFromSimple(${addressId}); return false;" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                        <button type="button" class="address-menu-item address-menu-item-delete" onclick="window.toggleAddressMenu(${addressId}); window.deleteAddressFromSimple(${addressId}); return false;">
                             Удалить
                         </button>
                     </div>
@@ -8040,19 +8040,19 @@ function renderMyAddressesList() {
                     <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
                     ${isSelected ? '<div style="font-size: 12px; color: var(--primary-color);">Выбран</div>' : ''}
                 </div>
-                <div class="address-menu" style="position: relative;">
-                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" style="background: none; border: none; padding: 8px; cursor: pointer; color: #666;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="5" r="1"/>
-                            <circle cx="12" cy="12" r="1"/>
-                            <circle cx="12" cy="19" r="1"/>
+                <div class="address-menu">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" aria-label="Меню адреса">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="5" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                            <circle cx="12" cy="19" r="2" fill="currentColor"/>
                         </svg>
                     </button>
-                    <div class="address-menu-dropdown" id="addressMenu${addressId}" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10000; min-width: 150px; margin-top: 4px;">
-                        <button onclick="event.stopPropagation(); editAddressFromMyAddresses(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <div class="address-menu-dropdown" id="addressMenu${addressId}">
+                        <button class="address-menu-item" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); editAddressFromMyAddresses(${addressId})">
                             Изменить
                         </button>
-                        <button onclick="event.stopPropagation(); deleteAddressFromMyAddresses(${addressId})" style="width: 100%; padding: 12px; text-align: left; background: none; border: none; cursor: pointer; color: #ff4444;">
+                        <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); deleteAddressFromMyAddresses(${addressId})">
                             Удалить
                         </button>
                     </div>
@@ -8128,7 +8128,7 @@ function toggleAddressMenu(addressId) {
     // Закрываем все открытые меню
     document.querySelectorAll('.address-menu-dropdown').forEach(menu => {
         if (menu.id !== `addressMenu${addressId}`) {
-            menu.style.display = 'none';
+            menu.classList.remove('show');
         }
     });
     
@@ -8139,20 +8139,23 @@ function toggleAddressMenu(addressId) {
         return;
     }
     
-    const isVisible = menu.style.display !== 'none';
-    menu.style.display = isVisible ? 'none' : 'block';
-    console.log('[toggleAddressMenu] ✅ Меню', isVisible ? 'закрыто' : 'открыто', 'для адреса:', addressId);
-    
-    // Если меню открывается, добавляем обработчик клика вне меню для его закрытия
-    if (!isVisible) {
+    const isVisible = menu.classList.contains('show');
+    if (isVisible) {
+        menu.classList.remove('show');
+        console.log('[toggleAddressMenu] ✅ Меню закрыто для адреса:', addressId);
+    } else {
+        menu.classList.add('show');
+        console.log('[toggleAddressMenu] ✅ Меню открыто для адреса:', addressId);
+        
+        // Добавляем обработчик клика вне меню для его закрытия
         setTimeout(() => {
             const closeMenuOnClickOutside = (e) => {
                 if (!menu.contains(e.target) && !e.target.closest('.address-menu-btn')) {
-                    menu.style.display = 'none';
-                    document.removeEventListener('click', closeMenuOnClickOutside);
+                    menu.classList.remove('show');
+                    document.removeEventListener('pointerdown', closeMenuOnClickOutside);
                 }
             };
-            document.addEventListener('click', closeMenuOnClickOutside);
+            document.addEventListener('pointerdown', closeMenuOnClickOutside);
         }, 0);
     }
 }

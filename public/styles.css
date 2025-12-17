@@ -3579,65 +3579,80 @@ h1, h2, h3, .font-bold {
     accent-color: #fb2d5c !important;
 }
 
-/* Меню адреса (три точки) */
+/* Меню адреса (три точки) - кастомное с анимацией */
 .address-menu {
     position: relative;
 }
 
 .address-menu-btn {
-    background: none;
-    border: none;
-    padding: 8px;
+    all: unset;
     cursor: pointer;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    color: #2b2b2b;
+    transition: transform 0.2s, background-color 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.address-menu-btn:hover {
-    background-color: #f5f5f5;
-    color: #333;
+.address-menu-btn:active {
+    transform: scale(0.95);
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.address-menu-btn svg {
+    width: 22px;
+    height: 22px;
 }
 
 .address-menu-dropdown {
     position: absolute;
     right: 0;
-    top: 100%;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    z-index: 10000;
-    min-width: 150px;
-    margin-top: 4px;
+    top: 44px;
+    width: 220px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14);
     overflow: hidden;
+    z-index: 50;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.address-menu-dropdown.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
 }
 
 .address-menu-item {
-    width: 100%;
-    padding: 12px;
-    text-align: left;
-    background: none;
-    border: none;
+    all: unset;
     cursor: pointer;
-    color: var(--text-color);
-    transition: background-color 0.2s;
+    display: block;
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+    transition: background-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.address-menu-item:hover {
+.address-menu-item:active {
     background-color: #f5f5f5;
 }
 
 .address-menu-item-delete {
-    color: #ff4444;
+    color: #fb2d5c;
 }
 
-.address-menu-item-delete:hover {
-    background-color: #fff5f5;
-    color: #ff0000;
+.address-menu-item-delete:active {
+    background-color: rgba(251, 45, 92, 0.1);
 }
 
 .address-item-content {
