@@ -341,10 +341,11 @@ export function Orders({ authToken }) {
         }
         
         // Фильтр по номеру заказа
-        if (searchOrderId.trim()) {
+        if (searchOrderId && searchOrderId.trim()) {
           const searchId = searchOrderId.trim();
           filtered = filtered.filter(order => {
-            return String(order.id).includes(searchId);
+            const orderIdStr = String(order.id);
+            return orderIdStr.includes(searchId) || orderIdStr === searchId;
           });
         }
         
