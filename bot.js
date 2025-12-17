@@ -7799,7 +7799,7 @@ const handleProductShare = async (ctx, productId) => {
     try {
       // Получаем товар из БД
       const productResult = await client.query(
-        'SELECT id, name, price, min_qty, image_url FROM products WHERE id = $1',
+        'SELECT id, name, price, min_order_quantity, image_url FROM products WHERE id = $1',
         [parseInt(productId)]
       );
       
@@ -7809,7 +7809,8 @@ const handleProductShare = async (ctx, productId) => {
       }
       
       const product = productResult.rows[0];
-      const productPrice = product.price * (product.min_qty || 1);
+      const minQty = product.min_order_quantity || 1;
+      const productPrice = product.price * minQty;
       
       // Формируем сообщение с информацией о товаре
       let message = `🌸 ${product.name}\n\n`;
