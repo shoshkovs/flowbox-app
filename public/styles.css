@@ -220,7 +220,7 @@ h1, h2, h3, .font-bold {
     position: relative;
     width: 100%;
     aspect-ratio: 0.7;
-    overflow: hidden;
+    overflow: hidden; /* Критично важно для анимации выезда снизу */
     border-radius: 12px;
 }
 
@@ -488,39 +488,40 @@ h1, h2, h3, .font-bold {
     transition: stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Overlay с количеством банчей на изображении (полупрозрачный фильтр) */
+/* Overlay с количеством банчей на изображении (выезжает снизу как у Самоката) */
 .product-quantity-overlay {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4); /* Полупрозрачный черный фильтр */
+    background: rgba(251, 45, 92, 0.35); /* Полупрозрачный розовый фильтр */
     display: flex;
-    align-items: center; /* По центру вертикально */
-    justify-content: center; /* По центру горизонтально */
+    align-items: center;
+    justify-content: center;
     z-index: 10;
     border-radius: 12px;
     opacity: 0;
-    transform: scale(0.95);
-    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+    transform: translateY(100%); /* Начальное положение - снизу */
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
 }
 
 .product-quantity-overlay.show {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0); /* Выезжает наверх */
 }
 
 .product-quantity-overlay-text {
     font-size: 48px;
-    font-weight: 600;
+    font-weight: 800;
     color: white;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transform: scale(0.9);
+    transform: scale(0.8);
     opacity: 0;
-    transition: transform 0.2s ease-out, 
-                opacity 0.2s ease-out;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .product-quantity-overlay.show .product-quantity-overlay-text {
