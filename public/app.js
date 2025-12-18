@@ -3106,15 +3106,21 @@ function initProductCardImageSwipe() {
             
             track.style.transform = `translate3d(${nextPx}px, 0, 0)`;
             
-            // Обновляем индикаторы во время свайпа на основе текущей позиции
+            // Обновляем индикаторы во время свайпа на основе текущей позиции (только визуально)
             const currentPos = -nextPx;
             const calculatedIndex = Math.round(currentPos / w);
-            const clampedIndex = Math.max(0, Math.min(calculatedIndex, totalImages - 1));
+            const visualIndex = Math.max(0, Math.min(calculatedIndex, totalImages - 1));
             
-            // Обновляем индикаторы только если индекс изменился
-            if (clampedIndex !== currentIndex) {
-                currentIndex = clampedIndex;
-                setDots();
+            // Обновляем индикаторы только если индекс изменился (но не меняем currentIndex!)
+            if (visualIndex !== currentIndex) {
+                const dotButtons = dots.querySelectorAll('.product-image-dot');
+                dotButtons.forEach((dot, idx) => {
+                    if (idx === visualIndex) {
+                        dot.classList.add('active');
+                    } else {
+                        dot.classList.remove('active');
+                    }
+                });
             }
         };
         
@@ -3124,7 +3130,7 @@ function initProductCardImageSwipe() {
             
             const w = getViewportWidth();
             const dx = currentX - startX;
-            const threshold = w * 0.2; // Теперь порог нормальный (20% от viewport)
+            const threshold = w * 0.2; // Порог 20% от viewport
             
             track.style.transition = 'transform 0.3s ease-out';
             
@@ -3142,12 +3148,13 @@ function initProductCardImageSwipe() {
                 return;
             }
             
+            // Определяем направление свайпа по dx
             if (Math.abs(dx) > threshold) {
                 if (dx > 0) {
-                    // Свайп вправо (палец вправо) - предыдущее изображение (индекс уменьшается)
+                    // Свайп вправо (палец движется вправо) - показываем предыдущее изображение (индекс уменьшается)
                     goToImage(currentIndex - 1);
                 } else {
-                    // Свайп влево (палец влево) - следующее изображение (индекс увеличивается)
+                    // Свайп влево (палец движется влево) - показываем следующее изображение (индекс увеличивается)
                     goToImage(currentIndex + 1);
                 }
             } else {
@@ -10989,20 +10996,37 @@ function initProductSheetImageScrollSnap(totalImages) {
     const dotEls = [...dots.querySelectorAll('.product-sheet-dot')];
     if (dotEls.length !== totalImages) return;
     
+    // Удаляем старый обработчик scroll, если он был
+    const oldScrollHandler = pager._scrollHandler;
+    if (oldScrollHandler) {
+        pager.removeEventListener('scroll', oldScrollHandler);
+    }
+    
     const setActive = (idx) => {
-        dotEls.forEach((d, i) => d.classList.toggle('on', i === idx));
+        dotEls.forEach((d, i) => {
+            if (i === idx) {
+                d.classList.add('on');
+            } else {
+                d.classList.remove('on');
+            }
+        });
         productSheetCurrentImageIndex = idx;
     };
     
     let raf = null;
-    pager.addEventListener('scroll', () => {
+    const scrollHandler = () => {
         if (raf) cancelAnimationFrame(raf);
         raf = requestAnimationFrame(() => {
             const w = pager.clientWidth || 1;
             const idx = Math.round(pager.scrollLeft / w);
-            setActive(Math.max(0, Math.min(idx, totalImages - 1)));
+            const clampedIdx = Math.max(0, Math.min(idx, totalImages - 1));
+            setActive(clampedIdx);
         });
-    });
+    };
+    
+    // Сохраняем обработчик для возможности удаления
+    pager._scrollHandler = scrollHandler;
+    pager.addEventListener('scroll', scrollHandler);
     
     dotEls.forEach((dot, i) => {
         // Удаляем старый обработчик onclick
@@ -11011,7 +11035,8 @@ function initProductSheetImageScrollSnap(totalImages) {
         
         newDot.addEventListener('click', (e) => {
             e.stopPropagation();
-            pager.scrollTo({ left: i * pager.clientWidth, behavior: 'smooth' });
+            const w = pager.clientWidth || 1;
+            pager.scrollTo({ left: i * w, behavior: 'smooth' });
         });
     });
     
