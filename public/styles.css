@@ -3087,7 +3087,7 @@ select:-ms-input-placeholder {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 20px 0;
+    padding: 20px;
     border-bottom: 1px solid #eee;
     margin-bottom: 20px;
 }
@@ -3120,6 +3120,7 @@ select:-ms-input-placeholder {
 }
 
 .profile-section {
+    padding: 0 20px;
     margin-bottom: 24px;
 }
 
@@ -3359,6 +3360,7 @@ select:-ms-input-placeholder {
 }
 
 .profile-menu-buttons {
+    padding: 0 20px;
     padding: 0;
 }
 
@@ -3735,7 +3737,7 @@ select:-ms-input-placeholder {
 .address-item {
     background: white;
     padding: 16px;
-    border-radius: 12px;
+    border-radius: 0;
     margin-bottom: 12px;
     box-shadow: var(--shadow);
     transition: all 0.2s;
