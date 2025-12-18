@@ -1261,7 +1261,7 @@ function renderProducts() {
         return `
             <div class="product-card" data-product-id="${product.id}" data-swipe-blocked="false">
                 <div class="product-image-wrapper">
-                    <div class="product-image-track" data-product-id="${product.id}" style="display: flex; width: ${images.length * 100}%; height: 100%; transition: transform 0.3s ease-out;">
+                    <div class="product-image-track" data-product-id="${product.id}">
                         ${imagesHTML}
                     </div>
                     ${hasMultipleImages ? `
@@ -10890,70 +10890,46 @@ function openProductSheet(productId) {
 }
 
 // Инициализация свайпа для листания изображений
-function initProductSheetImageSwipe(pagerTrack, totalImages) {
+function initProductSheetImageScrollSnap(totalImages) {
     if (totalImages <= 1) return;
     
-    let startX = 0;
-    let currentX = 0;
-    let isDragging = false;
+    const pager = document.getElementById('productSheetPager');
+    const dots = document.getElementById('productSheetDots');
     
-    const handleStart = (e) => {
-        startX = e.touches ? e.touches[0].clientX : e.clientX;
-        isDragging = true;
-        pagerTrack.style.transition = 'none';
+    if (!pager || !dots) return;
+    
+    const dotEls = [...dots.querySelectorAll('.product-sheet-dot')];
+    if (dotEls.length !== totalImages) return;
+    
+    const setActive = (idx) => {
+        dotEls.forEach((d, i) => d.classList.toggle('on', i === idx));
+        productSheetCurrentImageIndex = idx;
     };
     
-    const handleMove = (e) => {
-        if (!isDragging) return;
-        currentX = e.touches ? e.touches[0].clientX : e.clientX;
-        const diff = currentX - startX;
-        const currentTranslate = -productSheetCurrentImageIndex * 100;
-        const newTranslate = currentTranslate + (diff / pagerTrack.offsetWidth) * 100;
-        pagerTrack.style.transform = `translateX(${newTranslate}%)`;
-    };
+    let raf = null;
+    pager.addEventListener('scroll', () => {
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+            const w = pager.clientWidth || 1;
+            const idx = Math.round(pager.scrollLeft / w);
+            setActive(Math.max(0, Math.min(idx, totalImages - 1)));
+        });
+    });
     
-    const handleEnd = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        pagerTrack.style.transition = 'transform 0.3s ease-out';
+    dotEls.forEach((dot, i) => {
+        // Удаляем старый обработчик onclick
+        const newDot = dot.cloneNode(true);
+        dot.parentNode.replaceChild(newDot, dot);
         
-        const diff = currentX - startX;
-        const threshold = pagerTrack.offsetWidth * 0.2; // 20% для переключения
-        
-        if (Math.abs(diff) > threshold) {
-            if (diff > 0 && productSheetCurrentImageIndex > 0) {
-                // Свайп вправо - предыдущее изображение
-                productSheetGoToImage(productSheetCurrentImageIndex - 1);
-            } else if (diff < 0 && productSheetCurrentImageIndex < totalImages - 1) {
-                // Свайп влево - следующее изображение
-                productSheetGoToImage(productSheetCurrentImageIndex + 1);
-            } else {
-                // Возвращаемся к текущему
-                productSheetGoToImage(productSheetCurrentImageIndex);
-            }
-        } else {
-            // Возвращаемся к текущему
-            productSheetGoToImage(productSheetCurrentImageIndex);
-        }
-    };
+        newDot.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pager.scrollTo({ left: i * pager.clientWidth, behavior: 'smooth' });
+        });
+    });
     
-    // Удаляем старые обработчики
-    pagerTrack.removeEventListener('touchstart', handleStart);
-    pagerTrack.removeEventListener('touchmove', handleMove);
-    pagerTrack.removeEventListener('touchend', handleEnd);
-    pagerTrack.removeEventListener('mousedown', handleStart);
-    pagerTrack.removeEventListener('mousemove', handleMove);
-    pagerTrack.removeEventListener('mouseup', handleEnd);
-    pagerTrack.removeEventListener('mouseleave', handleEnd);
-    
-    // Добавляем новые обработчики
-    pagerTrack.addEventListener('touchstart', handleStart, { passive: true });
-    pagerTrack.addEventListener('touchmove', handleMove, { passive: true });
-    pagerTrack.addEventListener('touchend', handleEnd);
-    pagerTrack.addEventListener('mousedown', handleStart);
-    pagerTrack.addEventListener('mousemove', handleMove);
-    pagerTrack.addEventListener('mouseup', handleEnd);
-    pagerTrack.addEventListener('mouseleave', handleEnd);
+    // Стартовое положение
+    setActive(0);
+    pager.scrollLeft = 0;
 }
 
 function closeProductSheet() {
