@@ -3026,19 +3026,23 @@ function initProductCardImageSwipe() {
         let isDragging = false;
         let hasMoved = false; // Флаг, что было движение (свайп)
         
+        // Вьюпорт = обертка (видимая часть слайдера)
+        const viewport = track.closest('.product-image-wrapper');
+        const getViewportWidth = () => (viewport ? viewport.clientWidth : track.parentElement.clientWidth);
+        
+        let startTranslatePx = 0;
+        
+        const setDots = () => {
+            const dotButtons = dots.querySelectorAll('.product-image-dot');
+            dotButtons.forEach((dot, idx) => dot.classList.toggle('active', idx === currentIndex));
+        };
+        
         const goToImage = (index) => {
             currentIndex = Math.max(0, Math.min(index, totalImages - 1));
-            track.style.transform = `translateX(-${currentIndex * 100}%)`;
-            
-            // Обновляем точки
-            const dotButtons = dots.querySelectorAll('.product-image-dot');
-            dotButtons.forEach((dot, idx) => {
-                if (idx === currentIndex) {
-                    dot.classList.add('active');
-                } else {
-                    dot.classList.remove('active');
-                }
-            });
+            const w = getViewportWidth();
+            track.style.transition = 'transform 0.3s ease-out';
+            track.style.transform = `translate3d(${-currentIndex * w}px, 0, 0)`;
+            setDots();
         };
         
         // Находим карточку товара для блокировки открытия при свайпе
@@ -3046,11 +3050,16 @@ function initProductCardImageSwipe() {
         
         const handleStart = (e) => {
             hasMoved = false;
-            startX = e.touches ? e.touches[0].clientX : e.clientX;
-            currentX = startX; // Инициализируем currentX
             isDragging = true;
+            
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            currentX = startX;
+            
+            const w = getViewportWidth();
+            startTranslatePx = -currentIndex * w;
+            
             track.style.transition = 'none';
-            // Сбрасываем флаг блокировки
+            
             if (productCard) {
                 productCard.setAttribute('data-swipe-blocked', 'false');
             }
@@ -3058,83 +3067,70 @@ function initProductCardImageSwipe() {
         
         const handleMove = (e) => {
             if (!isDragging) return;
-            e.preventDefault(); // Предотвращаем скролл страницы
-            currentX = e.touches ? e.touches[0].clientX : e.clientX;
-            const diff = Math.abs(currentX - startX);
             
-            // Если движение больше 5px, считаем это свайпом
-            if (diff > 5) {
+            // Важно: запрещаем скролл только когда реально свайпим горизонтально
+            currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            const dx = currentX - startX;
+            
+            if (Math.abs(dx) > 5) {
                 hasMoved = true;
-                // Блокируем открытие карточки при свайпе
                 if (productCard) {
                     productCard.setAttribute('data-swipe-blocked', 'true');
                 }
-                e.stopPropagation(); // Предотвращаем всплытие события
+                e.preventDefault();
+                e.stopPropagation();
+            } else {
+                return;
             }
             
-            // Вычисляем новую позицию с ограничениями
-            const currentTranslate = -currentIndex * 100;
-            const dragOffset = ((currentX - startX) / track.offsetWidth) * 100;
-            let newTranslate = currentTranslate + dragOffset;
+            const w = getViewportWidth();
+            const minPx = -(totalImages - 1) * w;
+            const maxPx = 0;
             
-            // Ограничиваем движение: нельзя свайпнуть дальше первого или последнего изображения
-            const minTranslate = -(totalImages - 1) * 100;
-            const maxTranslate = 0;
-            newTranslate = Math.max(minTranslate, Math.min(maxTranslate, newTranslate));
+            let nextPx = startTranslatePx + dx;
+            nextPx = Math.max(minPx, Math.min(maxPx, nextPx));
             
-            track.style.transform = `translateX(${newTranslate}%)`;
+            track.style.transform = `translate3d(${nextPx}px, 0, 0)`;
         };
         
-        const handleEnd = (e) => {
+        const handleEnd = () => {
             if (!isDragging) return;
             isDragging = false;
+            
+            const w = getViewportWidth();
+            const dx = currentX - startX;
+            const threshold = w * 0.2; // Теперь порог нормальный (20% от viewport)
+            
             track.style.transition = 'transform 0.3s ease-out';
             
-            const diff = currentX - startX;
-            const threshold = track.offsetWidth * 0.2; // 20% для переключения
-            
-            // Если был свайп, предотвращаем открытие карточки
-            if (hasMoved) {
-                e.stopPropagation();
-                e.preventDefault();
-                // Сбрасываем флаг через небольшую задержку, чтобы onclick не сработал
-                setTimeout(() => {
-                    if (productCard) {
-                        productCard.setAttribute('data-swipe-blocked', 'false');
-                    }
-                }, 100);
-            } else {
-                // Если не было свайпа, сразу сбрасываем флаг
+            if (!hasMoved) {
                 if (productCard) {
                     productCard.setAttribute('data-swipe-blocked', 'false');
                 }
+                // Не свайпили — ничего не делаем
+                goToImage(currentIndex);
+                return;
             }
             
-            // Определяем направление свайпа
-            // diff > 0 означает, что палец двигался вправо (свайп вправо) - показываем предыдущее изображение
-            // diff < 0 означает, что палец двигался влево (свайп влево) - показываем следующее изображение
-            if (Math.abs(diff) > threshold) {
-                if (diff > 0) {
+            if (Math.abs(dx) > threshold) {
+                if (dx > 0) {
                     // Свайп вправо (палец вправо) - предыдущее изображение (индекс уменьшается)
-                    if (currentIndex > 0) {
-                        goToImage(currentIndex - 1);
-                    } else {
-                        // Уже на первом изображении, возвращаемся
-                        goToImage(0);
-                    }
-                } else if (diff < 0) {
+                    goToImage(currentIndex - 1);
+                } else {
                     // Свайп влево (палец влево) - следующее изображение (индекс увеличивается)
-                    if (currentIndex < totalImages - 1) {
-                        goToImage(currentIndex + 1);
-                    } else {
-                        // Уже на последнем изображении, возвращаемся
-                        goToImage(totalImages - 1);
-                    }
+                    goToImage(currentIndex + 1);
                 }
             } else {
-                // Возвращаемся к текущему
+                // Возвращаемся к текущему изображению, если свайп был недостаточным
                 goToImage(currentIndex);
             }
+            
+            // Сбрасываем флаг блокировки с задержкой
+            setTimeout(() => {
+                if (productCard) {
+                    productCard.setAttribute('data-swipe-blocked', 'false');
+                }
+            }, 100);
         };
         
         // Удаляем старые обработчики
