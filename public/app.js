@@ -2266,7 +2266,7 @@ function renderAdditionalProducts() {
                 </div>
                 <div class="additional-product-info">
                     <div class="additional-product-name">${product.name}</div>
-                    <div class="additional-product-quantity-label">количество штук</div>
+                    <div class="additional-product-quantity-label">${minQty} шт</div>
                     ${stemQuantity > 1 ? `<div class="additional-product-stem-qty">${stemQuantity} шт</div>` : ''}
                     ${isInCart && bunchesCount > 0 ? `<div class="additional-product-cart-qty">${bunchesCount} шт</div>` : ''}
                     <div class="product-action-row">
