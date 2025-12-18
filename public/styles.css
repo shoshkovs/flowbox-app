@@ -3815,9 +3815,6 @@ select:-ms-input-placeholder {
     padding: 16px;
     border-radius: 0;
     margin-bottom: 12px;
-    margin-left: 4px;
-    margin-right: 4px;
-    width: calc(100% - 8px);
     box-shadow: var(--shadow);
     transition: all 0.2s;
     border: 2px solid transparent;
