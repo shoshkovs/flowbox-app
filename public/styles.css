@@ -2946,12 +2946,16 @@ select:-ms-input-placeholder {
 .summary-edit-btn {
     background: none;
     border: none;
-    color: var(--primary-color);
+    color: #999;
     cursor: pointer;
     padding: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.summary-edit-btn svg {
+    stroke: #999;
 }
 
 .checkout-cart-summary {
@@ -3307,6 +3311,11 @@ select:-ms-input-placeholder {
     justify-content: center;
     transition: transform 0.2s;
     flex-shrink: 0;
+    color: #999;
+}
+
+.profile-edit-icon-btn svg {
+    stroke: #999;
 }
 
 .profile-edit-icon-btn:active {
@@ -3810,6 +3819,11 @@ select:-ms-input-placeholder {
     justify-content: center;
     transition: transform 0.2s;
     flex-shrink: 0;
+    color: #999;
+}
+
+.address-edit-icon-btn svg {
+    stroke: #999;
 }
 
 .address-edit-icon-btn:active {
