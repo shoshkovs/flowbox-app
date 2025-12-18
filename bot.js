@@ -2325,6 +2325,7 @@ async function createOrderInDb(orderData) {
       
       return {
         orderId: order.id,
+        order_number: order.order_number || orderNumber || null,
         telegramOrderId: Date.now() // Для совместимости с фронтендом
       };
     } catch (error) {
@@ -3443,7 +3444,8 @@ app.post('/api/orders', async (req, res) => {
         // Возвращаем явный успешный ответ
         const responseData = { 
           success: true, 
-          orderId: result.orderId 
+          orderId: result.orderId,
+          order_number: result.order_number || null
         };
         
         res.status(200).json(responseData);

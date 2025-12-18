@@ -2578,8 +2578,10 @@ function openProfileScreen() {
 }
 
 // Функция для открытия страницы успешной оплаты
-function openPaymentSuccessPage(orderId) {
-    console.log('[openPaymentSuccessPage] 🎉 Открытие страницы успешной оплаты для заказа #' + orderId);
+function openPaymentSuccessPage(orderNumberOrId, orderIdForFetch = null) {
+    // orderNumberOrId - это номер заказа для отображения (может быть order_number или orderId)
+    // orderIdForFetch - это ID заказа для запроса данных (если нужно получить order_number)
+    console.log('[openPaymentSuccessPage] 🎉 Открытие страницы успешной оплаты для заказа #' + orderNumberOrId);
     
     // Определяем, Android ли это
     const platform = (tg?.platform || '').toLowerCase();
@@ -2611,28 +2613,53 @@ function openPaymentSuccessPage(orderId) {
     // Закрываем оформление заказа
     closeCheckoutUI();
     
-    // Устанавливаем номер заказа (используем order_number, если есть)
+    // Устанавливаем номер заказа
     const orderIdElement = document.getElementById('paymentSuccessOrderId');
     if (orderIdElement) {
-        // Если orderId - это число, пытаемся получить order_number из заказа
-        // Иначе используем переданный orderId
-        if (typeof orderId === 'number' || !isNaN(orderId)) {
-            // Загружаем данные заказа для получения order_number
-            fetch(`/api/orders/${orderId}?userId=${userId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.order && data.order.order_number) {
-                        orderIdElement.textContent = data.order.order_number;
-                    } else {
-                        orderIdElement.textContent = orderId;
+        // Если передан orderIdForFetch, пытаемся получить order_number из заказа
+        // Иначе используем переданный orderNumberOrId
+        if (orderIdForFetch) {
+            // Получаем userId для запроса
+            let userId = null;
+            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                userId = tg.initDataUnsafe.user.id;
+            }
+            
+            // Если userId не получен из Telegram, пробуем получить из localStorage
+            if (!userId) {
+                const userData = localStorage.getItem('userData');
+                if (userData) {
+                    try {
+                        const parsed = JSON.parse(userData);
+                        userId = parsed.userId || parsed.id;
+                    } catch (e) {
+                        console.warn('[openPaymentSuccessPage] Не удалось распарсить userData из localStorage');
                     }
-                })
-                .catch(err => {
-                    console.error('Ошибка загрузки номера заказа:', err);
-                    orderIdElement.textContent = orderId;
-                });
+                }
+            }
+            
+            // Если userId найден, загружаем данные заказа для получения order_number
+            if (userId && (typeof orderIdForFetch === 'number' || !isNaN(orderIdForFetch))) {
+                fetch(`/api/orders/${orderIdForFetch}?userId=${userId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.order_number) {
+                            orderIdElement.textContent = data.order_number;
+                        } else {
+                            orderIdElement.textContent = orderNumberOrId;
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Ошибка загрузки номера заказа:', err);
+                        orderIdElement.textContent = orderNumberOrId;
+                    });
+            } else {
+                // Если userId не найден, просто показываем переданный номер
+                orderIdElement.textContent = orderNumberOrId;
+            }
         } else {
-            orderIdElement.textContent = orderId;
+            // Если orderIdForFetch не передан, просто показываем переданный номер
+            orderIdElement.textContent = orderNumberOrId;
         }
     }
     
