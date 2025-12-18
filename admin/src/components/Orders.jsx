@@ -163,6 +163,34 @@ function formatDeliveryTime(timeStr) {
   return timeStr.trim() + ':00';
 }
 
+// Функция для форматирования номера заказа в новый формат "#userId016"
+function formatOrderNumber(order) {
+  // Пробуем разные варианты названий поля user_id
+  const userId = order.user_id || order.userId || order.customer_id || order.customerId;
+  
+  // Формируем номер заказа в формате "#userId016"
+  if (userId) {
+    // Проверяем userOrderNumber (может быть с разным регистром)
+    const userOrderNumber = order.userOrderNumber || order.user_order_number || order.user_orderNumber;
+    if (userOrderNumber) {
+      const userOrderNumberStr = String(userOrderNumber).padStart(3, '0');
+      return `#${userId}${userOrderNumberStr}`;
+    }
+    
+    // Проверяем order_number (может быть с разным регистром)
+    const orderNumber = order.order_number || order.orderNumber;
+    if (orderNumber) {
+      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+      const fullOrderNumber = String(orderNumber);
+      const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
+      return `#${userId}${userOrderNumberStr}`;
+    }
+  }
+  
+  // Fallback: если userId не найден или нет order_number/userOrderNumber, используем id
+  return `#${order.id}`;
+}
+
 export function Orders({ authToken }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -347,12 +375,17 @@ export function Orders({ authToken }) {
           });
         }
         
-        // Фильтр по номеру заказа
+        // Фильтр по номеру заказа (ищем по ID и по новому формату номера)
         if (searchOrderId && searchOrderId.trim()) {
           const searchId = searchOrderId.trim();
           filtered = filtered.filter(order => {
             const orderIdStr = String(order.id);
-            return orderIdStr.includes(searchId) || orderIdStr === searchId;
+            const formattedOrderNumber = formatOrderNumber(order);
+            // Ищем по ID заказа или по отформатированному номеру (без символа #)
+            return orderIdStr.includes(searchId) || 
+                   orderIdStr === searchId ||
+                   formattedOrderNumber.includes(searchId) ||
+                   formattedOrderNumber.replace('#', '') === searchId;
           });
         }
         
@@ -565,7 +598,7 @@ export function Orders({ authToken }) {
                     }}
                   >
                     <td className="py-3 px-2">
-                      <span className="text-blue-600 font-medium">#{order.id}</span>
+                      <span className="text-blue-600 font-medium">{formatOrderNumber(order)}</span>
                     </td>
                     <td className="py-3 px-2 text-sm text-gray-600 whitespace-nowrap">
                       <div className="font-medium">{dateStr}</div>

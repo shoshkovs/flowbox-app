@@ -3060,8 +3060,16 @@ function initProductCardImageSwipe() {
             
             track.style.transition = 'none';
             
+            // Сбрасываем флаг блокировки при начале взаимодействия
             if (productCard) {
                 productCard.setAttribute('data-swipe-blocked', 'false');
+                // Безопасность: автоматически сбрасываем флаг через 500ms на случай, если что-то пойдёт не так
+                clearTimeout(productCard._swipeBlockTimeout);
+                productCard._swipeBlockTimeout = setTimeout(() => {
+                    if (productCard) {
+                        productCard.setAttribute('data-swipe-blocked', 'false');
+                    }
+                }, 500);
             }
         };
         
@@ -3091,6 +3099,17 @@ function initProductCardImageSwipe() {
             nextPx = Math.max(minPx, Math.min(maxPx, nextPx));
             
             track.style.transform = `translate3d(${nextPx}px, 0, 0)`;
+            
+            // Обновляем индикаторы во время свайпа на основе текущей позиции
+            const currentPos = -nextPx;
+            const calculatedIndex = Math.round(currentPos / w);
+            const clampedIndex = Math.max(0, Math.min(calculatedIndex, totalImages - 1));
+            
+            // Обновляем индикаторы только если индекс изменился
+            if (clampedIndex !== currentIndex) {
+                currentIndex = clampedIndex;
+                setDots();
+            }
         };
         
         const handleEnd = () => {
@@ -3106,6 +3125,11 @@ function initProductCardImageSwipe() {
             if (!hasMoved) {
                 if (productCard) {
                     productCard.setAttribute('data-swipe-blocked', 'false');
+                    // Отменяем автоматический сброс
+                    if (productCard._swipeBlockTimeout) {
+                        clearTimeout(productCard._swipeBlockTimeout);
+                        productCard._swipeBlockTimeout = null;
+                    }
                 }
                 // Не свайпили — ничего не делаем
                 goToImage(currentIndex);
@@ -3125,12 +3149,17 @@ function initProductCardImageSwipe() {
                 goToImage(currentIndex);
             }
             
-            // Сбрасываем флаг блокировки с задержкой
+            // Сбрасываем флаг блокировки с задержкой (уменьшаем задержку для более быстрой реакции на клики)
             setTimeout(() => {
                 if (productCard) {
                     productCard.setAttribute('data-swipe-blocked', 'false');
+                    // Отменяем автоматический сброс, так как мы сбросили вручную
+                    if (productCard._swipeBlockTimeout) {
+                        clearTimeout(productCard._swipeBlockTimeout);
+                        productCard._swipeBlockTimeout = null;
+                    }
                 }
-            }, 100);
+            }, 50);
         };
         
         // Удаляем старые обработчики
@@ -3166,6 +3195,9 @@ function setupProductCardClickHandlers() {
         const productId = card.getAttribute('data-product-id');
         if (!productId) return;
         
+        // Сбрасываем флаг блокировки свайпа при установке обработчиков
+        card.setAttribute('data-swipe-blocked', 'false');
+        
         // Проверяем, есть ли уже обработчик (чтобы не дублировать)
         if (card.hasAttribute('data-click-handler-set')) return;
         card.setAttribute('data-click-handler-set', 'true');
@@ -3177,12 +3209,25 @@ function setupProductCardClickHandlers() {
                 return;
             }
             
-            // Проверяем, был ли свайп на изображении
+            // Проверяем, был ли активный свайп на изображении
             const isSwipeBlocked = this.getAttribute('data-swipe-blocked') === 'true';
             if (isSwipeBlocked) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
+                // Если флаг блокировки активен, даём время на сброс после завершения свайпа
+                // Если это был реальный свайп, флаг останется и мы не откроем карточку
+                // Если это был обычный клик, флаг быстро сбросится и мы откроем карточку
+                // Отменяем предыдущий таймаут для этой карточки, если он был
+                if (this._clickTimeout) clearTimeout(this._clickTimeout);
+                this._clickTimeout = setTimeout(() => {
+                    const stillBlocked = this.getAttribute('data-swipe-blocked') === 'true';
+                    if (!stillBlocked) {
+                        // Флаг сброшен - это был обычный клик, открываем карточку
+                        openProductSheet(parseInt(productId));
+                    }
+                    // Всегда сбрасываем флаг после проверки для следующего взаимодействия
+                    this.setAttribute('data-swipe-blocked', 'false');
+                    this._clickTimeout = null;
+                }, 100);
+                return;
             }
             // Открываем карточку товара
             openProductSheet(parseInt(productId));
@@ -6584,33 +6629,43 @@ function getOrderStatusClass(status) {
 
 // Функция для форматирования номера заказа в новый формат "#userId016"
 function formatOrderNumber(order) {
-    // Получаем userId
-    let userId = null;
-    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        userId = tg.initDataUnsafe.user.id;
-    }
+    // Получаем userId - сначала из самого заказа, потом из Telegram/localStorage
+    let userId = order.user_id || order.userId || order.customer_id || order.customerId;
     
-    // Если userId не получен из Telegram, пробуем получить из localStorage
     if (!userId) {
-        const userData = localStorage.getItem('userData');
-        if (userData) {
-            try {
-                const parsed = JSON.parse(userData);
-                userId = parsed.userId || parsed.id;
-            } catch (e) {
-                console.warn('[formatOrderNumber] Не удалось распарсить userData из localStorage');
+        // Если userId не найден в заказе, пробуем получить из Telegram
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+        }
+        
+        // Если userId не получен из Telegram, пробуем получить из localStorage
+        if (!userId) {
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                try {
+                    const parsed = JSON.parse(userData);
+                    userId = parsed.userId || parsed.id;
+                } catch (e) {
+                    console.warn('[formatOrderNumber] Не удалось распарсить userData из localStorage');
+                }
             }
         }
     }
     
     // Формируем номер заказа в формате "#userId016"
     if (userId) {
-        if (order.userOrderNumber) {
-            const userOrderNumberStr = String(order.userOrderNumber).padStart(3, '0');
+        // Проверяем userOrderNumber (может быть с разным регистром)
+        const userOrderNumber = order.userOrderNumber || order.user_order_number || order.user_orderNumber;
+        if (userOrderNumber) {
+            const userOrderNumberStr = String(userOrderNumber).padStart(3, '0');
             return `#${userId}${userOrderNumberStr}`;
-        } else if (order.order_number) {
+        }
+        
+        // Проверяем order_number (может быть с разным регистром)
+        const orderNumber = order.order_number || order.orderNumber;
+        if (orderNumber) {
             // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
-            const fullOrderNumber = String(order.order_number);
+            const fullOrderNumber = String(orderNumber);
             const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
             return `#${userId}${userOrderNumberStr}`;
         }
@@ -10851,7 +10906,7 @@ function openProductSheet(productId) {
     if (images.length > 1) {
         dots.innerHTML = images.map((_, idx) => `
             <button class="product-sheet-dot ${idx === 0 ? 'on' : ''}" 
-                    onclick="productSheetGoToImage(${idx})" 
+                    data-index="${idx}"
                     aria-label="Фото ${idx + 1}"></button>
         `).join('');
         dots.style.display = 'flex';

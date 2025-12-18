@@ -229,12 +229,12 @@ h1, h2, h3, .font-bold {
     position: relative;
     width: 100%;
     aspect-ratio: 0.7;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     border-radius: 12px;
+    background: white;
 }
 
 .product-image-wrapper::-webkit-scrollbar {
@@ -257,7 +257,7 @@ h1, h2, h3, .font-bold {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    background: white;
 }
 
 .product-image {
@@ -265,7 +265,6 @@ h1, h2, h3, .font-bold {
     height: 100%;
     object-fit: cover;
     object-position: center;
-    border-radius: 12px;
     display: block;
 }
 

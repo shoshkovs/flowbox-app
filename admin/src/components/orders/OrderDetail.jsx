@@ -5,6 +5,34 @@ import { toast } from 'sonner';
 
 const API_BASE = window.location.origin;
 
+// Функция для форматирования номера заказа в новый формат "#userId016"
+function formatOrderNumber(order) {
+  // Пробуем разные варианты названий поля user_id
+  const userId = order.user_id || order.userId || order.customer_id || order.customerId;
+  
+  // Формируем номер заказа в формате "#userId016"
+  if (userId) {
+    // Проверяем userOrderNumber (может быть с разным регистром)
+    const userOrderNumber = order.userOrderNumber || order.user_order_number || order.user_orderNumber;
+    if (userOrderNumber) {
+      const userOrderNumberStr = String(userOrderNumber).padStart(3, '0');
+      return `#${userId}${userOrderNumberStr}`;
+    }
+    
+    // Проверяем order_number (может быть с разным регистром)
+    const orderNumber = order.order_number || order.orderNumber;
+    if (orderNumber) {
+      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+      const fullOrderNumber = String(orderNumber);
+      const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
+      return `#${userId}${userOrderNumberStr}`;
+    }
+  }
+  
+  // Fallback: если userId не найден или нет order_number/userOrderNumber, используем id
+  return `#${order.id}`;
+}
+
 export function OrderDetail({ authToken, orderId }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -322,7 +350,7 @@ export function OrderDetail({ authToken, orderId }) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold">Заказ #{order.id}</h1>
+            <h1 className="text-3xl font-bold">Заказ {formatOrderNumber(order)}</h1>
             <p className="text-gray-600 mt-1">
               Создан {order.created_at ? new Date(order.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
             </p>
@@ -347,8 +375,8 @@ export function OrderDetail({ authToken, orderId }) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">ID заказа</label>
-                  <p className="text-gray-900">#{order.id}</p>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Номер заказа</label>
+                  <p className="text-gray-900">{formatOrderNumber(order)}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">Текущий статус</label>
