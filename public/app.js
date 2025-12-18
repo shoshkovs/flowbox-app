@@ -23,10 +23,9 @@ function applyInsets() {
     let topRaw, bottomRaw;
     
     if (isIOS) {
-        // На iOS используем только contentSafeAreaInset (без safeAreaInset)
-        // чтобы избежать слишком больших отступов из-за системной панели Telegram
-        // Telegram Mini App уже имеет свою системную панель сверху
-        topRaw = tg.contentSafeAreaInset?.top ?? 0;
+        // На iOS используем safeAreaInset для корректного отступа сверху
+        // чтобы хедер не был слишком высоко и учитывал системную панель
+        topRaw = tg.safeAreaInset?.top ?? tg.contentSafeAreaInset?.top ?? 0;
         bottomRaw = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
     } else {
         // На Android используем contentSafeAreaInset с fallback на safeAreaInset
@@ -36,7 +35,7 @@ function applyInsets() {
     
     // Ограничиваем максимальные значения для предотвращения слишком больших отступов
     const top = isIOS 
-        ? clamp(topRaw, 0, 8)       // На iOS ограничиваем до 8px сверху (минимум для комфорта)
+        ? clamp(topRaw, 0, 44)      // На iOS ограничиваем до 44px сверху (стандартная высота статус-бара)
         : clamp(topRaw, 0, 24);     // На Android до 24px
     
     const bottom = isIOS
