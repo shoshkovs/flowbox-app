@@ -859,6 +859,7 @@ let selectedRecipientId = 'self'; // Выбранный получатель
 const productsContainer = document.getElementById('productsContainer');
 const navCartCount = document.getElementById('navCartCount');
 const goToCartFixed = document.getElementById('goToCartFixed');
+let goToCartButtonTimeout = null; // Таймер для задержки появления кнопки
 const fixedCartTotal = document.getElementById('fixedCartTotal');
 const emptyCartContainer = document.getElementById('emptyCartContainer');
 const cartWithItems = document.getElementById('cartWithItems');
@@ -1557,11 +1558,22 @@ function updateGoToCartButton() {
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     fixedCartTotal.textContent = total;
     
+    // Очищаем предыдущий таймер, если он есть
+    if (goToCartButtonTimeout) {
+        clearTimeout(goToCartButtonTimeout);
+        goToCartButtonTimeout = null;
+    }
+    
     if (cart.length > 0) {
-        // Выезжает слева с анимацией
-        goToCartFixed.classList.add('show');
+        // Убираем класс show если он был, чтобы сбросить задержку
+        goToCartFixed.classList.remove('show');
+        // Добавляем небольшую задержку перед появлением
+        goToCartButtonTimeout = setTimeout(() => {
+            goToCartFixed.classList.add('show');
+            goToCartButtonTimeout = null;
+        }, 300); // Задержка 300мс
     } else {
-        // Уезжает влево с анимацией
+        // Уезжает влево с анимацией (без задержки)
         goToCartFixed.classList.remove('show');
     }
 }
