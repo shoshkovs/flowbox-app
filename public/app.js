@@ -7271,6 +7271,9 @@ window.openOrderDetail = openOrderDetail;
 // checkoutData уже объявлен выше в начале файла
 
 // Инициализация тумблера "Оставить у двери"
+let leaveAtDoorToggleHandler = null;
+let leaveAtDoorLabelHandler = null;
+
 function initLeaveAtDoorCheckbox() {
     const toggle = document.getElementById('leaveAtDoorToggle');
     if (!toggle) {
@@ -7278,12 +7281,17 @@ function initLeaveAtDoorCheckbox() {
         return;
     }
     
+    // Удаляем старые обработчики, если они есть
+    if (leaveAtDoorToggleHandler) {
+        toggle.removeEventListener('click', leaveAtDoorToggleHandler);
+    }
+    
     // Начальное состояние из checkoutData
     const isChecked = !!checkoutData.leaveAtDoor;
     toggle.setAttribute('aria-checked', isChecked.toString());
     
     // Обработчик клика
-    const handleToggle = function(e) {
+    leaveAtDoorToggleHandler = function(e) {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -7300,16 +7308,23 @@ function initLeaveAtDoorCheckbox() {
         }
     };
     
-    toggle.addEventListener('click', handleToggle);
+    toggle.addEventListener('click', leaveAtDoorToggleHandler);
     
     // Также делаем кликабельным label
     const label = document.querySelector('label[for="leaveAtDoorToggle"]');
     if (label) {
-        label.addEventListener('click', function(e) {
+        // Удаляем старый обработчик, если есть
+        if (leaveAtDoorLabelHandler) {
+            label.removeEventListener('click', leaveAtDoorLabelHandler);
+        }
+        
+        leaveAtDoorLabelHandler = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            handleToggle(e);
-        });
+            leaveAtDoorToggleHandler(e);
+        };
+        
+        label.addEventListener('click', leaveAtDoorLabelHandler);
     }
     
     console.log('[leaveAtDoor] ✅ Тумблер инициализирован, начальное состояние:', isChecked);
@@ -7706,11 +7721,8 @@ function goToStep(step) {
                 console.warn('[goToStep] ⚠️ Адрес с ID', checkoutData.address.id, 'не найден в savedAddresses');
             }
         }
-    }
-    
-    // Если переходим на шаг 3, синхронизируем чекбокс "Оставить у двери"
-    if (step === 3) {
-        // Переинициализируем чекбокс при переходе на шаг 3
+        
+        // Инициализируем чекбокс "Оставить у двери" на шаге 2
         initLeaveAtDoorCheckbox();
         
         // ВАЖНО: Убеждаемся, что состояние чекбокса синхронизировано с checkoutData

@@ -2041,14 +2041,14 @@ select:-ms-input-placeholder {
     border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: space-around;
-    align-items: center;
-    padding: 8px 0 env(safe-area-inset-bottom, 8px) 0;
+    align-items: flex-start;
+    padding-top: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     z-index: 100;
     transition: transform 0.2s ease-out, opacity 0.2s ease-out;
     -webkit-tap-highlight-color: transparent !important;
     -webkit-touch-callout: none;
-    /* Дополнительный отступ снизу для Android */
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    /* Минимальная высота с учетом белого пространства снизу для Android */
     min-height: calc(60px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -2084,8 +2084,8 @@ select:-ms-input-placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 8px 4px;
+    justify-content: flex-start;
+    padding: 8px 4px 0 4px;
     background: none !important;
     border: none !important;
     cursor: pointer;
@@ -4232,7 +4232,7 @@ input[type="text"][inputmode="numeric"] {
 }
 
 .leave-at-door-toggle[aria-checked="true"] {
-    background-color: #f9a8d4; /* bg-pink-300 - нежно-розовый */
+    background-color: #fb2d5c; /* Ярко-розовый */
 }
 
 .leave-at-door-toggle-thumb {
