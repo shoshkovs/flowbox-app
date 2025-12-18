@@ -9119,21 +9119,13 @@ function renderMyAddressesList() {
                     ${isSelected ? '<div style="font-size: 12px; color: var(--primary-color);">Выбран</div>' : ''}
                 </div>
                 <div class="address-menu">
-                    <button class="address-menu-btn" onclick="event.stopPropagation(); toggleAddressMenu(${addressId})" aria-label="Меню адреса">
+                    <button class="address-menu-btn" onclick="event.stopPropagation(); editAddressFromMyAddresses(${addressId})" aria-label="Редактировать адрес">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="5" r="2" fill="currentColor"/>
                             <circle cx="12" cy="12" r="2" fill="currentColor"/>
                             <circle cx="12" cy="19" r="2" fill="currentColor"/>
                         </svg>
                     </button>
-                    <div class="address-menu-dropdown" id="addressMenu${addressId}">
-                        <button class="address-menu-item" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); editAddressFromMyAddresses(${addressId})">
-                            Изменить
-                        </button>
-                        <button class="address-menu-item address-menu-item-delete" onclick="event.stopPropagation(); toggleAddressMenu(${addressId}); deleteAddressFromMyAddresses(${addressId})">
-                            Удалить
-                        </button>
-                    </div>
                 </div>
             </div>
         `;
