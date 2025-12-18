@@ -58,7 +58,7 @@ h1, h2, h3, .font-bold {
 
 .app {
     min-height: 100vh;
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); /* Место для нижней навигации + безопасная зона */
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); /* Место для нижней навигации + безопасная зона */
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -2043,13 +2043,13 @@ select:-ms-input-placeholder {
     justify-content: space-around;
     align-items: flex-start;
     padding-top: 8px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     z-index: 100;
     transition: transform 0.2s ease-out, opacity 0.2s ease-out;
     -webkit-tap-highlight-color: transparent !important;
     -webkit-touch-callout: none;
     /* Минимальная высота с учетом белого пространства снизу для Android */
-    min-height: calc(60px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(76px + env(safe-area-inset-bottom, 0px));
 }
 
 .bottom-nav *,
@@ -4344,12 +4344,12 @@ input[type="text"][inputmode="numeric"] {
 }
 
 .order-details-content {
-    padding: 14px 14px calc(24px + 80px); /* Отступ снизу для footer */
+    padding: 14px 14px calc(24px + 92px); /* Отступ снизу для footer */
     display: flex;
     flex-direction: column;
     gap: 12px;
     flex: 1;
-    padding-bottom: calc(24px + 80px + env(safe-area-inset-bottom));
+    padding-bottom: calc(24px + 92px + env(safe-area-inset-bottom));
 }
 
 .order-details-card {
