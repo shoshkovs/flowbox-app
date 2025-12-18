@@ -3035,8 +3035,16 @@ function initProductCardImageSwipe() {
                 e.stopPropagation(); // Предотвращаем всплытие события
             }
             
+            // Вычисляем новую позицию с ограничениями
             const currentTranslate = -currentIndex * 100;
-            const newTranslate = currentTranslate + ((currentX - startX) / track.offsetWidth) * 100;
+            const dragOffset = ((currentX - startX) / track.offsetWidth) * 100;
+            let newTranslate = currentTranslate + dragOffset;
+            
+            // Ограничиваем движение: нельзя свайпнуть дальше первого или последнего изображения
+            const minTranslate = -(totalImages - 1) * 100;
+            const maxTranslate = 0;
+            newTranslate = Math.max(minTranslate, Math.min(maxTranslate, newTranslate));
+            
             track.style.transform = `translateX(${newTranslate}%)`;
         };
         
@@ -3066,15 +3074,22 @@ function initProductCardImageSwipe() {
             }
             
             if (Math.abs(diff) > threshold) {
-                if (diff > 0 && currentIndex > 0) {
+                if (diff > 0) {
                     // Свайп вправо - предыдущее изображение
-                    goToImage(currentIndex - 1);
-                } else if (diff < 0 && currentIndex < totalImages - 1) {
-                    // Свайп влево - следующее изображение
-                    goToImage(currentIndex + 1);
+                    if (currentIndex > 0) {
+                        goToImage(currentIndex - 1);
+                    } else {
+                        // Уже на первом изображении, возвращаемся
+                        goToImage(0);
+                    }
                 } else {
-                    // Возвращаемся к текущему
-                    goToImage(currentIndex);
+                    // Свайп влево - следующее изображение
+                    if (currentIndex < totalImages - 1) {
+                        goToImage(currentIndex + 1);
+                    } else {
+                        // Уже на последнем изображении, возвращаемся
+                        goToImage(totalImages - 1);
+                    }
                 }
             } else {
                 // Возвращаемся к текущему

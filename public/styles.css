@@ -249,7 +249,7 @@ h1, h2, h3, .font-bold {
 .product-image {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
     border-radius: 12px;
     display: block;
