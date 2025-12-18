@@ -9221,38 +9221,8 @@ function openMyAddressesPage() {
     // Показываем BackButton
     showBackButton(true);
     
-    // Добавляем обработчик для ссылки "профиле"
-    const goToProfileLink = document.getElementById('goToProfileLink');
-    if (goToProfileLink) {
-        goToProfileLink.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Закрываем вкладку "Мои адреса"
-            const myAddressesTab = document.getElementById('myAddressesTab');
-            if (myAddressesTab) {
-                myAddressesTab.style.display = 'none';
-            }
-            
-            // Переключаемся на профиль
-            switchTab('profileTab');
-            
-            // Прокручиваем до секции адресов после небольшой задержки (чтобы DOM успел обновиться)
-            setTimeout(() => {
-                const deliveryAddressesList = document.getElementById('deliveryAddressesList');
-                if (deliveryAddressesList) {
-                    // Находим родительскую секцию
-                    const addressesSection = deliveryAddressesList.closest('.profile-section');
-                    if (addressesSection) {
-                        addressesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                        // Fallback: прокручиваем до самого элемента
-                        deliveryAddressesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }
-            }, 300);
-        };
-    }
+    // Устанавливаем обработчик для ссылки "профиле"
+    setupGoToProfileLink();
 }
 
 // Рендеринг списка адресов на странице "Мои адреса"
@@ -9325,6 +9295,50 @@ function renderMyAddressesList() {
             </div>
         `;
     }).join('');
+    
+    // Устанавливаем обработчик для ссылки "профиле" после рендеринга
+    setupGoToProfileLink();
+}
+
+// Установка обработчика для ссылки "профиле"
+function setupGoToProfileLink() {
+    const goToProfileLink = document.getElementById('goToProfileLink');
+    if (goToProfileLink) {
+        // Удаляем старый обработчик, если есть
+        goToProfileLink.onclick = null;
+        
+        // Добавляем новый обработчик
+        goToProfileLink.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('[setupGoToProfileLink] Клик по ссылке "профиле"');
+            
+            // Закрываем вкладку "Мои адреса"
+            const myAddressesTab = document.getElementById('myAddressesTab');
+            if (myAddressesTab) {
+                myAddressesTab.style.display = 'none';
+            }
+            
+            // Переключаемся на профиль
+            switchTab('profileTab');
+            
+            // Прокручиваем до секции адресов после небольшой задержки (чтобы DOM успел обновиться)
+            setTimeout(() => {
+                const deliveryAddressesList = document.getElementById('deliveryAddressesList');
+                if (deliveryAddressesList) {
+                    // Находим родительскую секцию
+                    const addressesSection = deliveryAddressesList.closest('.profile-section');
+                    if (addressesSection) {
+                        addressesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        // Fallback: прокручиваем до самого элемента
+                        deliveryAddressesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }, 300);
+        };
+    }
 }
 
 // Редактирование адреса из упрощенного режима
