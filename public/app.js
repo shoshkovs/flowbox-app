@@ -2355,6 +2355,11 @@ function updateAdditionalProductCard(productId) {
     button.onclick = (e) => {
         e.stopPropagation();
         if (!isInCart) {
+            // Добавляем анимацию pulse
+            button.classList.add('pulse');
+            setTimeout(() => {
+                button.classList.remove('pulse');
+            }, 300);
             addAdditionalProduct(product.id);
         }
     };
@@ -2399,6 +2404,12 @@ function updateAdditionalProductCard(productId) {
     if (plusBtn) {
         plusBtn.onclick = (e) => {
             e.stopPropagation();
+            // Добавляем анимацию pulse на кнопку
+            button.classList.add('pulse');
+            setTimeout(() => {
+                button.classList.remove('pulse');
+            }, 300);
+            
             if (isInCart) {
                 changeCartQuantity(product.id, 1);
             } else {
@@ -2477,6 +2488,15 @@ function addAdditionalProduct(productId) {
     updateCartUI();
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
+    
+    // Добавляем анимацию pulse на кнопку
+    const button = document.getElementById(`additional-product-action-btn-${productId}`);
+    if (button) {
+        button.classList.add('pulse');
+        setTimeout(() => {
+            button.classList.remove('pulse');
+        }, 300);
+    }
     
     // Обновляем карточку дополнительного товара
     updateAdditionalProductCard(productId);

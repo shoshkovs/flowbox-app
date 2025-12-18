@@ -368,7 +368,9 @@ h1, h2, h3, .font-bold {
     transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
                 background-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
                 padding 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-                gap 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                gap 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                transform 0.1s ease-out,
+                opacity 0.1s ease-out;
     overflow: hidden;
     flex-shrink: 0;
     
@@ -377,6 +379,12 @@ h1, h2, h3, .font-bold {
 
 .product-action-btn:active {
     opacity: 0.7;
+    transform: scale(0.95);
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+}
+
+.product-action-btn.pulse {
+    animation: pulse 0.3s ease-out;
 }
 
 /* Состояние когда товар в корзине - растягивается на всю ширину */
@@ -790,6 +798,18 @@ h1, h2, h3, .font-bold {
     }
     to { 
         opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
         transform: scale(1);
     }
 }
