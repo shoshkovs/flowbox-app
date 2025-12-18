@@ -3946,26 +3946,30 @@ function initOrderForm() {
         
         if (prevBtn) {
             prevBtn.addEventListener('click', () => {
-                const newDate = new Date(currentCalendarDate);
-                newDate.setMonth(newDate.getMonth() - 1);
-                currentCalendarDate = newDate;
-                renderCalendar(newDate);
-                
-                if (tg && tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
+                if (!prevBtn.disabled) {
+                    const newDate = new Date(currentCalendarDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    currentCalendarDate = newDate;
+                    renderCalendar(newDate);
+                    
+                    if (tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.impactOccurred('light');
+                    }
                 }
             });
         }
         
         if (nextBtn) {
             nextBtn.addEventListener('click', () => {
-                const newDate = new Date(currentCalendarDate);
-                newDate.setMonth(newDate.getMonth() + 1);
-                currentCalendarDate = newDate;
-                renderCalendar(newDate);
-                
-                if (tg && tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
+                if (!nextBtn.disabled) {
+                    const newDate = new Date(currentCalendarDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    currentCalendarDate = newDate;
+                    renderCalendar(newDate);
+                    
+                    if (tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.impactOccurred('light');
+                    }
                 }
             });
         }
@@ -9113,6 +9117,18 @@ function initSimpleDateTimeOnSummary() {
             
             calendarDaysContainer.appendChild(dayEl);
         }
+        
+        // Устанавливаем disabled состояние для кнопок навигации
+        if (prevBtn) {
+            const prevMonth = new Date(year, month - 1, 1);
+            const prevMonthLastDay = new Date(year, month, 0);
+            prevBtn.disabled = prevMonthLastDay < minDate;
+        }
+        
+        if (nextBtn) {
+            const nextMonth = new Date(year, month + 1, 1);
+            nextBtn.disabled = nextMonth > maxDate;
+        }
     }
     
     // Навигация по месяцам - удаляем старые обработчики перед добавлением новых
@@ -9122,11 +9138,13 @@ function initSimpleDateTimeOnSummary() {
         prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
         
         newPrevBtn.addEventListener('click', () => {
-            currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1);
-            if (currentCalendarDate < minDate) {
-                currentCalendarDate = new Date(minDate);
+            if (!newPrevBtn.disabled) {
+                currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1);
+                if (currentCalendarDate < minDate) {
+                    currentCalendarDate = new Date(minDate);
+                }
+                renderSummaryCalendar(currentCalendarDate);
             }
-            renderSummaryCalendar(currentCalendarDate);
         });
     }
     
@@ -9136,11 +9154,13 @@ function initSimpleDateTimeOnSummary() {
         nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
         
         newNextBtn.addEventListener('click', () => {
-            currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1);
-            if (currentCalendarDate > maxDate) {
-                currentCalendarDate = new Date(maxDate);
+            if (!newNextBtn.disabled) {
+                currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1);
+                if (currentCalendarDate > maxDate) {
+                    currentCalendarDate = new Date(maxDate);
+                }
+                renderSummaryCalendar(currentCalendarDate);
             }
-            renderSummaryCalendar(currentCalendarDate);
         });
     }
     

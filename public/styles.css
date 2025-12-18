@@ -1730,8 +1730,9 @@ select:-ms-input-placeholder {
 }
 
 .calendar-nav-btn:disabled {
-    opacity: 0.3;
+    opacity: 0.4;
     cursor: not-allowed;
+    color: #999;
 }
 
 .calendar-month-year {
