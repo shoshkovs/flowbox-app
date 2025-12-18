@@ -3150,6 +3150,12 @@ function initProductCardImageSwipe() {
         track.addEventListener('mousemove', handleMove);
         track.addEventListener('mouseup', handleEnd);
         track.addEventListener('mouseleave', handleEnd);
+        
+        // На всякий случай: при ресайзе (поворот/изменение) — переснапить
+        window.addEventListener('resize', () => goToImage(currentIndex));
+        
+        // Стартовое положение
+        goToImage(0);
     });
 }
 
@@ -10856,10 +10862,9 @@ function openProductSheet(productId) {
     
     // Сбрасываем индекс на первое изображение
     productSheetCurrentImageIndex = 0;
-    pagerTrack.style.transform = 'translateX(0%)';
     
-    // Инициализируем свайп для листания изображений
-    initProductSheetImageSwipe(pagerTrack, images.length);
+    // Инициализируем scroll-snap для листания изображений
+    initProductSheetImageScrollSnap(images.length);
     
     // Показываем sheet
     backdrop.style.display = 'block';
@@ -10977,12 +10982,13 @@ function closeProductSheet() {
 
 function productSheetGoToImage(index) {
     productSheetCurrentImageIndex = index;
-    const pagerTrack = document.getElementById('productSheetPagerTrack');
+    const pager = document.getElementById('productSheetPager');
     const dots = document.getElementById('productSheetDots');
     
-    if (!pagerTrack || !dots) return;
+    if (!pager || !dots) return;
     
-    pagerTrack.style.transform = `translateX(-${index * 100}%)`;
+    // Используем scrollTo вместо transform
+    pager.scrollTo({ left: index * pager.clientWidth, behavior: 'smooth' });
     
     const dotButtons = dots.querySelectorAll('.product-sheet-dot');
     dotButtons.forEach((dot, idx) => {
