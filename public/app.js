@@ -1,14 +1,8 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram?.WebApp;
 
-// Функция для ограничения значения в диапазоне
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
-
 // Применение Telegram safe area insets в CSS переменные
-// Для обеих платформ используем contentSafeAreaInset с fallback на safeAreaInset
-// и ограничениями для предотвращения слишком больших отступов
+// Используем contentSafeAreaInset для обеих платформ (более точный для контента)
 function applyInsets() {
     if (!tg) {
         console.log('[applyInsets] Telegram WebApp не найден, используем значения по умолчанию');
@@ -17,41 +11,18 @@ function applyInsets() {
         return;
     }
     
-    // Определяем платформу
-    const isIOS = tg.platform === 'ios';
-    
-    let topRaw, bottomRaw;
-    
-    if (isIOS) {
-        // На iOS используем safeAreaInset для корректного отступа сверху
-        // чтобы хедер не был слишком высоко и учитывал системную панель
-        topRaw = tg.safeAreaInset?.top ?? tg.contentSafeAreaInset?.top ?? 0;
-        bottomRaw = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
-    } else {
-        // На Android используем contentSafeAreaInset с fallback на safeAreaInset
-        topRaw = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
-        bottomRaw = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
-    }
-    
-    // Ограничиваем максимальные значения для предотвращения слишком больших отступов
-    const top = isIOS 
-        ? clamp(topRaw, 0, 44)      // На iOS ограничиваем до 44px сверху (стандартная высота статус-бара)
-        : clamp(topRaw, 0, 24);     // На Android до 24px
-    
-    const bottom = isIOS
-        ? clamp(bottomRaw, 0, 20)   // На iOS ограничиваем до 20px снизу
-        : clamp(bottomRaw, 0, 32);  // На Android до 32px
+    // Для обеих платформ используем contentSafeAreaInset с fallback на safeAreaInset
+    // contentSafeAreaInset более точный для контента внутри WebApp
+    const top = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
+    const bottom = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
     
     document.documentElement.style.setProperty('--safe-top', `${top}px`);
     document.documentElement.style.setProperty('--safe-bottom', `${bottom}px`);
     
     console.log('[applyInsets] Применены safe area insets:', { 
         platform: tg.platform,
-        isIOS,
         top, 
         bottom,
-        topRaw,
-        bottomRaw,
         safeAreaInset: { top: tg.safeAreaInset?.top, bottom: tg.safeAreaInset?.bottom },
         contentSafeAreaInset: { top: tg.contentSafeAreaInset?.top, bottom: tg.contentSafeAreaInset?.bottom }
     });
