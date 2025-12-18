@@ -1603,6 +1603,48 @@ select:-ms-input-placeholder {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Уменьшенный календарь для упрощенного оформления */
+#summaryDateTimePicker .custom-calendar {
+    padding: 12px;
+    font-size: 13px;
+}
+
+#summaryDateTimePicker .calendar-header {
+    padding: 8px 4px;
+    margin-bottom: 10px;
+}
+
+#summaryDateTimePicker .calendar-month-year {
+    font-size: 15px;
+}
+
+#summaryDateTimePicker .calendar-nav-btn {
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+}
+
+#summaryDateTimePicker .calendar-weekdays {
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+#summaryDateTimePicker .calendar-weekday {
+    font-size: 11px;
+    padding: 6px 2px;
+}
+
+#summaryDateTimePicker .calendar-days {
+    gap: 4px;
+}
+
+#summaryDateTimePicker .calendar-day {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+    padding: 0;
+}
+
 .calendar-header {
     display: flex;
     align-items: center;
