@@ -2956,10 +2956,6 @@ select:-ms-input-placeholder {
     border-radius: 0;
     margin-bottom: 0;
     box-shadow: none;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.checkout-summary-card .checkout-summary-item:last-child {
     border-bottom: none;
 }
 
