@@ -5013,7 +5013,9 @@ async function validateAndSubmitOrder(e) {
         if (isSuccess) {
             // Успешный ответ - обрабатываем заказ
             const orderId = parseInt(result.orderId) || result.orderId; // Приводим к числу, если возможно
-            console.log('✅ Заказ успешно создан, ID:', orderId);
+            const orderNumber = result.order_number || null; // Номер заказа, если есть
+            const userOrderNumber = result.userOrderNumber || null; // Номер заказа пользователя (001, 002 и т.д.)
+            console.log('✅ Заказ успешно создан, ID:', orderId, 'номер заказа:', orderNumber, 'номер заказа пользователя:', userOrderNumber);
             
             // Сохраняем ИМЯ ПОЛУЧАТЕЛЯ в localStorage для будущих заказов
             if (recipientNameFromForm && recipientNameFromForm.trim()) {
