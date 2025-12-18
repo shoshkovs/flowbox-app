@@ -2464,6 +2464,7 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
       
       const userId = orderResult.rows[0].user_id;
       const orderTotal = orderResult.rows[0].total;
+      const orderNumber = orderResult.rows[0].order_number || null;
       
       // Получаем telegram_id пользователя
       const userResult = await client.query(
@@ -2479,9 +2480,17 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
       const telegramId = userResult.rows[0].telegram_id;
       const userName = userResult.rows[0].first_name || 'Клиент';
       
+      // Формируем номер заказа для отображения
+      const orderNumberDisplay = formatOrderNumberForDisplay({
+        orderId,
+        userId: userId || telegramId,
+        userOrderNumber: null,
+        orderNumber: orderNumber
+      });
+      
       // Формируем сообщение
       const statusText = getStatusText(newStatus);
-      let message = `📦 Заказ #${orderId}\n\n`;
+      let message = `📦 Заказ ${orderNumberDisplay}\n\n`;
       message += `Статус заказа изменён: ${statusText}\n`;
       message += `Сумма заказа: ${parseFloat(orderTotal).toLocaleString('ru-RU')} ₽`;
       
@@ -2492,7 +2501,7 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
       // Отправляем сообщение
       await bot.telegram.sendMessage(telegramId, message);
       
-      console.log(`✅ Уведомление о смене статуса отправлено пользователю ${telegramId} (заказ #${orderId})`);
+      console.log(`✅ Уведомление о смене статуса отправлено пользователю ${telegramId} (заказ ${orderNumberDisplay})`);
     } finally {
       client.release();
     }
@@ -2524,8 +2533,16 @@ async function sendOrderNotificationToGroup(orderId, orderData) {
   try {
     console.log(`📤 Отправка уведомления о заказе #${orderId} в группу ${ORDERS_GROUP_ID}, тема ${ORDERS_TOPIC_ID}`);
     
+    // Формируем номер заказа для отображения
+    const orderNumberDisplay = formatOrderNumberForDisplay({
+      orderId,
+      userId: orderData.userId,
+      userOrderNumber: orderData.userOrderNumber,
+      orderNumber: orderData.order_number
+    });
+    
     // Формируем информацию о заказе
-    let message = `🆕 <b>Новый заказ #${orderId}</b>\n\n`;
+    let message = `🆕 <b>Новый заказ ${orderNumberDisplay}</b>\n\n`;
     
     // Информация о клиенте
     if (orderData.clientName) {
@@ -2655,8 +2672,16 @@ async function sendOrderConfirmation(orderId, telegramId, orderData) {
   console.log(`📤 Отправка подтверждения заказа #${orderId} пользователю ${telegramIdNum}`);
   
   try {
+    // Формируем номер заказа для отображения
+    const orderNumberDisplay = formatOrderNumberForDisplay({
+      orderId,
+      userId: telegramId, // у нас telegramId = userId
+      userOrderNumber: orderData.userOrderNumber,
+      orderNumber: orderData.order_number
+    });
+    
     // Формируем информацию о заказе
-    let message = `📦 <b>Ваш заказ #${orderId}</b>\n\n`;
+    let message = `📦 <b>Ваш заказ ${orderNumberDisplay}</b>\n\n`;
     
     // Состав заказа
     if (orderData.items && orderData.items.length > 0) {
@@ -3400,7 +3425,10 @@ app.post('/api/orders', async (req, res) => {
                 recipientName: orderData.recipientName || null,
                 recipientPhone: orderData.recipientPhone || null,
                 courierComment: orderData.courierComment || null,
-                leaveAtDoor: orderData.leaveAtDoor || false
+                leaveAtDoor: orderData.leaveAtDoor || false,
+                userOrderNumber: result.userOrderNumber || null,
+                order_number: result.order_number || null,
+                userId: orderData.userId
               };
               
               // Отправляем сообщение с подтверждением заказа
@@ -3440,7 +3468,10 @@ app.post('/api/orders', async (req, res) => {
                 recipientName: orderData.recipientName || null,
                 recipientPhone: orderData.recipientPhone || null,
                 courierComment: orderData.courierComment || null,
-                leaveAtDoor: orderData.leaveAtDoor || false
+                leaveAtDoor: orderData.leaveAtDoor || false,
+                userOrderNumber: result.userOrderNumber || null,
+                order_number: result.order_number || null,
+                userId: orderData.userId
               };
               
               console.log(`📋 Данные для отправки в группу:`, JSON.stringify(orderDataForGroup, null, 2));
