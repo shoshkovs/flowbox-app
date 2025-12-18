@@ -9220,6 +9220,39 @@ function openMyAddressesPage() {
     
     // Показываем BackButton
     showBackButton(true);
+    
+    // Добавляем обработчик для ссылки "профиле"
+    const goToProfileLink = document.getElementById('goToProfileLink');
+    if (goToProfileLink) {
+        goToProfileLink.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Закрываем вкладку "Мои адреса"
+            const myAddressesTab = document.getElementById('myAddressesTab');
+            if (myAddressesTab) {
+                myAddressesTab.style.display = 'none';
+            }
+            
+            // Переключаемся на профиль
+            switchTab('profileTab');
+            
+            // Прокручиваем до секции адресов после небольшой задержки (чтобы DOM успел обновиться)
+            setTimeout(() => {
+                const deliveryAddressesList = document.getElementById('deliveryAddressesList');
+                if (deliveryAddressesList) {
+                    // Находим родительскую секцию
+                    const addressesSection = deliveryAddressesList.closest('.profile-section');
+                    if (addressesSection) {
+                        addressesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        // Fallback: прокручиваем до самого элемента
+                        deliveryAddressesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }, 300);
+        };
+    }
 }
 
 // Рендеринг списка адресов на странице "Мои адреса"
