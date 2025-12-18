@@ -4843,17 +4843,13 @@ input[type="text"][inputmode="numeric"] {
     width: 100%;
     height: 65vh;
     max-height: 70vh;
-    background: #f4f4f4;
+    background: white;
     flex-shrink: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     border-radius: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .product-sheet-pager::-webkit-scrollbar {
@@ -4877,7 +4873,7 @@ input[type="text"][inputmode="numeric"] {
     padding: 0;
     margin: 0;
     overflow: hidden;
-    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    background: white;
 }
 
 .product-sheet-pager-slide img {
@@ -4885,7 +4881,6 @@ input[type="text"][inputmode="numeric"] {
     height: 100%;
     object-fit: cover;
     object-position: center;
-    border-radius: 26px;
     display: block;
     margin: 0;
     padding: 0;

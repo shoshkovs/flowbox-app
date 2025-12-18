@@ -165,25 +165,42 @@ function formatDeliveryTime(timeStr) {
 
 // Функция для форматирования номера заказа в новый формат "#userId016"
 function formatOrderNumber(order) {
+  if (!order) return `#${order?.id || '?'}`;
+  
   // Пробуем разные варианты названий поля user_id
-  const userId = order.user_id || order.userId || order.customer_id || order.customerId;
+  const userId = order.user_id || order.userId || order.customer_id || order.customerId || order.userId || null;
+  
+  // Проверяем userOrderNumber (может быть с разным регистром)
+  const userOrderNumber = order.userOrderNumber || order.user_order_number || order.userOrderNumber || null;
+  
+  // Проверяем order_number (может быть с разным регистром)
+  const orderNumber = order.order_number || order.orderNumber || null;
   
   // Формируем номер заказа в формате "#userId016"
   if (userId) {
-    // Проверяем userOrderNumber (может быть с разным регистром)
-    const userOrderNumber = order.userOrderNumber || order.user_order_number || order.user_orderNumber;
-    if (userOrderNumber) {
+    // Приоритет 1: userOrderNumber
+    if (userOrderNumber != null && userOrderNumber !== undefined && userOrderNumber !== '') {
       const userOrderNumberStr = String(userOrderNumber).padStart(3, '0');
       return `#${userId}${userOrderNumberStr}`;
     }
     
-    // Проверяем order_number (может быть с разным регистром)
-    const orderNumber = order.order_number || order.orderNumber;
-    if (orderNumber) {
-      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+    // Приоритет 2: извлекаем из order_number (последние 3 цифры)
+    if (orderNumber != null && orderNumber !== undefined && orderNumber !== '') {
       const fullOrderNumber = String(orderNumber);
-      const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
-      return `#${userId}${userOrderNumberStr}`;
+      // Если order_number в формате userId016 (например, 1059138125001), 
+      // то последние 3 цифры - это userOrderNumber (001)
+      // Если order_number начинается с userId, удаляем userId и берем остаток
+      const userIdStr = String(userId);
+      if (fullOrderNumber.startsWith(userIdStr)) {
+        // order_number = userId + userOrderNumber, извлекаем userOrderNumber
+        const userOrderNumberPart = fullOrderNumber.slice(userIdStr.length);
+        const userOrderNumberStr = userOrderNumberPart.padStart(3, '0');
+        return `#${userId}${userOrderNumberStr}`;
+      } else {
+        // Если order_number не начинается с userId, берем последние 3 цифры
+        const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
+        return `#${userId}${userOrderNumberStr}`;
+      }
     }
   }
   
