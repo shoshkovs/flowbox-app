@@ -3074,17 +3074,20 @@ function initProductCardImageSwipe() {
                 }
             }
             
+            // Определяем направление свайпа
+            // diff > 0 означает, что палец двигался вправо (свайп вправо) - показываем предыдущее изображение
+            // diff < 0 означает, что палец двигался влево (свайп влево) - показываем следующее изображение
             if (Math.abs(diff) > threshold) {
                 if (diff > 0) {
-                    // Свайп вправо - предыдущее изображение
+                    // Свайп вправо (палец вправо) - предыдущее изображение (индекс уменьшается)
                     if (currentIndex > 0) {
                         goToImage(currentIndex - 1);
                     } else {
                         // Уже на первом изображении, возвращаемся
                         goToImage(0);
                     }
-                } else {
-                    // Свайп влево - следующее изображение
+                } else if (diff < 0) {
+                    // Свайп влево (палец влево) - следующее изображение (индекс увеличивается)
                     if (currentIndex < totalImages - 1) {
                         goToImage(currentIndex + 1);
                     } else {
@@ -10977,9 +10980,11 @@ function shareProduct(product) {
     
     // Формируем текст для шаринга в красивом формате:
     // Название | Количество штук | Цена
-    const shareText = `${product.name} | ${minQty}шт | ${totalPrice.toLocaleString('ru-RU')}₽\n\n${shareLink}`;
+    // Ссылку не добавляем в текст, она будет только в превью
+    const shareText = `${product.name} | ${minQty}шт | ${totalPrice.toLocaleString('ru-RU')}₽`;
     
     // Используем Telegram Share URL для открытия окна выбора контактов
+    // Ссылка будет только в параметре url, текст без ссылки
     const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareText)}`;
     
     // Используем Telegram WebApp API для открытия окна шаринга
