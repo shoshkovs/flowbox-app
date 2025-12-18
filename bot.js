@@ -3276,6 +3276,8 @@ app.get('/api/orders/:orderId', async (req, res) => {
         createdAt: new Date(row.created_at).toLocaleDateString('ru-RU'),
         status: userStatus,
         statusRaw: row.status, // Сохраняем оригинальный статус для маппинга в степпер
+        recipient_name: row.recipient_name || null,
+        recipient_phone: row.recipient_phone || null,
         delivery: {
           address: deliveryAddress,
           date: deliveryDateFormatted,
