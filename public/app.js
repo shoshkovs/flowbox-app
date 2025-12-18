@@ -9,6 +9,7 @@ let summaryDateTimeInitialized = false; // Флаг инициализации �
 let checkoutMode = null; // Режим оформления: 'full' | 'simple' | null
 let checkoutScreen = 'cart'; // Текущий экран: 'cart' | 'steps' | 'summary' | 'editRecipient' | 'myAddresses' | 'editAddress' | 'addressesList'
 let addressLocked = false; // Флаг блокировки повторного выбора адреса в упрощенном режиме
+let paymentSuccessShown = false; // Флаг, что страница успеха показана (для предотвращения закрытия на Android)
 
 // Данные оформления заказа (объявлено рано, чтобы избежать ошибок инициализации)
 let checkoutData = {
@@ -448,8 +449,34 @@ if (tg && typeof tg.onEvent === 'function') {
             
             if (orderId) {
                 console.log('[invoice_closed] Открываем страницу успеха для заказа:', orderId);
-                // Не закрываем приложение, а открываем страницу успеха
-                openPaymentSuccessPage(orderId);
+                
+                // Определяем, Android ли это
+                const platform = (tg.platform || '').toLowerCase();
+                const userAgent = navigator.userAgent.toLowerCase();
+                const isAndroid = platform === 'android' || userAgent.includes('android');
+                
+                // На Android добавляем небольшую задержку и дополнительные меры защиты
+                if (isAndroid) {
+                    console.log('[invoice_closed] Android обнаружен, применяем специальную обработку');
+                    
+                    // Предотвращаем автоматическое закрытие приложения
+                    if (typeof tg.enableClosingConfirmation === 'function') {
+                        tg.enableClosingConfirmation();
+                    }
+                    
+                    // Убеждаемся, что приложение развернуто
+                    if (typeof tg.expand === 'function') {
+                        tg.expand();
+                    }
+                    
+                    // Добавляем небольшую задержку для Android, чтобы приложение успело обработать событие
+                    setTimeout(() => {
+                        openPaymentSuccessPage(orderId);
+                    }, 300);
+                } else {
+                    // На других платформах открываем сразу
+                    openPaymentSuccessPage(orderId);
+                }
             } else {
                 console.warn('[invoice_closed] Не удалось извлечь orderId из slug:', event.slug);
             }
@@ -464,7 +491,7 @@ if (tg && typeof tg.onEvent === 'function') {
     
     // Обработчик закрытия мини-аппа
     tg.onEvent('close', () => {
-        console.log('[close] Событие close получено, isClosing:', isClosing);
+        console.log('[close] Событие close получено, isClosing:', isClosing, 'paymentSuccessShown:', paymentSuccessShown);
         
         // Если уже подтвердили закрытие, просто закрываем
         if (isClosing) {
@@ -472,10 +499,20 @@ if (tg && typeof tg.onEvent === 'function') {
             return;
         }
         
-        // Не закрываем приложение, если открыта страница успеха
+        // Не закрываем приложение, если открыта страница успеха или она только что была показана
         const paymentSuccessTab = document.getElementById('paymentSuccessTab');
-        if (paymentSuccessTab && paymentSuccessTab.style.display !== 'none') {
-            console.log('[close] Страница успеха открыта, предотвращаем закрытие');
+        if ((paymentSuccessTab && paymentSuccessTab.style.display !== 'none') || paymentSuccessShown) {
+            console.log('[close] Страница успеха открыта или была показана, предотвращаем закрытие');
+            // На Android особенно важно предотвратить закрытие
+            const platform = (tg?.platform || '').toLowerCase();
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isAndroid = platform === 'android' || userAgent.includes('android');
+            if (isAndroid) {
+                // На Android делаем дополнительный expand
+                if (tg && typeof tg.expand === 'function') {
+                    tg.expand();
+                }
+            }
             return false;
         }
         
@@ -2422,6 +2459,9 @@ function calculateFinalTotal() {
 function openProfileScreen() {
     console.log('[openProfileScreen] 📱 Открытие профиля после успешного заказа');
     
+    // Сбрасываем флаг страницы успеха
+    paymentSuccessShown = false;
+    
     // Закрываем оформление заказа
     closeCheckoutUI();
     
@@ -2446,6 +2486,33 @@ function openProfileScreen() {
 function openPaymentSuccessPage(orderId) {
     console.log('[openPaymentSuccessPage] 🎉 Открытие страницы успешной оплаты для заказа #' + orderId);
     
+    // Определяем, Android ли это
+    const platform = (tg?.platform || '').toLowerCase();
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroid = platform === 'android' || userAgent.includes('android');
+    
+    // Убеждаемся, что приложение не закроется автоматически (особенно важно для Android)
+    if (tg && typeof tg.enableClosingConfirmation === 'function') {
+        tg.enableClosingConfirmation();
+        console.log('[openPaymentSuccessPage] Включено подтверждение закрытия');
+    }
+    
+    // Убеждаемся, что приложение развернуто (особенно важно для Android)
+    if (tg && typeof tg.expand === 'function') {
+        tg.expand();
+        console.log('[openPaymentSuccessPage] Приложение развернуто');
+        
+        // На Android делаем дополнительный вызов expand с задержкой
+        if (isAndroid) {
+            setTimeout(() => {
+                if (tg && typeof tg.expand === 'function') {
+                    tg.expand();
+                    console.log('[openPaymentSuccessPage] Дополнительный expand для Android выполнен');
+                }
+            }, 200);
+        }
+    }
+    
     // Закрываем оформление заказа
     closeCheckoutUI();
     
@@ -2455,18 +2522,28 @@ function openPaymentSuccessPage(orderId) {
         orderIdElement.textContent = orderId;
     }
     
-    // Убеждаемся, что приложение не закроется автоматически
-    if (tg && typeof tg.enableClosingConfirmation === 'function') {
-        tg.enableClosingConfirmation();
-    }
-    
-    // Убеждаемся, что приложение развернуто
-    if (tg && typeof tg.expand === 'function') {
-        tg.expand();
-    }
+    // Устанавливаем флаг, что страница успеха показана (для предотвращения закрытия)
+    paymentSuccessShown = true;
     
     // Переключаемся на страницу успешной оплаты
-    switchTab('paymentSuccessTab');
+    // На Android используем небольшую задержку для надежности
+    if (isAndroid) {
+        setTimeout(() => {
+            switchTab('paymentSuccessTab');
+            console.log('[openPaymentSuccessPage] Переключение на страницу успеха (Android)');
+            
+            // Дополнительная проверка, что страница действительно открыта
+            setTimeout(() => {
+                const paymentSuccessTab = document.getElementById('paymentSuccessTab');
+                if (paymentSuccessTab && paymentSuccessTab.style.display === 'none') {
+                    console.warn('[openPaymentSuccessPage] Страница успеха не открылась, пытаемся снова');
+                    switchTab('paymentSuccessTab');
+                }
+            }, 200);
+        }, 100);
+    } else {
+        switchTab('paymentSuccessTab');
+    }
     
     // Скрываем BackButton
     showBackButton(false);
@@ -2495,6 +2572,7 @@ function openPaymentSuccessPage(orderId) {
         
         if (countdown <= 0) {
             clearInterval(countdownInterval);
+            paymentSuccessShown = false; // Сбрасываем флаг при переходе
             // Автоматический переход в профиль
             openProfileScreen();
         }

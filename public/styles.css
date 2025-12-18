@@ -58,7 +58,7 @@ h1, h2, h3, .font-bold {
 
 .app {
     min-height: 100vh;
-    padding-bottom: 80px; /* Место для нижней навигации */
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); /* Место для нижней навигации + безопасная зона */
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -1472,6 +1472,47 @@ h1, h2, h3, .font-bold {
     -webkit-focus-ring-color: transparent;
 }
 
+/* Стили для placeholder - делаем светлее */
+.form-group input::placeholder,
+.form-group textarea::placeholder,
+.form-group select::placeholder,
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+    color: #ccc !important;
+    opacity: 1;
+}
+
+.form-group input::-webkit-input-placeholder,
+.form-group textarea::-webkit-input-placeholder,
+.form-group select::-webkit-input-placeholder,
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder,
+select::-webkit-input-placeholder {
+    color: #ccc !important;
+    opacity: 1;
+}
+
+.form-group input::-moz-placeholder,
+.form-group textarea::-moz-placeholder,
+.form-group select::-moz-placeholder,
+input::-moz-placeholder,
+textarea::-moz-placeholder,
+select::-moz-placeholder {
+    color: #ccc !important;
+    opacity: 1;
+}
+
+.form-group input:-ms-input-placeholder,
+.form-group textarea:-ms-input-placeholder,
+.form-group select:-ms-input-placeholder,
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder,
+select:-ms-input-placeholder {
+    color: #ccc !important;
+    opacity: 1;
+}
+
 /* Убираем системные подсветки при фокусе */
 .form-group input:focus,
 .form-group textarea:focus,
@@ -2001,11 +2042,14 @@ h1, h2, h3, .font-bold {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    padding: 8px 0;
+    padding: 8px 0 env(safe-area-inset-bottom, 8px) 0;
     z-index: 100;
     transition: transform 0.2s ease-out, opacity 0.2s ease-out;
     -webkit-tap-highlight-color: transparent !important;
     -webkit-touch-callout: none;
+    /* Дополнительный отступ снизу для Android */
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(60px + env(safe-area-inset-bottom, 0px));
 }
 
 .bottom-nav *,
@@ -2045,7 +2089,7 @@ h1, h2, h3, .font-bold {
     background: none !important;
     border: none !important;
     cursor: pointer;
-    color: #999;
+    color: #ccc;
     transition: color 0.2s ease-out, background-color 0.2s ease-out, opacity 0.15s ease, transform 0.15s ease;
     position: relative;
     -webkit-tap-highlight-color: transparent !important;
@@ -2084,7 +2128,7 @@ h1, h2, h3, .font-bold {
 }
 
 .nav-item:not(.active) .nav-icon {
-    opacity: 0.6;
+    opacity: 0.4;
 }
 
 .nav-item.active .nav-icon {
