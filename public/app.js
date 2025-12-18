@@ -9277,18 +9277,28 @@ function renderMyAddressesList() {
         const addressId = addr.id;
         
         // Проверяем, выбран ли этот адрес (по ID, если есть, иначе по содержимому)
-        const isSelected = checkoutData.address && (
-            (checkoutData.address.id && checkoutData.address.id === addressId) ||
-            (!checkoutData.address.id && 
-             checkoutData.address.street === street &&
-             checkoutData.address.city === (addr.city || 'Санкт-Петербург'))
-        );
+        const isSelected = (checkoutData.addressId && Number(checkoutData.addressId) === Number(addressId)) ||
+            (checkoutData.address && (
+                (checkoutData.address.id && Number(checkoutData.address.id) === Number(addressId)) ||
+                (!checkoutData.address.id && 
+                 checkoutData.address.street === street &&
+                 checkoutData.address.city === (addr.city || 'Санкт-Петербург'))
+            ));
+        
+        const selectedStyle = isSelected 
+            ? 'background-color: #fff5f8; border: 2px solid #f9a8d4; border-radius: 12px; margin-bottom: 8px;' 
+            : 'border: 2px solid transparent; border-radius: 12px; margin-bottom: 8px;';
         
         return `
-            <div class="address-item" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #eee; cursor: pointer; ${isSelected ? 'background-color: #f9f9f9;' : ''}" onclick="selectAddressFromMyAddresses(${addressId})">
-                <div style="flex: 1;">
-                    <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
-                    ${isSelected ? '<div style="font-size: 12px; color: var(--primary-color);">Выбран</div>' : ''}
+            <div class="address-item ${isSelected ? 'selected' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; cursor: pointer; ${selectedStyle}" onclick="selectAddressFromMyAddresses(${addressId})">
+                <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid ${isSelected ? '#f9a8d4' : '#ddd'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        ${isSelected ? '<div style="width: 10px; height: 10px; border-radius: 50%; background-color: #f9a8d4;"></div>' : ''}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; margin-bottom: 4px;">${addressStr}</div>
+                        ${isSelected ? '<div style="font-size: 12px; color: var(--primary-color);">Выбран</div>' : ''}
+                    </div>
                 </div>
                 <div class="address-menu">
                     <button class="address-menu-btn" onclick="event.stopPropagation(); editAddressFromMyAddresses(${addressId})" aria-label="Редактировать адрес">
@@ -9432,6 +9442,9 @@ function selectAddressFromMyAddresses(addressId) {
         intercom: addr.intercom || '',
         comment: addr.comment || ''
     };
+    
+    // Устанавливаем addressId для правильного определения выбранного адреса
+    checkoutData.addressId = addr.id;
     
     console.log('[selectAddressFromMyAddresses] ✅ Выбран адрес с ID:', addr.id, checkoutData.address);
     
