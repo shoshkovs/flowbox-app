@@ -2032,6 +2032,9 @@ async function createOrderInDb(orderData) {
         const orderNumberStr = String(userOrderNumber).padStart(3, '0');
         orderNumber = parseInt(userIdStr + orderNumberStr, 10);
         console.log(`📝 Сгенерирован номер заказа: ${orderNumber} (userId: ${userIdStr}, номер заказа пользователя: ${userOrderNumber})`);
+        
+        // Сохраняем номер заказа пользователя для возврата в ответе
+        orderData.userOrderNumber = userOrderNumber;
       }
       
       // Создаем заказ (без service_fee_percent - эта колонка не критична, процент можно вычислить из service_fee и flowers_total)
@@ -2323,9 +2326,18 @@ async function createOrderInDb(orderData) {
       await client.query('COMMIT');
       console.log('✅ Транзакция завершена успешно');
       
+      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+      let userOrderNumber = null;
+      if (order.order_number || orderNumber) {
+        const fullOrderNumber = String(order.order_number || orderNumber);
+        // Берем последние 3 цифры как номер заказа пользователя
+        userOrderNumber = fullOrderNumber.slice(-3);
+      }
+      
       return {
         orderId: order.id,
         order_number: order.order_number || orderNumber || null,
+        userOrderNumber: userOrderNumber || orderData.userOrderNumber || null,
         telegramOrderId: Date.now() // Для совместимости с фронтендом
       };
     } catch (error) {
@@ -3271,6 +3283,13 @@ app.get('/api/orders/:orderId', async (req, res) => {
         console.warn(`[GET /api/orders/${orderId}] Stack:`, historyError.stack);
       }
       
+      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+      let userOrderNumber = null;
+      if (row.order_number) {
+        const fullOrderNumber = String(row.order_number);
+        userOrderNumber = fullOrderNumber.slice(-3);
+      }
+      
       const orderData = {
         id: row.id,
         total: row.total,
@@ -3279,6 +3298,8 @@ app.get('/api/orders/:orderId', async (req, res) => {
         statusRaw: row.status, // Сохраняем оригинальный статус для маппинга в степпер
         recipient_name: row.recipient_name || null,
         recipient_phone: row.recipient_phone || null,
+        order_number: row.order_number || null,
+        userOrderNumber: userOrderNumber,
         delivery: {
           address: deliveryAddress,
           date: deliveryDateFormatted,
@@ -3445,7 +3466,8 @@ app.post('/api/orders', async (req, res) => {
         const responseData = { 
           success: true, 
           orderId: result.orderId,
-          order_number: result.order_number || null
+          order_number: result.order_number || null,
+          userOrderNumber: result.userOrderNumber || null
         };
         
         res.status(200).json(responseData);

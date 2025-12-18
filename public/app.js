@@ -2578,10 +2578,11 @@ function openProfileScreen() {
 }
 
 // Функция для открытия страницы успешной оплаты
-function openPaymentSuccessPage(orderNumberOrId, orderIdForFetch = null) {
-    // orderNumberOrId - это номер заказа для отображения (может быть order_number или orderId)
-    // orderIdForFetch - это ID заказа для запроса данных (если нужно получить order_number)
-    console.log('[openPaymentSuccessPage] 🎉 Открытие страницы успешной оплаты для заказа #' + orderNumberOrId);
+function openPaymentSuccessPage(orderId, orderIdForFetch = null, userOrderNumber = null) {
+    // orderId - это ID заказа для отображения
+    // orderIdForFetch - это ID заказа для запроса данных (если нужно получить userOrderNumber)
+    // userOrderNumber - это номер заказа пользователя (001, 002 и т.д.)
+    console.log('[openPaymentSuccessPage] 🎉 Открытие страницы успешной оплаты для заказа #' + orderId, 'номер заказа пользователя:', userOrderNumber);
     
     // Определяем, Android ли это
     const platform = (tg?.platform || '').toLowerCase();
@@ -2613,12 +2614,15 @@ function openPaymentSuccessPage(orderNumberOrId, orderIdForFetch = null) {
     // Закрываем оформление заказа
     closeCheckoutUI();
     
-    // Устанавливаем номер заказа
+    // Устанавливаем номер заказа в формате "ID и номер 001"
     const orderIdElement = document.getElementById('paymentSuccessOrderId');
     if (orderIdElement) {
-        // Если передан orderIdForFetch, пытаемся получить order_number из заказа
-        // Иначе используем переданный orderNumberOrId
-        if (orderIdForFetch) {
+        // Если передан userOrderNumber, используем его
+        if (userOrderNumber) {
+            const userOrderNumberStr = String(userOrderNumber).padStart(3, '0');
+            orderIdElement.textContent = `${orderId} и номер ${userOrderNumberStr}`;
+        } else if (orderIdForFetch) {
+            // Если userOrderNumber не передан, пытаемся получить его из заказа
             // Получаем userId для запроса
             let userId = null;
             if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -2638,28 +2642,32 @@ function openPaymentSuccessPage(orderNumberOrId, orderIdForFetch = null) {
                 }
             }
             
-            // Если userId найден, загружаем данные заказа для получения order_number
+            // Если userId найден, загружаем данные заказа для получения userOrderNumber
             if (userId && (typeof orderIdForFetch === 'number' || !isNaN(orderIdForFetch))) {
                 fetch(`/api/orders/${orderIdForFetch}?userId=${userId}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data && data.order_number) {
-                            orderIdElement.textContent = data.order_number;
+                            // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+                            const fullOrderNumber = String(data.order_number);
+                            const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
+                            orderIdElement.textContent = `${orderId} и номер ${userOrderNumberStr}`;
                         } else {
-                            orderIdElement.textContent = orderNumberOrId;
+                            // Если order_number не найден, показываем только ID
+                            orderIdElement.textContent = orderId;
                         }
                     })
                     .catch(err => {
                         console.error('Ошибка загрузки номера заказа:', err);
-                        orderIdElement.textContent = orderNumberOrId;
+                        orderIdElement.textContent = orderId;
                     });
             } else {
-                // Если userId не найден, просто показываем переданный номер
-                orderIdElement.textContent = orderNumberOrId;
+                // Если userId не найден, просто показываем ID
+                orderIdElement.textContent = orderId;
             }
         } else {
-            // Если orderIdForFetch не передан, просто показываем переданный номер
-            orderIdElement.textContent = orderNumberOrId;
+            // Если orderIdForFetch не передан, просто показываем ID
+            orderIdElement.textContent = orderId;
         }
     }
     
