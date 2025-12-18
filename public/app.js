@@ -1253,7 +1253,7 @@ function renderProducts() {
         
         const hasMultipleImages = images.length > 1;
         const imagesHTML = images.map((img, idx) => `
-            <div class="product-image-slide" style="min-width: 100%; width: 100%; flex-shrink: 0;">
+            <div class="product-image-slide" style="min-width: 100%; width: 100%; flex-shrink: 0; height: 100%;">
                 <img src="${img}" alt="${product.name}" class="product-image">
             </div>
         `).join('');
@@ -5053,7 +5053,8 @@ async function validateAndSubmitOrder(e) {
             };
             
             // После успешного заказа переходим на страницу успешной оплаты
-            openPaymentSuccessPage(orderId);
+            // Передаем order_number, если есть, иначе orderId
+            openPaymentSuccessPage(orderNumber || orderId, orderId);
             
             // Тактильная обратная связь
             if (tg && tg.HapticFeedback) {
