@@ -1565,15 +1565,19 @@ function updateGoToCartButton() {
     }
     
     if (cart.length > 0) {
-        // Убираем класс show если он был, чтобы сбросить задержку
-        goToCartFixed.classList.remove('show');
-        // Добавляем небольшую задержку перед появлением
-        goToCartButtonTimeout = setTimeout(() => {
-            goToCartFixed.classList.add('show');
-            goToCartButtonTimeout = null;
-        }, 300); // Задержка 300мс
+        // Проверяем, была ли кнопка уже показана
+        const isAlreadyShown = goToCartFixed.classList.contains('show');
+        
+        if (!isAlreadyShown) {
+            // Кнопка еще не показывалась - показываем с задержкой
+            goToCartButtonTimeout = setTimeout(() => {
+                goToCartFixed.classList.add('show');
+                goToCartButtonTimeout = null;
+            }, 300); // Задержка 300мс
+        }
+        // Если кнопка уже показана, просто обновляем цену (она уже видна)
     } else {
-        // Уезжает влево с анимацией (без задержки)
+        // Корзина пуста - плавно убираем кнопку
         goToCartFixed.classList.remove('show');
     }
 }

@@ -560,7 +560,7 @@ h1, h2, h3, .font-bold {
 /* Кнопка перейти в корзину */
 .go-to-cart-fixed {
     position: fixed;
-    bottom: 120px;
+    bottom: 100px;
     right: 20px;
     z-index: 999;
     opacity: 0;
