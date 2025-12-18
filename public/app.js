@@ -7724,8 +7724,19 @@ function goToStep(step) {
     
     // Если переходим на шаг 2, инициализируем адреса и подтягиваем сохраненный адрес
     if (step === 2) {
-        // Рендерим список адресов
-        renderCheckoutAddresses();
+        // Определяем режим оформления
+        const isStandardCheckout = !isSimpleCheckout && checkoutMode !== 'simple';
+        
+        // Рендерим адреса (в обычном режиме покажет форму, в упрощенном - список)
+        renderCheckoutAddresses(!isStandardCheckout);
+        
+        // В обычном режиме всегда показываем форму адреса, а не список
+        if (isStandardCheckout) {
+            const addressesList = document.getElementById('checkoutAddressesList');
+            const addressForm = document.getElementById('checkoutAddressForm');
+            if (addressesList) addressesList.style.display = 'none';
+            if (addressForm) addressForm.style.display = 'block';
+        }
         
         // Если в checkoutData есть сохраненный адрес с ID - выбираем его
         if (checkoutData.address && checkoutData.address.id) {
@@ -7780,22 +7791,7 @@ function goToStep(step) {
         }, 100);
     }
     
-    // Если переходим на шаг 2, инициализируем адреса и подтягиваем сохраненный адрес
-    if (step === 2) {
-        // Рендерим список адресов
-        renderCheckoutAddresses();
-        
-        // Если в checkoutData есть сохраненный адрес с ID - выбираем его
-        if (checkoutData.addressId) {
-            const savedAddress = savedAddresses.find(addr => Number(addr.id) === Number(checkoutData.addressId));
-            if (savedAddress) {
-                console.log('[goToStep] ✅ Восстанавливаем сохраненный адрес из checkoutData.addressId:', checkoutData.addressId);
-                selectCheckoutAddress(checkoutData.addressId);
-            } else {
-                console.warn('[goToStep] ⚠️ Адрес с ID', checkoutData.addressId, 'не найден в savedAddresses');
-            }
-        }
-    }
+    // Дублирующий блок удален - логика уже обработана выше
     
     // Если переходим на шаг 3, инициализируем календарь (если еще не инициализирован)
     if (step === 3) {
@@ -7885,8 +7881,12 @@ function renderCheckoutAddresses(forSimple = false) {
         addNewAddressBtn.style.display = 'none';
         addressForm.style.display = 'block';
         
-        // Если есть сохраненные адреса, заполняем форму первым адресом автоматически
-        if (savedAddresses && savedAddresses.length > 0) {
+        // Если в checkoutData уже есть адрес - заполняем форму им
+        if (checkoutData.address && checkoutData.address.street) {
+            fillOrderFormWithAddress(checkoutData.address);
+            console.log('[renderCheckoutAddresses] ✅ Заполнена форма адресом из checkoutData');
+        } else if (savedAddresses && savedAddresses.length > 0) {
+            // Если адреса нет в checkoutData, заполняем форму первым адресом автоматически
             const firstAddress = savedAddresses[0];
             fillOrderFormWithAddress(firstAddress);
             checkoutData.addressId = firstAddress.id;
@@ -7901,6 +7901,7 @@ function renderCheckoutAddresses(forSimple = false) {
                 intercom: firstAddress.intercom || '',
                 comment: firstAddress.comment || ''
             };
+            console.log('[renderCheckoutAddresses] ✅ Заполнена форма первым адресом из списка');
         }
         return; // Выходим раньше, не рендерим список
     }
@@ -7961,34 +7962,56 @@ function renderCheckoutAddresses(forSimple = false) {
                 selectedRadio.checked = true;
             }
         } else {
-            // Если еще ничего не выбирали – по умолчанию берем последний, но НЕ вызываем selectCheckoutAddress
-            // чтобы не перезаписывать выбор пользователя при повторном рендере
-            const lastAddress = savedAddresses[savedAddresses.length - 1];
-            if (lastAddress) {
+            // Если еще ничего не выбирали – проверяем последний выбор пользователя из localStorage
+            let defaultAddress = null;
+            
+            // Пытаемся загрузить последний выбранный адрес из localStorage
+            try {
+                const lastSelectedAddressId = localStorage.getItem('lastSelectedAddressId');
+                if (lastSelectedAddressId) {
+                    const savedAddr = savedAddresses.find(a => Number(a.id) === Number(lastSelectedAddressId));
+                    if (savedAddr) {
+                        defaultAddress = savedAddr;
+                        console.log('[renderCheckoutAddresses] ✅ Используем последний выбор пользователя из localStorage:', defaultAddress.id);
+                    } else {
+                        console.log('[renderCheckoutAddresses] ⚠️ Адрес из localStorage не найден в списке, используем последний адрес');
+                    }
+                }
+            } catch (e) {
+                console.warn('[renderCheckoutAddresses] ⚠️ Ошибка чтения localStorage:', e);
+            }
+            
+            // Если не нашли сохраненный выбор, используем последний адрес из списка
+            if (!defaultAddress) {
+                defaultAddress = savedAddresses[savedAddresses.length - 1];
+                console.log('[renderCheckoutAddresses] ✅ Используем последний адрес из списка:', defaultAddress?.id);
+            }
+            
+            if (defaultAddress) {
                 // ВАЖНО: только проставляем ID и address, но НЕ дергаем лишний рендер
-                checkoutData.addressId = Number(lastAddress.id);
+                checkoutData.addressId = Number(defaultAddress.id);
                 
-                let streetValue = lastAddress.street || '';
-                const houseValue = lastAddress.house || '';
+                let streetValue = defaultAddress.street || '';
+                const houseValue = defaultAddress.house || '';
                 if (houseValue && !streetValue.includes(houseValue)) {
                     streetValue = streetValue ? `${streetValue} ${houseValue}` : houseValue;
                 }
                 
                 checkoutData.address = {
-                    id: lastAddress.id,
-                    city: lastAddress.city || 'Санкт-Петербург',
+                    id: defaultAddress.id,
+                    city: defaultAddress.city || 'Санкт-Петербург',
                     street: streetValue,
-                    apartment: lastAddress.apartment || '',
-                    floor: lastAddress.floor || '',
-                    entrance: lastAddress.entrance || '',
-                    intercom: lastAddress.intercom || '',
-                    comment: lastAddress.comment || ''
+                    apartment: defaultAddress.apartment || '',
+                    floor: defaultAddress.floor || '',
+                    entrance: defaultAddress.entrance || '',
+                    intercom: defaultAddress.intercom || '',
+                    comment: defaultAddress.comment || ''
                 };
                 
-                const radio = document.querySelector(`input[name="checkoutAddress"][value="${lastAddress.id}"]`);
+                const radio = document.querySelector(`input[name="checkoutAddress"][value="${defaultAddress.id}"]`);
                 if (radio) radio.checked = true;
                 
-                console.log('[renderCheckoutAddresses] ✅ Автоматически выбран последний адрес (только один раз):', lastAddress.id);
+                console.log('[renderCheckoutAddresses] ✅ Автоматически выбран адрес:', defaultAddress.id);
             }
         }
     } else {
@@ -8010,6 +8033,14 @@ function selectCheckoutAddress(addressId) {
     }
     
     console.log('[selectCheckoutAddress] выбран адрес:', addr);
+    
+    // Сохраняем последний выбранный адрес в localStorage для упрощенного режима
+    try {
+        localStorage.setItem('lastSelectedAddressId', String(id));
+        console.log('[selectCheckoutAddress] ✅ Сохранен последний выбранный адрес в localStorage:', id);
+    } catch (e) {
+        console.warn('[selectCheckoutAddress] ⚠️ Не удалось сохранить в localStorage:', e);
+    }
     
     // Сохраняем выбранный id в черновике чекаута
     checkoutData.addressId = id;
@@ -8034,8 +8065,18 @@ function selectCheckoutAddress(addressId) {
     };
     
     // Обновляем UI шагов (подсветка выбранной карточки и т.п.)
+    // В обычном режиме всегда показываем форму, в упрощенном - список
+    const isStandardCheckout = !isSimpleCheckout && checkoutMode !== 'simple';
     if (typeof renderCheckoutAddresses === 'function') {
-        renderCheckoutAddresses();
+        renderCheckoutAddresses(!isStandardCheckout); // Передаем false для обычного режима (чтобы показать форму)
+    }
+    
+    // В обычном режиме всегда показываем форму адреса, а не список
+    if (isStandardCheckout) {
+        const addressesList = document.getElementById('checkoutAddressesList');
+        const addressForm = document.getElementById('checkoutAddressForm');
+        if (addressesList) addressesList.style.display = 'none';
+        if (addressForm) addressForm.style.display = 'block';
     }
     
     // Обновляем адрес на экране "Итого", если такая функция есть
@@ -8044,14 +8085,28 @@ function selectCheckoutAddress(addressId) {
         console.log('[selectCheckoutAddress] ✅ Отображение адреса обновлено на странице "Итого"');
     }
     
-    // Скрываем форму и показываем список адресов после выбора
+    // В обычном режиме всегда показываем форму, в упрощенном - список
+    const isStandardCheckout = !isSimpleCheckout && checkoutMode !== 'simple';
     const addressesList = document.getElementById('checkoutAddressesList');
     const addNewAddressBtn = document.getElementById('addNewAddressBtn');
     const addressForm = document.getElementById('checkoutAddressForm');
     
-    if (addressesList) addressesList.style.display = 'block';
-    if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
-    if (addressForm) addressForm.style.display = 'none';
+    if (isStandardCheckout) {
+        // В обычном режиме всегда показываем форму адреса
+        if (addressesList) addressesList.style.display = 'none';
+        if (addNewAddressBtn) addNewAddressBtn.style.display = 'none';
+        if (addressForm) addressForm.style.display = 'block';
+        
+        // Заполняем форму выбранным адресом
+        if (addressForm && addr) {
+            fillOrderFormWithAddress(addr);
+        }
+    } else {
+        // В упрощенном режиме показываем список адресов
+        if (addressesList) addressesList.style.display = 'block';
+        if (addNewAddressBtn) addNewAddressBtn.style.display = 'block';
+        if (addressForm) addressForm.style.display = 'none';
+    }
 }
 
 // Показ формы добавления нового адреса на шаге 2
