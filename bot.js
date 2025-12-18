@@ -1009,9 +1009,25 @@ if (process.env.DATABASE_URL) {
           `);
               console.log('✅ Поле leave_at_door добавлено в таблицу orders');
             }
+            
+            // Миграция: добавление колонки order_number в таблицу orders
+            const orderNumberColumnCheck = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'orders' AND column_name = 'order_number'
+            `);
+            
+            if (orderNumberColumnCheck.rows.length === 0) {
+              console.log('🔄 Выполняем миграцию: добавление колонки order_number в таблицу orders...');
+              await client.query(`
+                ALTER TABLE orders 
+                ADD COLUMN IF NOT EXISTS order_number BIGINT
+              `);
+              console.log('✅ Колонка order_number добавлена в таблицу orders');
+            }
           } catch (migrationError) {
             if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
-              console.log('⚠️  Миграция leave_at_door:', migrationError.message);
+              console.log('⚠️  Миграция leave_at_door/order_number:', migrationError.message);
             }
           } finally {
             client.release();
@@ -1993,6 +2009,23 @@ async function createOrderInDb(orderData) {
       // Получаем значение leave_at_door из orderData (явное приведение к boolean)
       const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
+      // Генерируем номер заказа: userId + номер заказа пользователя (с ведущими нулями до 3 цифр)
+      let orderNumber = null;
+      if (userId && orderData.userId) {
+        // Считаем количество заказов пользователя
+        const userOrdersCountResult = await client.query(
+          'SELECT COUNT(*) as count FROM orders WHERE user_id = $1',
+          [userId]
+        );
+        const userOrderNumber = parseInt(userOrdersCountResult.rows[0].count, 10) + 1; // +1 потому что это будет новый заказ
+        
+        // Формируем номер заказа: userId + номер заказа (с ведущими нулями до 3 цифр)
+        const userIdStr = String(orderData.userId);
+        const orderNumberStr = String(userOrderNumber).padStart(3, '0');
+        orderNumber = parseInt(userIdStr + orderNumberStr, 10);
+        console.log(`📝 Сгенерирован номер заказа: ${orderNumber} (userId: ${userIdStr}, номер заказа пользователя: ${userOrderNumber})`);
+      }
+      
       // Создаем заказ (без service_fee_percent - эта колонка не критична, процент можно вычислить из service_fee и flowers_total)
       const orderResult = await client.query(
         `INSERT INTO orders 
@@ -2001,8 +2034,8 @@ async function createOrderInDb(orderData) {
           recipient_name, recipient_phone, 
           address_id, address_string, address_json, 
           delivery_zone, delivery_date, delivery_time,
-          user_comment, courier_comment, leave_at_door, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW')
+          user_comment, courier_comment, leave_at_door, status, order_number)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW', $22)
          RETURNING *`,
         [
           userId,
@@ -2030,7 +2063,7 @@ async function createOrderInDb(orderData) {
       );
       
       const order = orderResult.rows[0];
-      console.log('✅ Заказ создан в БД, order_id:', order.id, 'user_id в заказе:', order.user_id || 'NULL');
+      console.log('✅ Заказ создан в БД, order_id:', order.id, 'order_number:', order.order_number || orderNumber || 'NULL', 'user_id в заказе:', order.user_id || 'NULL');
       
       // Сохраняем телефон и почту из формы заказа в профиль пользователя, если они были заполнены
       if (userId && (orderData.phone || orderData.email)) {
@@ -2945,7 +2978,7 @@ app.get('/api/orders/:orderId', async (req, res) => {
       
       // Получаем заказ с товарами
       const orderQuery = `
-        SELECT o.*, 
+        SELECT o.*, o.order_number, 
                json_agg(json_build_object(
                  'id', oi.product_id,
                  'name', oi.name,

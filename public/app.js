@@ -2588,10 +2588,29 @@ function openPaymentSuccessPage(orderId) {
     // Закрываем оформление заказа
     closeCheckoutUI();
     
-    // Устанавливаем номер заказа
+    // Устанавливаем номер заказа (используем order_number, если есть)
     const orderIdElement = document.getElementById('paymentSuccessOrderId');
     if (orderIdElement) {
-        orderIdElement.textContent = orderId;
+        // Если orderId - это число, пытаемся получить order_number из заказа
+        // Иначе используем переданный orderId
+        if (typeof orderId === 'number' || !isNaN(orderId)) {
+            // Загружаем данные заказа для получения order_number
+            fetch(`/api/orders/${orderId}?userId=${userId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.order && data.order.order_number) {
+                        orderIdElement.textContent = data.order.order_number;
+                    } else {
+                        orderIdElement.textContent = orderId;
+                    }
+                })
+                .catch(err => {
+                    console.error('Ошибка загрузки номера заказа:', err);
+                    orderIdElement.textContent = orderId;
+                });
+        } else {
+            orderIdElement.textContent = orderId;
+        }
     }
     
     // Устанавливаем флаг, что страница успеха показана (для предотвращения закрытия)
@@ -6489,8 +6508,14 @@ function renderOrderDetails(order) {
     };
     const activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
     
-    // Форматируем номер заказа
-    const orderNumber = String(order.id).toUpperCase();
+    // Форматируем номер заказа (используем order_number, если есть, иначе вычисляем из id)
+    let orderNumber;
+    if (order.order_number) {
+        orderNumber = String(order.order_number);
+    } else {
+        // Fallback: используем id заказа
+        orderNumber = String(order.id).toUpperCase();
+    }
     
     orderDetailsContent.innerHTML = `
         <!-- Информация о заказе -->
