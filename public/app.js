@@ -6866,14 +6866,12 @@ function renderOrderDetails(order) {
         <div class="order-details-card">
             <div class="order-details-h2">Информация о доставке</div>
             
-            ${order.recipient_name || order.recipient_phone ? `
-                <div class="order-details-info-row">
-                    <div class="order-details-info-title">Получатель</div>
-                    <div class="order-details-info-text">
-                        ${order.recipient_name || ''}${order.recipient_name && order.recipient_phone ? '<br>' : ''}${order.recipient_phone || ''}
-                    </div>
+            <div class="order-details-info-row">
+                <div class="order-details-info-title">Получатель</div>
+                <div class="order-details-info-text">
+                    ${order.recipient_name || 'Не указан'}${order.recipient_name && order.recipient_phone ? '<br>' : ''}${order.recipient_phone || ''}
                 </div>
-            ` : ''}
+            </div>
             
             <div class="order-details-info-row">
                 <div class="order-details-info-title">Адрес доставки</div>
