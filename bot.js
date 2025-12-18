@@ -3090,15 +3090,34 @@ app.get('/api/orders/:orderId', async (req, res) => {
       const dbUserId = userCheckResult.rows[0].id;
       console.log(`[GET /api/orders/${orderId}] Найден пользователь: telegram_id=${userId}, user_id=${dbUserId}`);
       
+      // Проверяем наличие колонки order_number
+      const columnCheck = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'orders' AND column_name = 'order_number'
+      `);
+      const hasOrderNumber = columnCheck.rows.length > 0;
+      
       // Получаем заказ с товарами
-      // Проверяем наличие колонки order_number перед запросом
-      const orderQuery = `
-        SELECT o.*, 
-               COALESCE(
-                 (SELECT column_name FROM information_schema.columns 
-                  WHERE table_name = 'orders' AND column_name = 'order_number'),
-                 NULL
-               ) as has_order_number,
+      // Используем условный SELECT в зависимости от наличия колонки order_number
+      const orderQuery = hasOrderNumber ? `
+        SELECT o.*, o.order_number,
+               json_agg(json_build_object(
+                 'id', oi.product_id,
+                 'name', oi.name,
+                 'price', oi.price,
+                 'quantity', oi.quantity,
+                 'total_price', oi.total_price,
+                 'image_url', p.image_url,
+                 'min_order_quantity', COALESCE(p.min_order_quantity, 1)
+               )) FILTER (WHERE oi.id IS NOT NULL) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE o.id = $1 AND o.user_id = $2
+        GROUP BY o.id
+      ` : `
+        SELECT o.*,
                json_agg(json_build_object(
                  'id', oi.product_id,
                  'name', oi.name,
