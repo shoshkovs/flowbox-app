@@ -2076,9 +2076,62 @@ async function createOrderInDb(orderData) {
           orderData.deliveryTime || null,
           userComment,
           courierComment,
-          leaveAtDoor
+          leaveAtDoor,
+          orderNumber
         ]
-      );
+        );
+      } else {
+        // Если колонки нет, создаем заказ без order_number
+        console.log('⚠️  Колонка order_number не найдена, создаем заказ без номера');
+        orderResult = await client.query(
+          `INSERT INTO orders 
+           (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
+            client_name, client_phone, client_email,
+            recipient_name, recipient_phone, 
+            address_id, address_string, address_json, 
+            delivery_zone, delivery_date, delivery_time,
+            user_comment, courier_comment, leave_at_door, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW')
+           RETURNING *`,
+          [
+            userId,
+            finalTotal,
+            orderData.flowersTotal,
+            calculatedServiceFee,
+            orderData.deliveryPrice || 0,
+            0, // bonus_used
+            0, // bonus_earned
+            clientName,
+            clientPhone,
+            clientEmail,
+            orderData.recipientName || null,
+            orderData.recipientPhone || null,
+            addressId,
+            orderData.address,
+            JSON.stringify(orderData.addressData || {}),
+            deliveryZone,
+            orderData.deliveryDate || null,
+            orderData.deliveryTime || null,
+            userComment,
+            courierComment,
+            leaveAtDoor
+          ]
+        );
+        
+        // После создания заказа обновляем его с order_number, если колонка появится
+        if (orderNumber) {
+          try {
+            await client.query(
+              'UPDATE orders SET order_number = $1 WHERE id = $2',
+              [orderNumber, orderResult.rows[0].id]
+            );
+            orderResult.rows[0].order_number = orderNumber;
+            console.log('✅ Номер заказа обновлен после создания:', orderNumber);
+          } catch (updateError) {
+            console.log('⚠️  Не удалось обновить order_number:', updateError.message);
+          }
+        }
+      }
       
       const order = orderResult.rows[0];
       console.log('✅ Заказ создан в БД, order_id:', order.id, 'order_number:', order.order_number || orderNumber || 'NULL', 'user_id в заказе:', order.user_id || 'NULL');

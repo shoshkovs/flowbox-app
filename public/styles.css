@@ -2994,13 +2994,13 @@ select:-ms-input-placeholder {
 /* Карточка для упрощенного оформления */
 .checkout-summary-card {
     background: white;
-    border-radius: 0;
+    border-radius: 12px;
     margin-bottom: 16px;
-    margin-left: 4px;
-    margin-right: 4px;
+    margin-left: 20px;
+    margin-right: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
-    width: calc(100% - 8px);
+    padding: 16px;
 }
 
 .checkout-summary-card .checkout-summary-item {
