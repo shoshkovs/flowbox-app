@@ -3083,6 +3083,13 @@ select:-ms-input-placeholder {
     margin-bottom: 24px;
 }
 
+.profile-section-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 20px 0;
+    width: 100%;
+}
+
 .section-title {
     font-size: 18px;
     font-weight: 600;
