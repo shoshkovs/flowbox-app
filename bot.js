@@ -8062,13 +8062,9 @@ const handleProductShare = async (ctx, productId) => {
       if (product.image_url_3) images.push(product.image_url_3);
       const firstImage = images.length > 0 ? images[0] : null;
       
-      // Формируем сообщение с информацией о товаре в правильном формате:
-      // Название
-      // Количество штук (мин заказ)
-      // Цена
-      let message = `${product.name}\n`;
-      message += `${minQty}шт\n`;
-      message += `${productPrice.toLocaleString('ru-RU')}₽`;
+      // Формируем сообщение с информацией о товаре в красивом формате:
+      // Название | Количество штук | Цена
+      let message = `${product.name} | ${minQty}шт | ${productPrice.toLocaleString('ru-RU')}₽`;
       
       // URL для открытия товара в мини-приложении
       const productUrl = `${webAppUrl}?product=${productId}`;
