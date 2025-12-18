@@ -2614,60 +2614,61 @@ function openPaymentSuccessPage(orderId, orderIdForFetch = null, userOrderNumber
     // Закрываем оформление заказа
     closeCheckoutUI();
     
-    // Устанавливаем номер заказа в формате "ID и номер 001"
+    // Устанавливаем номер заказа в формате "#userId016"
     const orderIdElement = document.getElementById('paymentSuccessOrderId');
     if (orderIdElement) {
-        // Если передан userOrderNumber, используем его
-        if (userOrderNumber) {
-            const userOrderNumberStr = String(userOrderNumber).padStart(3, '0');
-            orderIdElement.textContent = `${orderId} и номер ${userOrderNumberStr}`;
-        } else if (orderIdForFetch) {
-            // Если userOrderNumber не передан, пытаемся получить его из заказа
-            // Получаем userId для запроса
-            let userId = null;
-            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                userId = tg.initDataUnsafe.user.id;
-            }
-            
-            // Если userId не получен из Telegram, пробуем получить из localStorage
-            if (!userId) {
-                const userData = localStorage.getItem('userData');
-                if (userData) {
-                    try {
-                        const parsed = JSON.parse(userData);
-                        userId = parsed.userId || parsed.id;
-                    } catch (e) {
-                        console.warn('[openPaymentSuccessPage] Не удалось распарсить userData из localStorage');
-                    }
+        // Получаем userId для формирования номера заказа
+        let userId = null;
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+        }
+        
+        // Если userId не получен из Telegram, пробуем получить из localStorage
+        if (!userId) {
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                try {
+                    const parsed = JSON.parse(userData);
+                    userId = parsed.userId || parsed.id;
+                } catch (e) {
+                    console.warn('[openPaymentSuccessPage] Не удалось распарсить userData из localStorage');
                 }
             }
-            
-            // Если userId найден, загружаем данные заказа для получения userOrderNumber
-            if (userId && (typeof orderIdForFetch === 'number' || !isNaN(orderIdForFetch))) {
+        }
+        
+        // Если передан userOrderNumber и userId, формируем номер в формате "#userId016"
+        if (userOrderNumber && userId) {
+            const userOrderNumberStr = String(userOrderNumber).padStart(3, '0');
+            orderIdElement.textContent = `#${userId}${userOrderNumberStr}`;
+        } else if (orderIdForFetch && userId) {
+            // Если userOrderNumber не передан, пытаемся получить его из заказа
+            if (typeof orderIdForFetch === 'number' || !isNaN(orderIdForFetch)) {
                 fetch(`/api/orders/${orderIdForFetch}?userId=${userId}`)
                     .then(res => res.json())
                     .then(data => {
-                        if (data && data.order_number) {
+                        if (data && data.userOrderNumber) {
+                            const userOrderNumberStr = String(data.userOrderNumber).padStart(3, '0');
+                            orderIdElement.textContent = `#${userId}${userOrderNumberStr}`;
+                        } else if (data && data.order_number) {
                             // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
                             const fullOrderNumber = String(data.order_number);
                             const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
-                            orderIdElement.textContent = `${orderId} и номер ${userOrderNumberStr}`;
+                            orderIdElement.textContent = `#${userId}${userOrderNumberStr}`;
                         } else {
                             // Если order_number не найден, показываем только ID
-                            orderIdElement.textContent = orderId;
+                            orderIdElement.textContent = `#${orderId}`;
                         }
                     })
                     .catch(err => {
                         console.error('Ошибка загрузки номера заказа:', err);
-                        orderIdElement.textContent = orderId;
+                        orderIdElement.textContent = `#${orderId}`;
                     });
             } else {
-                // Если userId не найден, просто показываем ID
-                orderIdElement.textContent = orderId;
+                orderIdElement.textContent = `#${orderId}`;
             }
         } else {
-            // Если orderIdForFetch не передан, просто показываем ID
-            orderIdElement.textContent = orderId;
+            // Если userId не найден, просто показываем ID
+            orderIdElement.textContent = `#${orderId}`;
         }
     }
     
@@ -5033,6 +5034,8 @@ async function validateAndSubmitOrder(e) {
             // Сохранение заказа в активные
             const order = {
                 id: orderId,
+                order_number: orderNumber,
+                userOrderNumber: userOrderNumber,
                 date: new Date().toLocaleDateString('ru-RU'),
                 items: orderData.items,
                 total: orderData.total,
@@ -6795,13 +6798,49 @@ function renderOrderDetails(order) {
     };
     const activeStep = statusMap[statusRaw] !== undefined ? statusMap[statusRaw] : 0;
     
-    // Форматируем номер заказа (используем order_number, если есть, иначе вычисляем из id)
+    // Форматируем номер заказа в формате "#userId016"
     let orderNumber;
-    if (order.order_number) {
-        orderNumber = String(order.order_number);
+    
+    // Получаем userId для формирования номера заказа
+    let userId = null;
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        userId = tg.initDataUnsafe.user.id;
+    }
+    
+    // Если userId не получен из Telegram, пробуем получить из localStorage
+    if (!userId) {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+            try {
+                const parsed = JSON.parse(userData);
+                userId = parsed.userId || parsed.id;
+            } catch (e) {
+                console.warn('[renderOrderDetails] Не удалось распарсить userData из localStorage');
+            }
+        }
+    }
+    
+    // Формируем номер заказа в формате "#userId016"
+    if (userId) {
+        if (order.userOrderNumber) {
+            const userOrderNumberStr = String(order.userOrderNumber).padStart(3, '0');
+            orderNumber = `#${userId}${userOrderNumberStr}`;
+        } else if (order.order_number) {
+            // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+            const fullOrderNumber = String(order.order_number);
+            const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
+            orderNumber = `#${userId}${userOrderNumberStr}`;
+        } else {
+            // Fallback: используем id заказа
+            orderNumber = `#${order.id}`;
+        }
     } else {
-        // Fallback: используем id заказа
-        orderNumber = String(order.id).toUpperCase();
+        // Если userId не найден, используем order_number или id
+        if (order.order_number) {
+            orderNumber = String(order.order_number);
+        } else {
+            orderNumber = `#${order.id}`;
+        }
     }
     
     orderDetailsContent.innerHTML = `
