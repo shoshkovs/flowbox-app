@@ -27,71 +27,94 @@ echo "✅ Папка admin-build существует"
 echo "📝 Добавление изменений в git..."
 git add -A
 
-# 4. Генерируем описание изменений
+# 4. Генерируем понятное описание изменений
 echo "💾 Анализ изменений..."
 
-# Проверяем измененные файлы
-CHANGED_FILES=$(git diff --cached --name-only 2>/dev/null)
-
-if [ -z "$CHANGED_FILES" ]; then
-    # Если нет изменений в staged, проверяем unstaged
-    CHANGED_FILES=$(git diff --name-only 2>/dev/null)
+# Получаем diff для анализа
+DIFF_CONTENT=$(git diff --cached 2>/dev/null)
+if [ -z "$DIFF_CONTENT" ]; then
+    DIFF_CONTENT=$(git diff 2>/dev/null)
 fi
 
-# Формируем список измененных файлов
-CHANGES=""
-FILE_COUNT=0
+# Анализируем изменения и формируем понятное описание
+DESCRIPTION=""
 
-for file in $CHANGED_FILES; do
-    # Пропускаем служебные файлы и build директории
-    if [[ "$file" == *"admin-build"* ]] || [[ "$file" == *"node_modules"* ]] || [[ "$file" == *".git"* ]]; then
-        continue
-    fi
-    
-    # Извлекаем имя файла
-    filename=$(basename "$file")
-    dirname=$(dirname "$file")
-    
-    # Формируем краткое описание
-    if [[ "$file" == "public/app.js" ]]; then
-        CHANGES="${CHANGES}app.js "
-    elif [[ "$file" == "public/styles.css" ]]; then
-        CHANGES="${CHANGES}styles.css "
-    elif [[ "$file" == "public/index.html" ]]; then
-        CHANGES="${CHANGES}index.html "
-    elif [[ "$file" == "bot.js" ]]; then
-        CHANGES="${CHANGES}bot.js "
-    elif [[ "$file" == admin/* ]]; then
-        CHANGES="${CHANGES}admin "
-    else
-        CHANGES="${CHANGES}${filename} "
-    fi
-    
-    FILE_COUNT=$((FILE_COUNT + 1))
-done
-
-# Получаем статистику изменений
-DIFF_STAT=$(git diff --cached --shortstat 2>/dev/null)
-if [ -z "$DIFF_STAT" ]; then
-    DIFF_STAT=$(git diff --shortstat 2>/dev/null)
+# Проверяем изменения связанные с safe area insets
+if echo "$DIFF_CONTENT" | grep -qiE "(safe.*area|safeAreaInset|contentSafeAreaInset|--safe-top|--safe-bottom|applyInsets)"; then
+    DESCRIPTION="${DESCRIPTION}Адаптация отступов для разных устройств"
 fi
 
-# Формируем сообщение коммита
-if [ -n "$CHANGES" ] && [ "$FILE_COUNT" -gt 0 ]; then
-    # Убираем лишние пробелы и формируем список
-    CHANGES=$(echo "$CHANGES" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/^ *//;s/ *$//')
-    COMMIT_MSG="Deploy: $(echo $CHANGES | sed 's/ /, /g')"
-    
-    if [ -n "$DIFF_STAT" ]; then
-        COMMIT_MSG="${COMMIT_MSG} - ${DIFF_STAT}"
+# Проверяем изменения в хедере
+if echo "$DIFF_CONTENT" | grep -qiE "(\.header|header.*padding|header.*top|logo-wrapper)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
     fi
-else
-    # Fallback на стандартное сообщение
-    COMMIT_MSG="Deploy React admin panel with database integration"
-    if [ -n "$DIFF_STAT" ]; then
-        COMMIT_MSG="Deploy: ${DIFF_STAT}"
-    fi
+    DESCRIPTION="${DESCRIPTION}изменения размеров хедера"
 fi
+
+# Проверяем изменения в нижнем меню
+if echo "$DIFF_CONTENT" | grep -qiE "(\.bottom-nav|bottom-nav.*padding|bottom-nav.*bottom|\.nav-item|\.nav-icon|\.nav-badge)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
+    fi
+    DESCRIPTION="${DESCRIPTION}изменения размеров нижнего меню"
+fi
+
+# Проверяем изменения в адресах
+if echo "$DIFF_CONTENT" | grep -qiE "(address|адрес|checkoutAddress|renderCheckoutAddresses|selectCheckoutAddress)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
+    fi
+    DESCRIPTION="${DESCRIPTION}изменения в работе с адресами"
+fi
+
+# Проверяем изменения в корзине
+if echo "$DIFF_CONTENT" | grep -qiE "(cart|корзина|goToCartFixed|updateGoToCartButton)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
+    fi
+    DESCRIPTION="${DESCRIPTION}изменения в корзине"
+fi
+
+# Проверяем изменения в оформлении заказа
+if echo "$DIFF_CONTENT" | grep -qiE "(checkout|оформление|checkoutStep|goToStep)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
+    fi
+    DESCRIPTION="${DESCRIPTION}изменения в оформлении заказа"
+fi
+
+# Проверяем изменения в стилях/цветах
+if echo "$DIFF_CONTENT" | grep -qiE "(color|цвет|background|border-color|#f9a8d4|#fb2d5c)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
+    fi
+    DESCRIPTION="${DESCRIPTION}изменения цветов и стилей"
+fi
+
+# Проверяем изменения в профиле
+if echo "$DIFF_CONTENT" | grep -qiE "(profile|профиль|profileTab)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
+    fi
+    DESCRIPTION="${DESCRIPTION}изменения в профиле"
+fi
+
+# Проверяем изменения в админ-панели
+if echo "$DIFF_CONTENT" | grep -qiE "(admin|PUSH_TO_RENDER)"; then
+    if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION}, "
+    fi
+    DESCRIPTION="${DESCRIPTION}обновление админ-панели"
+fi
+
+# Если не удалось определить изменения, используем общее описание
+if [ -z "$DESCRIPTION" ]; then
+    DESCRIPTION="Обновление приложения"
+fi
+
+# Формируем финальное сообщение
+COMMIT_MSG="Deploy: ${DESCRIPTION}"
 
 # Коммитим
 echo "💾 Создание коммита..."

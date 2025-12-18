@@ -1,12 +1,8 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram?.WebApp;
 
-// Функция для ограничения значения в диапазоне
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
-
 // Применение Telegram safe area insets в CSS переменные
+// Правило: iOS → safeAreaInset, Android → contentSafeAreaInset
 function applyInsets() {
     if (!tg) {
         console.log('[applyInsets] Telegram WebApp не найден, используем значения по умолчанию');
@@ -15,26 +11,28 @@ function applyInsets() {
         return;
     }
     
-    // Приоритет: contentSafeAreaInset, затем safeAreaInset, затем 0
-    const topRaw = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
-    const bottomRaw = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
+    // Определяем платформу
+    const isIOS = tg.platform === 'ios';
     
-    // Ограничиваем максимальные значения для предотвращения слишком больших отступов на Android
-    const top = clamp(topRaw, 0, 24);       // максимум 24px сверху
-    const bottom = clamp(bottomRaw, 0, 32); // максимум 32px снизу
+    // iOS использует safeAreaInset, Android использует contentSafeAreaInset
+    const top = isIOS
+        ? (tg.safeAreaInset?.top ?? 0)
+        : (tg.contentSafeAreaInset?.top ?? 0);
+    
+    const bottom = isIOS
+        ? (tg.safeAreaInset?.bottom ?? 0)
+        : (tg.contentSafeAreaInset?.bottom ?? 0);
     
     document.documentElement.style.setProperty('--safe-top', `${top}px`);
     document.documentElement.style.setProperty('--safe-bottom', `${bottom}px`);
     
     console.log('[applyInsets] Применены safe area insets:', { 
+        platform: tg.platform,
+        isIOS,
         top, 
-        bottom, 
-        topRaw, 
-        bottomRaw,
-        contentTop: tg.contentSafeAreaInset?.top,
-        contentBottom: tg.contentSafeAreaInset?.bottom,
-        safeTop: tg.safeAreaInset?.top,
-        safeBottom: tg.safeAreaInset?.bottom
+        bottom,
+        safeAreaInset: { top: tg.safeAreaInset?.top, bottom: tg.safeAreaInset?.bottom },
+        contentSafeAreaInset: { top: tg.contentSafeAreaInset?.top, bottom: tg.contentSafeAreaInset?.bottom }
     });
 }
 
