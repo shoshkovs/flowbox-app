@@ -5061,8 +5061,8 @@ async function validateAndSubmitOrder(e) {
             };
             
             // После успешного заказа переходим на страницу успешной оплаты
-            // Передаем order_number, если есть, иначе orderId
-            openPaymentSuccessPage(orderNumber || orderId, orderId);
+            // Передаем orderId и userOrderNumber для отображения "ID и номер 001"
+            openPaymentSuccessPage(orderId, orderId, userOrderNumber);
             
             // Тактильная обратная связь
             if (tg && tg.HapticFeedback) {
