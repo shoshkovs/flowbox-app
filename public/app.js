@@ -11010,12 +11010,12 @@ function shareProduct(product) {
     
     // Формируем текст для шаринга в красивом формате:
     // Название | Количество штук | Цена
+    // Ссылку НЕ добавляем в текст, она будет только в превью
     const shareText = `${product.name} | ${minQty}шт | ${totalPrice.toLocaleString('ru-RU')}₽`;
     
     // Используем Telegram Share URL для открытия окна выбора контактов
-    // НЕ передаем параметр text, чтобы Telegram не добавлял ссылку в текст
-    // Текст будет добавлен в caption ботом при обработке ссылки
-    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareLink)}`;
+    // Передаем текст БЕЗ ссылки - ссылка будет только в превью
+    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareText)}`;
     
     // Используем Telegram WebApp API для открытия окна шаринга
     if (window.tg && window.tg.openTelegramLink) {
