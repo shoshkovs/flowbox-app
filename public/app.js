@@ -7093,17 +7093,21 @@ function loadOrderHistory() {
     if (allOrders.length === 0) {
         orderHistoryList.innerHTML = '<p class="no-orders">Заказов пока нет</p>';
     } else {
-        orderHistoryList.innerHTML = allOrders.map(order => `
+        orderHistoryList.innerHTML = allOrders.map(order => {
+            // Форматируем номер заказа в новый формат
+            const orderNumber = formatOrderNumber(order);
+            return `
             <div class="order-history-item">
                 <div class="order-item-header">
-                    <h4>Заказ #${order.id}</h4>
+                    <h4>Заказ ${orderNumber}</h4>
                     <span class="order-status ${getOrderStatusClass(order.status)}">${getOrderStatusText(order.status)}</span>
                 </div>
                 <p>Дата: ${order.date}</p>
                 <p>Сумма: ${order.total} ₽</p>
                 ${order.status === 'UNPAID' || order.status === 'unpaid' ? '<button class="pay-btn">Оплатить</button>' : ''}
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 }
 
