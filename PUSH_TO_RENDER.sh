@@ -27,9 +27,76 @@ echo "✅ Папка admin-build существует"
 echo "📝 Добавление изменений в git..."
 git add -A
 
-# 4. Коммитим
+# 4. Генерируем описание изменений
+echo "💾 Анализ изменений..."
+
+# Проверяем измененные файлы
+CHANGED_FILES=$(git diff --cached --name-only 2>/dev/null)
+
+if [ -z "$CHANGED_FILES" ]; then
+    # Если нет изменений в staged, проверяем unstaged
+    CHANGED_FILES=$(git diff --name-only 2>/dev/null)
+fi
+
+# Формируем список измененных файлов
+CHANGES=""
+FILE_COUNT=0
+
+for file in $CHANGED_FILES; do
+    # Пропускаем служебные файлы и build директории
+    if [[ "$file" == *"admin-build"* ]] || [[ "$file" == *"node_modules"* ]] || [[ "$file" == *".git"* ]]; then
+        continue
+    fi
+    
+    # Извлекаем имя файла
+    filename=$(basename "$file")
+    dirname=$(dirname "$file")
+    
+    # Формируем краткое описание
+    if [[ "$file" == "public/app.js" ]]; then
+        CHANGES="${CHANGES}app.js "
+    elif [[ "$file" == "public/styles.css" ]]; then
+        CHANGES="${CHANGES}styles.css "
+    elif [[ "$file" == "public/index.html" ]]; then
+        CHANGES="${CHANGES}index.html "
+    elif [[ "$file" == "bot.js" ]]; then
+        CHANGES="${CHANGES}bot.js "
+    elif [[ "$file" == admin/* ]]; then
+        CHANGES="${CHANGES}admin "
+    else
+        CHANGES="${CHANGES}${filename} "
+    fi
+    
+    FILE_COUNT=$((FILE_COUNT + 1))
+done
+
+# Получаем статистику изменений
+DIFF_STAT=$(git diff --cached --shortstat 2>/dev/null)
+if [ -z "$DIFF_STAT" ]; then
+    DIFF_STAT=$(git diff --shortstat 2>/dev/null)
+fi
+
+# Формируем сообщение коммита
+if [ -n "$CHANGES" ] && [ "$FILE_COUNT" -gt 0 ]; then
+    # Убираем лишние пробелы и формируем список
+    CHANGES=$(echo "$CHANGES" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/^ *//;s/ *$//')
+    COMMIT_MSG="Deploy: $(echo $CHANGES | sed 's/ /, /g')"
+    
+    if [ -n "$DIFF_STAT" ]; then
+        COMMIT_MSG="${COMMIT_MSG} - ${DIFF_STAT}"
+    fi
+else
+    # Fallback на стандартное сообщение
+    COMMIT_MSG="Deploy React admin panel with database integration"
+    if [ -n "$DIFF_STAT" ]; then
+        COMMIT_MSG="Deploy: ${DIFF_STAT}"
+    fi
+fi
+
+# Коммитим
 echo "💾 Создание коммита..."
-git commit -m "Deploy React admin panel with database integration"
+echo "   Сообщение: $COMMIT_MSG"
+git commit -m "$COMMIT_MSG"
 
 # 5. Пушим в GitHub
 echo "⬆️  Отправка изменений в GitHub..."

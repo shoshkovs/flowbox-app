@@ -1,6 +1,11 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram?.WebApp;
 
+// Функция для ограничения значения в диапазоне
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
 // Применение Telegram safe area insets в CSS переменные
 function applyInsets() {
     if (!tg) {
@@ -10,20 +15,27 @@ function applyInsets() {
         return;
     }
     
-    const top = tg.safeAreaInset?.top ?? 0;
-    const bottom = tg.safeAreaInset?.bottom ?? 0;
+    // Приоритет: contentSafeAreaInset, затем safeAreaInset, затем 0
+    const topRaw = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
+    const bottomRaw = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
     
-    // Иногда полезно учитывать contentSafeAreaInset (если используешь)
-    const cTop = tg.contentSafeAreaInset?.top ?? 0;
-    const cBottom = tg.contentSafeAreaInset?.bottom ?? 0;
+    // Ограничиваем максимальные значения для предотвращения слишком больших отступов на Android
+    const top = clamp(topRaw, 0, 24);       // максимум 24px сверху
+    const bottom = clamp(bottomRaw, 0, 32); // максимум 32px снизу
     
-    const safeTop = Math.max(top, cTop);
-    const safeBottom = Math.max(bottom, cBottom);
+    document.documentElement.style.setProperty('--safe-top', `${top}px`);
+    document.documentElement.style.setProperty('--safe-bottom', `${bottom}px`);
     
-    document.documentElement.style.setProperty('--safe-top', `${safeTop}px`);
-    document.documentElement.style.setProperty('--safe-bottom', `${safeBottom}px`);
-    
-    console.log('[applyInsets] Применены safe area insets:', { safeTop, safeBottom, top, bottom, cTop, cBottom });
+    console.log('[applyInsets] Применены safe area insets:', { 
+        top, 
+        bottom, 
+        topRaw, 
+        bottomRaw,
+        contentTop: tg.contentSafeAreaInset?.top,
+        contentBottom: tg.contentSafeAreaInset?.bottom,
+        safeTop: tg.safeAreaInset?.top,
+        safeBottom: tg.safeAreaInset?.bottom
+    });
 }
 
 // Применяем insets сразу при загрузке
@@ -31,20 +43,11 @@ applyInsets();
 
 // На поворот/изменение viewport Telegram
 if (tg && typeof tg.onEvent === 'function') {
-    tg.onEvent('viewportChanged', () => {
-        console.log('[viewportChanged] Обновляем safe area insets');
-        setTimeout(() => {
-            applyInsets();
-        }, 50);
-    });
+    tg.onEvent('viewportChanged', applyInsets);
 }
 
 // Также на resize окна (на случай если что-то изменилось)
-window.addEventListener('resize', () => {
-    setTimeout(() => {
-        applyInsets();
-    }, 50);
-});
+window.addEventListener('resize', applyInsets);
 
 // Глобальные переменные состояния
 let currentCheckoutStep = 1; // Текущий шаг оформления заказа
