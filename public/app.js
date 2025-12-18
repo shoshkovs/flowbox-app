@@ -1235,18 +1235,42 @@ function renderProducts() {
         // Количество банчей = количество товара / мин заказ (сколько раз добавлен мин заказ)
         const bunchesCount = isInCart ? Math.floor(cartQuantity / minQty) : 0;
         
-        // Получаем первое изображение из массива images или из image_url
-        let productImage = product.image;
+        // Собираем все изображения товара
+        const images = [];
         if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-            productImage = product.images[0];
-        } else if (product.image_url) {
-            productImage = product.image_url;
+            images.push(...product.images.filter(Boolean));
+        } else {
+            if (product.image_url) images.push(product.image_url);
+            if (product.image_url_2) images.push(product.image_url_2);
+            if (product.image_url_3) images.push(product.image_url_3);
+            if (images.length === 0 && product.image) images.push(product.image);
         }
         
+        // Если нет изображений, используем заглушку
+        if (images.length === 0) {
+            images.push('/logo2.jpg');
+        }
+        
+        const hasMultipleImages = images.length > 1;
+        const imagesHTML = images.map((img, idx) => `
+            <div class="product-image-slide" style="min-width: 100%; width: 100%; flex-shrink: 0;">
+                <img src="${img}" alt="${product.name}" class="product-image">
+            </div>
+        `).join('');
+        
         return `
-            <div class="product-card" data-product-id="${product.id}" onclick="openProductSheet(${product.id})">
+            <div class="product-card" data-product-id="${product.id}" data-swipe-blocked="false">
                 <div class="product-image-wrapper">
-                    <img src="${productImage}" alt="${product.name}" class="product-image">
+                    <div class="product-image-track" data-product-id="${product.id}" style="display: flex; width: ${images.length * 100}%; height: 100%; transition: transform 0.3s ease-out;">
+                        ${imagesHTML}
+                    </div>
+                    ${hasMultipleImages ? `
+                        <div class="product-image-dots" data-product-id="${product.id}">
+                            ${images.map((_, idx) => `
+                                <span class="product-image-dot ${idx === 0 ? 'active' : ''}" data-index="${idx}"></span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                     ${isInCart && bunchesCount > 0 ? `
                         <div class="product-quantity-overlay show">
                             <div class="product-quantity-overlay-text">${bunchesCount}</div>
@@ -2948,11 +2972,178 @@ observer.observe(document.body, { childList: true, subtree: true });
 
 // Упрощенные анимации без ripple эффектов
 
+// Инициализация свайпа для карточек товаров
+function initProductCardImageSwipe() {
+    const imageTracks = document.querySelectorAll('.product-image-track');
+    
+    imageTracks.forEach(track => {
+        const productId = track.getAttribute('data-product-id');
+        const dots = document.querySelector(`.product-image-dots[data-product-id="${productId}"]`);
+        if (!dots) return; // Если нет точек, значит только одно изображение, свайп не нужен
+        
+        const totalImages = dots.querySelectorAll('.product-image-dot').length;
+        if (totalImages <= 1) return;
+        
+        let currentIndex = 0;
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        let hasMoved = false; // Флаг, что было движение (свайп)
+        
+        const goToImage = (index) => {
+            currentIndex = Math.max(0, Math.min(index, totalImages - 1));
+            track.style.transform = `translateX(-${currentIndex * 100}%)`;
+            
+            // Обновляем точки
+            const dotButtons = dots.querySelectorAll('.product-image-dot');
+            dotButtons.forEach((dot, idx) => {
+                if (idx === currentIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        };
+        
+        // Находим карточку товара для блокировки открытия при свайпе
+        const productCard = track.closest('.product-card');
+        
+        const handleStart = (e) => {
+            hasMoved = false;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            isDragging = true;
+            track.style.transition = 'none';
+            // Сбрасываем флаг блокировки
+            if (productCard) {
+                productCard.setAttribute('data-swipe-blocked', 'false');
+            }
+        };
+        
+        const handleMove = (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); // Предотвращаем скролл страницы
+            currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            const diff = Math.abs(currentX - startX);
+            
+            // Если движение больше 5px, считаем это свайпом
+            if (diff > 5) {
+                hasMoved = true;
+                // Блокируем открытие карточки при свайпе
+                if (productCard) {
+                    productCard.setAttribute('data-swipe-blocked', 'true');
+                }
+                e.stopPropagation(); // Предотвращаем всплытие события
+            }
+            
+            const currentTranslate = -currentIndex * 100;
+            const newTranslate = currentTranslate + ((currentX - startX) / track.offsetWidth) * 100;
+            track.style.transform = `translateX(${newTranslate}%)`;
+        };
+        
+        const handleEnd = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            track.style.transition = 'transform 0.3s ease-out';
+            
+            const diff = currentX - startX;
+            const threshold = track.offsetWidth * 0.2; // 20% для переключения
+            
+            // Если был свайп, предотвращаем открытие карточки
+            if (hasMoved) {
+                e.stopPropagation();
+                e.preventDefault();
+                // Сбрасываем флаг через небольшую задержку, чтобы onclick не сработал
+                setTimeout(() => {
+                    if (productCard) {
+                        productCard.setAttribute('data-swipe-blocked', 'false');
+                    }
+                }, 100);
+            } else {
+                // Если не было свайпа, сразу сбрасываем флаг
+                if (productCard) {
+                    productCard.setAttribute('data-swipe-blocked', 'false');
+                }
+            }
+            
+            if (Math.abs(diff) > threshold) {
+                if (diff > 0 && currentIndex > 0) {
+                    // Свайп вправо - предыдущее изображение
+                    goToImage(currentIndex - 1);
+                } else if (diff < 0 && currentIndex < totalImages - 1) {
+                    // Свайп влево - следующее изображение
+                    goToImage(currentIndex + 1);
+                } else {
+                    // Возвращаемся к текущему
+                    goToImage(currentIndex);
+                }
+            } else {
+                // Возвращаемся к текущему
+                goToImage(currentIndex);
+            }
+        };
+        
+        // Удаляем старые обработчики
+        track.removeEventListener('touchstart', handleStart);
+        track.removeEventListener('touchmove', handleMove);
+        track.removeEventListener('touchend', handleEnd);
+        track.removeEventListener('mousedown', handleStart);
+        track.removeEventListener('mousemove', handleMove);
+        track.removeEventListener('mouseup', handleEnd);
+        track.removeEventListener('mouseleave', handleEnd);
+        
+        // Добавляем новые обработчики
+        track.addEventListener('touchstart', handleStart, { passive: false });
+        track.addEventListener('touchmove', handleMove, { passive: false });
+        track.addEventListener('touchend', handleEnd);
+        track.addEventListener('mousedown', handleStart);
+        track.addEventListener('mousemove', handleMove);
+        track.addEventListener('mouseup', handleEnd);
+        track.addEventListener('mouseleave', handleEnd);
+    });
+}
+
+// Устанавливаем обработчики клика на карточки товаров
+function setupProductCardClickHandlers() {
+    const cards = document.querySelectorAll('.product-card[data-product-id]');
+    cards.forEach(card => {
+        const productId = card.getAttribute('data-product-id');
+        if (!productId) return;
+        
+        // Проверяем, есть ли уже обработчик (чтобы не дублировать)
+        if (card.hasAttribute('data-click-handler-set')) return;
+        card.setAttribute('data-click-handler-set', 'true');
+        
+        // Добавляем обработчик клика на всю карточку
+        card.addEventListener('click', function(e) {
+            // Если клик был на кнопке "Добавить в корзину", не открываем карточку
+            if (e.target.closest('.product-action-btn')) {
+                return;
+            }
+            
+            // Проверяем, был ли свайп на изображении
+            const isSwipeBlocked = this.getAttribute('data-swipe-blocked') === 'true';
+            if (isSwipeBlocked) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            // Открываем карточку товара
+            openProductSheet(parseInt(productId));
+        }, true); // Используем capture phase для более раннего перехвата
+    });
+}
+
 // Переинициализируем анимацию после рендера товаров
 const originalRenderProducts = renderProducts;
 renderProducts = function() {
     originalRenderProducts();
     setTimeout(() => {
+        // Инициализируем свайп для карточек товаров
+        initProductCardImageSwipe();
+        
+        // Устанавливаем обработчики клика на карточки
+        setupProductCardClickHandlers();
+        
         // Применяем мягкую анимацию к карточкам товаров
         const cards = productsContainer.querySelectorAll('.product-card');
         cards.forEach((card, index) => {

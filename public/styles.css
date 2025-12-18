@@ -233,12 +233,51 @@ h1, h2, h3, .font-bold {
     border-radius: 12px;
 }
 
+.product-image-track {
+    display: flex;
+    height: 100%;
+    will-change: transform;
+}
+
+.product-image-slide {
+    min-width: 100%;
+    width: 100%;
+    flex-shrink: 0;
+    height: 100%;
+}
+
 .product-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
     border-radius: 12px;
+    display: block;
+}
+
+.product-image-dots {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+}
+
+.product-image-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transition: all 0.2s ease-out;
+    cursor: pointer;
+}
+
+.product-image-dot.active {
+    background: rgba(255, 255, 255, 1);
+    width: 20px;
+    border-radius: 3px;
 }
 
 
