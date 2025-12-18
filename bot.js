@@ -2445,6 +2445,24 @@ function getStatusText(status) {
   return statusMap[normalized] || status;
 }
 
+// Единая функция форматирования номера заказа для отображения
+function formatOrderNumberForDisplay({ orderId, userId, userOrderNumber, orderNumber }) {
+  // userOrderNumber может быть "16" или 16 — приводим к 3 цифрам
+  if (userId && userOrderNumber != null) {
+    const n = String(userOrderNumber).padStart(3, '0');
+    return `#${userId}${n}`;
+  }
+
+  // если есть order_number, берем последние 3 цифры
+  if (userId && orderNumber != null) {
+    const n = String(orderNumber).slice(-3).padStart(3, '0');
+    return `#${userId}${n}`;
+  }
+
+  // fallback
+  return `#${orderId}`;
+}
+
 // Функция для отправки уведомления о смене статуса заказа через Telegram бота
 async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null, comment = null) {
   if (!pool || !bot) {
