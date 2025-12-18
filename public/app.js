@@ -2,7 +2,7 @@
 const tg = window.Telegram?.WebApp;
 
 // Применение Telegram safe area insets в CSS переменные
-// Используем contentSafeAreaInset для обеих платформ (более точный для контента)
+// iOS → contentSafeAreaInset, Android → минимальный отступ (0 или очень маленький)
 function applyInsets() {
     if (!tg) {
         console.log('[applyInsets] Telegram WebApp не найден, используем значения по умолчанию');
@@ -11,16 +11,28 @@ function applyInsets() {
         return;
     }
     
-    // Для обеих платформ используем contentSafeAreaInset с fallback на safeAreaInset
-    // contentSafeAreaInset более точный для контента внутри WebApp
-    const top = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
-    const bottom = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
+    // Определяем платформу
+    const isIOS = tg.platform === 'ios';
+    
+    let top, bottom;
+    
+    if (isIOS) {
+        // На iOS используем contentSafeAreaInset (корректный для контента)
+        top = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
+        bottom = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
+    } else {
+        // На Android используем минимальный отступ сверху (0 или очень маленький)
+        // так как Telegram Mini App уже имеет свою системную панель
+        top = 0; // Убираем отступ сверху для Android
+        bottom = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
+    }
     
     document.documentElement.style.setProperty('--safe-top', `${top}px`);
     document.documentElement.style.setProperty('--safe-bottom', `${bottom}px`);
     
     console.log('[applyInsets] Применены safe area insets:', { 
         platform: tg.platform,
+        isIOS,
         top, 
         bottom,
         safeAreaInset: { top: tg.safeAreaInset?.top, bottom: tg.safeAreaInset?.bottom },
