@@ -2118,17 +2118,43 @@ async function createOrderInDb(orderData) {
           ]
         );
         
-        // После создания заказа обновляем его с order_number, если колонка появится
+        // После создания заказа обновляем его с order_number, если колонка существует
+        // Используем SAVEPOINT для изоляции операции, чтобы ошибка не прервала всю транзакцию
         if (orderNumber) {
           try {
-            await client.query(
-              'UPDATE orders SET order_number = $1 WHERE id = $2',
-              [orderNumber, orderResult.rows[0].id]
-            );
-            orderResult.rows[0].order_number = orderNumber;
-            console.log('✅ Номер заказа обновлен после создания:', orderNumber);
+            // Создаем точку сохранения для изоляции операции обновления
+            await client.query('SAVEPOINT update_order_number');
+            
+            // Проверяем наличие колонки перед обновлением
+            const columnCheckUpdate = await client.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'orders' AND column_name = 'order_number'
+            `);
+            
+            if (columnCheckUpdate.rows.length > 0) {
+              await client.query(
+                'UPDATE orders SET order_number = $1 WHERE id = $2',
+                [orderNumber, orderResult.rows[0].id]
+              );
+              orderResult.rows[0].order_number = orderNumber;
+              console.log('✅ Номер заказа обновлен после создания:', orderNumber);
+            } else {
+              console.log('⚠️  Колонка order_number не существует, пропускаем обновление');
+            }
+            
+            // Освобождаем точку сохранения при успехе
+            await client.query('RELEASE SAVEPOINT update_order_number');
           } catch (updateError) {
-            console.log('⚠️  Не удалось обновить order_number:', updateError.message);
+            // Откатываемся к точке сохранения, чтобы не прервать всю транзакцию
+            try {
+              await client.query('ROLLBACK TO SAVEPOINT update_order_number');
+              console.log('⚠️  Не удалось обновить order_number, откат к точке сохранения:', updateError.message);
+            } catch (rollbackError) {
+              // Если не удалось откатиться к точке сохранения, значит транзакция уже прервана
+              console.log('⚠️  Не удалось откатиться к точке сохранения, транзакция прервана:', rollbackError.message);
+              // Не выбрасываем ошибку дальше, чтобы не прервать создание заказа
+            }
           }
         }
       }
@@ -2302,8 +2328,25 @@ async function createOrderInDb(orderData) {
         telegramOrderId: Date.now() // Для совместимости с фронтендом
       };
     } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('❌ Ошибка в транзакции, откат:', error);
+      // Проверяем, не прервана ли уже транзакция
+      if (error.code === '25P02') {
+        // Транзакция уже прервана, пытаемся сделать ROLLBACK
+        try {
+          await client.query('ROLLBACK');
+          console.error('❌ Транзакция была прервана, выполнен откат');
+        } catch (rollbackError) {
+          // Если ROLLBACK тоже не работает, просто логируем
+          console.error('❌ Не удалось выполнить ROLLBACK после прерванной транзакции:', rollbackError.message);
+        }
+      } else {
+        // Обычная ошибка, делаем ROLLBACK
+        try {
+          await client.query('ROLLBACK');
+          console.error('❌ Ошибка в транзакции, откат:', error);
+        } catch (rollbackError) {
+          console.error('❌ Не удалось выполнить ROLLBACK:', rollbackError.message);
+        }
+      }
       throw error;
     } finally {
       client.release();

@@ -3396,6 +3396,11 @@ select:-ms-input-placeholder {
     color: #666;
     text-align: center;
     padding: 20px;
+    margin: 0;
+}
+
+.profile-menu-buttons .no-addresses {
+    margin-bottom: 12px;
 }
 
 .profile-header-new {
@@ -3807,6 +3812,10 @@ select:-ms-input-placeholder {
 
 /* Список адресов */
 .delivery-addresses-list {
+    margin-bottom: 0;
+}
+
+.delivery-addresses-list .address-menu-btn-profile {
     margin-bottom: 12px;
 }
 

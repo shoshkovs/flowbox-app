@@ -6121,23 +6121,21 @@ function renderProfileAddresses() {
                 const detailsStr = details.join(', ');
         
         const addressId = addr.id;
+        
+        // Формируем полный текст адреса
+        const addressText = detailsStr ? `${streetName}, ${detailsStr}` : streetName;
                 
                 return `
-            <div class="address-item" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #eee;">
-                <div class="address-item-content" style="flex: 1;">
-                        <div class="address-item-name">${streetName}</div>
-                        ${detailsStr ? `<div class="address-item-details">${detailsStr}</div>` : ''}
-                    </div>
-                <div class="address-menu">
-                    <button class="address-menu-btn" onclick="event.stopPropagation(); editAddressFromProfile(${addressId})" aria-label="Редактировать адрес">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="5" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="12" r="2" fill="currentColor"/>
-                            <circle cx="12" cy="19" r="2" fill="currentColor"/>
-                        </svg>
-                    </button>
-                </div>
-                </div>
+            <button class="profile-menu-btn address-menu-btn-profile" onclick="editAddressFromProfile(${addressId})" type="button">
+                <span class="menu-btn-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fb2d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                </span>
+                <span class="menu-btn-text">${addressText}</span>
+                <span class="menu-btn-arrow">›</span>
+            </button>
             `;
             }).join('');
 }
@@ -8733,6 +8731,19 @@ function prefillSimpleCheckoutSummary() {
             checkoutData.address = addr;
             checkoutData.addressId = addr.id;
         }
+        
+        // Комментарий для курьера
+        const summaryCourierComment = document.getElementById('summaryCourierComment');
+        const summaryCourierCommentText = document.getElementById('summaryCourierCommentText');
+        if (summaryCourierComment && summaryCourierCommentText) {
+            const comment = addr.comment || checkoutData.address?.comment || '';
+            if (comment && comment.trim()) {
+                summaryCourierCommentText.textContent = comment;
+                summaryCourierComment.style.display = '';
+            } else {
+                summaryCourierComment.style.display = 'none';
+            }
+        }
     }
 }
 
@@ -8991,6 +9002,19 @@ function renderCheckoutSummary() {
             addr.apartment ? `кв. ${addr.apartment}` : ''
         ].filter(Boolean).join(', ');
         summaryAddressEl.textContent = addressStr || '-';
+        
+        // Комментарий для курьера
+        const summaryCourierComment = document.getElementById('summaryCourierComment');
+        const summaryCourierCommentText = document.getElementById('summaryCourierCommentText');
+        if (summaryCourierComment && summaryCourierCommentText) {
+            const comment = addr.comment || '';
+            if (comment && comment.trim()) {
+                summaryCourierCommentText.textContent = comment;
+                summaryCourierComment.style.display = '';
+            } else {
+                summaryCourierComment.style.display = 'none';
+            }
+        }
     }
     
     // Дата и время

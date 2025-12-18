@@ -216,16 +216,12 @@
                     <!-- Разделительная линия -->
                     <div class="profile-section-divider"></div>
                     
-                    <!-- Адреса доставки -->
-                    <div class="profile-section">
-                        <h3 class="section-title">Адреса доставки</h3>
+                    <!-- Адреса доставки и кнопки меню -->
+                    <div class="profile-menu-buttons">
+                        <!-- Адреса доставки -->
                         <div class="delivery-addresses-list" id="deliveryAddressesList">
                             <p class="no-addresses">У вас нет сохраненных адресов доставки</p>
                         </div>
-                    </div>
-                    
-                    <!-- Кнопки меню -->
-                    <div class="profile-menu-buttons">
                         <button class="profile-menu-btn" id="orderHistoryBtn">
                             <span class="menu-btn-icon">
                                 <svg width="24" height="24" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -583,6 +579,14 @@
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
                                 </button>
+                            </div>
+                            
+                            <!-- Комментарий для курьера -->
+                            <div class="checkout-summary-item" id="summaryCourierComment" style="padding-top: 16px; display: none;">
+                                <div class="summary-item-content">
+                                    <div class="summary-item-label">Комментарий для курьера</div>
+                                    <div class="summary-item-value" id="summaryCourierCommentText" style="font-weight: normal; color: var(--text-color);"></div>
+                                </div>
                             </div>
                             
                             <!-- Оставить у двери (для упрощенного сценария) -->
