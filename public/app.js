@@ -5093,7 +5093,8 @@ async function validateAndSubmitOrder(e) {
         console.log('[validateAndSubmitOrder] 🔓 Флаг отправки сброшен (ошибка)');
         
         // Показываем ошибку только если экран успеха еще не показан
-        if (!successOverlay.classList.contains('active')) {
+        const successOverlay = document.getElementById('successOverlay');
+        if (successOverlay && !successOverlay.classList.contains('active')) {
             // Если ошибка связана с нехваткой товара, сообщение уже показано в блоке проверки ответа
             // Показываем общее сообщение только для других ошибок
             const errorMessageLower = (error.message || '').toLowerCase();
@@ -5258,7 +5259,10 @@ if (orderTabBtn) {
 // Возврат в магазин (старый обработчик для overlay - оставляем для совместимости)
 if (backToShop) {
 backToShop.addEventListener('click', () => {
-    successOverlay.classList.remove('active');
+    const successOverlay = document.getElementById('successOverlay');
+    if (successOverlay) {
+        successOverlay.classList.remove('active');
+    }
     // Убеждаемся, что нижнее меню видно после закрытия overlay
     const bottomNav = document.querySelector('.bottom-nav');
     if (bottomNav) {
