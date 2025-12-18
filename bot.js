@@ -1026,7 +1026,15 @@ if (process.env.DATABASE_URL) {
                 `);
                 console.log('✅ Колонка order_number добавлена в таблицу orders');
               } catch (alterError) {
-                if (!alterError.message.includes('already exists') && !alterError.message.includes('duplicate')) {
+                // Игнорируем ошибки "already exists" и "duplicate"
+                if (alterError.message.includes('already exists') || alterError.message.includes('duplicate')) {
+                  console.log('✅ Колонка order_number уже существует в таблице orders');
+                } 
+                // Если достигнут лимит колонок - это не критично, система будет работать без order_number
+                else if (alterError.message.includes('1600 columns')) {
+                  console.log('⚠️  Достигнут лимит колонок в таблице orders (1600). Колонка order_number не может быть добавлена.');
+                  console.log('ℹ️  Система будет работать без order_number, используя только order.id для идентификации заказов.');
+                } else {
                   console.log('⚠️  Ошибка при добавлении колонки order_number:', alterError.message);
                 }
               }
