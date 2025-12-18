@@ -1021,6 +1021,12 @@ async function loadFilters() {
         if (qualityContainer) {
             qualityContainer.innerHTML = '';
             qualities.forEach(quality => {
+                // Исключаем качество "Корзина" из фильтров
+                const qualityNameLower = quality.name.toLowerCase();
+                if (qualityNameLower === 'корзина' || qualityNameLower === 'cart') {
+                    return; // Пропускаем это качество
+                }
+                
                 const btn = document.createElement('button');
                 btn.className = 'filter-btn filter-btn-small';
                 btn.setAttribute('data-filter', quality.name.toLowerCase().replace(/\s+/g, '-'));
