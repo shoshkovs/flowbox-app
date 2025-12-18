@@ -23,7 +23,7 @@ function applyInsets() {
     } else {
         // На Android используем небольшой фиксированный отступ сверху
         // чтобы хедер не был слишком высоко, но и не слишком низко
-        top = 8; // Небольшой отступ для комфорта на Android
+        top = 16; // Отступ для комфорта на Android
         bottom = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
     }
     
