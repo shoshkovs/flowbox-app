@@ -29,6 +29,9 @@ button:focus {
     --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     --font-bold: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --font-light: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --safe-top: 0px;
+    --safe-bottom: 0px;
+    --header-row: 56px; /* высота линии с логотипом */
 }
 
 body {
@@ -58,7 +61,7 @@ h1, h2, h3, .font-bold {
 
 .app {
     min-height: 100vh;
-    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); /* Место для нижней навигации + безопасная зона */
+    padding-bottom: calc(92px + var(--safe-bottom)); /* Место для нижней навигации + безопасная зона */
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -68,14 +71,18 @@ h1, h2, h3, .font-bold {
 /* Header */
 .header {
     background: white;
-    padding: 60px 20px 12px 20px; /* Увеличен padding для большей высоты */
+    padding-top: calc(var(--safe-top) + 12px);
+    padding-bottom: 12px;
+    padding-left: 20px;
+    padding-right: 20px;
     display: flex;
-    align-items: flex-end; /* Выравнивание к нижнему краю */
+    align-items: center; /* Выравнивание по центру */
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    position: sticky; /* Фиксированный липкий header */
-    top: 0; /* Прилипает к верху при прокрутке */
-    z-index: 100; /* Высокий z-index для отображения поверх контента */
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    min-height: calc(var(--header-row) + var(--safe-top));
 }
 
 /* Убеждаемся, что header всегда под модальными окнами */
@@ -1179,7 +1186,7 @@ h1, h2, h3, .font-bold {
     display: flex;
     gap: 12px;
     padding: 16px 20px;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(24px + var(--safe-bottom));
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
 }
 
@@ -2044,13 +2051,13 @@ select:-ms-input-placeholder {
     justify-content: space-around;
     align-items: flex-start;
     padding-top: 4px;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(24px + var(--safe-bottom));
     z-index: 100;
     transition: transform 0.2s ease-out, opacity 0.2s ease-out;
     -webkit-tap-highlight-color: transparent !important;
     -webkit-touch-callout: none;
     /* Минимальная высота с учетом белого пространства снизу для Android */
-    min-height: calc(76px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(76px + var(--safe-bottom));
 }
 
 .bottom-nav *,
@@ -4303,7 +4310,7 @@ input[type="text"][inputmode="numeric"] {
     right: 0;
     background: #fff;
     padding: 12px 16px;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(24px + var(--safe-bottom));
     border-top: 1px solid rgba(0, 0, 0, 0.06);
     display: flex;
     gap: 12px;
@@ -4350,7 +4357,7 @@ input[type="text"][inputmode="numeric"] {
     flex-direction: column;
     gap: 12px;
     flex: 1;
-    padding-bottom: calc(24px + 92px + env(safe-area-inset-bottom));
+    padding-bottom: calc(24px + 92px + var(--safe-bottom));
 }
 
 .order-details-card {

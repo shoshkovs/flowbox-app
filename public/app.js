@@ -1,6 +1,51 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram?.WebApp;
 
+// Применение Telegram safe area insets в CSS переменные
+function applyInsets() {
+    if (!tg) {
+        console.log('[applyInsets] Telegram WebApp не найден, используем значения по умолчанию');
+        document.documentElement.style.setProperty('--safe-top', '0px');
+        document.documentElement.style.setProperty('--safe-bottom', '0px');
+        return;
+    }
+    
+    const top = tg.safeAreaInset?.top ?? 0;
+    const bottom = tg.safeAreaInset?.bottom ?? 0;
+    
+    // Иногда полезно учитывать contentSafeAreaInset (если используешь)
+    const cTop = tg.contentSafeAreaInset?.top ?? 0;
+    const cBottom = tg.contentSafeAreaInset?.bottom ?? 0;
+    
+    const safeTop = Math.max(top, cTop);
+    const safeBottom = Math.max(bottom, cBottom);
+    
+    document.documentElement.style.setProperty('--safe-top', `${safeTop}px`);
+    document.documentElement.style.setProperty('--safe-bottom', `${safeBottom}px`);
+    
+    console.log('[applyInsets] Применены safe area insets:', { safeTop, safeBottom, top, bottom, cTop, cBottom });
+}
+
+// Применяем insets сразу при загрузке
+applyInsets();
+
+// На поворот/изменение viewport Telegram
+if (tg && typeof tg.onEvent === 'function') {
+    tg.onEvent('viewportChanged', () => {
+        console.log('[viewportChanged] Обновляем safe area insets');
+        setTimeout(() => {
+            applyInsets();
+        }, 50);
+    });
+}
+
+// Также на resize окна (на случай если что-то изменилось)
+window.addEventListener('resize', () => {
+    setTimeout(() => {
+        applyInsets();
+    }, 50);
+});
+
 // Глобальные переменные состояния
 let currentCheckoutStep = 1; // Текущий шаг оформления заказа
 let isSimpleCheckout = false; // Флаг упрощенного оформления заказа
@@ -370,6 +415,12 @@ function handleBackButton() {
 
 if (tg) {
     tg.ready();
+    
+    // Применяем insets после ready() Telegram WebApp
+    // Небольшая задержка, чтобы Telegram успел установить safeAreaInset
+    setTimeout(() => {
+        applyInsets();
+    }, 100);
     
     // Инициализация BackButton один раз при старте
     if (tg.BackButton && typeof tg.BackButton.onClick === 'function') {
@@ -8071,14 +8122,6 @@ function selectCheckoutAddress(addressId) {
         renderCheckoutAddresses(!isStandardCheckout); // Передаем false для обычного режима (чтобы показать форму)
     }
     
-    // В обычном режиме всегда показываем форму адреса, а не список
-    if (isStandardCheckout) {
-        const addressesList = document.getElementById('checkoutAddressesList');
-        const addressForm = document.getElementById('checkoutAddressForm');
-        if (addressesList) addressesList.style.display = 'none';
-        if (addressForm) addressForm.style.display = 'block';
-    }
-    
     // Обновляем адрес на экране "Итого", если такая функция есть
     if (typeof renderCheckoutSummary === 'function') {
         renderCheckoutSummary();
@@ -8086,7 +8129,6 @@ function selectCheckoutAddress(addressId) {
     }
     
     // В обычном режиме всегда показываем форму, в упрощенном - список
-    const isStandardCheckout = !isSimpleCheckout && checkoutMode !== 'simple';
     const addressesList = document.getElementById('checkoutAddressesList');
     const addNewAddressBtn = document.getElementById('addNewAddressBtn');
     const addressForm = document.getElementById('checkoutAddressForm');
