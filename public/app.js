@@ -23,15 +23,11 @@ function applyInsets() {
     let topRaw, bottomRaw;
     
     if (isIOS) {
-        // На iOS используем минимальное значение из contentSafeAreaInset и safeAreaInset
+        // На iOS используем только contentSafeAreaInset (без safeAreaInset)
         // чтобы избежать слишком больших отступов из-за системной панели Telegram
-        const contentTop = tg.contentSafeAreaInset?.top ?? 0;
-        const safeTop = tg.safeAreaInset?.top ?? 0;
-        topRaw = contentTop > 0 ? Math.min(contentTop, safeTop || contentTop) : safeTop;
-        
-        const contentBottom = tg.contentSafeAreaInset?.bottom ?? 0;
-        const safeBottom = tg.safeAreaInset?.bottom ?? 0;
-        bottomRaw = contentBottom > 0 ? Math.min(contentBottom, safeBottom || contentBottom) : safeBottom;
+        // Telegram Mini App уже имеет свою системную панель сверху
+        topRaw = tg.contentSafeAreaInset?.top ?? 0;
+        bottomRaw = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
     } else {
         // На Android используем contentSafeAreaInset с fallback на safeAreaInset
         topRaw = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
@@ -40,11 +36,11 @@ function applyInsets() {
     
     // Ограничиваем максимальные значения для предотвращения слишком больших отступов
     const top = isIOS 
-        ? clamp(topRaw, 0, 16)      // На iOS ограничиваем до 16px сверху
+        ? clamp(topRaw, 0, 8)       // На iOS ограничиваем до 8px сверху (минимум для комфорта)
         : clamp(topRaw, 0, 24);     // На Android до 24px
     
     const bottom = isIOS
-        ? clamp(bottomRaw, 0, 16)   // На iOS ограничиваем до 16px снизу
+        ? clamp(bottomRaw, 0, 20)   // На iOS ограничиваем до 20px снизу
         : clamp(bottomRaw, 0, 32);  // На Android до 32px
     
     document.documentElement.style.setProperty('--safe-top', `${top}px`);
