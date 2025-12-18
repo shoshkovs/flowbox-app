@@ -3287,6 +3287,7 @@ select:-ms-input-placeholder {
     cursor: pointer;
     transition: transform 0.2s;
     margin-bottom: 12px;
+    position: relative;
 }
 
 .order-card-carousel:active {
@@ -3327,6 +3328,14 @@ select:-ms-input-placeholder {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.order-card-eye-icon {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    color: #666;
+    opacity: 0.6;
 }
 
 .order-item-preview {
