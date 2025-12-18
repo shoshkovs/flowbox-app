@@ -10884,6 +10884,16 @@ function openProductSheet(productId) {
         backdrop.classList.add('show');
         sheet.classList.add('show');
         
+        // Переснапливаем после того, как модалка стала видимой
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const pager = document.getElementById('productSheetPager');
+                if (pager) {
+                    pager.scrollLeft = 0;
+                }
+            });
+        });
+        
         // Показываем Telegram BackButton
         showBackButton(true);
     }, 10);
