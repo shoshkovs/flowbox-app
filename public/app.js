@@ -10890,11 +10890,19 @@ function shareProduct(product) {
     const botUsername = 'FlowboxBot';
     const shareLink = `https://t.me/${botUsername}?start=PRODUCT_${product.id}`;
     
-    // Формируем текст для шаринга
-    const shareText = `${product.name}\n\n${shareLink}`;
+    // Получаем минимальное количество и цену
+    const minQty = product.min_order_quantity || product.min_stem_quantity || 1;
+    const pricePerStem = product.price_per_stem || product.price || 0;
+    const totalPrice = pricePerStem * minQty;
+    
+    // Формируем текст для шаринга в правильном формате:
+    // Название
+    // Количество штук (мин заказ)
+    // Цена
+    const shareText = `${product.name}\n${minQty}шт\n${totalPrice.toLocaleString('ru-RU')}₽\n\n${shareLink}`;
     
     // Используем Telegram Share URL для открытия окна выбора контактов
-    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(product.name)}`;
+    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareText)}`;
     
     // Используем Telegram WebApp API для открытия окна шаринга
     if (window.tg && window.tg.openTelegramLink) {

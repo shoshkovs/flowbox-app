@@ -8039,9 +8039,9 @@ const handleProductShare = async (ctx, productId) => {
   try {
     const client = await pool.connect();
     try {
-      // Получаем товар из БД
+      // Получаем товар из БД со всеми изображениями
       const productResult = await client.query(
-        'SELECT id, name, price, min_order_quantity, image_url FROM products WHERE id = $1',
+        'SELECT id, name, price, price_per_stem, min_order_quantity, min_stem_quantity, image_url, image_url_2, image_url_3 FROM products WHERE id = $1',
         [parseInt(productId)]
       );
       
@@ -8051,20 +8051,32 @@ const handleProductShare = async (ctx, productId) => {
       }
       
       const product = productResult.rows[0];
-      const minQty = product.min_order_quantity || 1;
-      const productPrice = product.price * minQty;
+      const minQty = product.min_stem_quantity || product.min_order_quantity || 1;
+      const pricePerStem = product.price_per_stem || product.price || 0;
+      const productPrice = pricePerStem * minQty;
       
-      // Формируем сообщение с информацией о товаре
-      let message = `🌸 ${product.name}\n\n`;
-      message += `💰 Стоимость: ${productPrice.toLocaleString('ru-RU')} ₽\n\n`;
+      // Собираем все изображения и берем первое
+      const images = [];
+      if (product.image_url) images.push(product.image_url);
+      if (product.image_url_2) images.push(product.image_url_2);
+      if (product.image_url_3) images.push(product.image_url_3);
+      const firstImage = images.length > 0 ? images[0] : null;
+      
+      // Формируем сообщение с информацией о товаре в правильном формате:
+      // Название
+      // Количество штук (мин заказ)
+      // Цена
+      let message = `${product.name}\n`;
+      message += `${minQty}шт\n`;
+      message += `${productPrice.toLocaleString('ru-RU')}₽`;
       
       // URL для открытия товара в мини-приложении
       const productUrl = `${webAppUrl}?product=${productId}`;
       
       // Если есть изображение, отправляем фото с подписью
-      if (product.image_url) {
+      if (firstImage) {
         await ctx.replyWithPhoto(
-          product.image_url,
+          firstImage,
           {
             caption: message,
             reply_markup: {
