@@ -6643,7 +6643,7 @@ async function openOrderDetail(orderId) {
         
         // Если все еще нет userId, пробуем получить из userActiveOrders
         if (!userId && userActiveOrders && userActiveOrders.length > 0) {
-    const order = userActiveOrders.find(o => o.id === orderId);
+            const order = userActiveOrders.find(o => o.id === orderId);
             if (order && order.userId) {
                 userId = order.userId;
             }
@@ -9178,6 +9178,11 @@ function initSimpleDateTimeOnSummary() {
     if (prevBtn) {
         // Клонируем кнопку, чтобы удалить все старые обработчики
         const newPrevBtn = prevBtn.cloneNode(true);
+        // Сохраняем состояние disabled при клонировании
+        if (prevBtn.disabled) {
+            newPrevBtn.disabled = true;
+            newPrevBtn.setAttribute('disabled', 'disabled');
+        }
         prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
         
         newPrevBtn.addEventListener('click', () => {
@@ -9194,6 +9199,11 @@ function initSimpleDateTimeOnSummary() {
     if (nextBtn) {
         // Клонируем кнопку, чтобы удалить все старые обработчики
         const newNextBtn = nextBtn.cloneNode(true);
+        // Сохраняем состояние disabled при клонировании
+        if (nextBtn.disabled) {
+            newNextBtn.disabled = true;
+            newNextBtn.setAttribute('disabled', 'disabled');
+        }
         nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
         
         newNextBtn.addEventListener('click', () => {
