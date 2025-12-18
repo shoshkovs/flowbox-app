@@ -2381,13 +2381,27 @@ function updateAdditionalProductCard(productId) {
         };
     }
     
-    // Обновляем цену
+    // Обновляем цену (плавно, как на главном экране)
     const priceSpan = button.querySelector('.product-action-price');
     if (priceSpan) {
-        priceSpan.innerHTML = `${totalPrice} <span class="ruble">₽</span>`;
+        // Обновляем только текст числа, сохраняя структуру для плавной анимации
+        const priceNumberSpan = priceSpan.querySelector('span:not(.ruble)');
+        if (priceNumberSpan) {
+            // Плавно обновляем только текст числа
+            priceNumberSpan.textContent = totalPrice;
+        } else {
+            // Если структуры нет (старая версия), создаем правильную структуру один раз
+            const rubleSpan = priceSpan.querySelector('.ruble');
+            const currentText = priceSpan.textContent.trim();
+            // Сохраняем текущий текст, если он есть
+            const currentPrice = currentText.replace(/[^\d]/g, '');
+            priceSpan.innerHTML = `<span>${totalPrice}</span> <span class="ruble">₽</span>`;
+        }
+        
+        // Плавно обновляем классы для изменения цвета (transition уже настроен в CSS)
         if (isInCart) {
-            priceSpan.classList.add('filled');
             priceSpan.classList.remove('semi-transparent');
+            priceSpan.classList.add('filled');
         } else {
             priceSpan.classList.remove('filled');
             priceSpan.classList.add('semi-transparent');
