@@ -2451,9 +2451,9 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
   try {
     const client = await pool.connect();
     try {
-      // Получаем информацию о заказе и пользователе
+      // Получаем информацию о заказе и пользователе (включая order_number)
       const orderResult = await client.query(
-        'SELECT user_id, total FROM orders WHERE id = $1',
+        'SELECT user_id, total, order_number FROM orders WHERE id = $1',
         [orderId]
       );
       
