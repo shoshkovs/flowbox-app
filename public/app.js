@@ -2355,11 +2355,6 @@ function updateAdditionalProductCard(productId) {
     button.onclick = (e) => {
         e.stopPropagation();
         if (!isInCart) {
-            // Добавляем анимацию pulse
-            button.classList.add('pulse');
-            setTimeout(() => {
-                button.classList.remove('pulse');
-            }, 300);
             addAdditionalProduct(product.id);
         }
     };
@@ -2404,12 +2399,6 @@ function updateAdditionalProductCard(productId) {
     if (plusBtn) {
         plusBtn.onclick = (e) => {
             e.stopPropagation();
-            // Добавляем анимацию pulse на кнопку
-            button.classList.add('pulse');
-            setTimeout(() => {
-                button.classList.remove('pulse');
-            }, 300);
-            
             if (isInCart) {
                 changeCartQuantity(product.id, 1);
             } else {
@@ -2489,16 +2478,7 @@ function addAdditionalProduct(productId) {
     saveUserData(); // Сохраняем корзину на сервер
     tg.HapticFeedback.impactOccurred('light');
     
-    // Добавляем анимацию pulse на кнопку
-    const button = document.getElementById(`additional-product-action-btn-${productId}`);
-    if (button) {
-        button.classList.add('pulse');
-        setTimeout(() => {
-            button.classList.remove('pulse');
-        }, 300);
-    }
-    
-    // Обновляем карточку дополнительного товара
+    // Обновляем карточку дополнительного товара (кнопка плавно растянется через класс product-action-btn-filled)
     updateAdditionalProductCard(productId);
 }
 
@@ -10706,29 +10686,29 @@ function initProductSheetHandlers() {
     }
 }
 
-// Делегирование событий на родительском элементе для ссылки "профиле" (выполняется один раз при загрузке)
+// Делегирование событий на document для ссылки "профиле" (работает всегда, даже если элемент создается динамически)
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-        const addressPageBody = document.querySelector('.address-page-body');
-        if (addressPageBody) {
-            addressPageBody.addEventListener('click', function(e) {
-                if (e.target && e.target.id === 'goToProfileLink') {
+        document.addEventListener('click', function(e) {
+            if (e.target && (e.target.id === 'goToProfileLink' || e.target.closest('#goToProfileLink'))) {
+                const link = e.target.id === 'goToProfileLink' ? e.target : e.target.closest('#goToProfileLink');
+                if (link) {
                     handleProfileLinkClick(e);
                 }
-            });
-            console.log('[init] Делегирование событий для goToProfileLink установлено');
-        }
-    });
-} else {
-    const addressPageBody = document.querySelector('.address-page-body');
-    if (addressPageBody) {
-        addressPageBody.addEventListener('click', function(e) {
-            if (e.target && e.target.id === 'goToProfileLink') {
-                handleProfileLinkClick(e);
             }
         });
-        console.log('[init] Делегирование событий для goToProfileLink установлено');
-    }
+        console.log('[init] Делегирование событий для goToProfileLink установлено на document');
+    });
+} else {
+    document.addEventListener('click', function(e) {
+        if (e.target && (e.target.id === 'goToProfileLink' || e.target.closest('#goToProfileLink'))) {
+            const link = e.target.id === 'goToProfileLink' ? e.target : e.target.closest('#goToProfileLink');
+            if (link) {
+                handleProfileLinkClick(e);
+            }
+        }
+    });
+    console.log('[init] Делегирование событий для goToProfileLink установлено на document');
 }
 
 // Accordion toggle function for About page

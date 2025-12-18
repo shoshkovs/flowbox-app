@@ -383,10 +383,6 @@ h1, h2, h3, .font-bold {
     transition: transform 0.1s ease-out, opacity 0.1s ease-out;
 }
 
-.product-action-btn.pulse {
-    animation: pulse 0.3s ease-out;
-}
-
 /* Состояние когда товар в корзине - растягивается на всю ширину */
 .product-action-btn-filled {
     width: 100%;
