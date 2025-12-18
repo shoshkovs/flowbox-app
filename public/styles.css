@@ -2925,6 +2925,28 @@ select:-ms-input-placeholder {
 }
 
 /* Итоговая страница */
+/* Карточка для упрощенного оформления */
+.checkout-summary-card {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.checkout-summary-card .checkout-summary-item {
+    background: transparent;
+    padding: 16px;
+    border-radius: 0;
+    margin-bottom: 0;
+    box-shadow: none;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.checkout-summary-card .checkout-summary-item:last-child {
+    border-bottom: none;
+}
+
 .checkout-summary-item {
     background: white;
     border-radius: 12px;
