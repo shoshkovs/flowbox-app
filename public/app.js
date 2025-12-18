@@ -2411,30 +2411,10 @@ function updateAdditionalProductCard(productId) {
         }
     }
     
-    // Обновляем количество штук под названием
-    const card = button.closest('.additional-product-card');
-    if (card) {
-        let cartQtyEl = card.querySelector('.additional-product-cart-qty');
-        if (isInCart && bunchesCount > 0) {
-            if (!cartQtyEl) {
-                const nameEl = card.querySelector('.additional-product-name');
-                if (nameEl) {
-                    cartQtyEl = document.createElement('div');
-                    cartQtyEl.className = 'additional-product-cart-qty';
-                    nameEl.parentNode.insertBefore(cartQtyEl, nameEl.nextSibling);
-                }
-            }
-            if (cartQtyEl) {
-                cartQtyEl.textContent = `${bunchesCount} шт`;
-            }
-        } else {
-            if (cartQtyEl) {
-                cartQtyEl.remove();
-            }
-        }
-        
-        // Overlay на картинке убран по запросу пользователя
-    }
+    // Обновление количества добавленных товаров убрано по запросу пользователя
+    // Не отображаем количество добавленных товаров на карточке
+    
+    // Overlay на картинке убран по запросу пользователя
 }
 
 // Добавление дополнительного товара в корзину
