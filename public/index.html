@@ -684,13 +684,16 @@
                             </div>
                         </div>
                         
-                        <!-- Итого -->
-                        <div class="checkout-final-total">
-                            <div class="final-total-label">Итого:</div>
-                            <div class="final-total-amount" id="checkoutFinalTotal">0 ₽</div>
+                        <!-- Итого и Оплатить в одной плашке -->
+                        <div class="checkout-summary-card checkout-final-card">
+                            <div class="checkout-final-total">
+                                <div class="final-total-label">Итого:</div>
+                                <div class="final-total-amount" id="checkoutFinalTotal">0 ₽</div>
+                            </div>
+                            <div style="border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px;">
+                                <button type="button" class="submit-order-btn" id="submitOrderBtn">Оплатить</button>
+                            </div>
                         </div>
-                        
-                        <button type="button" class="submit-order-btn" id="submitOrderBtn">Оплатить</button>
                     </div>
                 </div>
             </div>

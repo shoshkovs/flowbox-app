@@ -1799,6 +1799,19 @@ select:-ms-input-placeholder {
     margin-bottom: 12px;
 }
 
+.checkout-final-card .submit-order-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease-out;
+}
+
 .submit-order-btn {
     width: 100%;
     padding: 14px;
