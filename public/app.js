@@ -9221,8 +9221,10 @@ function openMyAddressesPage() {
     // Показываем BackButton
     showBackButton(true);
     
-    // Устанавливаем обработчик для ссылки "профиле"
-    setupGoToProfileLink();
+    // Устанавливаем обработчик для ссылки "профиле" с небольшой задержкой
+    setTimeout(() => {
+        setupGoToProfileLink();
+    }, 100);
 }
 
 // Рендеринг списка адресов на странице "Мои адреса"
@@ -9296,49 +9298,70 @@ function renderMyAddressesList() {
         `;
     }).join('');
     
-    // Устанавливаем обработчик для ссылки "профиле" после рендеринга
-    setupGoToProfileLink();
+    // Устанавливаем обработчик для ссылки "профиле" после рендеринга с небольшой задержкой
+    setTimeout(() => {
+        setupGoToProfileLink();
+    }, 100);
+}
+
+// Функция обработки клика по ссылке "профиле"
+function handleProfileLinkClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('[handleProfileLinkClick] ✅ Клик по ссылке "профиле"');
+    
+    // Закрываем вкладку "Мои адреса"
+    const myAddressesTab = document.getElementById('myAddressesTab');
+    if (myAddressesTab) {
+        myAddressesTab.style.display = 'none';
+    }
+    
+    // Переключаемся на профиль
+    switchTab('profileTab');
+    
+    // Прокручиваем до секции адресов после небольшой задержки (чтобы DOM успел обновиться)
+    setTimeout(() => {
+        const deliveryAddressesList = document.getElementById('deliveryAddressesList');
+        if (deliveryAddressesList) {
+            console.log('[handleProfileLinkClick] Прокрутка до секции адресов');
+            // Находим родительскую секцию
+            const addressesSection = deliveryAddressesList.closest('.profile-section');
+            if (addressesSection) {
+                addressesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                // Fallback: прокручиваем до самого элемента
+                deliveryAddressesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } else {
+            console.warn('[handleProfileLinkClick] Элемент deliveryAddressesList не найден');
+        }
+    }, 500);
 }
 
 // Установка обработчика для ссылки "профиле"
 function setupGoToProfileLink() {
     const goToProfileLink = document.getElementById('goToProfileLink');
-    if (goToProfileLink) {
-        // Удаляем старый обработчик, если есть
-        goToProfileLink.onclick = null;
-        
-        // Добавляем новый обработчик
-        goToProfileLink.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            console.log('[setupGoToProfileLink] Клик по ссылке "профиле"');
-            
-            // Закрываем вкладку "Мои адреса"
-            const myAddressesTab = document.getElementById('myAddressesTab');
-            if (myAddressesTab) {
-                myAddressesTab.style.display = 'none';
-            }
-            
-            // Переключаемся на профиль
-            switchTab('profileTab');
-            
-            // Прокручиваем до секции адресов после небольшой задержки (чтобы DOM успел обновиться)
-            setTimeout(() => {
-                const deliveryAddressesList = document.getElementById('deliveryAddressesList');
-                if (deliveryAddressesList) {
-                    // Находим родительскую секцию
-                    const addressesSection = deliveryAddressesList.closest('.profile-section');
-                    if (addressesSection) {
-                        addressesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                        // Fallback: прокручиваем до самого элемента
-                        deliveryAddressesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }
-            }, 300);
-        };
+    if (!goToProfileLink) {
+        console.warn('[setupGoToProfileLink] Элемент goToProfileLink не найден');
+        return;
     }
+    
+    console.log('[setupGoToProfileLink] Установка обработчика для ссылки "профиле"');
+    
+    // Удаляем старые обработчики через замену элемента
+    const parent = goToProfileLink.parentNode;
+    const newLink = goToProfileLink.cloneNode(true);
+    newLink.id = 'goToProfileLink'; // Убеждаемся, что ID сохранен
+    parent.replaceChild(newLink, goToProfileLink);
+    
+    // Добавляем обработчик через addEventListener
+    newLink.addEventListener('click', handleProfileLinkClick);
+    
+    // Также добавляем через onclick для максимальной совместимости
+    newLink.onclick = handleProfileLinkClick;
+    
+    console.log('[setupGoToProfileLink] ✅ Обработчик установлен');
 }
 
 // Редактирование адреса из упрощенного режима
@@ -10660,6 +10683,31 @@ function initProductSheetHandlers() {
                 shareProduct(currentProductSheetProduct);
             }
         });
+    }
+}
+
+// Делегирование событий на родительском элементе для ссылки "профиле" (выполняется один раз при загрузке)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        const addressPageBody = document.querySelector('.address-page-body');
+        if (addressPageBody) {
+            addressPageBody.addEventListener('click', function(e) {
+                if (e.target && e.target.id === 'goToProfileLink') {
+                    handleProfileLinkClick(e);
+                }
+            });
+            console.log('[init] Делегирование событий для goToProfileLink установлено');
+        }
+    });
+} else {
+    const addressPageBody = document.querySelector('.address-page-body');
+    if (addressPageBody) {
+        addressPageBody.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'goToProfileLink') {
+                handleProfileLinkClick(e);
+            }
+        });
+        console.log('[init] Делегирование событий для goToProfileLink установлено');
     }
 }
 
