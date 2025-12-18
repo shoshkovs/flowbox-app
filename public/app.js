@@ -21,9 +21,9 @@ function applyInsets() {
         top = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
         bottom = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
     } else {
-        // На Android используем минимальный отступ сверху (0 или очень маленький)
-        // так как Telegram Mini App уже имеет свою системную панель
-        top = 0; // Убираем отступ сверху для Android
+        // На Android используем небольшой фиксированный отступ сверху
+        // чтобы хедер не был слишком высоко, но и не слишком низко
+        top = 8; // Небольшой отступ для комфорта на Android
         bottom = tg.contentSafeAreaInset?.bottom ?? tg.safeAreaInset?.bottom ?? 0;
     }
     
