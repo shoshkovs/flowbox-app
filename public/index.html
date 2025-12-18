@@ -586,25 +586,24 @@
                             </div>
                             
                             <!-- Оставить у двери (для упрощенного сценария) -->
-                            <div class="checkout-summary-item" style="margin-top: 12px; padding-top: 12px;">
-                                <div class="summary-item-content" style="flex-direction: row; align-items: center; justify-content: space-between;">
-                                    <div class="summary-item-label" style="margin: 0;">Оставить у двери</div>
-                                    <div class="leave-at-door-toggle-container" style="margin: 0;">
-                                        <button
-                                            type="button"
-                                            id="simple-leave-at-door-toggle"
-                                            class="leave-at-door-toggle"
-                                            role="switch"
-                                            aria-checked="false"
-                                        >
-                                            <span class="leave-at-door-toggle-thumb"></span>
-                                        </button>
-                                    </div>
+                            <div class="checkout-summary-item" style="padding-top: 16px;">
+                                <div class="summary-item-content" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;">
+                                    <div class="summary-item-label" style="margin: 0; flex: 1;">Оставить у двери</div>
+                                    <button
+                                        type="button"
+                                        id="simple-leave-at-door-toggle"
+                                        class="leave-at-door-toggle"
+                                        role="switch"
+                                        aria-checked="false"
+                                        style="flex-shrink: 0;"
+                                    >
+                                        <span class="leave-at-door-toggle-thumb"></span>
+                                    </button>
                                 </div>
                             </div>
                             
                             <!-- Доставка -->
-                            <div class="checkout-summary-item" style="margin-top: 12px; padding-top: 12px;">
+                            <div class="checkout-summary-item" style="padding-top: 16px;">
                                 <div class="summary-item-content">
                                     <div class="summary-item-label">Доставка</div>
                                     <div class="summary-item-value">500 ₽</div>
@@ -668,31 +667,32 @@
                         </div>
                         </div>
                         
-                        <!-- Корзина -->
-                        <div class="checkout-cart-summary">
-                            <div class="checkout-cart-title">Корзина</div>
-                            <div class="checkout-cart-items" id="checkoutCartItems">
-                                <!-- Товары будут добавлены динамически -->
+                        <!-- Третья плашка: Корзина и Комментарий -->
+                        <div class="checkout-summary-card" id="simpleCheckoutCartCard">
+                            <!-- Корзина -->
+                            <div class="checkout-cart-summary" style="background: transparent; box-shadow: none; padding: 0; margin-bottom: 16px;">
+                                <div class="checkout-cart-title">Корзина</div>
+                                <div class="checkout-cart-items" id="checkoutCartItems">
+                                    <!-- Товары будут добавлены динамически -->
+                                </div>
+                            </div>
+                            
+                            <!-- Комментарий к заказу -->
+                            <div class="checkout-summary-item" style="padding-top: 16px; border-top: 1px solid var(--border-color);">
+                                <div class="summary-item-content" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                                    <div class="summary-item-label">Комментарий</div>
+                                    <textarea id="orderCommentField" placeholder="Особые пожелания к заказу" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                                </div>
                             </div>
                         </div>
                         
-                        <!-- Комментарий к заказу -->
-                        <div class="checkout-summary-item">
-                            <div class="summary-item-content" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-                                <div class="summary-item-label">Комментарий</div>
-                                <textarea id="orderCommentField" placeholder="Особые пожелания к заказу" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
-                            </div>
-                        </div>
-                        
-                        <!-- Итого и Оплатить в одной плашке -->
+                        <!-- Итого и Оплатить -->
                         <div class="checkout-summary-card checkout-final-card">
-                            <div class="checkout-final-total">
+                            <div class="checkout-final-total" style="background: transparent; box-shadow: none; padding: 0; margin-bottom: 16px;">
                                 <div class="final-total-label">Итого:</div>
                                 <div class="final-total-amount" id="checkoutFinalTotal">0 ₽</div>
                             </div>
-                            <div style="padding-top: 16px; margin-top: 16px;">
-                                <button type="button" class="submit-order-btn" id="submitOrderBtn">Оплатить</button>
-                            </div>
+                            <button type="button" class="submit-order-btn checkout-final-btn" id="submitOrderBtn">Оплатить</button>
                         </div>
                     </div>
                 </div>

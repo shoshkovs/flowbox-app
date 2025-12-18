@@ -1799,17 +1799,28 @@ select:-ms-input-placeholder {
     margin-bottom: 12px;
 }
 
-.checkout-final-card .submit-order-btn {
+.checkout-final-card .checkout-final-total {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 16px;
+}
+
+.checkout-final-btn {
     width: 100%;
     padding: 14px;
     background: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 0;
+    border-radius: 12px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s ease-out;
+}
+
+.checkout-final-btn:hover {
+    background: var(--secondary-color);
 }
 
 .submit-order-btn {
@@ -2952,11 +2963,16 @@ select:-ms-input-placeholder {
 
 .checkout-summary-card .checkout-summary-item {
     background: transparent;
-    padding: 16px;
+    padding: 0;
+    padding-bottom: 16px;
     border-radius: 0;
     margin-bottom: 0;
     box-shadow: none;
     border-bottom: none;
+}
+
+.checkout-summary-card .checkout-summary-item:last-child {
+    padding-bottom: 0;
 }
 
 .checkout-summary-item {
@@ -3011,6 +3027,13 @@ select:-ms-input-placeholder {
     padding: 16px;
     margin-bottom: 12px;
     box-shadow: var(--shadow);
+}
+
+.checkout-summary-card .checkout-cart-summary {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 0;
 }
 
 .checkout-cart-title {
