@@ -6580,6 +6580,44 @@ function getOrderStatusClass(status) {
   }
 }
 
+// Функция для форматирования номера заказа в новый формат "#userId016"
+function formatOrderNumber(order) {
+    // Получаем userId
+    let userId = null;
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        userId = tg.initDataUnsafe.user.id;
+    }
+    
+    // Если userId не получен из Telegram, пробуем получить из localStorage
+    if (!userId) {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+            try {
+                const parsed = JSON.parse(userData);
+                userId = parsed.userId || parsed.id;
+            } catch (e) {
+                console.warn('[formatOrderNumber] Не удалось распарсить userData из localStorage');
+            }
+        }
+    }
+    
+    // Формируем номер заказа в формате "#userId016"
+    if (userId) {
+        if (order.userOrderNumber) {
+            const userOrderNumberStr = String(order.userOrderNumber).padStart(3, '0');
+            return `#${userId}${userOrderNumberStr}`;
+        } else if (order.order_number) {
+            // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
+            const fullOrderNumber = String(order.order_number);
+            const userOrderNumberStr = fullOrderNumber.slice(-3).padStart(3, '0');
+            return `#${userId}${userOrderNumberStr}`;
+        }
+    }
+    
+    // Fallback: если userId не найден или нет order_number/userOrderNumber, используем id
+    return `#${order.id}`;
+}
+
 // Загрузка активных заказов
 function loadActiveOrders() {
     const filteredActiveOrders = userActiveOrders;
@@ -6593,6 +6631,9 @@ function loadActiveOrders() {
             activeOrdersContainer.innerHTML = filteredActiveOrders.map(order => {
                 const statusText = getOrderStatusText(order.status);
                 const statusClass = getOrderStatusClass(order.status);
+                
+                // Форматируем номер заказа в новый формат
+                const orderNumber = formatOrderNumber(order);
                 
                 // Форматируем дату доставки для отображения
                 let deliveryDateFormatted = '';
@@ -6624,7 +6665,7 @@ function loadActiveOrders() {
                 return `
                 <div class="order-card-carousel" onclick="openOrderDetail(${order.id})">
                     <div class="order-card-header">
-                        <h4>Заказ #${order.id}</h4>
+                        <h4>Заказ ${orderNumber}</h4>
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
                     <div class="order-card-info">
