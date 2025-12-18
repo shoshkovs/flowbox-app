@@ -1019,11 +1019,19 @@ if (process.env.DATABASE_URL) {
             
             if (orderNumberColumnCheck.rows.length === 0) {
               console.log('🔄 Выполняем миграцию: добавление колонки order_number в таблицу orders...');
-              await client.query(`
-                ALTER TABLE orders 
-                ADD COLUMN IF NOT EXISTS order_number BIGINT
-              `);
-              console.log('✅ Колонка order_number добавлена в таблицу orders');
+              try {
+                await client.query(`
+                  ALTER TABLE orders 
+                  ADD COLUMN order_number BIGINT
+                `);
+                console.log('✅ Колонка order_number добавлена в таблицу orders');
+              } catch (alterError) {
+                if (!alterError.message.includes('already exists') && !alterError.message.includes('duplicate')) {
+                  console.log('⚠️  Ошибка при добавлении колонки order_number:', alterError.message);
+                }
+              }
+            } else {
+              console.log('✅ Колонка order_number уже существует в таблице orders');
             }
           } catch (migrationError) {
             if (!migrationError.message.includes('already exists') && !migrationError.message.includes('duplicate')) {
@@ -2027,16 +2035,26 @@ async function createOrderInDb(orderData) {
       }
       
       // Создаем заказ (без service_fee_percent - эта колонка не критична, процент можно вычислить из service_fee и flowers_total)
-      const orderResult = await client.query(
-        `INSERT INTO orders 
-         (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
-          client_name, client_phone, client_email,
-          recipient_name, recipient_phone, 
-          address_id, address_string, address_json, 
-          delivery_zone, delivery_date, delivery_time,
-          user_comment, courier_comment, leave_at_door, status, order_number)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW', $22)
-         RETURNING *`,
+      // Проверяем наличие колонки order_number перед вставкой
+      const columnCheck = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'orders' AND column_name = 'order_number'
+      `);
+      const hasOrderNumberColumn = columnCheck.rows.length > 0;
+      
+      let orderResult;
+      if (hasOrderNumberColumn) {
+        orderResult = await client.query(
+          `INSERT INTO orders 
+           (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
+            client_name, client_phone, client_email,
+            recipient_name, recipient_phone, 
+            address_id, address_string, address_json, 
+            delivery_zone, delivery_date, delivery_time,
+            user_comment, courier_comment, leave_at_door, status, order_number)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW', $22)
+           RETURNING *`,
         [
           userId,
           finalTotal,
