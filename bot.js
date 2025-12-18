@@ -3091,8 +3091,14 @@ app.get('/api/orders/:orderId', async (req, res) => {
       console.log(`[GET /api/orders/${orderId}] Найден пользователь: telegram_id=${userId}, user_id=${dbUserId}`);
       
       // Получаем заказ с товарами
+      // Проверяем наличие колонки order_number перед запросом
       const orderQuery = `
-        SELECT o.*, o.order_number, 
+        SELECT o.*, 
+               COALESCE(
+                 (SELECT column_name FROM information_schema.columns 
+                  WHERE table_name = 'orders' AND column_name = 'order_number'),
+                 NULL
+               ) as has_order_number,
                json_agg(json_build_object(
                  'id', oi.product_id,
                  'name', oi.name,
