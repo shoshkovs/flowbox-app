@@ -3938,15 +3938,28 @@ function initOrderForm() {
             
             if (prevBtn) {
                 // Отключаем кнопку "назад", если предыдущий месяц не содержит доступных дат
-                const prevMonth = new Date(year, month - 1, 1);
-                const prevMonthLastDay = new Date(year, month, 0);
-                prevBtn.disabled = prevMonthLastDay < minDateForNav;
+                const prevMonthLastDay = new Date(year, month, 0); // Последний день предыдущего месяца
+                const isPrevMonthDisabled = prevMonthLastDay < minDateForNav;
+                prevBtn.disabled = isPrevMonthDisabled;
+                // Принудительно обновляем атрибут для корректного применения стилей
+                if (isPrevMonthDisabled) {
+                    prevBtn.setAttribute('disabled', 'disabled');
+                } else {
+                    prevBtn.removeAttribute('disabled');
+                }
             }
             
             if (nextBtn) {
                 // Отключаем кнопку "вперед", если следующий месяц не содержит доступных дат
                 const nextMonth = new Date(year, month + 1, 1);
-                nextBtn.disabled = nextMonth > maxDateForNav;
+                const isNextMonthDisabled = nextMonth > maxDateForNav;
+                nextBtn.disabled = isNextMonthDisabled;
+                // Принудительно обновляем атрибут для корректного применения стилей
+                if (isNextMonthDisabled) {
+                    nextBtn.setAttribute('disabled', 'disabled');
+                } else {
+                    nextBtn.removeAttribute('disabled');
+                }
             }
             
             console.log('[renderCalendar] Календарь отрисован, добавлено элементов:', daysContainer.children.length);
@@ -9135,14 +9148,29 @@ function initSimpleDateTimeOnSummary() {
         
         // Устанавливаем disabled состояние для кнопок навигации
         if (prevBtn) {
-            const prevMonth = new Date(year, month - 1, 1);
-            const prevMonthLastDay = new Date(year, month, 0);
-            prevBtn.disabled = prevMonthLastDay < minDate;
+            // Проверяем, есть ли в предыдущем месяце доступные даты
+            const prevMonthLastDay = new Date(year, month, 0); // Последний день предыдущего месяца
+            const isPrevMonthDisabled = prevMonthLastDay < minDate;
+            prevBtn.disabled = isPrevMonthDisabled;
+            // Принудительно обновляем атрибут для корректного применения стилей
+            if (isPrevMonthDisabled) {
+                prevBtn.setAttribute('disabled', 'disabled');
+            } else {
+                prevBtn.removeAttribute('disabled');
+            }
         }
         
         if (nextBtn) {
-            const nextMonth = new Date(year, month + 1, 1);
-            nextBtn.disabled = nextMonth > maxDate;
+            // Проверяем, есть ли в следующем месяце доступные даты
+            const nextMonthFirstDay = new Date(year, month + 1, 1);
+            const isNextMonthDisabled = nextMonthFirstDay > maxDate;
+            nextBtn.disabled = isNextMonthDisabled;
+            // Принудительно обновляем атрибут для корректного применения стилей
+            if (isNextMonthDisabled) {
+                nextBtn.setAttribute('disabled', 'disabled');
+            } else {
+                nextBtn.removeAttribute('disabled');
+            }
         }
     }
     
@@ -10936,11 +10964,9 @@ function shareProduct(product) {
     const pricePerStem = product.price_per_stem || product.price || 0;
     const totalPrice = pricePerStem * minQty;
     
-    // Формируем текст для шаринга в правильном формате:
-    // Название
-    // Количество штук (мин заказ)
-    // Цена
-    const shareText = `${product.name}\n${minQty}шт\n${totalPrice.toLocaleString('ru-RU')}₽\n\n${shareLink}`;
+    // Формируем текст для шаринга в красивом формате:
+    // Название | Количество штук | Цена
+    const shareText = `${product.name} | ${minQty}шт | ${totalPrice.toLocaleString('ru-RU')}₽\n\n${shareLink}`;
     
     // Используем Telegram Share URL для открытия окна выбора контактов
     const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareText)}`;
