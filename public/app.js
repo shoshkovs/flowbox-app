@@ -3011,6 +3011,7 @@ function initProductCardImageSwipe() {
         const handleStart = (e) => {
             hasMoved = false;
             startX = e.touches ? e.touches[0].clientX : e.clientX;
+            currentX = startX; // Инициализируем currentX
             isDragging = true;
             track.style.transition = 'none';
             // Сбрасываем флаг блокировки
