@@ -9718,15 +9718,35 @@ function renderCheckoutSummary() {
         }
     }
     
+    // Детализация стоимости
+    const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const currentServiceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
+    
+    // Стоимость товаров
+    const checkoutItemsTotalEl = document.getElementById('checkoutItemsTotal');
+    if (checkoutItemsTotalEl) {
+        checkoutItemsTotalEl.textContent = `${flowersTotal.toLocaleString()} ₽`;
+    }
+    
+    // Сборы
+    const checkoutServiceFeeEl = document.getElementById('checkoutServiceFee');
+    if (checkoutServiceFeeEl) {
+        checkoutServiceFeeEl.textContent = `${currentServiceFee.toLocaleString()} ₽`;
+    }
+    
+    // Доставка
+    const checkoutDeliveryFeeEl = document.getElementById('checkoutDeliveryFee');
+    if (checkoutDeliveryFeeEl) {
+        // Доставка пока фиксированная 500₽, но можно будет изменить
+        const deliveryFee = 500;
+        checkoutDeliveryFeeEl.textContent = `${deliveryFee.toLocaleString()} ₽`;
+    }
+    
     // Итого
     const checkoutFinalTotalEl = document.getElementById('checkoutFinalTotal');
     if (checkoutFinalTotalEl) {
-        const flowersTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        
-        // Пересчитываем сервисный сбор как 10% от суммы товаров
-        const currentServiceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
-        
-        const total = flowersTotal + currentServiceFee + 500; // 500 - доставка
+        const deliveryFee = 500; // Пока фиксированная доставка
+        const total = flowersTotal + currentServiceFee + deliveryFee;
         checkoutFinalTotalEl.textContent = `${total.toLocaleString()} ₽`;
     }
 }

@@ -146,7 +146,7 @@
                         
                         <!-- Итого -->
                         <div class="cart-final-total">
-                            <div class="final-total-details">
+                            <div class="final-total-details" style="display: none;">
                                 <div class="total-detail-row">
                                     <span class="total-detail-label">Стоимость товаров</span>
                                     <span class="total-detail-value" id="flowersTotalAmount">0 ₽</span>
@@ -692,6 +692,22 @@
                         
                         <!-- Итого и Оплатить -->
                         <div class="checkout-summary-card checkout-final-card">
+                            <!-- Детализация стоимости -->
+                            <div class="checkout-cost-breakdown" style="margin-bottom: 16px;">
+                                <div class="checkout-cost-row">
+                                    <span class="checkout-cost-label">Стоимость товаров</span>
+                                    <span class="checkout-cost-value" id="checkoutItemsTotal">0 ₽</span>
+                                </div>
+                                <div class="checkout-cost-row">
+                                    <span class="checkout-cost-label">Сборы</span>
+                                    <span class="checkout-cost-value" id="checkoutServiceFee">0 ₽</span>
+                                </div>
+                                <div class="checkout-cost-row">
+                                    <span class="checkout-cost-label">Доставка</span>
+                                    <span class="checkout-cost-value" id="checkoutDeliveryFee">—</span>
+                                </div>
+                                <div style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
+                            </div>
                             <div class="checkout-final-total" style="background: transparent; box-shadow: none; padding: 0; margin-bottom: 16px;">
                                 <div class="final-total-label">Итого:</div>
                                 <div class="final-total-amount" id="checkoutFinalTotal">0 ₽</div>

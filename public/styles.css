@@ -5435,3 +5435,30 @@ input[type="text"][inputmode="numeric"] {
     stroke-width: 1.5;
 }
 
+/* Детализация стоимости в оформлении */
+.checkout-cost-breakdown {
+    padding: 0;
+}
+
+.checkout-cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.checkout-cost-row:last-of-type {
+    margin-bottom: 0;
+}
+
+.checkout-cost-label {
+    color: #999;
+    font-weight: 400;
+}
+
+.checkout-cost-value {
+    color: #999;
+    font-weight: 500;
+}
+
