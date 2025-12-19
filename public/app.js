@@ -2769,16 +2769,32 @@ function animateOverlayOpen(el) {
 
 function animateOverlayClose(el, onDone) {
     if (!el) return;
+
+    // сбрасываем возможный enter
     el.classList.remove('overlay-enter-active');
+
+    // форсим reflow, чтобы браузер "увидел" стартовое состояние
+    void el.offsetHeight;
+
     el.classList.add('overlay-exit-active');
 
-    const done = () => {
+    const finish = () => {
+        el.removeEventListener('transitionend', onEnd);
         el.classList.remove('overlay-exit-active', 'page-overlay');
         onDone && onDone();
     };
 
-    // безопасный таймер (под наши dur-fast)
-    setTimeout(done, 220);
+    const onEnd = (e) => {
+        // ждём именно transform или opacity этого элемента
+        if (e.target !== el) return;
+        if (e.propertyName !== 'transform' && e.propertyName !== 'opacity') return;
+        finish();
+    };
+
+    el.addEventListener('transitionend', onEnd);
+
+    // страховка, если transitionend не пришёл
+    setTimeout(finish, 400);
 }
 
 // Переключение вкладок
