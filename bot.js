@@ -2830,17 +2830,29 @@ async function loadUserOrders(userId, status = null) {
         console.log(`📦 loadUserOrders: ID заказов: ${result.rows.map(r => r.id).join(', ')}`);
       }
       
-      return result.rows.map(row => ({
-        id: row.id,
-        date: new Date(row.created_at).toLocaleDateString('ru-RU'),
-        items: row.items.filter(item => item.id !== null),
-        total: row.total,
-        address: row.address_string,
-        deliveryDate: row.delivery_date ? new Date(row.delivery_date).toISOString().split('T')[0] : null,
-        deliveryTime: row.delivery_time,
-        status: getStatusForUser(row.status), // Маппим статус для пользователя (PURCHASE → COLLECTING)
-        createdAt: row.created_at
-      }));
+      return result.rows.map(row => {
+        // Извлекаем userOrderNumber из order_number (последние 3 цифры)
+        let userOrderNumber = null;
+        if (row.order_number) {
+          const fullOrderNumber = String(row.order_number);
+          userOrderNumber = parseInt(fullOrderNumber.slice(-3), 10);
+        }
+        
+        return {
+          id: row.id,
+          user_id: row.user_id, // Добавляем user_id для форматирования номера
+          order_number: row.order_number || null, // Добавляем order_number
+          userOrderNumber: userOrderNumber, // Добавляем userOrderNumber
+          date: new Date(row.created_at).toLocaleDateString('ru-RU'),
+          items: row.items.filter(item => item.id !== null),
+          total: row.total,
+          address: row.address_string,
+          deliveryDate: row.delivery_date ? new Date(row.delivery_date).toISOString().split('T')[0] : null,
+          deliveryTime: row.delivery_time,
+          status: getStatusForUser(row.status), // Маппим статус для пользователя (PURCHASE → COLLECTING)
+          createdAt: row.created_at
+        };
+      });
     } finally {
       client.release();
     }
@@ -6079,11 +6091,34 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
       const result = await client.query(query, params);
       
       // Преобразуем address_json из JSONB в объект и исправляем поле total
-      const orders = result.rows.map(row => ({
-        ...row,
-        total: row.total || 0, // Используем total вместо total_amount
-        address_data: typeof row.address_json === 'object' ? row.address_json : (row.address_json ? JSON.parse(row.address_json) : {})
-      }));
+      // Также вычисляем userOrderNumber из order_number для правильного форматирования
+      const orders = result.rows.map(row => {
+        // Извлекаем userOrderNumber из order_number (последние 3 цифры)
+        let userOrderNumber = null;
+        if (row.order_number) {
+          const fullOrderNumber = String(row.order_number);
+          // Если order_number начинается с user_id, извлекаем часть после user_id
+          if (row.user_id) {
+            const userIdStr = String(row.user_id);
+            if (fullOrderNumber.startsWith(userIdStr)) {
+              userOrderNumber = parseInt(fullOrderNumber.slice(userIdStr.length), 10);
+            } else {
+              // Иначе берем последние 3 цифры
+              userOrderNumber = parseInt(fullOrderNumber.slice(-3), 10);
+            }
+          } else {
+            // Если user_id нет, берем последние 3 цифры
+            userOrderNumber = parseInt(fullOrderNumber.slice(-3), 10);
+          }
+        }
+        
+        return {
+          ...row,
+          total: row.total || 0, // Используем total вместо total_amount
+          address_data: typeof row.address_json === 'object' ? row.address_json : (row.address_json ? JSON.parse(row.address_json) : {}),
+          userOrderNumber: userOrderNumber // Добавляем userOrderNumber для форматирования
+        };
+      });
       
       res.json(orders);
     } finally {
