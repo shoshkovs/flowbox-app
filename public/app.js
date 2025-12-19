@@ -2615,20 +2615,21 @@ function calculateFinalTotal() {
     // Пересчитываем сервисный сбор как 10% от суммы товаров
     serviceFee = Math.round(flowersTotal * (serviceFeePercent / 100));
     
-    // В корзине не показываем доставку, только товары и сборы
-    const total = flowersTotal + serviceFee;
+    // В корзине показываем только сумму товаров (без сборов)
+    // Сборы и доставка будут показаны только в оформлении
+    const total = flowersTotal;
     
     if (finalTotalAmount) {
         finalTotalAmount.innerHTML = `${total} <span class="ruble-sign">₽</span>`;
     }
     
-    // Обновление детализации
+    // Обновление детализации (скрыто, но обновляем для совместимости)
     const flowersTotalElement = document.getElementById('flowersTotalAmount');
     if (flowersTotalElement) {
         flowersTotalElement.textContent = `${flowersTotal} ₽`;
     }
     
-    // Обновление сервисного сбора
+    // Обновление сервисного сбора (скрыто, но обновляем для совместимости)
     const serviceFeeElement = document.getElementById('serviceFeeAmount');
     if (serviceFeeElement) {
         serviceFeeElement.textContent = `${serviceFee} ₽`;
