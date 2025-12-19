@@ -6922,6 +6922,10 @@ async function openOrderDetail(orderId) {
     
     // Показываем скелетон загрузки
     orderDetailsContent.innerHTML = renderOrderDetailsSkeleton();
+    
+    // Запоминаем время начала загрузки для минимальной задержки
+    const loadStartTime = Date.now();
+    const minLoadTime = 400; // Минимальное время показа скелетона (мс)
 
     // Показываем страницу деталей
     orderDetailsTab.style.display = 'block';
@@ -6990,7 +6994,15 @@ async function openOrderDetail(orderId) {
         console.log('[openOrderDetail] Данные заказа получены:', order);
         console.log('[openOrderDetail] statusRaw:', order.statusRaw, 'status:', order.status);
         console.log('[openOrderDetail] statusHistory:', order.statusHistory);
-        renderOrderDetails(order);
+        
+        // Вычисляем оставшееся время для минимальной задержки
+        const elapsedTime = Date.now() - loadStartTime;
+        const remainingTime = Math.max(0, minLoadTime - elapsedTime);
+        
+        // Ждем минимальное время, затем показываем контент с плавным переходом
+        setTimeout(() => {
+            renderOrderDetails(order);
+        }, remainingTime);
     } catch (error) {
         console.error('[openOrderDetail] Ошибка загрузки деталей заказа:', error);
         const errorMessage = error.message || 'Неизвестная ошибка';
@@ -7007,6 +7019,9 @@ async function openOrderDetail(orderId) {
 function renderOrderDetails(order) {
     const orderDetailsContent = document.getElementById('orderDetailsContent');
     if (!orderDetailsContent) return;
+    
+    // Проверяем наличие скелетона ДО установки нового контента
+    const hasSkeleton = orderDetailsContent.querySelector('.order-details-skeleton-title');
     
     // Маппинг статусов для степпера (5 статусов)
     const statusSteps = ['В обработке', 'Принят', 'Собирается', 'В пути', 'Доставлен'];
@@ -7286,6 +7301,24 @@ function renderOrderDetails(order) {
         </div>
         
     `;
+    
+    // Плавный переход от скелетона к контенту
+    if (hasSkeleton) {
+        // Плавно скрываем скелетон и показываем контент
+        orderDetailsContent.style.transition = 'opacity 0.2s ease-out';
+        orderDetailsContent.style.opacity = '0';
+        
+        setTimeout(() => {
+            // innerHTML уже установлен выше, просто показываем
+            requestAnimationFrame(() => {
+                orderDetailsContent.style.transition = 'opacity 0.25s ease-out';
+                orderDetailsContent.style.opacity = '1';
+            });
+        }, 200);
+    } else {
+        // Если скелетона не было, просто показываем
+        orderDetailsContent.style.opacity = '1';
+    }
 }
 
 // Загрузка истории заказов
