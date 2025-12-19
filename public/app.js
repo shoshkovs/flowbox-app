@@ -276,11 +276,9 @@ function handleBackButton() {
     const orderDetailsTab = document.getElementById('orderDetailsTab');
     if (orderDetailsTab && orderDetailsTab.style.display === 'block') {
         console.log('[BackButton] Возврат из деталей заказа в профиль');
-        animateOverlayClose(orderDetailsTab, () => {
-            orderDetailsTab.style.display = 'none';
-            switchTab('profileTab');
-            showBackButton(false);
-        });
+        orderDetailsTab.style.display = 'none';
+        switchTab('profileTab');
+        showBackButton(false);
         return;
     }
     
@@ -5877,11 +5875,9 @@ if (orderDetailsBackBtn) {
     orderDetailsBackBtn.addEventListener('click', () => {
         const orderDetailsTab = document.getElementById('orderDetailsTab');
         if (orderDetailsTab) {
-            animateOverlayClose(orderDetailsTab, () => {
-                orderDetailsTab.style.display = 'none';
-                // Возвращаемся на профиль
-                switchTab('profileTab');
-            });
+            orderDetailsTab.style.display = 'none';
+            // Возвращаемся на профиль
+            switchTab('profileTab');
         }
     });
 }
@@ -6931,9 +6927,6 @@ async function openOrderDetail(orderId) {
     orderDetailsTab.style.display = 'block';
     switchTab('orderDetailsTab');
     
-    // Анимация открытия overlay
-    animateOverlayOpen(orderDetailsTab);
-    
     // Загружаем данные заказа
     try {
         // Получаем userId из Telegram WebApp или из localStorage
@@ -7293,13 +7286,6 @@ function renderOrderDetails(order) {
         </div>
         
     `;
-    
-    // Простая анимация появления без лишних задержек
-    orderDetailsContent.style.opacity = '0';
-    requestAnimationFrame(() => {
-        orderDetailsContent.style.transition = 'opacity 0.2s ease-out';
-        orderDetailsContent.style.opacity = '1';
-    });
 }
 
 // Загрузка истории заказов
