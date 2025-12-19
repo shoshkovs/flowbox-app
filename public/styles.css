@@ -831,6 +831,208 @@ h1, h2, h3, .font-bold {
     }
 }
 
+/* Скелетон деталей заказа */
+.order-details-skeleton-title,
+.order-details-skeleton-subtitle {
+    height: 24px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    width: 120px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-subtitle {
+    width: 150px;
+    margin-bottom: 12px;
+}
+
+.order-details-skeleton-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 0;
+}
+
+.order-details-skeleton-label {
+    height: 14px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    width: 100px;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-value {
+    height: 16px;
+    background: #D1D5DB;
+    border-radius: 4px;
+    width: 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-pill {
+    height: 32px;
+    background: #E5E7EB;
+    border-radius: 12px;
+    width: 120px;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-stepper {
+    margin-top: 16px;
+}
+
+.order-details-skeleton-step {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.order-details-skeleton-step-dot {
+    width: 12px;
+    height: 12px;
+    background: #E5E7EB;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-right: 12px;
+    margin-top: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-step-content {
+    flex: 1;
+}
+
+.order-details-skeleton-step-text {
+    height: 16px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    width: 140px;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-info-row {
+    margin: 16px 0;
+}
+
+.order-details-skeleton-info-title {
+    height: 14px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    width: 100px;
+    margin-bottom: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-info-text {
+    height: 16px;
+    background: #D1D5DB;
+    border-radius: 4px;
+    width: 80%;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-items {
+    margin-top: 16px;
+}
+
+.order-details-skeleton-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.order-details-skeleton-item-img {
+    width: 60px;
+    height: 60px;
+    background: #E5E7EB;
+    border-radius: 8px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-item-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.order-details-skeleton-item-title {
+    height: 16px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    width: 70%;
+    position: relative;
+    overflow: hidden;
+}
+
+.order-details-skeleton-item-sub {
+    height: 14px;
+    background: #D1D5DB;
+    border-radius: 4px;
+    width: 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Shimmer анимация для скелетона деталей заказа */
+.order-details-skeleton-title::after,
+.order-details-skeleton-subtitle::after,
+.order-details-skeleton-label::after,
+.order-details-skeleton-value::after,
+.order-details-skeleton-pill::after,
+.order-details-skeleton-step-dot::after,
+.order-details-skeleton-step-text::after,
+.order-details-skeleton-info-title::after,
+.order-details-skeleton-info-text::after,
+.order-details-skeleton-item-img::after,
+.order-details-skeleton-item-title::after,
+.order-details-skeleton-item-sub::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.5) 50%,
+        transparent 100%
+    );
+    animation: shimmer 1.5s ease-in-out infinite;
+    will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .order-details-skeleton-title::after,
+    .order-details-skeleton-subtitle::after,
+    .order-details-skeleton-label::after,
+    .order-details-skeleton-value::after,
+    .order-details-skeleton-pill::after,
+    .order-details-skeleton-step-dot::after,
+    .order-details-skeleton-step-text::after,
+    .order-details-skeleton-info-title::after,
+    .order-details-skeleton-info-text::after,
+    .order-details-skeleton-item-img::after,
+    .order-details-skeleton-item-title::after,
+    .order-details-skeleton-item-sub::after {
+        animation: none;
+    }
+}
+
 /* Пустое состояние товаров */
 .products-empty {
     display: flex;

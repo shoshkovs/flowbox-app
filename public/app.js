@@ -1209,6 +1209,76 @@ function renderProductSkeletons() {
     return skeletons;
 }
 
+// Функция рендеринга скелетона деталей заказа
+function renderOrderDetailsSkeleton() {
+    return `
+        <!-- Скелетон: Информация о заказе -->
+        <div class="order-details-card">
+            <div class="order-details-skeleton-title"></div>
+            <div class="order-details-skeleton-meta-row">
+                <div class="order-details-skeleton-label"></div>
+                <div class="order-details-skeleton-value"></div>
+            </div>
+            <div class="order-details-skeleton-meta-row">
+                <div class="order-details-skeleton-label"></div>
+                <div class="order-details-skeleton-value"></div>
+            </div>
+            <div class="order-details-skeleton-meta-row">
+                <div class="order-details-skeleton-label"></div>
+                <div class="order-details-skeleton-pill"></div>
+            </div>
+        </div>
+        
+        <!-- Скелетон: Статус заказа -->
+        <div class="order-details-card">
+            <div class="order-details-skeleton-subtitle"></div>
+            <div class="order-details-skeleton-stepper">
+                ${Array(5).fill(0).map(() => `
+                    <div class="order-details-skeleton-step">
+                        <div class="order-details-skeleton-step-dot"></div>
+                        <div class="order-details-skeleton-step-content">
+                            <div class="order-details-skeleton-step-text"></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        
+        <!-- Скелетон: Информация о доставке -->
+        <div class="order-details-card">
+            <div class="order-details-skeleton-subtitle"></div>
+            <div class="order-details-skeleton-info-row">
+                <div class="order-details-skeleton-info-title"></div>
+                <div class="order-details-skeleton-info-text"></div>
+            </div>
+            <div class="order-details-skeleton-info-row">
+                <div class="order-details-skeleton-info-title"></div>
+                <div class="order-details-skeleton-info-text"></div>
+            </div>
+            <div class="order-details-skeleton-info-row">
+                <div class="order-details-skeleton-info-title"></div>
+                <div class="order-details-skeleton-info-text"></div>
+            </div>
+        </div>
+        
+        <!-- Скелетон: Товары в заказе -->
+        <div class="order-details-card">
+            <div class="order-details-skeleton-subtitle"></div>
+            <div class="order-details-skeleton-items">
+                ${Array(3).fill(0).map(() => `
+                    <div class="order-details-skeleton-item">
+                        <div class="order-details-skeleton-item-img"></div>
+                        <div class="order-details-skeleton-item-body">
+                            <div class="order-details-skeleton-item-title"></div>
+                            <div class="order-details-skeleton-item-sub"></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
 function renderProducts() {
     // 1) Идёт загрузка – показываем skeleton карточки
     if (isProductsLoading) {
@@ -6854,8 +6924,8 @@ async function openOrderDetail(orderId) {
         return;
     }
     
-    // Показываем индикатор загрузки
-    orderDetailsContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Загрузка...</div>';
+    // Показываем скелетон загрузки
+    orderDetailsContent.innerHTML = renderOrderDetailsSkeleton();
 
     // Показываем страницу деталей
     orderDetailsTab.style.display = 'block';
