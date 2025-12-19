@@ -715,6 +715,122 @@ h1, h2, h3, .font-bold {
     }
 }
 
+/* Skeleton карточки товаров */
+.product-skeleton {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    pointer-events: none;
+    user-select: none;
+    cursor: default;
+}
+
+.product-skeleton-image {
+    width: 100%;
+    aspect-ratio: 0.7;
+    background: #E5E7EB;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.product-skeleton-info {
+    padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.product-skeleton-title {
+    height: 16px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    width: 70%;
+    position: relative;
+    overflow: hidden;
+}
+
+.product-skeleton-quantity {
+    height: 12px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    width: 35%;
+    position: relative;
+    overflow: hidden;
+}
+
+.product-skeleton-button {
+    height: 40px;
+    background: #E5E7EB;
+    border-radius: 20px;
+    width: 100%;
+    margin-top: auto;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
+.product-skeleton-button-price {
+    height: 16px;
+    background: #D1D5DB;
+    border-radius: 4px;
+    width: 30%;
+}
+
+.product-skeleton-button-icon {
+    width: 20px;
+    height: 20px;
+    background: #D1D5DB;
+    border-radius: 50%;
+}
+
+/* Shimmer анимация */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.product-skeleton-image::after,
+.product-skeleton-title::after,
+.product-skeleton-quantity::after,
+.product-skeleton-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.5) 50%,
+        transparent 100%
+    );
+    animation: shimmer 1.5s ease-in-out infinite;
+    will-change: transform;
+}
+
+/* Отключение анимации для пользователей с prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    .product-skeleton-image::after,
+    .product-skeleton-title::after,
+    .product-skeleton-quantity::after,
+    .product-skeleton-button::after {
+        animation: none;
+    }
+}
+
 /* Пустое состояние товаров */
 .products-empty {
     display: flex;

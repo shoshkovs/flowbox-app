@@ -1188,21 +1188,38 @@ function attachFilterHandlers() {
 }
 
 // Отображение товаров
-function renderProducts() {
-    // 1) Идёт загрузка – показываем только спиннер
-    if (isProductsLoading) {
-        productsContainer.classList.add('products-container-empty');
-        productsContainer.innerHTML = `
-            <div class="products-loader">
-                <div class="spinner"></div>
+// Функция для рендеринга skeleton карточек товаров
+function renderProductSkeletons() {
+    const skeletons = Array(4).fill(0).map(() => `
+        <div class="product-skeleton" aria-busy="true">
+            <div class="product-skeleton-image"></div>
+            <div class="product-skeleton-info">
+                <div class="product-skeleton-title"></div>
+                <div class="product-skeleton-quantity"></div>
+                <div class="product-skeleton-button">
+                    <div class="product-skeleton-button-price"></div>
+                    <div class="product-skeleton-button-icon"></div>
+                </div>
             </div>
-        `;
+        </div>
+    `).join('');
+    
+    return skeletons;
+}
+
+function renderProducts() {
+    // 1) Идёт загрузка – показываем skeleton карточки
+    if (isProductsLoading) {
+        productsContainer.classList.remove('products-container-empty');
+        productsContainer.setAttribute('aria-busy', 'true');
+        productsContainer.innerHTML = renderProductSkeletons();
         return;
     }
 
     // 2) Загрузка закончилась, но товаров нет – показываем красивое пустое состояние
     if (!filteredProducts || filteredProducts.length === 0) {
         productsContainer.classList.add('products-container-empty');
+        productsContainer.removeAttribute('aria-busy');
         productsContainer.innerHTML = `
             <div class="products-empty">
                 <div class="products-empty-icon">
@@ -1215,8 +1232,9 @@ function renderProducts() {
         return;
     }
     
-    // Убираем класс пустого состояния, если есть товары
+    // Убираем класс пустого состояния и aria-busy, если есть товары
     productsContainer.classList.remove('products-container-empty');
+    productsContainer.removeAttribute('aria-busy');
 
     // 3) Есть товары – рендерим их
     productsContainer.innerHTML = filteredProducts.map(product => {
