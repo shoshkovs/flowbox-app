@@ -276,9 +276,11 @@ function handleBackButton() {
     const orderDetailsTab = document.getElementById('orderDetailsTab');
     if (orderDetailsTab && orderDetailsTab.style.display === 'block') {
         console.log('[BackButton] Возврат из деталей заказа в профиль');
-        orderDetailsTab.style.display = 'none';
-        switchTab('profileTab');
-        showBackButton(false);
+        animateOverlayClose(orderDetailsTab, () => {
+            orderDetailsTab.style.display = 'none';
+            switchTab('profileTab');
+            showBackButton(false);
+        });
         return;
     }
     
@@ -2750,6 +2752,33 @@ function openPaymentSuccessPage(orderId, orderIdForFetch = null, userOrderNumber
     window.paymentSuccessCountdownInterval = countdownInterval;
     
     console.log('[openPaymentSuccessPage] ✅ Страница успешной оплаты открыта');
+}
+
+// ============================================
+// Анимация Overlay (экран поверх)
+// ============================================
+
+function animateOverlayOpen(el) {
+    if (!el) return;
+    el.classList.add('page-overlay');
+    // важно: элемент должен быть уже видимым (display != none)
+    requestAnimationFrame(() => {
+        el.classList.add('overlay-enter-active');
+    });
+}
+
+function animateOverlayClose(el, onDone) {
+    if (!el) return;
+    el.classList.remove('overlay-enter-active');
+    el.classList.add('overlay-exit-active');
+
+    const done = () => {
+        el.classList.remove('overlay-exit-active', 'page-overlay');
+        onDone && onDone();
+    };
+
+    // безопасный таймер (под наши dur-fast)
+    setTimeout(done, 220);
 }
 
 // Переключение вкладок
@@ -5762,10 +5791,12 @@ if (orderDetailsBackBtn) {
     orderDetailsBackBtn.addEventListener('click', () => {
         const orderDetailsTab = document.getElementById('orderDetailsTab');
         if (orderDetailsTab) {
-            orderDetailsTab.style.display = 'none';
+            animateOverlayClose(orderDetailsTab, () => {
+                orderDetailsTab.style.display = 'none';
+                // Возвращаемся на профиль
+                switchTab('profileTab');
+            });
         }
-        // Возвращаемся на профиль
-        switchTab('profileTab');
     });
 }
 
@@ -6809,10 +6840,13 @@ async function openOrderDetail(orderId) {
     
     // Показываем индикатор загрузки
     orderDetailsContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Загрузка...</div>';
-    
+
     // Показываем страницу деталей
     orderDetailsTab.style.display = 'block';
     switchTab('orderDetailsTab');
+    
+    // Анимация открытия overlay
+    animateOverlayOpen(orderDetailsTab);
     
     // Загружаем данные заказа
     try {
