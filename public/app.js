@@ -274,13 +274,28 @@ function handleBackButton() {
     
     // Детали заказа
     const orderDetailsTab = document.getElementById('orderDetailsTab');
+    const orderDetailsContent = document.getElementById('orderDetailsContent');
     if (orderDetailsTab && orderDetailsTab.style.display === 'block') {
         console.log('[BackButton] Возврат из деталей заказа в профиль');
-        animateOverlayClose(orderDetailsTab, () => {
-            orderDetailsTab.style.display = 'none';
-            switchTab('profileTab');
-            showBackButton(false);
-        });
+        
+        // Сначала плавно скрываем контент
+        if (orderDetailsContent) {
+            orderDetailsContent.style.transition = 'opacity 0.15s ease-in';
+            orderDetailsContent.style.opacity = '0';
+        }
+        
+        // Затем закрываем overlay
+        setTimeout(() => {
+            animateOverlayClose(orderDetailsTab, () => {
+                orderDetailsTab.style.display = 'none';
+                if (orderDetailsContent) {
+                    orderDetailsContent.style.opacity = '';
+                    orderDetailsContent.style.transition = '';
+                }
+                switchTab('profileTab');
+                showBackButton(false);
+            });
+        }, 150);
         return;
     }
     
@@ -5876,12 +5891,26 @@ const orderDetailsSupportBtn = document.getElementById('orderDetailsSupportBtn')
 if (orderDetailsBackBtn) {
     orderDetailsBackBtn.addEventListener('click', () => {
         const orderDetailsTab = document.getElementById('orderDetailsTab');
+        const orderDetailsContent = document.getElementById('orderDetailsContent');
         if (orderDetailsTab) {
-            animateOverlayClose(orderDetailsTab, () => {
-                orderDetailsTab.style.display = 'none';
-                // Возвращаемся на профиль
-                switchTab('profileTab');
-            });
+            // Сначала плавно скрываем контент
+            if (orderDetailsContent) {
+                orderDetailsContent.style.transition = 'opacity 0.15s ease-in';
+                orderDetailsContent.style.opacity = '0';
+            }
+            
+            // Затем закрываем overlay
+            setTimeout(() => {
+                animateOverlayClose(orderDetailsTab, () => {
+                    orderDetailsTab.style.display = 'none';
+                    if (orderDetailsContent) {
+                        orderDetailsContent.style.opacity = '';
+                        orderDetailsContent.style.transition = '';
+                    }
+                    // Возвращаемся на профиль
+                    switchTab('profileTab');
+                });
+            }, 150);
         }
     });
 }
@@ -7109,6 +7138,9 @@ function renderOrderDetails(order) {
         }
     }
     
+    // Проверяем наличие скелетона для плавного перехода
+    const hasSkeleton = orderDetailsContent.querySelector('.order-details-skeleton-title, .order-details-skeleton-subtitle');
+    
     orderDetailsContent.innerHTML = `
         <!-- Информация о заказе -->
         <div class="order-details-card">
@@ -7294,14 +7326,36 @@ function renderOrderDetails(order) {
         
     `;
     
-    // Добавляем анимацию появления
-    orderDetailsContent.style.opacity = '0';
-    orderDetailsContent.style.transform = 'translateY(16px)';
-    setTimeout(() => {
-        orderDetailsContent.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
-        orderDetailsContent.style.opacity = '1';
-        orderDetailsContent.style.transform = 'translateY(0)';
-    }, 10);
+    // Плавный переход от скелетона к контенту
+    if (hasSkeleton) {
+        // Плавно скрываем скелетон
+        orderDetailsContent.style.transition = 'opacity 0.2s ease-out';
+        orderDetailsContent.style.opacity = '0';
+        
+        // После скрытия скелетона устанавливаем и показываем контент
+        setTimeout(() => {
+            // innerHTML уже установлен выше, просто показываем контент
+            requestAnimationFrame(() => {
+                orderDetailsContent.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                orderDetailsContent.style.opacity = '0';
+                orderDetailsContent.style.transform = 'translateY(8px)';
+                
+                requestAnimationFrame(() => {
+                    orderDetailsContent.style.opacity = '1';
+                    orderDetailsContent.style.transform = 'translateY(0)';
+                });
+            });
+        }, 200);
+    } else {
+        // Если скелетона не было, просто показываем контент плавно
+        orderDetailsContent.style.opacity = '0';
+        orderDetailsContent.style.transform = 'translateY(8px)';
+        requestAnimationFrame(() => {
+            orderDetailsContent.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            orderDetailsContent.style.opacity = '1';
+            orderDetailsContent.style.transform = 'translateY(0)';
+        });
+    }
 }
 
 // Загрузка истории заказов
