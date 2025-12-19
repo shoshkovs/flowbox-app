@@ -801,15 +801,6 @@ h1, h2, h3, .font-bold {
     }
 }
 
-@keyframes shimmer-slow {
-    0% {
-        transform: translateX(-100%);
-    }
-    100% {
-        transform: translateX(100%);
-    }
-}
-
 .product-skeleton-image::after,
 .product-skeleton-title::after,
 .product-skeleton-quantity::after,
@@ -826,7 +817,7 @@ h1, h2, h3, .font-bold {
         rgba(255, 255, 255, 0.5) 50%,
         transparent 100%
     );
-    animation: shimmer-slow 2.5s ease-in-out infinite;
+    animation: shimmer 1.5s ease-in-out infinite;
     will-change: transform;
 }
 
@@ -1021,7 +1012,7 @@ h1, h2, h3, .font-bold {
         rgba(255, 255, 255, 0.5) 50%,
         transparent 100%
     );
-    animation: shimmer-slow 2.5s ease-in-out infinite;
+    animation: shimmer 1.5s ease-in-out infinite;
     will-change: transform;
 }
 
