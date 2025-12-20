@@ -3,11 +3,39 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { Pool } = require('pg');
+const TelegramMessageQueue = require('./queue/telegramQueue');
 require('dotenv').config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Инициализация очереди для Telegram сообщений
+let telegramQueue = null;
+
+// Инициализируем очередь после создания бота
+if (bot) {
+  telegramQueue = new TelegramMessageQueue(bot);
+  console.log('✅ Очередь Telegram сообщений инициализирована');
+}
+
+/**
+ * Безопасная отправка сообщения через очередь
+ * @param {number|string} chatId - ID чата
+ * @param {string} message - Текст сообщения
+ * @param {object} options - Опции для sendMessage
+ * @param {number} priority - Приоритет (0 = обычный, 5 = средний, 10 = высокий)
+ * @returns {Promise}
+ */
+async function sendMessageSafe(chatId, message, options = {}, priority = 0) {
+  if (!telegramQueue) {
+    // Fallback: если очередь не инициализирована, отправляем напрямую
+    console.warn('⚠️ Очередь не инициализирована, отправка напрямую');
+    return bot.telegram.sendMessage(chatId, message, options);
+  }
+  
+  return telegramQueue.add(chatId, message, options, priority);
+}
 
 // Подключение к базе данных (если DATABASE_URL установлен)
 let pool = null;
@@ -2524,10 +2552,10 @@ async function sendOrderStatusNotification(orderId, newStatus, oldStatus = null,
         message += `\n\n💬 Комментарий: ${comment}`;
       }
       
-      // Отправляем сообщение
-      await bot.telegram.sendMessage(telegramId, message);
+      // Отправляем сообщение через очередь
+      await sendMessageSafe(telegramId, message, {}, 5); // Приоритет 5 - средний
       
-      console.log(`✅ Уведомление о смене статуса отправлено пользователю ${telegramId} (заказ ${orderNumberDisplay})`);
+      console.log(`✅ Уведомление о смене статуса добавлено в очередь для пользователя ${telegramId} (заказ ${orderNumberDisplay})`);
     } finally {
       client.release();
     }
@@ -2652,20 +2680,19 @@ async function sendOrderNotificationToGroup(orderId, orderData) {
     console.log(`📝 Первые 200 символов: ${message.substring(0, 200)}...`);
     console.log(`🔗 Ссылка на заказ в админке: ${orderUrl}`);
     
-    // Отправляем сообщение в группу с указанием темы
-    console.log(`📤 Вызываем bot.telegram.sendMessage с параметрами:`);
+    // Отправляем сообщение в группу через очередь
+    console.log(`📤 Добавляем сообщение в очередь с параметрами:`);
     console.log(`   - chat_id: ${ORDERS_GROUP_ID}`);
     console.log(`   - message_thread_id: ${ORDERS_TOPIC_ID}`);
     console.log(`   - parse_mode: HTML`);
     
-    const result = await bot.telegram.sendMessage(ORDERS_GROUP_ID, message, {
+    await sendMessageSafe(ORDERS_GROUP_ID, message, {
       parse_mode: 'HTML',
       message_thread_id: ORDERS_TOPIC_ID,
       disable_web_page_preview: false // Разрешаем превью ссылки
-    });
+    }, 3); // Приоритет 3 - для группы средний
     
-    console.log(`✅ Уведомление о заказе #${orderId} успешно отправлено в группу`);
-    console.log(`✅ Результат отправки:`, JSON.stringify(result, null, 2));
+    console.log(`✅ Уведомление о заказе #${orderId} добавлено в очередь для группы`);
   } catch (error) {
     console.error(`❌ Ошибка отправки уведомления о заказе #${orderId} в группу:`);
     console.error(`   Сообщение об ошибке: ${error.message}`);
@@ -2776,13 +2803,13 @@ async function sendOrderConfirmation(orderId, telegramId, orderData) {
       ]
     };
     
-    // Отправляем сообщение
-    await bot.telegram.sendMessage(telegramIdNum, message, {
+    // Отправляем сообщение через очередь с высоким приоритетом
+    await sendMessageSafe(telegramIdNum, message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
-    });
+    }, 10); // Приоритет 10 - высокий, подтверждения заказов важны
     
-    console.log(`✅ Подтверждение заказа отправлено пользователю ${telegramIdNum} (заказ #${orderId})`);
+    console.log(`✅ Подтверждение заказа добавлено в очередь для пользователя ${telegramIdNum} (заказ #${orderId})`);
   } catch (error) {
     // Не прерываем выполнение, если не удалось отправить сообщение
     console.error(`⚠️  Ошибка отправки подтверждения заказа #${orderId}:`, error.message);
@@ -8800,6 +8827,30 @@ bot.on('web_app_data', (ctx) => {
 
 // Сохраняем имя бота для использования в API
 let botUsername = process.env.BOT_USERNAME || 'FlowboxBot';
+
+// API endpoint для мониторинга очереди Telegram сообщений
+app.get('/api/queue/stats', async (req, res) => {
+  if (!telegramQueue) {
+    return res.json({
+      error: 'Очередь не инициализирована',
+      stats: null
+    });
+  }
+  
+  const stats = telegramQueue.getStats();
+  res.json({
+    success: true,
+    stats: {
+      total: stats.total,
+      sent: stats.sent,
+      failed: stats.failed,
+      retried: stats.retried,
+      queueLength: stats.queueLength,
+      processing: stats.processing,
+      successRate: stats.total > 0 ? ((stats.sent / stats.total) * 100).toFixed(2) + '%' : '0%'
+    }
+  });
+});
 
 // API endpoint для получения информации о боте
 app.get('/api/bot-info', async (req, res) => {
