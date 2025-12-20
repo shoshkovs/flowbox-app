@@ -2371,9 +2371,8 @@ async function createOrderInDb(orderData) {
       await client.query('COMMIT');
       console.log('✅ Транзакция завершена успешно');
       
-      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры)
-      let userOrderNumber = null;
-      if (order.order_number || orderNumber) {
+      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры), если он еще не был установлен
+      if (!userOrderNumber && (order.order_number || orderNumber)) {
         const fullOrderNumber = String(order.order_number || orderNumber);
         // Берем последние 3 цифры как номер заказа пользователя
         userOrderNumber = fullOrderNumber.slice(-3);
