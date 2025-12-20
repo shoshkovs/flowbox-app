@@ -1909,529 +1909,179 @@ async function loadUserAddresses(userId) {
   }
 }
 
+// === Вспомогательные функции для создания заказа ===
+
+// Определение зоны доставки по цене
+function getDeliveryZone(price) {
+  const zones = { 0: 'Самовывоз', 500: 'В пределах КАД', 900: 'До 10 км от КАД', 1300: 'До 20 км от КАД' };
+  return zones[price] || null;
+}
+
+// Расчет сервисного сбора
+function calculateServiceFee(flowersTotal, percent = 10) {
+  if (flowersTotal) return Math.round(flowersTotal * (percent / 100));
+  return 450;
+}
+
+// Генерация номера заказа: telegramId + порядковый номер (3 цифры)
+function generateOrderNumber(telegramId, sequence) {
+  return parseInt(String(telegramId) + String(sequence).padStart(3, '0'), 10);
+}
+
+// Проверка остатков товара
+async function checkStockAvailability(client, productId) {
+  const result = await client.query(`
+    SELECT s.id,
+      COALESCE((SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'), s.quantity) as initial,
+      COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
+      COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off
+    FROM supplies s LEFT JOIN stock_movements sm ON s.id = sm.supply_id
+    WHERE s.product_id = $1 GROUP BY s.id, s.quantity
+  `, [productId]);
+  
+  return result.rows.reduce((sum, s) => sum + Math.max(0, parseInt(s.initial) - parseInt(s.sold) - parseInt(s.written_off)), 0);
+}
+
+// Добавление позиции заказа и списание по FIFO
+async function addOrderItemWithFIFO(client, orderId, item) {
+          await client.query(
+    `INSERT INTO order_items (order_id, product_id, name, price, quantity, total_price) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [orderId, item.id, item.name, item.price, item.quantity, item.price * item.quantity]
+  );
+  
+  const supplies = await client.query(`
+    SELECT s.id as supply_id,
+      COALESCE((SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'), s.quantity) as initial,
+      COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
+      COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off
+    FROM supplies s LEFT JOIN stock_movements sm ON s.id = sm.supply_id
+    WHERE s.product_id = $1 GROUP BY s.id, s.quantity, s.delivery_date
+    HAVING COALESCE((SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'), s.quantity) 
+           - COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) 
+           - COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) > 0
+    ORDER BY s.delivery_date ASC, s.id ASC
+  `, [item.id]);
+  
+  let remaining = item.quantity;
+  for (const supply of supplies.rows) {
+    if (remaining <= 0) break;
+    const available = supply.initial - supply.sold - supply.written_off;
+    const toSell = Math.min(remaining, available);
+    if (toSell > 0) {
+      await client.query(
+        `INSERT INTO stock_movements (product_id, type, quantity, order_id, supply_id, comment) VALUES ($1, 'SALE', $2, $3, $4, $5)`,
+        [item.id, toSell, orderId, supply.supply_id, `Заказ #${orderId}`]
+      );
+      remaining -= toSell;
+    }
+  }
+}
+
 // Сохранение заказа в БД
 async function createOrderInDb(orderData) {
-  if (!pool) {
-    console.log('⚠️  pool не инициализирован, проверь DATABASE_URL');
-    return null;
-  }
+  if (!pool) return null;
   
+  const client = await pool.connect();
   try {
-    console.log('📦 Создание заказа в БД:', {
-      userId: orderData.userId,
-      total: orderData.total,
-      itemsCount: orderData.items?.length || 0
-    });
+    await client.query('BEGIN');
     
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
-      // Получаем user_id и данные пользователя по telegram_id
-      // Также обновляем username, если он передан в orderData
-      let userId = null;
-      let userData = null;
-
-      console.log('orderData.userId', orderData.userId);
-      console.log('orderData.userId', orderData.userId);
-      console.log('orderData.userId', orderData.userId);
-      
-
-      if (orderData.userId) {
-        // Если передан username, обновляем его в БД
-        // Приводим userId к числу для работы с BIGINT
-        const userIdNum = typeof orderData.userId === 'string' ? parseInt(orderData.userId, 10) : Number(orderData.userId);
-        
-        if (orderData.username && !isNaN(userIdNum)) {
-          await client.query(
-            `UPDATE users 
-             SET username = $1, updated_at = now()
-             WHERE telegram_id = $2::bigint AND (username IS NULL OR username != $1)`,
-            [orderData.username, userIdNum]
-          );
-        }
-        
-        // Если передан phone_number, обновляем его в БД
-        if (orderData.phone_number && !isNaN(userIdNum)) {
-          await client.query(
-            `UPDATE users 
-             SET phone = $1, updated_at = now()
-             WHERE telegram_id = $2::bigint AND (phone IS NULL OR phone != $1)`,
-            [orderData.phone_number, userIdNum]
-          );
-        }
-        
-        const userResult = await client.query(
-          'SELECT id, first_name, last_name, phone, email FROM users WHERE telegram_id = $1::bigint',
-          [!isNaN(userIdNum) ? userIdNum : orderData.userId]
-        );
-        if (userResult.rows.length > 0) {
-          userId = userResult.rows[0].id;
-          userData = userResult.rows[0];
-          console.log('✅ Найден пользователь в БД, user_id:', userId);
-        } else {
-          console.log('⚠️  Пользователь не найден в БД, создаем заказ без user_id');
-        }
+    // Telegram ID — это и есть orderData.userId
+    const telegramId = orderData.userId ? Number(orderData.userId) : null;
+    
+    // Получаем пользователя из БД
+    let userId = null, userData = null;
+    if (telegramId && !isNaN(telegramId)) {
+      // Обновляем username/phone если переданы
+      if (orderData.username) {
+        await client.query(`UPDATE users SET username = $1, updated_at = now() WHERE telegram_id = $2::bigint AND (username IS NULL OR username != $1)`, [orderData.username, telegramId]);
+      }
+      if (orderData.phone_number) {
+        await client.query(`UPDATE users SET phone = $1, updated_at = now() WHERE telegram_id = $2::bigint AND (phone IS NULL OR phone != $1)`, [orderData.phone_number, telegramId]);
       }
       
-      // Определяем address_id, если выбран сохраненный адрес
-      let addressId = null;
-      if (orderData.addressId && userId) {
-        // Проверяем, что адрес принадлежит пользователю
-        const addressCheck = await client.query(
-          'SELECT id FROM addresses WHERE id = $1 AND user_id = $2',
-          [orderData.addressId, userId]
-        );
-        if (addressCheck.rows.length > 0) {
-          addressId = orderData.addressId;
-        }
+      const userResult = await client.query('SELECT id, first_name, last_name, phone, email FROM users WHERE telegram_id = $1::bigint', [telegramId]);
+      if (userResult.rows.length > 0) {
+        userId = userResult.rows[0].id;
+        userData = userResult.rows[0];
       }
-      
-      // Парсим время доставки для delivery_time_from/to
-      let deliveryTimeFrom = null;
-      let deliveryTimeTo = null;
-      if (orderData.deliveryTime) {
-        // Формат: "10:00-12:00" или "10:00 - 12:00" или "14-16" (без минут)
-        const timeMatch = orderData.deliveryTime.match(/(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?/);
-        if (timeMatch) {
-          const fromHour = timeMatch[1].padStart(2, '0');
-          const fromMin = timeMatch[2] || '00';
-          const toHour = timeMatch[3].padStart(2, '0');
-          const toMin = timeMatch[4] || '00';
-          deliveryTimeFrom = `${fromHour}:${fromMin}`;
-          deliveryTimeTo = `${toHour}:${toMin}`;
-        }
-      }
-      
-      // Определяем delivery_type из deliveryPrice или orderData
-      let deliveryType = null;
-      if (orderData.deliveryType) {
-        deliveryType = orderData.deliveryType;
-      } else if (orderData.deliveryPrice === 0) {
-        deliveryType = 'PICKUP';
-      } else if (orderData.deliveryPrice === 500) {
-        deliveryType = 'INSIDE_KAD';
-      } else if (orderData.deliveryPrice === 900) {
-        deliveryType = 'OUTSIDE_KAD_10';
-      } else if (orderData.deliveryPrice === 1300) {
-        deliveryType = 'OUTSIDE_KAD_20';
-      }
-      
-      // Данные клиента на момент заказа (из профиля или из формы)
-      const clientName = orderData.name || (userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() : null);
-      const clientPhone = orderData.phone || userData?.phone || null;
-      const clientEmail = orderData.email || userData?.email || null;
-      
-      // Комментарий пользователя (особые пожелания к заказу)
-      // Комментарий пользователя - проверяем все возможные варианты имен полей
-      const userComment = orderData.userComment || orderData.comment || orderData.orderComment || null;
-      
-      // Комментарий для курьера (из поля адреса)
-      const courierComment = orderData.courierComment || null;
-      
-      // Определяем delivery_zone из deliveryPrice
-      let deliveryZone = null;
-      if (orderData.deliveryPrice === 0) {
-        deliveryZone = 'Самовывоз';
-      } else if (orderData.deliveryPrice === 500) {
-        deliveryZone = 'В пределах КАД';
-      } else if (orderData.deliveryPrice === 900) {
-        deliveryZone = 'До 10 км от КАД';
-      } else if (orderData.deliveryPrice === 1300) {
-        deliveryZone = 'До 20 км от КАД';
-      }
-      
-      // Получаем процент сервисного сбора из orderData или используем 10% по умолчанию
-      const serviceFeePercent = orderData.serviceFeePercent || 10.00;
-      
-      // Пересчитываем serviceFee, если передан процент или если нужно использовать процент по умолчанию
-      let calculatedServiceFee = orderData.serviceFee;
-      if (!calculatedServiceFee && orderData.flowersTotal) {
-        calculatedServiceFee = Math.round(orderData.flowersTotal * (serviceFeePercent / 100));
-      }
-      if (!calculatedServiceFee) {
-        calculatedServiceFee = 450; // Fallback
-      }
-      
-      // Итоговая сумма заказа
-      const finalTotal = orderData.flowersTotal + calculatedServiceFee + (orderData.deliveryPrice || 0);
-      
-      // Получаем значение leave_at_door из orderData (явное приведение к boolean)
-      const leaveAtDoor = !!(orderData.leaveAtDoor || false);
-      
-      // Генерируем номер заказа: telegram_id + номер заказа пользователя (с ведущими нулями до 3 цифр)
-      let orderNumber = null;
-      let userOrderNumber = null;
-      
-      // Используем telegram_id из orderData.userId (это telegram_id пользователя)
-      const telegramId = orderData.userId ? (typeof orderData.userId === 'string' ? parseInt(orderData.userId, 10) : Number(orderData.userId)) : null;
-      
-      if (!isNaN(telegramId)) {
-        // Если есть userId, считаем заказы по user_id
-        if (userId) {
-          const userOrdersCountResult = await client.query(
-            'SELECT COUNT(*) as count FROM orders WHERE user_id = $1',
-            [userId]
-          );
-          userOrderNumber = parseInt(userOrdersCountResult.rows[0].count, 10) + 1; // +1 потому что это будет новый заказ
-        } else {
-          // Если userId нет, но есть telegramId, считаем заказы по telegram_id через JOIN
-          const telegramOrdersCountResult = await client.query(
-            `SELECT COUNT(*) as count 
-             FROM orders o 
-             JOIN users u ON o.user_id = u.id 
-             WHERE u.telegram_id = $1::bigint`,
-            [telegramId]
-          );
-          userOrderNumber = parseInt(telegramOrdersCountResult.rows[0].count, 10) + 1;
-        }
-        
-        // Формируем номер заказа: telegramId + номер заказа пользователя (с ведущими нулями до 3 цифр)
-        // Например: telegramId=1059138125, userOrderNumber=1 → orderNumber=1059138125001
-        const telegramIdStr = String(telegramId);
-        const orderNumberStr = String(userOrderNumber).padStart(3, '0');
-        orderNumber = parseInt(telegramIdStr + orderNumberStr, 10);
-        
-        console.log(`📝 Сгенерирован номер заказа: ${orderNumber} (telegramId: ${telegramIdStr}, номер заказа пользователя: ${userOrderNumber}, user_id в БД: ${userId || 'не найден'})`);
-        
-        // Сохраняем номер заказа пользователя для возврата в ответе
-        orderData.userOrderNumber = userOrderNumber;
-      } else {
-        console.warn(`⚠️  Не удалось сгенерировать order_number: userId=${userId}, telegramId=${telegramId}`);
-      }
-      
-      // Создаем заказ (без service_fee_percent - эта колонка не критична, процент можно вычислить из service_fee и flowers_total)
-      // Проверяем наличие колонки order_number перед вставкой
-      const columnCheck = await client.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'orders' AND column_name = 'order_number'
-      `);
-      const hasOrderNumberColumn = columnCheck.rows.length > 0;
-      
-      let orderResult;
-      if (hasOrderNumberColumn) {
-        orderResult = await client.query(
-          `INSERT INTO orders 
-           (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
-            client_name, client_phone, client_email,
-            recipient_name, recipient_phone, 
-            address_id, address_string, address_json, 
-            delivery_zone, delivery_date, delivery_time,
+    }
+    
+    // Проверяем address_id
+    let addressId = null;
+    if (orderData.addressId && userId) {
+      const addr = await client.query('SELECT id FROM addresses WHERE id = $1 AND user_id = $2', [orderData.addressId, userId]);
+      if (addr.rows.length > 0) addressId = orderData.addressId;
+    }
+    
+    // Подготовка данных
+    const serviceFee = calculateServiceFee(orderData.flowersTotal, orderData.serviceFeePercent);
+    const finalTotal = (orderData.flowersTotal || 0) + serviceFee + (orderData.deliveryPrice || 0);
+    const clientName = orderData.name || (userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() : null);
+    
+    // Генерация номера заказа на основе telegramId
+    let orderNumber = null, userOrderNumber = null;
+    if (telegramId && !isNaN(telegramId)) {
+      const countResult = userId 
+        ? await client.query('SELECT COUNT(*) as count FROM orders WHERE user_id = $1', [userId])
+        : await client.query('SELECT COUNT(*) as count FROM orders o JOIN users u ON o.user_id = u.id WHERE u.telegram_id = $1::bigint', [telegramId]);
+      userOrderNumber = parseInt(countResult.rows[0].count, 10) + 1;
+      orderNumber = generateOrderNumber(telegramId, userOrderNumber);
+    }
+    
+    // Создание заказа
+    const orderResult = await client.query(`
+      INSERT INTO orders (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
+        client_name, client_phone, client_email, recipient_name, recipient_phone, 
+        address_id, address_string, address_json, delivery_zone, delivery_date, delivery_time,
             user_comment, courier_comment, leave_at_door, status, order_number)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW', $22)
-           RETURNING *`,
-        [
-          userId,
-          finalTotal,
-          orderData.flowersTotal,
-          calculatedServiceFee,
-          orderData.deliveryPrice || 0,
-          0, // bonus_used
-          0, // bonus_earned
-          clientName,
-          clientPhone,
-          clientEmail,
-          orderData.recipientName || null,
-          orderData.recipientPhone || null,
-          addressId,
-          orderData.address,
-          JSON.stringify(orderData.addressData || {}),
-          deliveryZone,
-          orderData.deliveryDate || null,
-          orderData.deliveryTime || null,
-          userComment,
-          courierComment,
-          leaveAtDoor,
-          orderNumber
-        ]
-        );
-      } else {
-        // Если колонки нет, создаем заказ без order_number
-        console.log('⚠️  Колонка order_number не найдена, создаем заказ без номера');
-        orderResult = await client.query(
-          `INSERT INTO orders 
-           (user_id, total, flowers_total, service_fee, delivery_price, bonus_used, bonus_earned,
-            client_name, client_phone, client_email,
-            recipient_name, recipient_phone, 
-            address_id, address_string, address_json, 
-            delivery_zone, delivery_date, delivery_time,
-            user_comment, courier_comment, leave_at_door, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'NEW')
-           RETURNING *`,
-          [
-            userId,
-            finalTotal,
-            orderData.flowersTotal,
-            calculatedServiceFee,
-            orderData.deliveryPrice || 0,
-            0, // bonus_used
-            0, // bonus_earned
-            clientName,
-            clientPhone,
-            clientEmail,
-            orderData.recipientName || null,
-            orderData.recipientPhone || null,
-            addressId,
-            orderData.address,
-            JSON.stringify(orderData.addressData || {}),
-            deliveryZone,
-            orderData.deliveryDate || null,
-            orderData.deliveryTime || null,
-            userComment,
-            courierComment,
-            leaveAtDoor
-          ]
-        );
-        
-        // После создания заказа обновляем его с order_number, если колонка существует
-        // Используем SAVEPOINT для изоляции операции, чтобы ошибка не прервала всю транзакцию
-        if (orderNumber) {
-          try {
-            // Создаем точку сохранения для изоляции операции обновления
-            await client.query('SAVEPOINT update_order_number');
-            
-            // Проверяем наличие колонки перед обновлением
-            const columnCheckUpdate = await client.query(`
-              SELECT column_name 
-              FROM information_schema.columns 
-              WHERE table_name = 'orders' AND column_name = 'order_number'
-            `);
-            
-            if (columnCheckUpdate.rows.length > 0) {
-              await client.query(
-                'UPDATE orders SET order_number = $1 WHERE id = $2',
-                [orderNumber, orderResult.rows[0].id]
-              );
-              orderResult.rows[0].order_number = orderNumber;
-              console.log('✅ Номер заказа обновлен после создания:', orderNumber);
-            } else {
-              console.log('⚠️  Колонка order_number не существует, пропускаем обновление');
-            }
-            
-            // Освобождаем точку сохранения при успехе
-            await client.query('RELEASE SAVEPOINT update_order_number');
-          } catch (updateError) {
-            // Откатываемся к точке сохранения, чтобы не прервать всю транзакцию
-            try {
-              await client.query('ROLLBACK TO SAVEPOINT update_order_number');
-              console.log('⚠️  Не удалось обновить order_number, откат к точке сохранения:', updateError.message);
-            } catch (rollbackError) {
-              // Если не удалось откатиться к точке сохранения, значит транзакция уже прервана
-              console.log('⚠️  Не удалось откатиться к точке сохранения, транзакция прервана:', rollbackError.message);
-              // Не выбрасываем ошибку дальше, чтобы не прервать создание заказа
-            }
-          }
-        }
-      }
+      VALUES ($1, $2, $3, $4, $5, 0, 0, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'NEW', $20)
+      RETURNING *
+    `, [
+      userId, finalTotal, orderData.flowersTotal, serviceFee, orderData.deliveryPrice || 0,
+      clientName, orderData.phone || userData?.phone, orderData.email || userData?.email,
+      orderData.recipientName, orderData.recipientPhone,
+      addressId, orderData.address, JSON.stringify(orderData.addressData || {}),
+      getDeliveryZone(orderData.deliveryPrice || 0), orderData.deliveryDate, orderData.deliveryTime,
+      orderData.userComment || orderData.comment, orderData.courierComment, !!orderData.leaveAtDoor, orderNumber
+    ]);
       
       const order = orderResult.rows[0];
-      console.log('✅ Заказ создан в БД, order_id:', order.id, 'order_number:', order.order_number || orderNumber || 'NULL', 'user_id в заказе:', order.user_id || 'NULL');
       
-      // Сохраняем телефон и почту из формы заказа в профиль пользователя, если они были заполнены
+    // Обновляем профиль пользователя
       if (userId && (orderData.phone || orderData.email)) {
-        try {
-          const updateFields = [];
-          const updateValues = [];
-          let paramIndex = 1;
-          
-          if (orderData.phone) {
-            updateFields.push(`phone = $${paramIndex}`);
-            updateValues.push(orderData.phone);
-            paramIndex++;
-          }
-          
-          if (orderData.email) {
-            updateFields.push(`email = $${paramIndex}`);
-            updateValues.push(orderData.email);
-            paramIndex++;
-          }
-          
-          if (updateFields.length > 0) {
-            updateValues.push(userId);
-            await client.query(
-              `UPDATE users 
-               SET ${updateFields.join(', ')}, updated_at = now()
-               WHERE id = $${paramIndex}`,
-              updateValues
-            );
-            console.log('✅ Обновлен профиль пользователя: телефон и/или почта сохранены из формы заказа');
-          }
-        } catch (profileError) {
-          // Не критично, если не удалось обновить профиль
-          console.log('⚠️  Не удалось обновить профиль пользователя:', profileError.message);
-        }
+      const fields = [], values = [];
+      if (orderData.phone) { fields.push(`phone = $${values.length + 1}`); values.push(orderData.phone); }
+      if (orderData.email) { fields.push(`email = $${values.length + 1}`); values.push(orderData.email); }
+      if (fields.length > 0) {
+        values.push(userId);
+        await client.query(`UPDATE users SET ${fields.join(', ')}, updated_at = now() WHERE id = $${values.length}`, values);
       }
-      
-      // Проверяем остатки перед добавлением позиций
+    }
+    
+    // Проверяем остатки и добавляем позиции
       for (const item of orderData.items || []) {
-        const productId = item.id;
-        const requestedQty = item.quantity || 0;
-        
-        // Рассчитываем доступный остаток: используем ту же логику, что и в GET /api/admin/warehouse
-        // Считаем по каждой поставке отдельно, затем суммируем
-        const suppliesResult = await client.query(
-          `SELECT 
-            s.id,
-            COALESCE(
-              (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
-              s.quantity
-            ) as initial_quantity,
-            COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
-            COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off
-          FROM supplies s
-          LEFT JOIN stock_movements sm ON s.id = sm.supply_id
-          WHERE s.product_id = $1
-          GROUP BY s.id, s.quantity`,
-          [productId]
-        );
-        
-        // Суммируем остатки по всем поставкам
-        let totalAvailable = 0;
-        for (const supply of suppliesResult.rows) {
-          const initialQty = parseInt(supply.initial_quantity || 0);
-          const sold = parseInt(supply.sold || 0);
-          const writtenOff = parseInt(supply.written_off || 0);
-          const remaining = Math.max(0, initialQty - sold - writtenOff);
-          totalAvailable += remaining;
-        }
-        
-        const available = totalAvailable;
-        
-        if (requestedQty > available) {
+      const available = await checkStockAvailability(client, item.id);
+      if (item.quantity > available) {
           await client.query('ROLLBACK');
-          const productName = item.name || `товар #${productId}`;
-          throw new Error(`Недостаточно товара на складе: ${productName}. Запрошено: ${requestedQty}, доступно: ${available}`);
-        }
+        throw new Error(`Недостаточно товара: ${item.name}. Нужно: ${item.quantity}, доступно: ${available}`);
       }
-      
-      // Добавляем позиции заказа и создаем движения с FIFO логикой
-      for (const item of orderData.items || []) {
-        const productId = item.id;
-        const quantity = item.quantity || 0;
-        
-        // Добавляем позицию заказа с total_price
-        const totalPrice = item.price * quantity;
-        await client.query(
-          `INSERT INTO order_items (order_id, product_id, name, price, quantity, total_price)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [order.id, productId, item.name, item.price, quantity, totalPrice]
-        );
-        
-        // FIFO логика: получаем все поставки с остатками, отсортированные по дате (старые первые)
-        // Используем SUPPLY движения для получения начального количества, если они есть
-        const suppliesResult = await client.query(`
-          SELECT 
-            s.id as supply_id,
-            COALESCE(
-              (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
-              s.quantity
-            ) as initial_quantity,
-            s.delivery_date,
-            COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) as sold,
-            COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0) as written_off
-          FROM supplies s
-          LEFT JOIN stock_movements sm ON s.id = sm.supply_id
-          WHERE s.product_id = $1
-          GROUP BY s.id, s.quantity, s.delivery_date
-          HAVING (
-            COALESCE(
-              (SELECT SUM(quantity) FROM stock_movements WHERE supply_id = s.id AND type = 'SUPPLY'),
-              s.quantity
-            ) - 
-            COALESCE(SUM(CASE WHEN sm.type = 'SALE' THEN sm.quantity ELSE 0 END), 0) - 
-            COALESCE(SUM(CASE WHEN sm.type = 'WRITE_OFF' THEN sm.quantity ELSE 0 END), 0)
-          ) > 0
-          ORDER BY s.delivery_date ASC, s.id ASC
-        `, [productId]);
-        
-        let remainingToSell = quantity;
-        
-        // Списываем с самых ранних поставок
-        for (const supply of suppliesResult.rows) {
-          if (remainingToSell <= 0) break;
-          
-          const available = supply.initial_quantity - supply.sold - supply.written_off;
-          const toSell = Math.min(remainingToSell, available);
-          
-          if (toSell > 0) {
-            // Создаем движение типа SALE с привязкой к поставке
-            await client.query(
-              `INSERT INTO stock_movements (product_id, type, quantity, order_id, supply_id, comment)
-               VALUES ($1, 'SALE', $2, $3, $4, $5)`,
-              [productId, toSell, order.id, supply.supply_id, `Продажа по заказу #${order.id} (партия #${supply.supply_id})`]
-            );
-            
-            remainingToSell -= toSell;
-          }
-        }
-        
-        // Если не хватило товара на складе, это должно было быть проверено ранее, но на всякий случай
-        if (remainingToSell > 0) {
-          console.warn(`⚠️ Недостаточно товара для полного списания: product_id=${productId}, осталось списать=${remainingToSell}`);
-        }
-      }
-      console.log('✅ Позиции заказа добавлены и движения созданы, количество:', orderData.items?.length || 0);
-      
-      // Создаем запись в order_status_history
-      try {
-        await client.query(
-          `INSERT INTO order_status_history (order_id, status, source, comment)
-           VALUES ($1, $2, $3, $4)`,
-          [order.id, 'NEW', 'system', 'Заказ создан через мини-апп']
-        );
-        console.log(`✅ Создана запись в истории статусов для заказа #${order.id}`);
-      } catch (historyError) {
-        // Игнорируем ошибки истории (таблица может не существовать)
-        console.log('⚠️  Не удалось создать запись в истории статусов:', historyError.message);
-      }
+      await addOrderItemWithFIFO(client, order.id, item);
+    }
+    
+    // История статусов
+    try {
+      await client.query(`INSERT INTO order_status_history (order_id, status, source, comment) VALUES ($1, 'NEW', 'system', 'Заказ создан')`, [order.id]);
+    } catch (e) { /* игнорируем */ }
       
       await client.query('COMMIT');
-      console.log('✅ Транзакция завершена успешно');
-      
-      // Извлекаем номер заказа пользователя из order_number (последние 3 цифры), если он еще не был установлен
-      // userOrderNumber уже объявлена выше (строка 2058), поэтому просто проверяем и обновляем при необходимости
-      if (!userOrderNumber && (order.order_number || orderNumber)) {
-        const fullOrderNumber = String(order.order_number || orderNumber);
-        // Берем последние 3 цифры как номер заказа пользователя
-        userOrderNumber = fullOrderNumber.slice(-3);
-        console.log(`📝 Извлечен userOrderNumber из order_number: ${userOrderNumber}`);
-      }
-      
-      return {
-        orderId: order.id,
-        order_number: order.order_number || orderNumber || null,
-        userOrderNumber: userOrderNumber || orderData.userOrderNumber || null,
-        telegramOrderId: Date.now() // Для совместимости с фронтендом
-      };
+    
+    return { orderId: order.id, order_number: orderNumber, userOrderNumber, telegramOrderId: Date.now() };
     } catch (error) {
-      // Проверяем, не прервана ли уже транзакция
-      if (error.code === '25P02') {
-        // Транзакция уже прервана, пытаемся сделать ROLLBACK
-        try {
-          await client.query('ROLLBACK');
-          console.error('❌ Транзакция была прервана, выполнен откат');
-        } catch (rollbackError) {
-          // Если ROLLBACK тоже не работает, просто логируем
-          console.error('❌ Не удалось выполнить ROLLBACK после прерванной транзакции:', rollbackError.message);
-        }
-      } else {
-        // Обычная ошибка, делаем ROLLBACK
-        try {
-          await client.query('ROLLBACK');
-          console.error('❌ Ошибка в транзакции, откат:', error);
-        } catch (rollbackError) {
-          console.error('❌ Не удалось выполнить ROLLBACK:', rollbackError.message);
-        }
-      }
-      throw error;
+    try { await client.query('ROLLBACK'); } catch (e) { /* игнорируем */ }
+    console.error('❌ Ошибка createOrderInDb:', error.message);
+    return null;
     } finally {
       client.release();
-    }
-  } catch (error) {
-    console.error('❌ Ошибка createOrderInDb:', error.message);
-    console.error('Детали ошибки:', error);
-    return null;
   }
 }
 
