@@ -6776,6 +6776,12 @@ function getOrderStatusClass(status) {
 function formatOrderNumber(order) {
     const newUserId = getUserId();
 
+    console.log('newUserId', newUserId);
+    console.log('newUserId', newUserId);
+    console.log('newUserId', newUserId);
+    console.log('newUserId', newUserId);
+
+
     if (!order) return `#${order?.id || '?'}`;
     
     // Получаем userId - сначала из самого заказа, потом из Telegram/localStorage
