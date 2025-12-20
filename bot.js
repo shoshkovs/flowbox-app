@@ -2053,24 +2053,33 @@ async function createOrderInDb(orderData) {
       // Получаем значение leave_at_door из orderData (явное приведение к boolean)
       const leaveAtDoor = !!(orderData.leaveAtDoor || false);
       
-      // Генерируем номер заказа: userId + номер заказа пользователя (с ведущими нулями до 3 цифр)
+      // Генерируем номер заказа: telegram_id + номер заказа пользователя (с ведущими нулями до 3 цифр)
       let orderNumber = null;
-      if (userId && orderData.userId) {
-        // Считаем количество заказов пользователя
+      let userOrderNumber = null;
+      
+      // Используем telegram_id из orderData.userId (это telegram_id пользователя)
+      const telegramId = orderData.userId ? (typeof orderData.userId === 'string' ? parseInt(orderData.userId, 10) : Number(orderData.userId)) : null;
+      
+      if (userId && !isNaN(telegramId)) {
+        // Считаем количество заказов пользователя (только успешные заказы с user_id)
         const userOrdersCountResult = await client.query(
           'SELECT COUNT(*) as count FROM orders WHERE user_id = $1',
           [userId]
         );
-        const userOrderNumber = parseInt(userOrdersCountResult.rows[0].count, 10) + 1; // +1 потому что это будет новый заказ
+        userOrderNumber = parseInt(userOrdersCountResult.rows[0].count, 10) + 1; // +1 потому что это будет новый заказ
         
-        // Формируем номер заказа: userId + номер заказа (с ведущими нулями до 3 цифр)
-        const userIdStr = String(orderData.userId);
+        // Формируем номер заказа: telegramId + номер заказа пользователя (с ведущими нулями до 3 цифр)
+        // Например: telegramId=1059138125, userOrderNumber=1 → orderNumber=1059138125001
+        const telegramIdStr = String(telegramId);
         const orderNumberStr = String(userOrderNumber).padStart(3, '0');
-        orderNumber = parseInt(userIdStr + orderNumberStr, 10);
-        console.log(`📝 Сгенерирован номер заказа: ${orderNumber} (userId: ${userIdStr}, номер заказа пользователя: ${userOrderNumber})`);
+        orderNumber = parseInt(telegramIdStr + orderNumberStr, 10);
+        
+        console.log(`📝 Сгенерирован номер заказа: ${orderNumber} (telegramId: ${telegramIdStr}, номер заказа пользователя: ${userOrderNumber}, user_id в БД: ${userId})`);
         
         // Сохраняем номер заказа пользователя для возврата в ответе
         orderData.userOrderNumber = userOrderNumber;
+      } else {
+        console.warn(`⚠️  Не удалось сгенерировать order_number: userId=${userId}, telegramId=${telegramId}`);
       }
       
       // Создаем заказ (без service_fee_percent - эта колонка не критична, процент можно вычислить из service_fee и flowers_total)
