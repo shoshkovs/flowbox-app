@@ -2372,10 +2372,12 @@ async function createOrderInDb(orderData) {
       console.log('✅ Транзакция завершена успешно');
       
       // Извлекаем номер заказа пользователя из order_number (последние 3 цифры), если он еще не был установлен
+      // userOrderNumber уже объявлена выше (строка 2058), поэтому просто проверяем и обновляем при необходимости
       if (!userOrderNumber && (order.order_number || orderNumber)) {
         const fullOrderNumber = String(order.order_number || orderNumber);
         // Берем последние 3 цифры как номер заказа пользователя
         userOrderNumber = fullOrderNumber.slice(-3);
+        console.log(`📝 Извлечен userOrderNumber из order_number: ${userOrderNumber}`);
       }
       
       return {
