@@ -348,7 +348,7 @@ export function CustomerDetail({ customer, onClose, authToken, customerId }) {
                             onClick={() => navigate(`/orders/${order.id}`)}
                             title="Открыть детали заказа"
                           >
-                            #{order.id}
+                            #{order.order_number} 
                           </span>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
                             {getStatusLabel(order.status)}

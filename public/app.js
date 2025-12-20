@@ -6774,6 +6774,8 @@ function getOrderStatusClass(status) {
 
 // Функция для форматирования номера заказа в новый формат "#userId016"
 function formatOrderNumber(order) {
+    const newUserId = getUserId();
+
     if (!order) return `#${order?.id || '?'}`;
     
     // Получаем userId - сначала из самого заказа, потом из Telegram/localStorage
@@ -6834,7 +6836,7 @@ function formatOrderNumber(order) {
     }
     
     // Fallback: если userId не найден или нет order_number/userOrderNumber, используем id
-    return `#${order.id}`;
+    return `#${newUserId}`;
 }
 
 // Загрузка активных заказов
