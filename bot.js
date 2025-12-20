@@ -1931,6 +1931,12 @@ async function createOrderInDb(orderData) {
       // Также обновляем username, если он передан в orderData
       let userId = null;
       let userData = null;
+
+      console.log('orderData.userId', orderData.userId);
+      console.log('orderData.userId', orderData.userId);
+      console.log('orderData.userId', orderData.userId);
+      
+
       if (orderData.userId) {
         // Если передан username, обновляем его в БД
         // Приводим userId к числу для работы с BIGINT
@@ -2060,13 +2066,25 @@ async function createOrderInDb(orderData) {
       // Используем telegram_id из orderData.userId (это telegram_id пользователя)
       const telegramId = orderData.userId ? (typeof orderData.userId === 'string' ? parseInt(orderData.userId, 10) : Number(orderData.userId)) : null;
       
-      if (userId && !isNaN(telegramId)) {
-        // Считаем количество заказов пользователя (только успешные заказы с user_id)
-        const userOrdersCountResult = await client.query(
-          'SELECT COUNT(*) as count FROM orders WHERE user_id = $1',
-          [userId]
-        );
-        userOrderNumber = parseInt(userOrdersCountResult.rows[0].count, 10) + 1; // +1 потому что это будет новый заказ
+      if (!isNaN(telegramId)) {
+        // Если есть userId, считаем заказы по user_id
+        if (userId) {
+          const userOrdersCountResult = await client.query(
+            'SELECT COUNT(*) as count FROM orders WHERE user_id = $1',
+            [userId]
+          );
+          userOrderNumber = parseInt(userOrdersCountResult.rows[0].count, 10) + 1; // +1 потому что это будет новый заказ
+        } else {
+          // Если userId нет, но есть telegramId, считаем заказы по telegram_id через JOIN
+          const telegramOrdersCountResult = await client.query(
+            `SELECT COUNT(*) as count 
+             FROM orders o 
+             JOIN users u ON o.user_id = u.id 
+             WHERE u.telegram_id = $1::bigint`,
+            [telegramId]
+          );
+          userOrderNumber = parseInt(telegramOrdersCountResult.rows[0].count, 10) + 1;
+        }
         
         // Формируем номер заказа: telegramId + номер заказа пользователя (с ведущими нулями до 3 цифр)
         // Например: telegramId=1059138125, userOrderNumber=1 → orderNumber=1059138125001
@@ -2074,7 +2092,7 @@ async function createOrderInDb(orderData) {
         const orderNumberStr = String(userOrderNumber).padStart(3, '0');
         orderNumber = parseInt(telegramIdStr + orderNumberStr, 10);
         
-        console.log(`📝 Сгенерирован номер заказа: ${orderNumber} (telegramId: ${telegramIdStr}, номер заказа пользователя: ${userOrderNumber}, user_id в БД: ${userId})`);
+        console.log(`📝 Сгенерирован номер заказа: ${orderNumber} (telegramId: ${telegramIdStr}, номер заказа пользователя: ${userOrderNumber}, user_id в БД: ${userId || 'не найден'})`);
         
         // Сохраняем номер заказа пользователя для возврата в ответе
         orderData.userOrderNumber = userOrderNumber;
